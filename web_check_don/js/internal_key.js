@@ -1,77 +1,38 @@
 // ======================== internal_key.js ========================
+
 // 1️⃣ Khóa nội bộ (header x-internal-key)
 window.getInternalKey = () => "Trung@123";
 
 // 2️⃣ Cấu hình LOCAL Supabase (offline test)
-const LOCAL_SUPABASE_CONFIG = { url: "", anon: "" };
-
-// 3️⃣ Cấu hình MAP (Apps Script + Sheet) – giữ object để getConfig("map") trả về đúng cấu trúc
-const LOCAL_APP_MAP = {
-  APPS_URL: "",
-  SHEET_ID: "",
-  SHARED_SECRET: "",
-  CSV_URL: "",
-  WEBHOOK_URL: "" // để tiện dùng chung
+const LOCAL_SUPABASE_CONFIG = {
+  url: "https://cywtgdtsxajczljspwxe.supabase.co",
+  anon: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5d3RnZHRzeGFqY3psanNwd3hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3MzI1NjQsImV4cCI6MjA3MjMwODU2NH0.FZ6z6kfUWyf8l7WnA5J1wkrAy7KjpU6VT65EdyXCka8"
 };
 
-// 4️⃣ Webhook nội bộ (string)
-let LOCAL_WEBHOOK = "";
+// 3️⃣ Cấu hình MAP (Apps Script + Sheet)
+const LOCAL_APP_MAP = {
+  APPS_URL: "https://script.google.com/macros/s/AKfycbxvwPYBOGUyex1ZOgM3E4g2sKMcz3QLao8DaiZz4oRJmnMOwFdF0M30fQD_QR2ubzcK/exec",
+  SHEET_ID: "18YC3kOwKLLvbzYeuXbZ-5U348EV_hAY2Y3wdot42P1c",
+  SHARED_SECRET: "t12345",
+  CSV_URL : "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFLOQCFAQqdcQLP4Yxy0IAVk2f1GCs3nTpEdrITr5s47wOAdViQ3K0VkcQLQSRoLehUe8jFfXrvjkm/pub?output=csv",
+};
 
-// 5️⃣ API cho phần còn lại của app dùng
+// 4️⃣ Webhook nội bộ (ẩn khỏi body JSON)
+const LOCAL_WEBHOOK = "https://dhsybbqoe.datadex.vn/webhook/hoadon";
+
+
+// Cho phép các file khác gọi giống như `url` và `anon`
 window.getConfig = function (key) {
   switch (key) {
-    case "url":     return LOCAL_SUPABASE_CONFIG.url;
-    case "anon":    return LOCAL_SUPABASE_CONFIG.anon;
-    case "webhook": return LOCAL_WEBHOOK;  // string
-    case "map":     return LOCAL_APP_MAP;  // object
-    default:        return null;
+    case "url": return LOCAL_SUPABASE_CONFIG.url;
+    case "anon": return LOCAL_SUPABASE_CONFIG.anon;
+    case "webhook": return LOCAL_WEBHOOK;
+    case "map": return LOCAL_APP_MAP;
+    default: return null;
   }
 };
 
-// 6️⃣ Nạp cấu hình từ server (/api/getConfig) – HỖ TRỢ CẢ 2 DẠNG: flat & nested map{}
-async function loadConfigFromServer() {
-  try {
-    const res = await fetch("/api/getConfig", {
-      headers: { "x-internal-key": window.getInternalKey() }
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-
-    // Supabase
-    LOCAL_SUPABASE_CONFIG.url  = data.url  || data.SUPABASE_URL || "";
-    LOCAL_SUPABASE_CONFIG.anon = data.anon || data.SUPABASE_ANON_KEY || "";
-
-    // Hỗ trợ cả dạng flat và nested
-    const M = data.map || {};
-    LOCAL_APP_MAP.APPS_URL      = data.APPS_URL      ?? M.APPS_URL      ?? "";
-    LOCAL_APP_MAP.SHEET_ID      = data.SHEET_ID      ?? M.SHEET_ID      ?? "";
-    LOCAL_APP_MAP.SHARED_SECRET = data.SHARED_SECRET ?? M.SHARED_SECRET ?? "";
-    LOCAL_APP_MAP.CSV_URL       = data.CSV_URL       ?? M.CSV_URL       ?? "";
-    LOCAL_APP_MAP.WEBHOOK_URL   = data.WEBHOOK_URL   ?? data.webhookUrl ?? M.WEBHOOK_URL ?? "";
-
-    // Webhook (ưu tiên WEBHOOK_URL phẳng, sau đó webhookUrl, rồi map.WEBHOOK_URL)
-    LOCAL_WEBHOOK = data.WEBHOOK_URL ?? data.webhookUrl ?? LOCAL_APP_MAP.WEBHOOK_URL ?? "";
-
-    console.log("[internal_key] ✅ Loaded config:", {
-      url: LOCAL_SUPABASE_CONFIG.url ? "ok" : "empty",
-      anon: LOCAL_SUPABASE_CONFIG.anon ? "ok" : "empty",
-      webhook: LOCAL_WEBHOOK ? "ok" : "empty",
-      map: { ...LOCAL_APP_MAP }
-    });
-  } catch (err) {
-    console.error("[internal_key] ❌ loadConfigFromServer failed:", err);
-  }
-}
-
-// 7️⃣ Cho phép chủ động reload khi cần
-window.loadAppConfig = async function () {
-  await loadConfigFromServer();
-};
-
-// 8️⃣ Tự nạp khi trang load
-(async () => { await loadConfigFromServer(); })();
-
-// 9️⃣ Interceptor fetch: fallback /api/getConfig khi server không có
+// 5️⃣ Interceptor fetch: fallback /api/getConfig
 (function patchFetchForGetConfig() {
   const origFetch = window.fetch?.bind(window);
 
@@ -92,24 +53,18 @@ window.loadAppConfig = async function () {
     }
   }
 
-  window.fetch = async function (input, init = {}) {
+  window.fetch = async function (input, init) {
     if (isGetConfigURL(input)) {
-      init.headers = Object.assign({}, init.headers, { "x-internal-key": window.getInternalKey() });
-
-      // Thử gọi server thật
       const real = await tryRealGetConfig(input, init);
       if (real) return real;
 
-      // Fallback local – TRẢ VỀ DẠNG FLAT giống server hiện tại
+      // Fallback local — KHÔNG gửi webhook ra ngoài
       const body = JSON.stringify({
-        url:  LOCAL_SUPABASE_CONFIG.url,
+        url: LOCAL_SUPABASE_CONFIG.url,
         anon: LOCAL_SUPABASE_CONFIG.anon,
-        WEBHOOK_URL: LOCAL_WEBHOOK,
-        APPS_URL: LOCAL_APP_MAP.APPS_URL,
-        SHEET_ID: LOCAL_APP_MAP.SHEET_ID,
-        SHARED_SECRET: LOCAL_APP_MAP.SHARED_SECRET,
-        CSV_URL: LOCAL_APP_MAP.CSV_URL
+        map: LOCAL_APP_MAP
       });
+
       return new Response(body, { status: 200, headers: { "Content-Type": "application/json" } });
     }
 

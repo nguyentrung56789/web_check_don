@@ -49,10 +49,7 @@ function bindPager(){
 }
 
 /* ================== BẢO VỆ TRANG (KHÔNG DÙNG NV) ================== */
-/* Nếu HTML đã include auth_token.js và gọi checkAccess() thì đoạn dưới là no-op */
-if (typeof window.checkAccess === 'function') {
-  try { window.checkAccess(); } catch(_) {}
-}
+if (typeof window.checkAccess === 'function') { try { window.checkAccess(); } catch(_) {} }
 const __ACCESS_OK__ = true;
 
 /* ================== CHỌN/TÍCH (ghi theo ma_hd) ================== */
@@ -73,7 +70,7 @@ let FILTER_COD = '';
 
 /* filter “trạng thái” từ cột trang_thai */
 const STATUS_FILTER_KEY = 'dh_filter_status';
-let FILTER_STATUS = ''; // lưu giá trị đã chuẩn hóa (lowercase)
+let FILTER_STATUS = ''; // lowercase
 function loadStatusFilter(){ try{ FILTER_STATUS = localStorage.getItem(STATUS_FILTER_KEY) || ''; }catch{} }
 function saveStatusFilter(){ try{ localStorage.setItem(STATUS_FILTER_KEY, FILTER_STATUS); }catch{} }
 function normStatus(s){ return (s==null ? '' : String(s).trim().toLowerCase()); }
@@ -106,7 +103,6 @@ function fmtDateHTML(v){
   const time = `${p(d.getHours())}:${p(d.getMinutes())}`;
   return `${date} <span class="t">${time}</span>`;
 }
-
 function toISOStart(str){
   if(!str) return null; let y,m,d;
   if(/^\d{2}-\d{2}-\d{4}$/.test(str)){[d,m,y]=str.split('-').map(Number);}
@@ -176,10 +172,53 @@ if (!window.CSS || !CSS.escape) {
 }
 
 /* ================== USER BAR ================== */
-/* Ẩn vì không dùng NV */
 function showUserBar(){
   const bar = document.getElementById('userBar');
-  if (bar) bar.style.display = 'none';
+  const nameEl = document.getElementById('userName');
+  const toggle = document.getElementById('userToggle');
+  const menu = document.getElementById('userMenu');
+  const actLogout = document.getElementById('actLogout');
+  if(!bar || !nameEl || !toggle || !menu || !actLogout) return;
+
+  // Luôn bật thanh
+  bar.style.display = 'block';
+
+  // Lấy tên NV: sessionStorage -> localStorage
+  let ctx = {};
+  try { ctx = JSON.parse(sessionStorage.getItem('nv_ctx') || '{}'); } catch {}
+  if(!ctx.ten_nv && !ctx.ma_nv){
+    try{
+      const nv = JSON.parse(localStorage.getItem('nv') || '{}');
+      ctx.ten_nv = nv.ten_nv; ctx.ma_nv = nv.ma_nv;
+    }catch{}
+  }
+
+  // Chỉ set TÊN vào #userName (để không bị 2 icon)
+  nameEl.textContent = (ctx.ten_nv || ctx.ma_nv || 'Chưa xác định');
+
+  // Toggle dropdown khi bấm vào tên
+  const hideMenu = ()=> menu.hidden = true;
+  const toggleMenu = ()=> menu.hidden = !menu.hidden;
+
+  toggle.addEventListener('click', (e)=>{ e.stopPropagation(); toggleMenu(); });
+
+  // Ẩn khi bấm ra ngoài hoặc nhấn ESC
+  document.addEventListener('click', (e)=>{ if(!bar.contains(e.target)) hideMenu(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') hideMenu(); });
+
+  // Đăng xuất
+  actLogout.addEventListener('click', ()=>{
+    try{
+      sessionStorage.removeItem('nv_ctx');
+      localStorage.removeItem('nv');
+      sessionStorage.removeItem('APP_ACCESS');
+    }catch{}
+    location.href = 'index.html';
+  });
+
+  // Nếu còn phần tử #logout cũ đâu đó → ẩn đi để không hiện “Đăng xuất” ngang
+  const oldBtn = document.getElementById('logout');
+  if (oldBtn) oldBtn.style.display = 'none';
 }
 
 /* layout mở rộng */
@@ -200,7 +239,8 @@ function bindExpandButton(){
 let EMPLOYEES=[]; let LAST_ACTIVE_TR=null;
 async function loadEmployees(){
   try{
-    const {data,error}=await supa.from('kv_nhan_vien').select('id,ten_nv').eq('hoat_dong', true).order('ten_nv',{ascending:true});
+    const {data,error}=await supa.from('kv_nhan_vien')
+      .select('id,ten_nv').eq('hoat_dong', true).order('ten_nv',{ascending:true});
     if(error) throw error;
     EMPLOYEES = Array.isArray(data)?data:[];
   }catch(e){
@@ -208,7 +248,10 @@ async function loadEmployees(){
     setState(false,'không tải được danh sách nhân viên');
   }
 }
-function renderEmpDatalist(){ const el=document.getElementById('empList'); if(el) el.innerHTML = EMPLOYEES.map(e=>`<option value="${esc(e.ten_nv)}"></option>`).join(''); }
+function renderEmpDatalist(){
+  const el=document.getElementById('empList');
+  if(el) el.innerHTML = EMPLOYEES.map(e=>`<option value="${esc(e.ten_nv)}"></option>`).join('');
+}
 
 /* ================== OVERLAY CHI TIẾT ================== */
 function bindOverlayControls(){
@@ -218,8 +261,16 @@ function bindOverlayControls(){
   ov?.addEventListener('click',e=>{ if(e.target.id==='detailOverlay') closeOverlay(); });
   document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ const open=ov && getComputedStyle(ov).display!=='none'; if(open) closeOverlay(); }});
 }
-function openOverlay(url){ const ov=document.getElementById('detailOverlay'); const fr=document.getElementById('detailFrame'); if(!ov||!fr) return; fr.removeAttribute('src'); fr.src=url; ov.style.display='flex'; }
-function closeOverlay(){ const ov=document.getElementById('detailOverlay'); const fr=document.getElementById('detailFrame'); if(!ov||!fr) return; ov.style.display='none'; fr.removeAttribute('src'); const scan=document.getElementById('scan'); scan?.focus(); scan?.select?.(); }
+function openOverlay(url){
+  const ov=document.getElementById('detailOverlay'); const fr=document.getElementById('detailFrame');
+  if(!ov||!fr) return;
+  fr.removeAttribute('src'); fr.src=url; ov.style.display='flex';
+}
+function closeOverlay(){
+  const ov=document.getElementById('detailOverlay'); const fr=document.getElementById('detailFrame');
+  if(!ov||!fr) return; ov.style.display='none'; fr.removeAttribute('src');
+  const scan=document.getElementById('scan'); scan?.focus(); scan?.select?.();
+}
 window.closeOverlay=closeOverlay;
 
 /* ================== SCAN / NÚT ================== */
@@ -281,6 +332,19 @@ function renderStatusCell(ma, val){
          (has ? ` <a class="link-soft" target="_blank" href="xem_trang_thai_don.html?ma_hd=${encodeURIComponent(ma)}">xem</a>` : '');
 }
 
+/* === Helper: lấy tên NV hiện tại (ưu tiên sessionStorage, fallback localStorage) === */
+function getCurrentNVName(){
+  try {
+    const s = JSON.parse(sessionStorage.getItem('nv_ctx') || '{}');
+    if (s && s.ten_nv) return String(s.ten_nv).trim();
+  } catch {}
+  try {
+    const nv = JSON.parse(localStorage.getItem('nv') || '{}');
+    if (nv && nv.ten_nv) return String(nv.ten_nv).trim();
+  } catch {}
+  return '';
+}
+
 async function checkAndOpenByScan(code){
   try{
     setScanMsg('ok','Đang kiểm tra…');
@@ -288,7 +352,13 @@ async function checkAndOpenByScan(code){
     if(error) throw error;
     if(!data || !data.ma_hd){ setScanMsg('err',`❌ Không tìm thấy mã hóa đơn: ${esc(code)}`); return; }
     setScanMsg('ok','Đã tìm thấy — mở chi tiết…');
-    openOverlay(`check_don_giao_hang.html?ma_hd=${encodeURIComponent(code)}`);
+
+    // Truyền tên NV xác nhận qua query nv_xn
+    const tenNV = getCurrentNVName();
+    const qs = new URLSearchParams({ ma_hd: code });
+    if (tenNV) qs.set('nv_xn', tenNV);
+
+    openOverlay(`check_don_giao_hang.html?${qs.toString()}`);
   }catch(err){ setScanMsg('err',`❌ Lỗi: ${esc(err.message||err)}`); }
 }
 
@@ -315,7 +385,7 @@ function bindTableActions(){
     tr.classList.add('active-row'); LAST_ACTIVE_TR=tr;
   });
 
-  // Giao hàng từng dòng
+  // Giao hàng từng dòng (webhook + update)
   tb?.addEventListener('click', async (e)=>{
     const btn=e.target.closest?.('.btn-ship-row'); if(!btn) return;
     const tr = btn.closest('tr[data-ma]');
@@ -398,7 +468,7 @@ function updateCheckedCount(){
   el.textContent = String(count);
 }
 
-/* filter “đã chọn” */
+/* ===== Lọc “đã chọn” ===== */
 function applyFilterChecked(){
   const btn = document.getElementById('btnFilterChecked');
   const rows = document.querySelectorAll('#tbody tr[data-ma]');
@@ -421,27 +491,127 @@ function bindFilterCheckedOnly(){
   });
 }
 
-/* ================== XEM BẢN ĐỒ TUYẾN ================== */
-function getSelectedCustomerIdsFromDOM(){
-  const arr = [...document.querySelectorAll('#tbody tr[data-ma] .row-chk:checked')]
-    .filter(cb => getComputedStyle(cb.closest('tr')).display !== 'none')
-    .map(cb => (cb.closest('tr')?.dataset.kh || '').trim())
-    .filter(Boolean);
-  return [...new Set(arr)];
+/* ================== XEM BẢN ĐỒ TUYẾN (ưu tiên DOM, fallback Supabase) ================== */
+/** lấy các ma_hd đang tick (phòng khi cần fallback) */
+function getCheckedOrderIds() {
+  const rows = [...document.querySelectorAll('#tbody tr[data-ma] .row-chk:checked')]
+    .map(cb => cb.closest('tr[data-ma]'))
+    .filter(tr => tr && getComputedStyle(tr).display !== 'none');
+
+  const seen = new Set(); const out = [];
+  for (const tr of rows) {
+    const ma = (tr.dataset.ma || '').trim();
+    if (ma && !seen.has(ma)) { seen.add(ma); out.push(ma); }
+  }
+  return out;
 }
 
-function handleViewRoute(){
-  const ids = getSelectedCustomerIdsFromDOM();
-  if (!ids.length) { alert('⚠️ Chưa chọn khách hàng nào!'); return; }
+/** Ưu tiên lấy ma_kh từ DOM (data-kh) */
+function getCheckedCustomerCodesFromDOM(){
+  const rows = [...document.querySelectorAll('#tbody tr[data-ma] .row-chk:checked')]
+    .map(cb => cb.closest('tr[data-ma]'))
+    .filter(tr => tr && getComputedStyle(tr).display !== 'none');
 
-  const qs = new URLSearchParams({ ids: ids.join(',') });
-  const url = new URL('map_tuyen.html', location.href);
-  url.search = qs.toString();
-  window.open(url.toString(), '_blank');
+  const seen = new Set(); const out=[];
+  for (const tr of rows) {
+    const kh = (tr.dataset.kh || '').trim();
+    if (kh && !seen.has(kh)) { seen.add(kh); out.push(kh); } // unique theo thứ tự
+  }
+  return out;
+}
+
+async function handleViewRoute(){
+  try {
+    // 1) lấy ma_kh trực tiếp từ DOM
+    let ids = getCheckedCustomerCodesFromDOM();
+
+    // 2) nếu DOM không có, fallback: đổi từ ma_hd -> ma_kh bằng Supabase
+    if (!ids.length) {
+      const selHD = getCheckedOrderIds();
+      if (!selHD.length) { alert('⚠️ Chưa chọn đơn nào!'); return; }
+      if (!supa) throw new Error('Supabase chưa khởi tạo');
+      const { data, error } = await supa
+        .from('don_hang')
+        .select('ma_hd, ma_kh')
+        .in('ma_hd', selHD);
+      if (error) throw error;
+
+      const seen = new Set(); ids = [];
+      for (const r of (data || [])) {
+        const v = (r.ma_kh || '').trim();
+        if (v && !seen.has(v)) { seen.add(v); ids.push(v); } // unique
+      }
+    }
+
+    if (!ids.length) {
+      alert('⚠️ Các dòng đã chọn không có ma_kh. Vui lòng kiểm tra dữ liệu.');
+      return;
+    }
+
+    // 3) Mở map an toàn ở TAB MỚI (truyền token + xử lý q dài)
+    const queryForMap = 'ma: ' + ids.join(' ');
+    openMapInNewTabSecure(queryForMap);
+  } catch (e) {
+    console.error(e);
+    alert('❌ Lỗi khi mở bản đồ tuyến: ' + (e.message || e));
+  }
+}
+
+/* >>> NEW: helper mở tab mới, set token + q (kể cả chuỗi dài) */
+function openMapInNewTabSecure(queryForMap){
+  const target = new URL('map_tuyen.html', location.href);
+
+  // Nếu q quá dài → dùng sessionStorage + #use_session=1
+  const tryUrl = new URL('map_tuyen.html', location.href);
+  tryUrl.searchParams.set('q', queryForMap);
+  const useSession = tryUrl.toString().length > 1800;
+
+  if (useSession) {
+    target.hash = '#use_session=1';
+  } else {
+    target.searchParams.set('q', queryForMap);
+  }
+
+  // Lấy token đã cấp quyền ở tab hiện tại
+  let token = '';
+  try { token = sessionStorage.getItem('APP_ACCESS') || ''; } catch {}
+  if (!token && typeof window.makeAccess === 'function') {
+    try { token = window.makeAccess(); } catch {}
+  }
+  if (token) target.searchParams.set('token', token);
+
+  // Mở tab mới; nếu popup bị chặn → mở cùng tab
+  const win = window.open('', '_blank');
+  if (!win || win.closed) {
+    if (useSession) {
+      try { sessionStorage.setItem('map_query', queryForMap); } catch {}
+    }
+    location.assign(target.toString());
+    return;
+  }
+
+  // Ghi sessionStorage trong tab mới rồi replace sang URL đích
+  const bootstrapHTML = `
+<!doctype html><html><head><meta charset="utf-8"><title>Loading…</title></head>
+<body>
+<script>
+try {
+  ${useSession ? `sessionStorage.setItem('map_query', ${JSON.stringify(queryForMap)});` : ''}
+  ${token ? `sessionStorage.setItem('APP_ACCESS', ${JSON.stringify(token)});` : ''}
+} catch (e) {}
+location.replace(${JSON.stringify(target.toString())});
+<\/script>
+Loading…
+</body></html>`.trim();
+
+  win.document.open();
+  win.document.write(bootstrapHTML);
+  win.document.close();
 }
 
 function bindViewRouteButton(){
-  document.getElementById('btnViewRoute')?.addEventListener('click', (e)=>{ e.preventDefault(); handleViewRoute(); });
+  document.getElementById('btnViewRoute')
+    ?.addEventListener('click', (e)=>{ e.preventDefault(); handleViewRoute(); });
 }
 
 /* ================== CẬP NHẬT ĐƠN HÀNG (WEBHOOK) ================== */
@@ -484,7 +654,6 @@ function renderStatusFilterOptions(statusList){
   const sel = document.getElementById('filterTrangThai');
   if (!sel) return;
 
-  // map norm -> label
   const map = new Map();
   statusList.forEach(s=>{
     const label = (s||'').toString().trim();
@@ -492,7 +661,6 @@ function renderStatusFilterOptions(statusList){
     if (label && !map.has(key)) map.set(key, label);
   });
 
-  // nếu đang có lựa chọn mà không nằm trong danh sách hiện tại, vẫn giữ lại
   if (FILTER_STATUS && !map.has(FILTER_STATUS)) {
     map.set(FILTER_STATUS, FILTER_STATUS);
   }
@@ -516,7 +684,7 @@ async function reload(){
 
   if(tb) tb.innerHTML='<tr><td colspan="11" class="empty">Đang tải…</td></tr>';
 
-  // XÂY DỰNG TRUY VẤN: áp mọi filter trước, order, rồi range
+  // XÂY DỰNG TRUY VẤN
   let q = supa.from(TABLE).select('*', { count: 'planned' });
 
   if(qtxt) q=q.or(`ma_hd.ilike.%${qtxt}%,ten_kh.ilike.%${qtxt}%`);
@@ -525,21 +693,14 @@ async function reload(){
   if(lo) q=q.gte('ngay',lo);
   if(hi) q=q.lt('ngay',hi);
 
-  // Lọc COD server-side nếu có thể (don_hang là chuỗi đánh dấu "cod"/true)
   if (FILTER_COD === 'true') {
-    // lưu ý: nếu cột don_hang là boolean TRUE/FALSE, đổi sang .eq('don_hang', true)
     q = q.or('don_hang.ilike.%cod%,don_hang.eq.true');
   } else if (FILTER_COD === 'false') {
     q = q.not('don_hang','ilike','%cod%').neq('don_hang', true);
   }
 
-  // Trạng thái (sau khi đã normalize) — vì ta muốn so theo lowercase, áp client để chắc chắn
-  // => chưa áp ở server; sẽ lọc client bên dưới.
-
-  // Sắp xếp ổn định theo ngày mới nhất trước
   q = q.order('ngay',{ascending:false});
 
-  // Phân trang
   const { from: rFrom, to: rTo } = getPageRange();
 
   let data, count;
@@ -555,11 +716,11 @@ async function reload(){
     return;
   }
 
-  // Ở client: chuẩn hoá dropdown trạng thái theo TẬP ĐANG HIỂN THỊ (đang ở trang hiện tại)
+  // Dropdown trạng thái theo tập trang hiện tại
   const distinctStatuses = [...new Set(data.map(r => (r.trang_thai||'').toString().trim()).filter(Boolean))];
   renderStatusFilterOptions(distinctStatuses);
 
-  // Lọc theo Trạng thái ở client (đồng nhất với normStatus)
+  // Lọc trạng thái client
   if (FILTER_STATUS) {
     data = data.filter(r => normStatus(r.trang_thai) === FILTER_STATUS);
   }
@@ -609,7 +770,6 @@ async function init(){
   try{
     const nameCell = document.getElementById('tblName'); if(nameCell) nameCell.textContent = TABLE;
     const INTERNAL_KEY = (typeof window.getInternalKey==='function') ? window.getInternalKey() : '';
-    // Ưu tiên API_BASE nếu được gán trong HTML (dev/local), fallback về cùng origin
     const base = (window.API_BASE || '').replace(/\/+$/,'');
     const cfgUrl = base ? `${base}/api/getConfig` : '/api/getConfig';
     const r = await fetch(cfgUrl, { headers: { 'x-internal-key': INTERNAL_KEY } });
@@ -629,7 +789,7 @@ async function init(){
   loadSelected(); loadFilterState(); loadStatusFilter();
 
   applyExpandState(); bindExpandButton(); showUserBar();
-  bindPager();                         // <<< gắn pager
+  bindPager();
   await loadEmployees(); renderEmpDatalist();
   bindScanAndButtons(); bindOverlayControls();
   bindTableActions(); bindHeaderSelectAll();

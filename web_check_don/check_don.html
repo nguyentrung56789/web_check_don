@@ -60,11 +60,19 @@
 <!-- Chuông thông báo -->
 <button id="notifyBell" title="Thông báo" aria-label="Thông báo">🔔</button>
 
-<div id="userBar">
-  <div id="userWrap">
-    <span class="name" id="userName">👤</span>
+
+<div id="userBar" class="ub">
+  <button id="userToggle" class="ub-toggle" type="button">
+    <span class="ub-ico">👤</span>
+    <span id="userName"></span>
+  </button>
+
+  <div id="userMenu" class="ub-menu" hidden>
+    <button id="actLogout" class="ub-item" type="button">Đăng xuất</button>
   </div>
 </div>
+
+
 
 <!-- Panel thông báo -->
 <div id="notifyPanel" role="dialog" aria-hidden="true">

@@ -193,6 +193,7 @@ $('mat_khau').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
 
 <!-- gán token chỉ cho phép mở form từ index -->
 <script src="./js/auth_token.js"></script>
+
 <script>
 
 document.getElementById('donghang')?.addEventListener('click', () => {
@@ -202,10 +203,24 @@ document.getElementById('donghang')?.addEventListener('click', () => {
 </script>
 
 <script>
+  
 document.getElementById('checkdon')?.addEventListener('click', () => {
-  const token = makeAccess(); // tạo token cho TAB hiện tại
+  const token = makeAccess(); // vẫn truyền token như hiện tại
+
+  // LƯU ẨN thông tin NV cho tab hiện tại (không lộ URL, không ghi console)
+  const nv = JSON.parse(localStorage.getItem('nv') || '{}');
+  sessionStorage.setItem('nv_ctx', JSON.stringify({
+    ma_nv: nv.ma_nv || '',
+    ten_nv: nv.ten_nv || '',
+    ts: Date.now()
+  }));
+
+  // Điều hướng như cũ (chỉ có token)
   location.href = `check_don.html?token=${token}`;
 });
+
+
+
 </script>
 
 <script>
