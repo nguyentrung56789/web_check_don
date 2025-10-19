@@ -8,6 +8,8 @@ const LOCAL_SUPABASE_CONFIG = { url: "", anon: "" };
 // 3️⃣ Cấu hình MAP (Apps Script + Sheet)
 const LOCAL_APP_MAP = { APPS_URL: "", SHEET_ID: "", SHARED_SECRET: "", CSV_URL: "" };
 
+// 4️⃣ Webhook nội bộ (ẩn khỏi body JSON)
+const LOCAL_WEBHOOK = { WEBHOOK_URL: "" };
 
 // Cho phép các file khác gọi giống như `url` và `anon`
 window.getConfig = function (key) {
