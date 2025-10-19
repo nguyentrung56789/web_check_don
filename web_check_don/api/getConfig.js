@@ -36,11 +36,11 @@ export default function handler(req, res) {
   return res.status(200).json({
     url: env.url,
     anon: env.anon,
-    mapUrl: env.mapUrl,
-    mapSheet: env.mapSheet,
-    mapSecret: env.mapSecret,
-    webhookUrl: env.webhookUrl,
-    mapcsv: env.mapcsv
+    WEBHOOK_URL: env.webhookUrl,
+    APPS_URL: env.mapUrl,
+    SHEET_ID: env.mapSheet,
+    SHARED_SECRET: env.mapSecret,
+    CSV_URL: env.mapcsv
 
   });
 }
