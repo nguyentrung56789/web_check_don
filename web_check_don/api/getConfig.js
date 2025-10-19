@@ -25,7 +25,7 @@ export default function handler(req, res) {
      mapUrl: process.env.APPS_URL || '',
      mapSheet: process.env.SHEET_ID || '',
      mapSecret: process.env.SHARED_SECRET || '',
-     mapcsv: process.env.CSV_URL || '',
+     mapcsv: process.env.CSV_URL || ''
    };
 
   if (!env.url || !env.anon) {
@@ -36,11 +36,11 @@ export default function handler(req, res) {
   return res.status(200).json({
     url: env.url,
     anon: env.anon,
-    APPS_URL: env.mapUrl,
-    SHEET_ID: env.mapSheet,
-    SHARED_SECRET: env.mapSecret,
-    WEBHOOK_URL: env.webhookUrl,
-    CSV_URL: env.mapcsv
+    mapUrl: env.mapUrl,
+    mapSheet: env.mapSheet,
+    mapSecret: env.mapSecret,
+    webhookUrl: env.webhookUrl,
+    mapcsv: env.mapcsv
 
   });
 }
