@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Đăng nhập nhân viên</title>
+
+<!-- ==== Import ==== -->
+<script src="./js/internal_key.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./js/cod_config.js"></script>
+
+<style>
+:root{
+  --bg:#0b1220;--card:#0f1830;--txt:#e6edff;
+  --muted:#9aa7c7;--btn1:#2dd4bf;--btn2:#60a5fa;--btn3:#fbbf24;--err:#ff6b6b;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,#071025,#0b1220);
+  color:var(--txt);font-family:system-ui,Segoe UI,Roboto,Arial;
+}
+.card{
+  background:var(--card);padding:40px 30px;border-radius:16px;
+  box-shadow:0 8px 30px rgba(0,0,0,.4);text-align:center;width:min(420px,92vw);
+}
+h1{margin:0 0 20px;font-size:22px}
+input{
+  width:100%;padding:12px;margin:6px 0;font-size:16px;border-radius:8px;
+  border:1px solid #233043;background:#071526;color:var(--txt);
+}
+button{
+  width:100%;padding:12px;font-size:18px;font-weight:700;
+  border:0;border-radius:10px;margin-top:10px;background:var(--btn1);
+  color:#042023;cursor:pointer;transition:opacity .15s;
+}
+button[disabled]{opacity:.6;cursor:not-allowed}
+.msg{color:var(--err);margin-top:10px;min-height:18px}
+.menu{display:none;flex-direction:column;align-items:center;gap:24px}
+.menu button{
+  width:240px;padding:24px 0;font-size:22px;font-weight:700;border:0;border-radius:14px;
+  color:#041a18;cursor:pointer;transition:transform .15s, filter .15s;
+}
+.menu button:hover{transform:scale(1.05);filter:brightness(1.1)}
+#admin{background:var(--btn1)}
+#donghang{background:var(--btn2)}
+#checkdon{background:var(--btn3)}
+.note{margin-top:16px;font-size:14px;color:var(--muted)}
+#userBar{
+  position: fixed; top: 10px; right: 16px; display:none; align-items:center; gap: 10px;
+  background:#12244a; border:1px solid #2a3d6a; padding:8px 14px; border-radius:10px; font-size:14px;
+}
+#userInfo{ white-space: nowrap; }
+#logout{ background:none;border:0;color:#f87171;cursor:pointer;font-size:14px;font-weight:600; }
+#logout:hover{text-decoration:underline}
+.small{font-size:12px;color:var(--muted);margin-top:8px}
+ #xembando{ background:#a78bfa; } /* tím nhạt dễ nhìn */
+</style>
+</head>
+<body>
+
+<!-- Form đăng nhập -->
+<div class="card" id="loginCard">
+  <h1>🔐 Đăng nhập nhân viên</h1>
+  <input id="ma_nv" placeholder="Mã nhân viên" autocomplete="username" inputmode="numeric">
+  <input id="mat_khau" type="password" placeholder="Mật khẩu" autocomplete="current-password">
+  <button id="btnLogin">Đăng nhập</button>
+  <div class="msg" id="msg"></div>
+  <div class="small" id="cfgNote">Đang khởi tạo cấu hình…</div>
+</div>
+
+<!-- Menu chính -->
+<div class="menu" id="menu">
+  <h1>Xin chào <span id="ten_nv"></span> 👋</h1>
+  <button id="admin">👤 Admin</button>
+  <button id="checkdon">🧾 Check đơn</button>
+  <button id="donghang">📦 Đóng hàng COD</button>
+
+  <button id="xembando">🗺️ Xem bản đồ</button>
+</div>
+
+
+<!-- Thanh góc phải -->
+<div id="userBar">
+  <span id="userInfo">👤</span>
+  <button id="logout">Đăng xuất</button>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const STORAGE = localStorage;
+let supabase;
+
+// ========== KHỞI TẠO SUPABASE ==========
+async function initSupabase(){
+  const note = $('cfgNote');
+  try{
+    const INTERNAL_KEY = (typeof window.getInternalKey==='function') ? window.getInternalKey() : '';
+    const r = await fetch('/api/getConfig', { headers: { 'x-internal-key': INTERNAL_KEY } });
+    if(!r.ok) throw new Error('Không lấy được config');
+    const { url, anon } = await r.json();
+    if(!url || !anon) throw new Error('Thiếu url/anon');
+    supabase = window.supabase.createClient(url, anon);
+    note.textContent = 'Đã sẵn sàng. Vui lòng đăng nhập.';
+  }catch(e){
+    $('msg').textContent = 'Lỗi cấu hình: ' + e.message;
+    note.textContent = 'Không khởi tạo được Supabase.';
+  }
+}
+initSupabase();
+
+// ========== ĐĂNG NHẬP ==========
+function setLoadingLogin(v=true){
+  const b=$('btnLogin');
+  b.disabled=v;
+  b.textContent=v?'Đang xử lý…':'Đăng nhập';
+}
+
+async function login(){
+  if(!supabase){ $('msg').textContent="Đang khởi tạo, thử lại sau…"; return; }
+  const ma=$('ma_nv').value.trim();
+  const mk=$('mat_khau').value.trim();
+  if(!ma||!mk){ $('msg').textContent="Vui lòng nhập đủ thông tin"; return; }
+
+  setLoadingLogin(true); $('msg').textContent='';
+  try{
+    const { data, error } = await supabase
+      .from('kv_nhan_vien')
+      .select('ma_nv, ten_nv, admin, dong_hang, check_don')
+      .eq('ma_nv', ma).eq('mat_khau', mk)
+      .maybeSingle();
+
+    if(error || !data){ $('msg').textContent="Sai mã hoặc mật khẩu"; return; }
+
+    STORAGE.setItem('nv', JSON.stringify(data));
+    STORAGE.setItem('last_ma_nv', ma);
+    showMenu(data,true);
+    if(navigator.vibrate) navigator.vibrate(60);
+  }catch(e){ $('msg').textContent="Lỗi: "+e.message; }
+  finally{ setLoadingLogin(false); }
+}
+
+// ========== HIỂN THỊ MENU ==========
+function applyPermissions(info){
+  ['admin','donghang','checkdon'].forEach(id=>$(id).style.display='none');
+  if(info.admin) $('admin').style.display='block';
+  if(info.dong_hang) $('donghang').style.display='block';
+  if(info.check_don) $('checkdon').style.display='block';
+}
+
+function showMenu(info, firstLogin=false){
+  $('loginCard').style.display='none';
+  $('menu').style.display='flex';
+  $('userBar').style.display='inline-flex';
+  $('userInfo').textContent=`👤 ${info.ten_nv||''}`;
+  $('ten_nv').textContent=info.ten_nv||'';
+  applyPermissions(info);
+  if(!firstLogin){
+    const note=document.createElement('div');
+    note.textContent="🔁 Tự động đăng nhập (đã lưu trước đó)";
+    note.className='small';
+    $('menu').appendChild(note);
+  }
+}
+
+// ========== ĐĂNG XUẤT ==========
+function logout(){
+  ['nv','dh_top_mode','dh_expand_full'].forEach(k=>STORAGE.removeItem(k));
+  $('menu').style.display='none';
+  $('userBar').style.display='none';
+  $('loginCard').style.display='block';
+  $('ma_nv').value=STORAGE.getItem('last_ma_nv')||'';
+  $('mat_khau').value='';
+  $('ma_nv').focus();
+}
+
+// ========== TỰ ĐỘNG ĐĂNG NHẬP ==========
+(function autoLogin(){
+  try{
+    const info=JSON.parse(STORAGE.getItem('nv')||'{}');
+    if(info.ten_nv) showMenu(info,false);
+  }catch{}
+})();
+
+// ========== GÁN SỰ KIỆN ==========
+$('btnLogin').onclick=login;
+$('logout').onclick=logout;
+$('mat_khau').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
+
+</script>
+
+<!-- gán token chỉ cho phép mở form từ index -->
+<script src="./js/auth_token.js"></script>
+
+<script>
+
+document.getElementById('donghang')?.addEventListener('click', () => {
+  const token = makeAccess();  // tạo token
+  location.href = `Quan_ly_cod.html?token=${token}`; // mở trang kèm token
+});
+</script>
+
+<script>
+  
+document.getElementById('checkdon')?.addEventListener('click', () => {
+  const token = makeAccess(); // vẫn truyền token như hiện tại
+
+  // LƯU ẨN thông tin NV cho tab hiện tại (không lộ URL, không ghi console)
+  const nv = JSON.parse(localStorage.getItem('nv') || '{}');
+  sessionStorage.setItem('nv_ctx', JSON.stringify({
+    ma_nv: nv.ma_nv || '',
+    ten_nv: nv.ten_nv || '',
+    ts: Date.now()
+  }));
+
+  // Điều hướng như cũ (chỉ có token)
+  location.href = `check_don.html?token=${token}`;
+});
+
+
+
+</script>
+
+<script>
+document.getElementById('xembando')?.addEventListener('click', () => {
+  const token = makeAccess();           // tạo token
+  // Mở trang map_tuyen hiển thị toàn bộ vị trí (trang tự xử lý hiển thị tất cả)
+  location.href = `map_tuyen.html?token=${token}`;
+});
+</script>
+
+
+</body>
+</html>

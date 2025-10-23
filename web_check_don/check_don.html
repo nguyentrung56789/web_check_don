@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kiểm tra đơn hàng (don_hang)</title>
+
+<!-- Kiểm tra quyền truy cập bằng token -->
+<script src="./js/auth_token.js"></script>
+<script>checkAccess();</script>
+
+<!-- LẤY key nội bộ để gọi /api/getConfig (định nghĩa window.getInternalKey) -->
+<script src="./js/internal_key.js"></script>
+
+<!-- Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
+
+<link rel="stylesheet" href="./css/check_don.css" />
+
+<style>
+  /* User bar */
+  #userBar{
+    position:fixed; top:8px; right:16px;
+    display:flex; align-items:center; gap:10px; z-index:2000;
+    background:transparent;
+  }
+  #userBar .name{ max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #notifyBell{ background:none; border:0; cursor:pointer; font-size:18px; line-height:1; color:#fbbf24; }
+  #notifyBell:hover{ filter:brightness(1.1); }
+
+  /* Panel thông báo */
+  #notifyPanel{ position:fixed; top:40px; right:16px; width:280px; display:none; overflow:hidden; z-index:2001;
+    background:#0f1830; color:#e6edff; border:1px solid #2a3d6a; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.45); }
+  #notifyPanel .np-head{ padding:10px 12px; font-weight:700; border-bottom:1px solid #22345c; background:#11214a; }
+  #notifyPanel .np-body{ max-height:50vh; overflow:auto; }
+  #notifyPanel .np-item{ padding:10px 12px; border-bottom:1px dashed #20345e; font-size:14px; }
+  #notifyPanel .np-item time{ display:block; font-size:12px; color:#9aa7c7; margin-top:4px; }
+  #notifyPanel .np-empty{ padding:14px; color:#9aa7c7; font-size:14px; text-align:center; }
+
+  /* Cột kích thước */
+  th.col-don-hang, td.col-don-hang { width: 180px; max-width: 260px; }
+  th.col-nv-xn, td.col-nv-xn,
+  th.col-nv-gl, td.col-nv-gl { width: 120px; max-width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  th.col-ngay-dh, td.col-ngay-dh { width: 140px; max-width:140px; white-space:nowrap; }
+
+  .inline-label{ font-size:14px; opacity:.85 }
+  #sbState{ gap:10px; }
+
+  .update-row{ display:flex; gap:10px; align-items:center; margin:10px 0 0; flex-wrap:wrap; }
+  #capDate{ min-width:180px; }
+  #btnCapNhatDon{ white-space:nowrap; }
+
+  /* (tuỳ chọn) tinh chỉnh pager */
+  #pager .btn-action{ padding:8px 12px; }
+  #pgSize{ padding:6px 10px; background:#0b1220; color:#e6edff; border:1px solid #2a3d6a; border-radius:8px; }
+</style>
+</head>
+<body>
+
+<!-- Chuông thông báo -->
+<button id="notifyBell" title="Thông báo" aria-label="Thông báo">🔔</button>
+
+
+<div id="userBar" class="ub">
+  <button id="userToggle" class="ub-toggle" type="button">
+    <span class="ub-ico">👤</span>
+    <span id="userName"></span>
+  </button>
+
+  <div id="userMenu" class="ub-menu" hidden>
+    <button id="actLogout" class="ub-item" type="button">Đăng xuất</button>
+  </div>
+</div>
+
+
+
+<!-- Panel thông báo -->
+<div id="notifyPanel" role="dialog" aria-hidden="true">
+  <div class="np-head">Thông báo</div>
+  <div class="np-body" id="notifyList">
+    <div class="np-empty">Chưa có thông báo.</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <h1>Kiểm tra đơn hàng</h1>
+
+    <div class="scan-row">
+      <input id="scan" placeholder="Quét / nhập mã hóa đơn" />
+      <button id="btnCheck"  class="btn-action">Check đơn hàng</button>
+      <button id="btnPrepTop" class="btn-action">Chuẩn bị đơn</button>
+    </div>
+    <div id="scanMsg" class="state muted" style="margin-top:6px;"></div>
+
+    <div class="top">
+      <input id="q" class="grow" placeholder="Nhập ma_hd / tên KH…" />
+      <input id="from" class="grow" placeholder="Từ ngày (dd-mm-yyyy hoặc yyyy-mm-dd)" />
+      <input id="to"   class="grow" placeholder="Đến ngày (dd-mm-yyyy hoặc yyyy-mm-dd)" />
+      <button id="btnReload">⟳ Tải lại</button>
+      <button id="btnExpand" title="Mở rộng/thu gọn vùng làm việc">↔ Mở rộng</button>
+    </div>
+
+    <div class="muted">Bảng: <b id="tblName">don_hang</b> — hiển thị <b>dd-mm-yyyy</b></div>
+
+    <div class="state muted" id="sbState" style="display:flex;align-items:center;flex-wrap:wrap">
+      Supabase: <b id="sbMsg" class="muted" style="margin:0 8px;">đang tải…</b>
+
+      <button id="btnFilterChecked" class="btn-action" title="Chỉ hiển thị các đơn đã chọn">Lọc đã chọn</button>
+      <span id="selCount" class="badge" style="margin-left:8px">Đã chọn: <b id="chkCount">0</b></span>
+      <button id="btnViewRoute" class="btn-action" title="Xem bản đồ tuyến theo các đơn đã chọn">Xem bản đồ tuyến</button>
+
+      <label class="inline-label" for="filterLoaiDon">Loại đơn hàng:</label>
+      <select id="filterLoaiDon" title="Lọc theo cột cod của don_hang">
+        <option value="">Tất cả</option>
+        <option value="true">Đơn hàng COD</option>
+        <option value="false">Đơn không COD</option>
+      </select>
+
+      <label class="inline-label" for="filterTrangThai">Trạng thái:</label>
+      <select id="filterTrangThai" title="Lọc theo cột trạng_thái">
+        <option value="">Tất cả</option>
+      </select>
+      
+
+      <span class="right-end">
+        <label for="capDate" class="inline-label">Ngày cập nhật:</label>
+        <input id="capDate" type="date" />
+        <button id="btnCapNhatDon" class="btn-action">⚡ Cập nhật đơn hàng</button>
+      </span>
+    </div>
+
+    <div class="grid">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:48px;text-align:center">
+              <input type="checkbox" id="chkAll" title="Chọn tất cả" />
+            </th>
+            <th style="width:170px">mã hóa đơn</th>
+            <th class="col-don-hang">đơn hàng</th>
+            <th style="width:150px; text-align:center;">ngày</th>
+            <th style="width:220px">tên kh</th>
+            <th style="width:150px" class="right">tổng tiền</th>
+            <th class="col-trang-thai" style="width:200px;">trạng thái</th>
+            <th class="col-ngay-xn">ngày check đơn</th>
+            <th class="col-nv-xn">nv check đơn</th>
+            <th class="col-nv-gl">nhân viên giao</th>
+            <th style="width:120px"></th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="11" class="empty">Chưa có dữ liệu.</td></tr>
+        </tbody>
+      </table>
+
+      <!-- ✅ PAGER: phân trang offset-based -->
+      <div id="pager" style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin-top:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button id="pgPrev" class="btn-action">« Trước</button>
+          <button id="pgNext" class="btn-action">Sau »</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <label for="pgSize" class="inline-label">Dòng/trang:</label>
+          <select id="pgSize">
+            <option>50</option>
+            <option selected>100</option>
+            <option>200</option>
+          </select>
+          <span id="pgInfo" class="muted">Trang 1/1 — 0 bản ghi</span>
+        </div>
+      </div>
+
+      <datalist id="empList"></datalist>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay chi tiết -->
+<div id="detailOverlay" aria-hidden="true">
+  <div id="detailPanel" role="dialog" aria-modal="true" aria-label="Chi tiết đơn giao hàng">
+    <div id="detailHead">
+      <div class="title">Chi tiết đơn giao hàng</div>
+      <div>
+        <button id="detailOpenNew" type="button">↗ Mở trang riêng</button>
+        <button id="detailClose"   type="button">Đóng ✕</button>
+      </div>
+    </div>
+    <iframe id="detailFrame" src="" title="Chi tiết đơn"></iframe>
+  </div>
+</div>
+
+<!-- Khởi tạo panel thông báo -->
+<script>
+  (function notifInit(){
+    const bell = document.getElementById('notifyBell');
+    const panel = document.getElementById('notifyPanel');
+    const list  = document.getElementById('notifyList');
+    if(!bell || !panel) return;
+
+    function toggle(){ panel.style.display = (panel.style.display==='block' ? 'none' : 'block'); }
+    bell.addEventListener('click', toggle);
+    document.addEventListener('click', (e)=>{
+      if(panel.style.display!=='block') return;
+      if(panel.contains(e.target) || bell.contains(e.target)) return;
+      panel.style.display='none';
+    });
+
+    if(list){ list.innerHTML = `<div class="np-empty">Chưa có thông báo.</div>`; }
+  })();
+</script>
+
+<!-- QUAN TRỌNG: đặt API_BASE để check_don.js gọi đúng /api/getConfig khi chạy local -->
+<script>
+  (function setApiBase(){
+    // Cho phép override bằng query ?apiBase=https://your-domain
+    const q = new URLSearchParams(location.search);
+    const override = q.get('apiBase');
+
+    // Mặc định: dùng cùng origin
+    let base = override || (location.origin.startsWith('http') ? location.origin : '');
+
+    // Heuristic cho dev: nếu đang mở site trên port khác API (ví dụ site 5000, API 3000)
+    if (!override && /localhost|127\.0\.0\.1/.test(location.hostname)) {
+      // Nếu origin là file:// hoặc port không phải 3000 → giả định API ở 3000 (Next dev)
+      if (!base || (location.port && location.port !== '3000')) {
+        base = 'http://localhost:3000';
+      }
+    }
+
+    // Gán cho app dùng
+    window.API_BASE = base.replace(/\/+$/,'');
+    // getInternalKey được cung cấp bởi internal_key.js
+    console.log('[APP] API_BASE =', window.API_BASE, '| has key:', typeof window.getInternalKey==='function');
+  })();
+</script>
+
+<!-- Ứng dụng -->
+<script src="./js/check_don.js"></script>
+
+<!-- ✅ CẦU NỐI PHÂN TRANG CHO check_don.js -->
+<script>
+/* ========= Phân trang offset-based: CẦU NỐI =========
+   check_don.js chỉ cần:
+   - dùng getPageRange() => .range(from, to)
+   - sau khi truy vấn: setTotalCount(count || 0)
+   Bộ lọc (q/from/to/filterLoaiDon/filterTrangThai) đổi → tự về trang 1 và reload().
+*/
+(function paginationBridge(){
+  const st = window.__PAGER = {
+    size: 100,
+    page: 1,
+    total: 0,
+  };
+
+  const elPrev = document.getElementById('pgPrev');
+  const elNext = document.getElementById('pgNext');
+  const elSize = document.getElementById('pgSize');
+  const elInfo = document.getElementById('pgInfo');
+
+  function totalPages(){ return Math.max(1, Math.ceil(st.total / st.size)); }
+  function clampPage(n){ return Math.min(Math.max(1, n), totalPages()); }
+
+  function updateUI(){
+    if(elInfo) elInfo.textContent = `Trang ${st.page}/${totalPages()} — ${st.total} bản ghi`;
+    if(elPrev) elPrev.disabled = (st.page <= 1);
+    if(elNext) elNext.disabled = (st.page >= totalPages());
+    if(elSize && String(st.size) !== elSize.value) elSize.value = String(st.size);
+  }
+
+  function goTo(n){
+    st.page = clampPage(n);
+    updateUI();
+    if (typeof window.reload === 'function') window.reload();
+  }
+
+  // Public API cho check_don.js
+  window.getPageRange = function(){
+    const from = (st.page - 1) * st.size;
+    const to   = from + st.size - 1;
+    return { from, to, size: st.size };
+  };
+  window.setTotalCount = function(n){
+    st.total = Number(n) || 0;
+    if (st.page > totalPages()) st.page = totalPages();
+    updateUI();
+  };
+  window.resetToPage1 = function(){
+    st.page = 1;
+    updateUI();
+  };
+
+  // Gắn sự kiện UI
+  elPrev?.addEventListener('click', ()=> goTo(st.page - 1));
+  elNext?.addEventListener('click', ()=> goTo(st.page + 1));
+  elSize?.addEventListener('change', ()=>{
+    const v = parseInt(elSize.value, 10) || 100;
+    st.size = v;
+    st.page = 1;                 // đổi size thì về trang 1
+    updateUI();
+    if (typeof window.reload === 'function') window.reload();
+  });
+
+  // Khi thay đổi bộ lọc/tìm kiếm → reset trang 1 + reload
+  ['q','from','to','filterLoaiDon','filterTrangThai'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    const fire = ()=>{ window.resetToPage1(); if (typeof window.reload==='function') window.reload(); };
+    if (id==='q'){
+      // debounce nhẹ cho input q
+      let t = null;
+      el.addEventListener('input', ()=>{
+        clearTimeout(t);
+        t = setTimeout(fire, 300);
+      });
+    }else{
+      el.addEventListener('change', fire);
+    }
+  });
+
+  // Khởi tạo
+  updateUI();
+})();
+</script>
+
+<!-- Tạo token để mở -->
+<script src="./js/auth_token.js"></script>
+<script>
+document.getElementById('btnViewRoute')?.addEventListener('click', () => {
+  const token = makeAccess(); // tạo token ngẫu nhiên cho lần mở này
+  location.href = `map_tuyen.html?token=${token}`;
+});
+</script>
+
+</body>
+</html>
