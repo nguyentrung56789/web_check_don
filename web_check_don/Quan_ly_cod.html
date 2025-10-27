@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quản lý don_hang_kiot_cod</title>
+
+  <!-- Bảo vệ bằng token -->
+  <script src="./js/auth_token.js"></script>
+  <script>checkAccess();</script>
+
+  <!-- key nội bộ để gọi /api/getConfig -->
+  <script src="./js/internal_key.js"></script>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="./css/Quan_ly_cod.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <h1>Quản lý <span class="muted">don_hang_kiot_cod</span></h1>
+      <span id="sbState" class="chip">Supabase: <b class="muted">đang tải…</b></span>
+      <div class="kpis right">
+        <span id="smallStat" class="muted stat">—</span>
+        <button id="btnOpenScanner" type="button" class="btn">🖷 Quét mã</button>
+        <button id="btnExpand" type="button" class="btn">↔ Mở rộng</button>
+        <button id="btnResetWidth" type="button" class="btn">↺ Đặt lại cột</button>
+        <button id="btnReload" type="button" class="btn brand" title="Hiển thị tất cả bản ghi">⟳ Tất cả</button>
+        <button id="btnToday"  type="button" class="btn btn-toggle">Lọc HÔM NAY</button>
+        <button id="btnNotClosed" type="button" class="btn btn-toggle">Chưa đóng</button>
+        <button id="btnClosed"    type="button" class="btn btn-toggle">Đã đóng</button>
+      </div>
+    </div>
+
+    <div class="row toolbar">
+      <input id="q" class="grow" placeholder="Tìm theo mã_vd / tên KH / địa chỉ…" />
+      <input id="from" type="date" />
+      <input id="to"   type="date" />
+      <select id="sort">
+        <option value="ngay_desc">Sắp xếp: ngày ↓</option>
+        <option value="ngay_asc">Sắp xếp: ngày ↑</option>
+      </select>
+    </div>
+
+    <div class="row header-filters">
+      <span class="pill">Vận chuyển: <select id="f_vc" class="select-mini"><option value="">Tất cả</option></select></span>
+      <span class="pill">Trạng thái: <select id="f_tt" class="select-mini"><option value="">Tất cả</option></select></span>
+      <span class="pill">NV bán: <select id="f_nv" class="select-mini"><option value="">Tất cả</option></select></span>
+    </div>
+
+    <div class="grid">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th data-key="ma_vd" class="w100"><div class="th-wrap">mã vận đơn<span class="drag"></span></div></th>
+            <th data-key="ngay" class="w100"><div class="th-wrap">ngày<span class="drag"></span></div></th>
+            <th data-key="ngay_dong_hang" class="w100"><div class="th-wrap">ngày đóng hàng<span class="drag"></span></div></th>
+            <th data-key="ten_kh" class="w100"><div class="th-wrap">tên kh<span class="drag"></span></div></th>
+            <th data-key="dia_chi" class="w100"><div class="th-wrap">địa chỉ<span class="drag"></span></div></th>
+            <th data-key="van_chuyen" class="w100"><div class="th-wrap">vận chuyển<span class="drag"></span></div></th>
+            <th data-key="trang_thai" class="w100"><div class="th-wrap">trạng thái<span class="drag"></span></div></th>
+            <th data-key="kenh_ban" class="w100"><div class="th-wrap">kênh bán<span class="drag"></span></div></th>
+            <th data-key="nv_ban" class="w100"><div class="th-wrap">nv bán<span class="drag"></span></div></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"><tr><td colspan="9" class="muted" style="text-align:center;padding:18px">Chưa có dữ liệu.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Scanner overlay -->
+  <div id="scanOverlay" aria-hidden="true">
+    <div id="scanPanel" role="dialog" aria-modal="true" aria-label="Quét mã vận đơn">
+      <div id="scanHead">
+        <div class="title">Quét mã vận đơn</div>
+        <div>
+          <button id="scanOpenNew" type="button" class="btn">↗ Mở trang riêng</button>
+          <button id="scanClose" type="button" class="btn">Đóng ✕</button>
+        </div>
+      </div>
+      <iframe id="scanFrame" src="" title="Scanner"></iframe>
+    </div>
+  </div>
+
+  <!-- App -->
+  <script src="./js/Quan_ly_cod.js"></script>
+</body>
+</html>
