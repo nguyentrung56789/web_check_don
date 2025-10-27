@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Đóng hàng COD — Scan (online + autosync)</title>
+
+  <!-- ẨN KEY: lấy INTERNAL_API_KEY để gọi /api/getConfig -->
+  <script src="./internal_key.js"></script>
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.46.1/dist/umd/supabase.js" crossorigin="anonymous"></script>
+
+  <style>
+    .mode{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;border:1px solid var(--bd);background:#0f1731;color:#e8ecf1;cursor:pointer;user-select:none;transition:transform .05s,filter .15s,background .15s,color .15s,border-color .15s}
+    .mode:hover{filter:brightness(1.08)} .mode:active{transform:translateY(1px)}
+    .mode input[type="radio"]{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+    .mode.dong:has(input:checked){background:#153a21;border-color:#1e7f3b;color:#9FE870}
+    .mode.them:has(input:checked){background:#142645;border-color:#2a52a5;color:#a7c3ff}
+    .mode:has(input:focus-visible){outline:2px solid #69b4ff;outline-offset:2px} #f{gap:12px}
+    :root{--bg:#0b1020;--card:#121a35;--txt:#e8ecf1;--muted:#9aa7c7;--ok:#9FE870;--warn:#ffd27d;--err:#ff4d4f;--bd:#2a3c7a}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    .wrap{max-width:980px;margin:24px auto;padding:18px 20px;background:var(--card);border:1px solid #1d2a55;border-radius:14px}
+    h1{margin:0 0 8px 0;font-size:22px}.row{display:flex;gap:10px;align-items:center}
+    input,button{padding:12px 14px;font-size:16px;border-radius:10px;border:1px solid var(--bd);background:#0f1731;color:#fff}
+    input{flex:1} button{background:#1b2a5a;cursor:pointer} button:disabled{opacity:.6;cursor:not-allowed}
+    .pill{padding:8px 10px;border:1px solid var(--bd);border-radius:999px;background:#0f1731;font-size:12px;opacity:.9;white-space:nowrap}
+    .status{margin-top:10px;min-height:20px;font-size:14px}.ok{color:var(--ok)} .err{color:var(--err)} .warn{color:var(--warn)} .muted{color:var(--muted)}
+    .hint{font-size:12px;color:var(--muted)} .log{margin-top:10px;padding-left:18px;max-height:200px;overflow:auto}
+    .cfg{margin-top:18px;padding:12px;border:1px dashed #29408a;border-radius:10px}
+    .cfg .grid{display:grid;grid-template-columns:180px 1fr;gap:8px;align-items:center;margin:10px 0}
+    .hidden{display:none!important} a.link{color:#a7c3ff;text-decoration:none;border:1px solid #2a3c7a;padding:8px 10px;border-radius:10px;background:#0f1731}
+    .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#777}.dot.on{background:#9FE870}.dot.off{background:#ff9aa2}
+    .remain{margin:6px 0 2px;font-size:13px;color:#b9c6e4}.remain-num{color:#ff6b6b;font-weight:800;font-size:20px;position:relative;top:1px}
+  </style>
+
+  <!-- Fallback cấu hình cục bộ (nếu bạn vẫn muốn dùng) -->
+  <script src="./cod_config.js"></script>
+  <script>
+    // Adapter: nếu có getConfig('cod') thì chuyển thành window.COD_CONFIG
+    (function(){
+      try{
+        if(!window.COD_CONFIG && typeof window.getConfig==='function'){
+          const c = window.getConfig('cod')||{};
+          window.COD_CONFIG = {
+            url: c.url, key: c.key,
+            table: c.table || 'don_hang_kiot_cod',
+            keyCol: 'ma_vd', dateCol: 'ngay_dong_hang', manage_url: ''
+          };
+        }
+      }catch(_){}
+    })();
+  </script>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Đóng hàng COD — Scan</h1>
+
+    <div class="row" style="margin-bottom:10px;">
+      <span class="hidden">Bảng: <b id="pillTable">don_hang_kiot_cod</b></span>
+      <span class="hidden">Cột: <b id="pillCols">ma_vd / ngay_dong_hang</b></span>
+
+      <span id="net" class="pill" style="margin-left:auto">
+        <span class="dot" id="netDot"></span><b id="netText">Offline</b> • Đợi: <b id="qCount">0</b>
+      </span>
+
+      <a id="manageLink" class="link" href="#" target="_blank" rel="noopener">Quản lý mã vận đơn ↗</a>
+      <span id="sb-ready" class="status muted">Supabase: chưa tải</span>
+    </div>
+
+    <div id="remainBox" class="remain">Còn: <span id="remainNum" class="remain-num">—</span> đơn chưa đóng</div>
+
+    <form id="f" autocomplete="off" class="row">
+      <input id="ma" type="text" placeholder="Nhập / quét ma_vd…" required />
+      <label class="mode dong"><input type="radio" name="actionType" id="radDong" value="dong" checked /><span>Đóng hàng</span></label>
+      <label class="mode them"><input type="radio" name="actionType" id="radThem" value="them" /><span>Thêm mới</span></label>
+      <button id="btnSync" type="button" class="hidden">Đồng bộ</button>
+    </form>
+
+    <div id="st" class="status muted"></div>
+    <ul id="log" class="log"></ul>
+
+    <div class="cfg">
+      <div class="row">
+        <span style="font-weight:600">⚙️ Cấu hình (PIN & ẩn key)</span>
+        <span id="cfgState" class="pill">Đang khóa</span>
+        <button id="btnUnlock" type="button">Mở khóa</button>
+        <button id="btnSaveLock" type="button" class="hidden">Lưu & khóa</button>
+        <button id="btnForget" type="button" class="hidden">Quên cấu hình</button>
+      </div>
+
+      <div id="cfgForm" class="hidden">
+        <div class="grid">
+          <label>Project URL</label><input id="cfgUrl" placeholder="https://xxxxx.supabase.co" />
+          <label>Anon public key</label><input id="cfgKey" placeholder="eyJhbGciOi..." />
+          <label>Tên bảng</label><input id="cfgTable" placeholder="don_hang_kiot_cod" />
+          <label>Cột mã (key)</label><input id="cfgKeyCol" placeholder="ma_vd" />
+          <label>Cột ngày (date)</label><input id="cfgDateCol" placeholder="ngay_dong_hang" />
+          <label>Link quản lý</label><input id="cfgManageUrl" placeholder="https://…" />
+        </div>
+        <div class="hint">PIN để mở khóa: <b>131732</b>.</div>
+      </div>
+
+      <div id="cfgHint" class="hint" style="margin-top:8px;">
+        Thứ tự nạp cấu hình: <b>/api/getConfig</b> → <b>cod_config.js</b> → <b>cod_config.json</b> → cache.
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ====== Helpers UI ====== */
+const $ = (id)=>document.getElementById(id);
+const st = $("st"), log = $("log");
+function setStatus(msg, cls="muted"){ st.textContent = msg || ""; st.className = "status " + cls; }
+const LOG_SUCCESS_ONLY = true;
+function addLog(text, ok=false){ if(LOG_SUCCESS_ONLY && !ok) return; const li=document.createElement("li"); li.textContent=text; log.prepend(li); if(log.children.length>80) log.removeChild(log.lastChild); }
+function refocus(){ setTimeout(()=>{ $("ma").focus(); $("ma").select(); },0); }
+function online(){ return navigator.onLine; }
+
+/* ====== Beep ====== */
+let __audioCtx=null;
+function beepOK(){ try{ __audioCtx=__audioCtx||(new (window.AudioContext||window.webkitAudioContext)()); const o=__audioCtx.createOscillator(), g=__audioCtx.createGain(); o.type="sine"; o.frequency.value=880; g.gain.setValueAtTime(0.0001,__audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.2,__audioCtx.currentTime+0.01); g.gain.exponentialRampToValueAtTime(0.0001,__audioCtx.currentTime+0.12); o.connect(g); g.connect(__audioCtx.destination); o.start(); o.stop(__audioCtx.currentTime+0.13);}catch(e){} }
+
+/* ====== Config & cache ====== */
+const CFG_CACHE="cod_cfg_cache_v1";
+let cfg={ url:"", key:"", table:"don_hang_kiot_cod", keyCol:"ma_vd", dateCol:"ngay_dong_hang", manage_url:"" };
+function loadCache(){ try{ const raw=localStorage.getItem(CFG_CACHE); if(raw){ Object.assign(cfg, JSON.parse(raw)); return true; } }catch{} return false; }
+function saveCache(){ try{ localStorage.setItem(CFG_CACHE, JSON.stringify(cfg)); }catch{} }
+function applyPills(){
+  $("pillTable").textContent = cfg.table||"don_hang_kiot_cod";
+  $("pillCols").textContent  = (cfg.keyCol||"ma_vd")+" / "+(cfg.dateCol||"ngay_dong_hang");
+  const a=$("manageLink"); if(cfg.manage_url){ a.href=cfg.manage_url; a.classList.remove("hidden"); } else { a.href="#"; a.classList.add("hidden"); }
+}
+
+/* ====== Nạp cấu hình — ƯU TIÊN /api/getConfig ====== */
+function getInternalKey(){ try{ return (typeof window.getInternalKey==='function') ? window.getInternalKey() : ''; }catch{ return ''; } }
+
+async function tryLoadFromServerless(){
+  try{
+    const r = await fetch('/api/getConfig', { headers: { 'x-internal-key': getInternalKey() } });
+    if(!r.ok) return false;
+    const j = await r.json();
+    if(j.url && (j.anon || j.key)){
+      cfg.url = j.url; cfg.key = j.anon || j.key;
+      saveCache(); applyPills(); setStatus("Đã nạp cấu hình từ /api/getConfig", "ok");
+      return true;
+    }
+    return false;
+  }catch{ return false; }
+}
+function tryLoadFromJS(){
+  if(window.COD_CONFIG && window.COD_CONFIG.url && window.COD_CONFIG.key){
+    Object.assign(cfg, window.COD_CONFIG); saveCache(); applyPills(); setStatus("Đã nạp cấu hình từ JS", "ok"); return true;
+  }
+  return false;
+}
+async function tryLoadJSON(timeoutMs=500){
+  if(location.protocol==="file:") return false;
+  const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),timeoutMs);
+  try{
+    const res=await fetch('./cod_config.json',{cache:'no-store',signal:ctl.signal});
+    if(!res.ok) return false;
+    Object.assign(cfg, await res.json()); saveCache(); applyPills(); setStatus("Đã nạp cấu hình từ JSON","ok"); return true;
+  }catch{ return false; } finally{ clearTimeout(t); }
+}
+
+/* ====== Supabase ====== */
+const sbBadge=$("sb-ready"); function sbSet(msg,cls="muted"){ sbBadge.textContent="Supabase: "+msg; sbBadge.className="status "+cls; }
+let db=null;
+async function ensureDB(){
+  if(!cfg.url || !cfg.key) throw new Error("Chưa cấu hình URL/KEY");
+  if(!window.supabase) throw new Error("Supabase chưa sẵn sàng");
+  if(!db) db = window.supabase.createClient(cfg.url, cfg.key);
+  sbSet("sẵn sàng ✅","ok");
+  return db;
+}
+
+/* ====== Đếm còn chưa đóng ====== */
+async function updateRemainAll(){
+  try{
+    await ensureDB();
+    const { count, error } = await db
+      .from(cfg.table)
+      .select('id',{count:'exact', head:true})
+      .or(`${cfg.dateCol}.is.null,${cfg.dateCol}.eq.%22%22`)
+      .in('id_trang_thai',[1,"1",7,"7"]);
+    if(error) throw error;
+    const el=$("remainNum"); if(el) el.textContent = count ?? 0;
+  }catch(e){ console.warn('updateRemainAll:', e?.message||e); const el=$("remainNum"); if(el) el.textContent='—'; }
+}
+
+/* ====== Khởi tạo cấu hình (thứ tự ưu tiên) ====== */
+(async ()=>{
+  if(await tryLoadFromServerless()){ await updateRemainAll(); }
+  else if(tryLoadFromJS()){ await updateRemainAll(); }
+  else if(await tryLoadJSON()){ await updateRemainAll(); }
+  else if(loadCache()){ applyPills(); setStatus("Đã nạp cấu hình từ cache","ok"); await updateRemainAll(); }
+  else { setStatus("Chưa cấu hình Supabase","err"); }
+})();
+
+/* ====== Queue + mạng ====== */
+const QKEY="cod_queue_v1"; let queue=[]; try{ const raw=localStorage.getItem(QKEY); if(raw) queue=JSON.parse(raw)||[]; }catch{ queue=[]; }
+function saveQ(){ try{ localStorage.setItem(QKEY, JSON.stringify(queue)); }catch{} updateQueueBadge(); }
+function enqueue(code){ queue.unshift({code,ts:Date.now()}); saveQ(); $("btnSync").classList.remove("hidden"); }
+function updateQueueBadge(){ $("qCount").textContent=queue.length; if(queue.length===0)$("btnSync").classList.add("hidden"); }
+const netDot=$("netDot"), netText=$("netText");
+function updateNetBadge(){ if(online()){ netDot.classList.remove("off"); netDot.classList.add("on"); netText.textContent="Online"; } else { netDot.classList.remove("on"); netDot.classList.add("off"); netText.textContent="Offline"; } }
+updateNetBadge(); updateQueueBadge();
+window.addEventListener("online", ()=>{ updateNetBadge(); setStatus("✅ Đã có mạng. Tự đồng bộ hàng đợi…","ok"); if(queue.length>0) syncQueue(); });
+window.addEventListener("offline", ()=>{ updateNetBadge(); setStatus("⚠️ Mất mạng — mã quét sẽ đưa vào hàng đợi.","warn"); });
+
+/* ====== Webhook helper ====== */
+async function sendWebhook(code){
+  const url='https://dhsybbqoe.datadex.vn/webhook/hoadon';
+  const payload={ action:"themmavd", ma_vd:code, at:new Date().toISOString() };
+  try{
+    const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const text=await res.text().catch(()=> ""); return { ok:res.ok, status:res.status, text };
+  }catch(_){}
+  try{
+    const body=new URLSearchParams(payload).toString();
+    const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+    const text=await res.text().catch(()=> ""); return { ok:res.ok, status:res.status, text };
+  }catch(e){ return { ok:false, status:0, text:e?.message||'network error' }; }
+}
+
+/* ====== Submit chính ====== */
+$("f").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const code=($("ma").value||"").trim(); if(!code) return;
+  const action=document.querySelector('input[name="actionType"]:checked')?.value||'dong';
+  const inputEl=$("ma"); inputEl.readOnly=true;
+
+  try{
+    await ensureDB();
+    if(action==='dong'){
+      if(!online()){ enqueue(code); setStatus(`📦 Offline → đã đưa "${code}" vào hàng đợi.`,"warn"); addLog("QUEUE: "+code); inputEl.value=""; return; }
+      setStatus("⏳ Đang xử lý…","muted");
+
+      const { data:row, error:e1 } = await db.from(cfg.table).select('*').eq(cfg.keyCol,code).maybeSingle();
+      if(e1) throw e1;
+      if(!row){ setStatus("❌ Không tìm thấy mã này","err"); addLog("MISS: "+code); inputEl.select(); }
+      else if(Number(row.id_trang_thai)===6){ setStatus(`❌ ${code} mã vận đơn này ĐÃ HỦY hỏi người ra đơn`,"err"); addLog("CANCELLED: "+code); }
+      else if(row[cfg.dateCol] && String(row[cfg.dateCol]).trim()!==""){ setStatus(`⚠️ ${code} đã đóng: ${row[cfg.dateCol]}`,"warn"); addLog("ALREADY: "+code); }
+      else{
+        const stamp = (function(){ const now=new Date(); return new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().replace('Z','+07:00'); })();
+        const { error:e2 } = await db.from(cfg.table).update({ [cfg.dateCol]:stamp }).eq(cfg.keyCol,code);
+        if(e2) throw e2;
+        setStatus(`✅ Đã cập nhật ${code} — ${stamp}`,"ok"); addLog("UPDATED: "+code+" ("+stamp+")",true);
+        inputEl.value=""; beepOK(); await updateRemainAll();
+      }
+    }else{
+      if(!online()){ setStatus("❌ Offline — không thể gửi webhook.","err"); return; }
+      const { data:row, error:e1 } = await db.from(cfg.table).select(cfg.keyCol).eq(cfg.keyCol,code).maybeSingle();
+      if(e1) throw e1;
+      if(row){ setStatus(`❌ Mã ${code} đã tồn tại — không gửi webhook.`,"err"); addLog("DUPLICATE: "+code); return; }
+
+      setStatus("⏳ Gửi webhook thêm mã…","muted");
+      const out=await sendWebhook(code);
+      if(!out.ok){ setStatus(`❌ Webhook lỗi: ${out.status} ${out.text||""}`,"err"); addLog("WEBHOOK_FAIL: "+code); return; }
+      setStatus(`✅ Webhook OK — mã: ${code}`,"ok"); addLog("WEBHOOK: "+code,true);
+      inputEl.value=""; beepOK();
+    }
+  }catch(err){
+    if(action==='dong'){ enqueue(code); setStatus(`⚠️ Lỗi/Timeout → đã đưa "${code}" vào hàng đợi. ${err?.message||err}`,"warn"); addLog("QUEUE(err): "+code); }
+    else{ setStatus(`❌ Lỗi khi xử lý Thêm mới: ${err?.message||err}`,"err"); }
+  }finally{
+    inputEl.readOnly=false; refocus();
+    if(online() && queue.length>0){ setTimeout(syncQueue,200); }
+  }
+});
+
+/* ====== Đồng bộ hàng đợi ====== */
+$("btnSync").addEventListener("click", syncQueue);
+async function syncQueue(){
+  if(queue.length===0){ setStatus("Hàng đợi trống.","ok"); $("btnSync").classList.add("hidden"); return; }
+  if(!online()){ setStatus("Đang offline, không thể đồng bộ.","warn"); return; }
+  try{ await ensureDB(); }catch(e){ setStatus("Chưa cấu hình hoặc lỗi Supabase: "+e.message,"err"); return; }
+
+  setStatus(`⏳ Đồng bộ ${queue.length} mục…`,"muted");
+  const remain=[];
+  for(const item of queue){
+    try{
+      const code=item.code;
+      const { data:row, error:e1 } = await db.from(cfg.table).select('*').eq(cfg.keyCol,code).maybeSingle();
+      if(e1){ remain.push(item); continue; }
+      if(!row){ addLog("MISS(sync): "+code); continue; }
+      if(row[cfg.dateCol] && String(row[cfg.dateCol]).trim()!==""){ addLog("SKIP(sync already): "+code); continue; }
+      const stamp = (function(){ const now=new Date(); return new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().replace('Z','+07:00'); })();
+      const { error:e2 } = await db.from(cfg.table).update({ [cfg.dateCol]:stamp }).eq(cfg.keyCol,code);
+      if(e2){ remain.push(item); continue; }
+      addLog("SYNCED: "+code+" ("+stamp+")",true);
+    }catch{ remain.push(item); }
+  }
+  queue=remain; saveQ();
+  setStatus(remain.length===0?"✅ Đồng bộ xong.":"⚠️ Một số mục chưa đồng bộ, thử lại.", remain.length===0?"ok":"warn");
+  if(queue.length===0) $("btnSync").classList.add("hidden");
+  await updateRemainAll();
+}
+
+/* ====== Khóa/Mở cấu hình (tuỳ chọn) ====== */
+const PIN="131732";
+const cfgForm=$("cfgForm"), btnUnlock=$("btnUnlock"), btnSaveLock=$("btnSaveLock"), btnForget=$("btnForget"), cfgState=$("cfgState"), cfgHint=$("cfgHint");
+function fillCfgInputs(){ $("cfgUrl").value=cfg.url||""; $("cfgKey").value=cfg.key||""; $("cfgTable").value=cfg.table||""; $("cfgKeyCol").value=cfg.keyCol||""; $("cfgDateCol").value=cfg.dateCol||""; $("cfgManageUrl").value=cfg.manage_url||""; }
+function applyFromInputs(){ cfg.url=$("cfgUrl").value.trim(); cfg.key=$("cfgKey").value.trim(); cfg.table=($("cfgTable").value.trim()||"don_hang_kiot_cod"); cfg.keyCol=($("cfgKeyCol").value.trim()||"ma_vd"); cfg.dateCol=($("cfgDateCol").value.trim()||"ngay_dong_hang"); cfg.manage_url=$("cfgManageUrl").value.trim(); }
+function lockUI(){ cfgForm.classList.add("hidden"); btnSaveLock.classList.add("hidden"); btnForget.classList.add("hidden"); cfgHint.classList.add("hidden"); btnUnlock.classList.remove("hidden"); cfgState.textContent="Đang khóa"; }
+function unlockUI(){ fillCfgInputs(); cfgForm.classList.remove("hidden"); btnSaveLock.classList.remove("hidden"); btnForget.classList.remove("hidden"); cfgHint.classList.remove("hidden"); btnUnlock.classList.add("hidden"); cfgState.textContent="Đang mở khóa"; }
+btnUnlock.addEventListener("click",()=>{ const pin=prompt("Nhập PIN để mở khóa:"); if(pin===PIN){ unlockUI(); } else { alert("PIN không đúng."); } });
+btnSaveLock.addEventListener("click",()=>{ applyFromInputs(); saveCache(); applyPills(); lockUI(); setStatus("Đã lưu cấu hình & khóa lại.","ok"); });
+btnForget.addEventListener("click",()=>{ if(confirm("Xóa cấu hình đã lưu trong trình duyệt?")){ localStorage.removeItem(CFG_CACHE); setStatus("Đã quên cấu hình lưu cache.","warn"); }});
+
+/* Khởi động */
+lockUI(); refocus();
+['radDong','radThem'].forEach(id=>{ const el=$(id); if(!el) return; el.addEventListener('click',()=>setTimeout(refocus,0)); el.addEventListener('change',()=>setTimeout(refocus,0)); });
+</script>
+
+</body>
+</html>

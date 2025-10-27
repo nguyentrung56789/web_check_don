@@ -1,0 +1,9 @@
+{
+  "name": "img-hd-kiot-ping",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@sparticuz/chromium": "^133",
+    "puppeteer-core": "^22"
+  }
+}

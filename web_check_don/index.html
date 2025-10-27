@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Trang chính</title>
+
+  <!-- Thứ tự import rất quan trọng -->
+  <script src="./js/internal_key.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/cod_config.js"></script>
+  <script src="./js/auth_token.js"></script>
+
+  <!-- CSS của bạn (nếu có) -->
+  <link rel="stylesheet" href="./css/index.css" />
+
+  <style>
+    /* Có thể giữ hoặc bỏ nếu bạn dùng /css/index.css riêng */
+    :root{
+      --bg:#0b1220;--card:#0f1830;--txt:#e6edff;--muted:#9aa7c7;
+      --btn1:#2dd4bf;--btn2:#60a5fa;--btn3:#fbbf24;--btn4:#a78bfa;
+    }
+    html,body{height:100%}
+    body{
+      visibility:hidden; /* Chỉ hiện khi js/index.js xác thực xong */
+      margin:0;background:var(--bg);color:var(--txt);
+      font-family:system-ui,Segoe UI,Roboto,Arial;
+    }
+    .top{
+      position:fixed;z-index:10;left:0;right:0;top:0;
+      display:flex;align-items:center;justify-content:space-between;
+      padding:14px 18px;background:var(--card);border-bottom:1px solid #233043;
+      box-shadow:0 2px 10px rgba(0,0,0,.35)
+    }
+    .hello{font-weight:600}
+    #btnLogout{
+      background:none;border:0;color:#f87171;cursor:pointer;font-weight:700;font-size:15px
+    }
+    #btnLogout:hover{text-decoration:underline}
+    .menu{
+      width:min(520px,92vw);margin:120px auto 48px;display:grid;gap:18px
+    }
+    .menu button{
+      padding:18px;border:0;border-radius:14px;cursor:pointer;font-weight:800;font-size:18px;
+      color:#041a18;transition:transform .15s, filter .15s
+    }
+    .menu button:hover{transform:scale(1.04);filter:brightness(1.06)}
+    #admin{background:var(--btn1)}
+    #donghang{background:var(--btn2)}
+    #checkdon{background:var(--btn3);color:#3a2a04}
+    #mapview{background:var(--btn4)}
+    footer{
+      text-align:center;color:var(--muted);font-size:12px;margin:8px 0 24px
+    }
+    .hidden{display:none}
+  </style>
+</head>
+
+<body>
+  <noscript>
+    <div style="padding:12px;background:#ffdbdb;color:#6b0000;text-align:center">
+      Trình duyệt đang tắt JavaScript. Vui lòng bật JavaScript để tiếp tục.
+    </div>
+  </noscript>
+
+  <!-- Thanh trên cùng -->
+  <header class="top" role="banner" aria-label="Thanh tiêu đề">
+    <div class="hello">Xin chào <span id="ten_nv">...</span> 👋</div>
+    <button id="btnLogout" title="Đăng xuất">Đăng xuất</button>
+  </header>
+
+  <!-- Menu chính: các nút sẽ được ẩn/hiện theo quyền -->
+  <main class="menu" role="main" aria-label="Menu chính">
+    <button id="admin"    class="admin-only hidden">👤 Admin</button>
+    <button id="donghang" class="dh-only hidden">📦 Đóng hàng COD</button>
+    <button id="checkdon" class="cd-only hidden">🧾 Check đơn</button>
+    <button id="mapview"  class="map-only hidden">🗺️ Xem bản đồ</button>
+  </main>
+
+  <footer>© <span id="year"></span> COD Internal</footer>
+
+  <!-- Module chính (sẽ import ./js/auth_guard.js ở trong) -->
+  <script type="module">
+    // set năm nhỏ gọn
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+  <script type="module" src="./js/index.js"></script>
+</body>
+</html>
