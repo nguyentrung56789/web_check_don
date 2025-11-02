@@ -532,6 +532,9 @@ function bindFilterCheckedOnly(){
 }
 
 /* ================== XEM BẢN ĐỒ TUYẾN (ưu tiên DOM, fallback Supabase) ================== */
+/* ================== XEM BẢN ĐỒ TUYẾN — mở form overlay & lọc ma_kh ================== */
+
+/* Lấy danh sách ma_hd đang chọn (ổn định theo checkbox + chỉ dòng đang hiển thị) */
 function getCheckedOrderIds() {
   const rows = [...document.querySelectorAll('#tbody tr[data-ma] .row-chk:checked')]
     .map(cb => cb.closest('tr[data-ma]'))
@@ -544,72 +547,54 @@ function getCheckedOrderIds() {
   }
   return out;
 }
-function getCheckedCustomerCodesFromDOM(){
+
+/* Lấy ma_kh trực tiếp từ DOM (data-kh đã render trong reload()) */
+function getCheckedCustomerIdsFromDOM(){
   const rows = [...document.querySelectorAll('#tbody tr[data-ma] .row-chk:checked')]
     .map(cb => cb.closest('tr[data-ma]'))
     .filter(tr => tr && getComputedStyle(tr).display !== 'none');
 
-  const seen = new Set(); const out=[];
-  for (const tr of rows) {
-    const kh = (tr.dataset.kh || '').trim();
-    if (kh && !seen.has(kh)) { seen.add(kh); out.push(kh); } // unique theo thứ tự
+  const seen = new Set(); const ids = [];
+  for (const tr of rows){
+    const kh = (tr.getAttribute('data-kh') || '').trim();
+    if (kh && !seen.has(kh)){ seen.add(kh); ids.push(kh); }
   }
-  return out;
+  return ids;
 }
 
-async function handleViewRoute(){
-  try {
-    // 1) lấy ma_kh trực tiếp từ DOM
-    let ids = getCheckedCustomerCodesFromDOM();
-
-    // 2) fallback: đổi từ ma_hd -> ma_kh bằng Supabase
-    if (!ids.length) {
-      const selHD = getCheckedOrderIds();
-      if (!selHD.length) { alert('⚠️ Chưa chọn đơn nào!'); return; }
-      if (!supa) throw new Error('Supabase chưa khởi tạo');
-      const { data, error } = await supa
-        .from('don_hang')
-        .select('ma_hd, ma_kh')
-        .in('ma_hd', selHD);
-      if (error) throw error;
-
-      const seen = new Set(); ids = [];
-      for (const r of (data || [])) {
-        const v = (r.ma_kh || '').trim();
-        if (v && !seen.has(v)) { seen.add(v); ids.push(v); } // unique
-      }
-    }
-
-    if (!ids.length) {
-      alert('⚠️ Các dòng đã chọn không có ma_kh. Vui lòng kiểm tra dữ liệu.');
-      return;
-    }
-
-    // 3) Mở map an toàn ở TAB MỚI (truyền token + xử lý q dài)
-    const queryForMap = 'ma: ' + ids.join(' ');
-    openMapInNewTabSecure(queryForMap);
-  } catch (e) {
-    console.error(e);
-    alert('❌ Lỗi khi mở bản đồ tuyến: ' + (e.message || e));
+/* Preview ngắn cho danh sách ma_kh (banner + notify nếu có) */
+function previewMAKH(ids){
+  const total = Array.isArray(ids) ? ids.length : 0;
+  if (!total){
+    try { showSlideBanner('⚠️ Không có mã khách (ma_kh)', 'err'); } catch {}
+    return;
   }
+  const short = ids.slice(0, 20).join(' ');
+  const more  = total > 20 ? ` … (+${total-20} nữa)` : '';
+  try { showSlideBanner(`🔎 Thu được ${total} mã KH: ${short}${more}`, 'ok'); } catch {}
+  try { 
+    if (typeof pushNotify === 'function'){
+      pushNotify(`📍 Đã thu <b>${total}</b> mã KH:<br><pre style="white-space:pre-wrap;margin:6px 0 0">${ids.join(' ')}</pre>`);
+    } 
+  } catch {}
 }
 
-/* >>> helper mở tab mới, set token + q (kể cả chuỗi dài) */
-function openMapInNewTabSecure(queryForMap){
+/* Mở overlay map_tuyen.html và TIÊM query “ma: …” vào ô #q của map */
+async function openMapOverlayInjected(maList){
+  const ids = (Array.isArray(maList)?maList:[])
+    .map(s=>String(s||'').trim()).filter(Boolean);
+  if (!ids.length){ alert('Không có mã khách.'); return; }
+
+  const q = 'ma: ' + ids.join(' ');  // ✅ chỉ lọc theo mã khách
+
+  const ov=document.getElementById('detailOverlay');
+  const fr=document.getElementById('detailFrame');
+  if(!ov || !fr){ alert('Thiếu overlay/frame (#detailOverlay, #detailFrame).'); return; }
+
+  // Chuẩn bị URL map (kèm token nếu có)
   const target = new URL('map_tuyen.html', location.href);
+  target.searchParams.set('no_logo', '1');
 
-  // Nếu q quá dài → dùng sessionStorage + #use_session=1
-  const tryUrl = new URL('map_tuyen.html', location.href);
-  tryUrl.searchParams.set('q', queryForMap);
-  const useSession = tryUrl.toString().length > 1800;
-
-  if (useSession) {
-    target.hash = '#use_session=1';
-  } else {
-    target.searchParams.set('q', queryForMap);
-  }
-
-  // Lấy token đã cấp quyền ở tab hiện tại
   let token = '';
   try { token = sessionStorage.getItem('APP_ACCESS') || ''; } catch {}
   if (!token && typeof window.makeAccess === 'function') {
@@ -617,39 +602,88 @@ function openMapInNewTabSecure(queryForMap){
   }
   if (token) target.searchParams.set('token', token);
 
-  // Mở tab mới; nếu popup bị chặn → mở cùng tab
-  const win = window.open('', '_blank');
-  if (!win || win.closed) {
-    if (useSession) {
-      try { sessionStorage.setItem('map_query', queryForMap); } catch {}
+  // Hiện overlay trước, rồi gắn src
+  fr.removeAttribute('src');
+  ov.style.display='flex';
+
+  // Hàm TIÊM q vào input #q trên trang map rồi phát sự kiện input
+  const inject = ()=>{
+    try{
+      const doc = fr.contentWindow?.document;
+      if (!doc) return false;
+      const input = doc.getElementById('q') || doc.querySelector('input[name="q"]');
+      if (!input) return false;
+      input.value = q;
+      input.dispatchEvent(new Event('input', { bubbles:true }));
+      return true;
+    }catch(_){ return false; }
+  };
+
+  fr.onload = ()=>{
+    if (inject()) return;
+    // Map có thể khởi tạo chậm → retry một chút
+    let n=0, max=20;
+    const iv = setInterval(()=>{ if (inject() || ++n>=max) clearInterval(iv); }, 150);
+  };
+
+  fr.src = target.toString();
+
+  // Preview & banner
+  previewMAKH(ids);
+  try { showSlideBanner('🗺️ Đang mở bản đồ tuyến (overlay)…', 'ok'); } catch {}
+  try { if (typeof pushNotify==='function') pushNotify('🗺️ Mở map (overlay) với truy vấn: <code>'+q.replace(/</g,'&lt;')+'</code>'); } catch {}
+}
+
+/* Handler chính: gom ma_kh (DOM → fallback Supabase) rồi mở overlay map */
+async function handleViewRouteOverlay(){
+  try{
+    // 1) ƯU TIÊN: đọc ma_kh từ DOM (nhanh & đúng thứ tự chọn)
+    let ids = getCheckedCustomerIdsFromDOM();
+
+    // 2) FALLBACK: nếu DOM chưa có/không đủ → truy vấn Supabase từ ma_hd
+    if (!ids.length){
+      const selHD = getCheckedOrderIds();
+      if (!selHD.length){ alert('⚠️ Chưa chọn đơn nào!'); return; }
+      if (!supa) throw new Error('Supabase chưa khởi tạo');
+
+      const { data, error } = await supa
+        .from('don_hang')
+        .select('ma_hd, ma_kh')
+        .in('ma_hd', selHD);
+      if (error) throw error;
+
+      const seen = new Set(); ids = [];
+      for (const r of (data || [])){
+        const v = (r.ma_kh || '').trim();
+        if (v && !seen.has(v)){ seen.add(v); ids.push(v); }
+      }
     }
-    location.assign(target.toString());
-    return;
+
+    if (!ids.length){
+      alert('⚠️ Các dòng đã chọn không có ma_kh. Vui lòng kiểm tra dữ liệu.');
+      try { showSlideBanner('⚠️ Không có ma_kh để mở bản đồ', 'err'); } catch {}
+      return;
+    }
+
+    // 3) ✅ MỞ MAP TRONG OVERLAY + ép filter chỉ theo MÃ
+    await openMapOverlayInjected(ids);
+
+  }catch(e){
+    console.error(e);
+    alert('❌ Lỗi khi mở bản đồ tuyến (overlay): ' + (e.message || e));
   }
-
-  // Ghi sessionStorage trong tab mới rồi replace sang URL đích
-  const bootstrapHTML = `
-<!doctype html><html><head><meta charset="utf-8"><title>Loading…</title></head>
-<body>
-<script>
-try {
-  ${useSession ? `sessionStorage.setItem('map_query', ${JSON.stringify(queryForMap)});` : ''}
-  ${token ? `sessionStorage.setItem('APP_ACCESS', ${JSON.stringify(token)});` : ''}
-} catch (e) {}
-location.replace(${JSON.stringify(target.toString())});
-<\/script>
-Loading…
-</body></html>`.trim();
-
-  win.document.open();
-  win.document.write(bootstrapHTML);
-  win.document.close();
 }
 
+/* Bind nút xem bản đồ → mở overlay */
 function bindViewRouteButton(){
-  document.getElementById('btnViewRoute')
-    ?.addEventListener('click', (e)=>{ e.preventDefault(); handleViewRoute(); });
+  const btn = document.getElementById('btnViewRoute');
+  if(!btn) return;
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    handleViewRouteOverlay();
+  });
 }
+
 
 /* ================== CẬP NHẬT ĐƠN HÀNG (WEBHOOK) ================== */
 async function onCapNhatDon(){
