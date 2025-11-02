@@ -145,7 +145,7 @@ function isoToVN(ymd){
   return `${m[3]}-${m[2]}-${m[1]}`;
 }
 
-/* ====== helper lấy ngày cho nút Cập nhật (đã nâng cấp) ====== */
+/* ====== helper ngày ====== */
 function todayYMD() {
   const d = new Date();
   const p = n => String(n).padStart(2,'0');
@@ -157,10 +157,8 @@ function getCapDateISO(){
 
   let v = (el.value || '').trim();
 
-  // 1) yyyy-mm-dd (chuẩn input type="date")
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
 
-  // 2) dd-mm-yyyy hoặc dd/mm/yyyy -> chuyển sang yyyy-mm-dd
   const m = v.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})$/);
   if (m) {
     const [, d, mo, y] = m;
@@ -169,10 +167,15 @@ function getCapDateISO(){
     return ymd;
   }
 
-  // 3) rỗng/không hợp lệ -> dùng hôm nay
   const ymd = todayYMD();
   el.value = ymd;
   return ymd;
+}
+
+/* Mặc định ô to = hôm nay khi đang trống */
+function setDefaultDateFilters(){
+  const toEl = document.getElementById('to');
+  if (toEl && !toEl.value) toEl.value = todayYMD();
 }
 
 function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
@@ -269,12 +272,12 @@ function bindExpandButton(){
   });
 }
 
-/* ================== NHÂN VIÊN (cho chọn NV giao) ================== */
+/* ================== NHÂN VIÊN (cho chọn NV đóng) ================== */
 let EMPLOYEES=[]; let LAST_ACTIVE_TR=null;
 async function loadEmployees(){
   try{
     const {data,error}=await supa.from('kv_nhan_vien')
-      .select('id,ten_nv').eq('hoat_dong', true).order('ten_nv',{ascending:true});
+      .select('id,ten_nv,sender_id').eq('hoat_dong', true).order('ten_nv',{ascending:true});
     if(error) throw error;
     EMPLOYEES = Array.isArray(data)?data:[];
   }catch(e){
@@ -333,7 +336,9 @@ function bindScanAndButtons(){
   if($from)$from.onchange=()=>{ resetToPage1(); reload(); };
   if($to)  $to.onchange  =()=>{ resetToPage1(); reload(); };
   document.getElementById('btnReload')?.addEventListener('click', ()=>{
-    if($q) $q.value=''; if($from) $from.value=''; if($to) $to.value=''; resetToPage1(); reload();
+    if($q) $q.value=''; if($from) $from.value=''; if($to) $to.value='';
+    setDefaultDateFilters(); // đặt lại 'to' = hôm nay nếu trống
+    resetToPage1(); reload();
   });
 
   // Lọc COD
@@ -409,17 +414,31 @@ async function checkAndOpenByScan(code){
     }
 
     // 3) Có kết quả -> mở form con
-    const tenNV = getCurrentNVName();
-    const qs = new URLSearchParams({ ma_hd: data.ma_hd });
-    if (tenNV) qs.set('nv_xn', tenNV);
+const tenNV = getCurrentNVName();
+const qs = new URLSearchParams({ ma_hd: data.ma_hd });
 
-    setScanMsg('ok','Đã tìm thấy — mở chi tiết…');
-    openOverlay(`check_don_giao_hang.html?${qs.toString()}`);
-  }catch(err){
-    showSlideBanner('❌ Lỗi: ' + esc(err.message || err), 'err');
-    setScanMsg('err','Đã xảy ra lỗi');
-  }
+// 🔍 Kiểm tra trạng thái đơn
+const { data: detail } = await supa.from(TABLE)
+  .select('trang_thai')
+  .eq('ma_hd', data.ma_hd)
+  .maybeSingle();
+
+const trangThai = (detail?.trang_thai || '').trim().toLowerCase();
+if (trangThai.includes('huỷ') || trangThai.includes('hủy')) {
+  showSlideBanner('⚠️ Đơn hàng này đã bị hủy — không thể mở chi tiết.', 'err');
+  setScanMsg('err', 'Đơn hàng đã hủy');
+  return; // ⛔ Dừng, không mở form
 }
+
+if (tenNV) qs.set('nv_xn', tenNV);
+setScanMsg('ok','Đã tìm thấy — mở chi tiết…');
+openOverlay(`check_don_giao_hang.html?${qs.toString()}`);
+} catch(err) {
+  showSlideBanner('❌ Lỗi: ' + esc(err.message || err), 'err');
+  setScanMsg('err','Đã xảy ra lỗi');
+}
+}
+
 
 /* ================== BẢNG & HÀNH ĐỘNG ================== */
 function bindTableActions(){
@@ -447,52 +466,8 @@ function bindTableActions(){
     tr.classList.add('active-row'); LAST_ACTIVE_TR=tr;
   });
 
-  // Giao hàng từng dòng (webhook + update)
-  tb?.addEventListener('click', async (e)=>{
-    const btn=e.target.closest?.('.btn-ship-row'); if(!btn) return;
-    const tr = btn.closest('tr[data-ma]');
-    const ma = tr?.dataset.ma;
-    const xacNhan = (tr?.dataset.xacnhan || '').trim();
-    const hadShipDate = !!(tr?.dataset.shipdate || '').trim();
-    const hadPrepDate = !!(tr?.dataset.prepdate || '').trim();
-
-    if(!tr) return;
-    if(tr.dataset.sending === '1') return; // chống double-click race
-    if(hadShipDate){ return; }
-    if(!hadPrepDate){ setScanMsg('wait','(Lưu ý) đơn chưa có ngày chuẩn bị.'); }
-    const inp = tr.querySelector('.emp-input');
-    const tenNV = (inp && inp.value || '').trim();
-
-    if(!xacNhan){ setScanMsg('err','Chưa có nhân viên xác nhận đơn.'); return; }
-    if(!tenNV){ setScanMsg('err','Vui lòng chọn nhân viên giao.'); inp?.classList.add('err'); inp?.focus(); return; }
-    if(!EMPLOYEES.some(x=>x.ten_nv===tenNV)){ setScanMsg('err','Tên nhân viên giao không khớp danh sách.'); inp?.classList.add('err'); inp?.focus(); return; }
-
-    btn.disabled=true; const keep=btn.textContent; btn.textContent='Đang gửi…';
-    tr.dataset.sending = '1';
-    try{
-      const webhookUrl = (window.getConfig && window.getConfig("webhook")) || "";
-      if (!webhookUrl) { setState(false, "Thiếu webhook"); return; }
-      const r = await fetch(webhookUrl,{
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ action:'giaohang', ma_hd: ma, nv_check_don: xacNhan, nv_giao_hang:tenNV})
-      });
-      if(!r.ok){ const t = await r.text().catch(()=> ''); throw new Error(`Webhook lỗi (${r.status}): ${t||'không rõ'}`); }
-
-      const nowISO = new Date().toISOString();
-      await supa.from(TABLE)
-        .update({ trang_thai: 'Đang giao hàng', nv_giao_hang: tenNV, ngay_di_giao: nowISO })
-        .eq('ma_hd', ma).throwOnError();
-
-      const cellTT = tr.querySelector('[data-cell="trang_thai"]');
-      if (cellTT) cellTT.innerHTML = renderStatusCell(ma, 'Đang giao hàng');
-      tr.dataset.giao = tenNV;
-      tr.dataset.shipdate = nowISO;
-      btn.style.display='none';
-      inp?.classList.remove('err');
-      setScanMsg('ok', `Đơn ${esc(ma)} đã chuyển sang "Đang giao hàng"`);
-    }catch(err){ setScanMsg('err', `❌ Lỗi giao hàng: ${esc(err.message||err)}`); }
-    finally{ btn.disabled=false; btn.textContent=keep; tr.dataset.sending = '0'; }
-  });
+  // GỬI TIN từng dòng (thay cho giao hàng)
+  tb?.addEventListener
 }
 
 /* ======= Header checkbox & đếm theo dòng đang HIỂN THỊ ======= */
@@ -810,9 +785,9 @@ async function reload(){
     return `
       <tr class="${selCls}" data-ma="${maRaw}" data-kh="${esc(r.ma_kh||'')}"
           data-xacnhan="${esc(r.nv_check_don||'')}"
-          data-giao="${esc(r.nv_giao_hang||'')}"
+          data-dong="${esc(r.nv_dong_hang||'')}"
           data-prepdate="${esc(r.ngay_chuan_bi_don||'')}"
-          data-shipdate="${esc(r.ngay_di_giao||'')}">
+          data-dongdate="${esc(r.ngay_dong_hang||'')}">
         <td class="sel"><input type="checkbox" class="row-chk" ${checked} /></td>
         <td data-cell="ma_hd">${ma}</td>
         <td class="col-don-hang" data-cell="don_hang" style="text-align:center">${renderDonHangCell(r.don_hang, maRaw)}</td>
@@ -822,11 +797,11 @@ async function reload(){
         <td data-cell="trang_thai">${renderStatusCell(maRaw, r.trang_thai)}</td>
         <td data-cell="ngay_xn" class="col-ngay-xn">${fmtDateHTML(r.ngay_check_don)}</td>
         <td data-cell="nv_xn" class="col-nv-xn">${esc(r.nv_check_don||'')}</td>
-        <td data-cell="nv_giao" class="col-nv-gl">
+        <td data-cell="nv_dong" class="col-nv-dh">
           <input class="emp-input" list="empList" data-ma="${ma}"
-                 placeholder="— chọn / tìm NV —" value="${esc(r.nv_giao_hang||'')}">
+                 placeholder="— chọn / tìm NV —" value="${esc(r.nv_dong_hang||'')}">
         </td>
-        <td data-cell="btn_ship">${!r.ngay_di_giao ? `<button class="btn-ship-row" data-ma="${ma}">Giao hàng</button>` : ''}</td>
+        <td data-cell="btn_send">${!r.ngay_dong_hang ? `<button class="btn-send-row" data-ma="${ma}">Gửi tin</button>` : ''}</td>
       </tr>`;
   }).join('');
 
@@ -876,6 +851,7 @@ async function init(){
   // tự điền ngày hôm nay nếu input trống
   const capEl = document.getElementById('capDate');
   if (capEl && !capEl.value) capEl.value = todayYMD();
+  setDefaultDateFilters(); // mặc định 'to' = hôm nay nếu đang trống
 
   // load các state lưu cục bộ
   loadSelected(); loadFilterState(); loadStatusFilter();
@@ -980,9 +956,9 @@ document.addEventListener('DOMContentLoaded', init);
     if(!tr) return false;
 
     tr.dataset.xacnhan  = (r.nv_check_don || '').trim();
-    tr.dataset.giao     = (r.nv_giao_hang || '').trim();
+    tr.dataset.dong     = (r.nv_dong_hang || '').trim();
     tr.dataset.prepdate = r.ngay_chuan_bi_don || '';
-    tr.dataset.shipdate = r.ngay_di_giao || '';
+    tr.dataset.dongdate = r.ngay_dong_hang || '';
 
     const cDonHang = tr.querySelector('[data-cell="don_hang"]');
     const cNgay    = tr.querySelector('[data-cell="ngay"]');
@@ -991,9 +967,9 @@ document.addEventListener('DOMContentLoaded', init);
     const cTT      = tr.querySelector('[data-cell="trang_thai"]');
     const cNgayXN  = tr.querySelector('[data-cell="ngay_xn"]');
     const cNVXN    = tr.querySelector('[data-cell="nv_xn"]');
-    const cNVGL    = tr.querySelector('[data-cell="nv_giao"]');
-    const inputNVGL  = cNVGL?.querySelector('.emp-input');
-    const btnShip    = tr.querySelector('.btn-ship-row');
+    const cNVDH    = tr.querySelector('[data-cell="nv_dong"]');
+    const inputNVDH  = cNVDH?.querySelector('.emp-input');
+    const btnSend    = tr.querySelector('.btn-send-row');
 
     if (cDonHang) cDonHang.innerHTML = renderDonHangCell(r.don_hang, r.ma_hd);
     if (cNgay)    cNgay.innerHTML    = fmtDateHTML(r.ngay);
@@ -1002,9 +978,9 @@ document.addEventListener('DOMContentLoaded', init);
     if (cTT)      cTT.innerHTML      = renderStatusCell(r.ma_hd, r.trang_thai);
     if (cNgayXN)  cNgayXN.innerHTML  = fmtDateHTML(r.ngay_check_don);
     if (cNVXN)    cNVXN.textContent  = (r.nv_check_don||'');
-    if (inputNVGL)  inputNVGL.value  = (r.nv_giao_hang||'');
+    if (inputNVDH)  inputNVDH.value  = (r.nv_dong_hang||'');
 
-    if (btnShip){ btnShip.style.display = r.ngay_di_giao ? 'none' : ''; }
+    if (btnSend){ btnSend.style.display = r.ngay_dong_hang ? 'none' : ''; }
     return true;
   }
 
