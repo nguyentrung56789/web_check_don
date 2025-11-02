@@ -62,7 +62,6 @@
 <!-- Chuông thông báo -->
 <button id="notifyBell" title="Thông báo" aria-label="Thông báo">🔔</button>
 
-
 <div id="userBar" class="ub">
   <button id="userToggle" class="ub-toggle" type="button">
     <span class="ub-ico">👤</span>
@@ -73,8 +72,6 @@
     <button id="actLogout" class="ub-item" type="button">Đăng xuất</button>
   </div>
 </div>
-
-
 
 <!-- Panel thông báo -->
 <div id="notifyPanel" role="dialog" aria-hidden="true">
@@ -110,7 +107,7 @@
 
       <button id="btnFilterChecked" class="btn-action" title="Chỉ hiển thị các đơn đã chọn">Lọc đã chọn</button>
       <span id="selCount" class="badge" style="margin-left:8px">Đã chọn: <b id="chkCount">0</b></span>
-      <button id="btnViewRoute" class="btn-action" title="Xem bản đồ tuyến theo các đơn đã chọn">Xem bản đồ tuyến</button>
+      <button id="btnViewRoute" class="btn" type="button">Xem bản đồ tuyến</button>
 
       <label class="inline-label" for="filterLoaiDon">Loại đơn hàng:</label>
       <select id="filterLoaiDon" title="Lọc theo cột cod của don_hang">
@@ -123,7 +120,6 @@
       <select id="filterTrangThai" title="Lọc theo cột trạng_thái">
         <option value="">Tất cả</option>
       </select>
-      
 
       <span class="right-end">
         <label for="capDate" class="inline-label">Ngày cập nhật:</label>
@@ -148,7 +144,7 @@
             <th class="col-ngay-xn">ngày check đơn</th>
             <th class="col-nv-xn">nv check đơn</th>
             <th class="col-nv-gl">nhân viên giao</th>
-            <th style="width:120px"></th>
+            <th style="width:120px">gửi tin</th>
           </tr>
         </thead>
         <tbody id="tbody">
@@ -215,24 +211,17 @@
 <!-- QUAN TRỌNG: đặt API_BASE để check_don.js gọi đúng /api/getConfig khi chạy local -->
 <script>
   (function setApiBase(){
-    // Cho phép override bằng query ?apiBase=https://your-domain
     const q = new URLSearchParams(location.search);
     const override = q.get('apiBase');
 
-    // Mặc định: dùng cùng origin
     let base = override || (location.origin.startsWith('http') ? location.origin : '');
-
-    // Heuristic cho dev: nếu đang mở site trên port khác API (ví dụ site 5000, API 3000)
     if (!override && /localhost|127\.0\.0\.1/.test(location.hostname)) {
-      // Nếu origin là file:// hoặc port không phải 3000 → giả định API ở 3000 (Next dev)
       if (!base || (location.port && location.port !== '3000')) {
         base = 'http://localhost:3000';
       }
     }
 
-    // Gán cho app dùng
     window.API_BASE = base.replace(/\/+$/,'');
-    // getInternalKey được cung cấp bởi internal_key.js
     console.log('[APP] API_BASE =', window.API_BASE, '| has key:', typeof window.getInternalKey==='function');
   })();
 </script>
@@ -242,18 +231,8 @@
 
 <!-- ✅ CẦU NỐI PHÂN TRANG CHO check_don.js -->
 <script>
-/* ========= Phân trang offset-based: CẦU NỐI =========
-   check_don.js chỉ cần:
-   - dùng getPageRange() => .range(from, to)
-   - sau khi truy vấn: setTotalCount(count || 0)
-   Bộ lọc (q/from/to/filterLoaiDon/filterTrangThai) đổi → tự về trang 1 và reload().
-*/
 (function paginationBridge(){
-  const st = window.__PAGER = {
-    size: 100,
-    page: 1,
-    total: 0,
-  };
+  const st = window.__PAGER = { size: 100, page: 1, total: 0 };
 
   const elPrev = document.getElementById('pgPrev');
   const elNext = document.getElementById('pgNext');
@@ -292,24 +271,21 @@
     updateUI();
   };
 
-  // Gắn sự kiện UI
   elPrev?.addEventListener('click', ()=> goTo(st.page - 1));
   elNext?.addEventListener('click', ()=> goTo(st.page + 1));
   elSize?.addEventListener('change', ()=>{
     const v = parseInt(elSize.value, 10) || 100;
     st.size = v;
-    st.page = 1;                 // đổi size thì về trang 1
+    st.page = 1;
     updateUI();
     if (typeof window.reload === 'function') window.reload();
   });
 
-  // Khi thay đổi bộ lọc/tìm kiếm → reset trang 1 + reload
   ['q','from','to','filterLoaiDon','filterTrangThai'].forEach(id=>{
     const el = document.getElementById(id);
     if(!el) return;
     const fire = ()=>{ window.resetToPage1(); if (typeof window.reload==='function') window.reload(); };
     if (id==='q'){
-      // debounce nhẹ cho input q
       let t = null;
       el.addEventListener('input', ()=>{
         clearTimeout(t);
@@ -320,19 +296,10 @@
     }
   });
 
-  // Khởi tạo
   updateUI();
 })();
 </script>
 
-<!-- Tạo token để mở -->
-<script src="./js/auth_token.js"></script>
-<script>
-document.getElementById('btnViewRoute')?.addEventListener('click', () => {
-  const token = makeAccess(); // tạo token ngẫu nhiên cho lần mở này
-  location.href = `map_tuyen.html?token=${token}`;
-});
-</script>
-
+<!-- LƯU Ý: không gắn thêm handler nào cho #btnViewRoute ở HTML để tránh mở trùng tab -->
 </body>
 </html>
