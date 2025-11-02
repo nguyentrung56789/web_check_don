@@ -13,19 +13,6 @@ async function getInternalKeys(base) {
   return { SUPABASE_URL: url, SERVICE_KEY: role };
 }
 
-// --- helpers ---
-function getQuery(req) {
-  // req.url kiểu: /image/api/ping?bucket=...&name=...
-  const u = new URL(req.url, `http://${req.headers.host}`);
-  return Object.fromEntries(u.searchParams.entries());
-}
-function sanitizePath(s, { allowSlash=false } = {}) {
-  // chỉ cho: chữ, số, -, _, ., và (tùy chọn) dấu '/'
-  const ok = allowSlash ? /^[A-Za-z0-9._/-]+$/ : /^[A-Za-z0-9._-]+$/;
-  if (!s || !ok.test(s) || s.includes("..")) throw new Error("Tên không hợp lệ");
-  return s.replace(/\/+/g, "/"); // gộp // thành /
-}
-
 export const config = { runtime: "nodejs", maxDuration: 60 };
 
 export default async function handler(req, res) {
@@ -33,35 +20,21 @@ export default async function handler(req, res) {
     const base = `http${req.headers["x-forwarded-proto"]==="https"?"s":""}://${req.headers.host}`;
     const { SUPABASE_URL, SERVICE_KEY } = await getInternalKeys(base);
 
-    // ====== Lấy tham số HTTP từ n8n (query) ======
-    const q = getQuery(req);
-    // Có thể truyền:
-    // - bucket=img_hd_kiot
-    // - html=HD00334.html & png=HD00334.png
-    // - name=HD00334  (tự suy ra html/png)
-    const bucket = sanitizePath(q.bucket || "img_hd_kiot", { allowSlash: true });
-
-    let htmlKey, pngKey;
-    if (q.name) {
-      const name = sanitizePath(q.name);
-      htmlKey = `${name}.html`;
-      pngKey  = `${name}.png`;
-    } else {
-      htmlKey = sanitizePath(q.html || "img_hd.html", { allowSlash: true });
-      pngKey  = sanitizePath(q.png  || "img_hd.png",  { allowSlash: true });
-    }
+    // ---- cấu hình cố định (1 thư mục, chỉ đổi đuôi) ----
+    const BUCKET   = "img_hd_kiot";
+    const HTML_KEY = "img_hd.html";
+    const PNG_KEY  = "img_hd.png";
 
     // 1) lấy HTML từ Supabase
-    const htmlURL = `${SUPABASE_URL}/storage/v1/object/${bucket}/${encodeURIComponent(htmlKey)}`;
+    const htmlURL = `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(HTML_KEY)}`;
     const htmlResp = await fetch(htmlURL, { headers: { Authorization: `Bearer ${SERVICE_KEY}` } });
     if (!htmlResp.ok) {
       const txt = await htmlResp.text().catch(()=> "");
-      res.statusCode = 502;
-      return res.end(`Không tải được HTML (${htmlKey}): ${htmlResp.status} ${txt}`);
+      return res.status(502).end(`Không tải được HTML: ${htmlResp.status} ${txt}`);
     }
     const html = await htmlResp.text();
 
-    // 2) render HTML -> PNG
+    // 2) render HTML -> PNG bằng Chromium (server-side)
     const execPath = await chromium.executablePath();
     const browser = await puppeteer.launch({
       args: chromium.args,
@@ -79,8 +52,8 @@ export default async function handler(req, res) {
     const png = await page.screenshot({ type: "png", fullPage: true });
     await browser.close();
 
-    // 3) upload PNG (upsert)
-    const uploadURL = `${SUPABASE_URL}/storage/v1/object/${bucket}/${encodeURIComponent(pngKey)}`;
+    // 3) upload PNG vào cùng bucket/thư mục
+    const uploadURL = `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(PNG_KEY)}`;
     const up = await fetch(uploadURL, {
       method: "POST",
       headers: {
@@ -92,14 +65,13 @@ export default async function handler(req, res) {
     });
     if (!up.ok) {
       const t = await up.text().catch(()=> "");
-      res.statusCode = 500;
-      return res.end(`Upload PNG lỗi (${pngKey}): ${up.status} ${t}`);
+      return res.status(500).end(`Upload PNG lỗi: ${up.status} ${t}`);
     }
 
     // 4) trả kết quả
-    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${pngKey}`;
+    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${PNG_KEY}`;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify({ ok: true, bucket, html: htmlKey, png: pngKey, url: publicUrl }));
+    res.end(JSON.stringify({ ok: true, html: HTML_KEY, png: PNG_KEY, url: publicUrl }));
   } catch (e) {
     res.statusCode = 500;
     res.end(`Ping render error: ${e.message}`);
