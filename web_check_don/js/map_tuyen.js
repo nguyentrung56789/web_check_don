@@ -1,21 +1,20 @@
-// ============================ map_tuyen.js (FINAL CLEAN • VI-VOICE OK) ============================
-// CSV khách hàng + lọc + nhãn phường (từ địa chỉ)
-// Base map Voyager (đường có màu) + overlay labels
+// ============================ map_tuyen.js (FINAL CLEAN • NO-LABELS • VI-VOICE OK) ============================
+// CSV khách hàng + lọc
+// Base map Voyager (đường có màu) — KHÔNG overlay chữ của nền
 // Popup: Tên KH, Địa chỉ, Điện thoại; Links: Apple Maps & Xem trên Google Maps
 // Toolbar: HTML tĩnh do bạn đặt (📍/🚀). KHÔNG còn toolbar động từ JS. KHÔNG có nút Reload / Theo dõi.
 // Cấu hình: đổi là áp dụng ngay, chỉ lưu khi bấm "Lưu cấu hình"
 // Supabase: ghi vị trí nếu có SDK/endpoint
 // Đánh số thứ tự theo độ gần vị trí (throttle)
 // Nhãn tên KH nhỏ (chữ thường) chỉ hiện khi ở gần/zoom lớn
-// TTS: Chỉ đọc TÊN (VI voice) khi bấm marker và khi tiến gần khách gần nhất (300/100/30m/đến nơi)
+// TTS: Chỉ đọc TÊN (VI voice) khi bấm marker và khi tiến gần khách gần nhất (theo mốc khoảng cách)
 // Shims: window.locateMe(), window._fallbackLocate(), window.gotoNearestCustomer() cho HTML onclick cũ
 // =================================================================================================
 
 (function softGate(){ try { if (typeof window.checkAccess === 'function') window.checkAccess(); } catch(_) {} })();
 
 /* ========= CẤU HÌNH NGUỒN DỮ LIỆU ========= */
-const CSV_URL =
-  (window.getConfig?.('map')?.CSV_URL);
+const CSV_URL = (window.getConfig?.('map')?.CSV_URL);
 
 /* ========= KHUNG VN & TÂM ========= */
 const VN_BOX    = { latMin: 7, latMax: 25, lngMin: 100, lngMax: 112 };
@@ -43,10 +42,9 @@ let mapCfg = loadMapCfg();
 /* ========= MAP & TILES ========= */
 const map = L.map('map', {
   preferCanvas: true,
-  zoomControl: false,    // ❌ bỏ nút +/-
-  attributionControl: false, // ❌ bỏ dòng credit nhỏ ở góc (cho nhẹ & gọn)
+  zoomControl: false,         // ❌ bỏ nút +/-
+  attributionControl: false,  // ❌ bỏ credit góc màn hình
 }).setView([VN_CENTER.lat, VN_CENTER.lng], 6);
-
 
 const TILE_LAYERS = {
   voyager:  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',{ maxZoom:20, attribution:'© OpenStreetMap, © CARTO' }),
@@ -54,18 +52,19 @@ const TILE_LAYERS = {
   dark:     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',{ maxZoom:20, attribution:'© OpenStreetMap, © CARTO' }),
   satellite:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{ maxZoom:19, attribution:'Tiles © Esri' })
 };
-const LABEL_LAYERS = {
-  voyager:  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{ maxZoom:20 }),
-  light:    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',{ maxZoom:20 }),
-  dark:     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',{ maxZoom:20 }),
-  satellite:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{ maxZoom:19, opacity:.9 })
-};
-let currentBase=null, labelOverlay=null;
-function setLabels(theme){ const t = LABEL_LAYERS[theme] ? theme : 'voyager'; if (labelOverlay) map.removeLayer(labelOverlay); labelOverlay = LABEL_LAYERS[t]; labelOverlay.addTo(map); }
-function setBase(theme){ const t = TILE_LAYERS[theme] ? theme : 'voyager'; if (currentBase) map.removeLayer(currentBase); currentBase = TILE_LAYERS[t]; currentBase.addTo(map); setLabels(t); }
+
+let currentBase = null;
+
+/* ❌ KHÔNG add overlay chữ của nền */
+function setBase(theme){
+  const t = TILE_LAYERS[theme] ? theme : 'voyager';
+  if (currentBase) map.removeLayer(currentBase);
+  currentBase = TILE_LAYERS[t];
+  currentBase.addTo(map);
+}
 setBase(mapCfg.mapTheme);
 
-// Nền “tươi” + marker/nhãn
+// Nền “tươi” + marker/nhãn gần
 (function(){
   const st=document.createElement('style');
   st.textContent = `
@@ -77,8 +76,6 @@ setBase(mapCfg.mapTheme);
       text-shadow:0 0 3px rgba(255,255,255,.95), 0 0 6px rgba(255,255,255,.9);
       text-transform: lowercase;
     }
-    .ward-text{font-weight:900;font-size:14px;white-space:nowrap;pointer-events:none;
-      -webkit-text-stroke:2px #fff;text-stroke:2px #fff;text-shadow:0 0 3px #fff,0 0 6px #fff,0 0 10px rgba(255,255,255,.8)}
   `;
   document.head.appendChild(st);
 })();
@@ -100,9 +97,9 @@ function rebuildGroup(){ if(GROUP) map.removeLayer(GROUP); GROUP=createGroup(); 
 rebuildGroup();
 
 const ROUTES       = L.layerGroup().addTo(map);
-const WARD_LABELS  = L.layerGroup().addTo(map);
+const WARD_LABELS  = L.layerGroup().addTo(map);   // sẽ không dùng, để trống
 const NEAR_LABELS  = L.layerGroup().addTo(map);
-let RADIUS_LAYER=null;
+let RADIUS_LAYER   = null;
 
 const $status = document.getElementById('status');
 
@@ -122,8 +119,8 @@ const throttle = (fn, ms=250) => { let t=0; return (...a)=>{ const n=Date.now();
 function mDist(a,b){ return distM({lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}); } // mét
 function needHardRecenter(target){
   const c = map.getCenter();
-  const far = mDist(c, target) > 5000;  // xa hơn 5km
-  const zoomLow = map.getZoom() < 14;   // đang zoom xa
+  const far = mDist(c, target) > 5000;  // xa > 5km
+  const zoomLow = map.getZoom() < 14;
   return far || zoomLow;
 }
 
@@ -138,14 +135,10 @@ function markerRadius(){ return mapCfg.markerSize==='small'?22:mapCfg.markerSize
 function makeNumIcon(num, color='#0ea5e9'){
   const sz = markerRadius();
   return L.divIcon({
-    className:'',
-    html:`<div class="poi" style="background:${color};width:${sz}px;height:${sz}px;font-size:${Math.max(11,Math.round(sz*0.5))}px">${num||''}</div>`,
-    iconSize:[sz,sz],
-    iconAnchor:[sz/2,sz/2],
-    popupAnchor:[0,-sz/2]
+    className:'', html:`<div class="poi" style="background:${color};width:${sz}px;height:${sz}px;font-size:${Math.max(11,Math.round(sz*0.5))}px">${num||''}</div>`,
+    iconSize:[sz,sz], iconAnchor:[sz/2,sz/2], popupAnchor:[0,-sz/2]
   });
 }
-// Cache icon
 const ICON_CACHE = new Map();
 function makeNumIconCached(num, color){
   const key = `${num}|${color}|${markerRadius()}`;
@@ -178,7 +171,6 @@ async function loadCSV(){
     $status.textContent = 'Đang tải dữ liệu…';
     GROUP.clearLayers(); ROUTES.clearLayers(); WARD_LABELS.clearLayers(); NEAR_LABELS.clearLayers(); MARKERS_DATA = [];
 
-    // Ép URL publish của Google Sheets đúng dạng
     const urlObj = new URL(CSV_URL);
     if (urlObj.pathname.endsWith('/pub')) {
       if (!urlObj.searchParams.has('output')) urlObj.searchParams.set('output','csv');
@@ -222,7 +214,7 @@ function parseCSV(text){
 }
 function guessKey(obj,alts){ const keys=Object.keys(obj); for(const name of alts){ const k=keys.find(k=>k.toLowerCase().trim()===name); if(k) return k; } for(const name of alts){ const k=keys.find(k=>k.toLowerCase().includes(name)); if(k) return k; } return null; }
 
-/* ======== bóc tên phường từ địa chỉ (ward label) ======== */
+/* ======== bóc tên phường từ địa chỉ (WARD) — TẮT vẽ nhãn phường ======== */
 function extractWard(addr){
   if(!addr) return '';
   const raw=String(addr).replace(/\s+/g,' ').trim();
@@ -240,6 +232,12 @@ function extractWard(addr){
   return '';
 }
 
+/* ❌ KHÔNG vẽ nhãn phường (đỏ viền trắng) nữa */
+function renderWardLabelsFromPoints(_wardAgg){
+  WARD_LABELS.clearLayers();
+  return;
+}
+
 /* ========= PARSE QUERY ========= */
 function parseQuery(q){
   q=(q||'').trim(); const out={ ma:[],ten:[],sdt:[],dc:[],nv:[],tt:[],free:[],rKm:null }; if(!q) return out;
@@ -254,18 +252,6 @@ function parseQuery(q){
     } else out.free.push(t.toLowerCase());
   });
   delete out._last; return out;
-}
-
-/* ========= VẼ NHÃN PHƯỜNG (từ điểm) ========= */
-function renderWardLabelsFromPoints(wardAgg){
-  WARD_LABELS.clearLayers();
-  for(const [ward,info] of wardAgg.entries()){
-    if(!ward) continue;
-    const lat=info.sumLat/info.cnt, lng=info.sumLng/info.cnt, color=`hsl(${(ward.length*37)%360} 80% 45%)`;
-    const html=`<div class="ward-text" style="color:${color}">${esc(ward)}</div>`;
-    const icon=L.divIcon({className:'',html,iconSize:null});
-    L.marker([lat,lng],{icon}).addTo(WARD_LABELS);
-  }
 }
 
 /* ========= RENDER/FILTER ========= */
@@ -314,6 +300,7 @@ function renderFiltered(){
     MARKERS_DATA.push({ marker:m, lat:fixed.lat, lng:fixed.lng, name, addr, phone, status:st, rank:0 });
     bounds.extend([fixed.lat,fixed.lng]); count++;
 
+    // vẫn tính ward để có thể bật lại về sau (nhưng KHÔNG vẽ)
     const ward=extractWard(addr);
     if(ward){ const w=wardAgg.get(ward)||{sumLat:0,sumLng:0,cnt:0}; w.sumLat+=fixed.lat; w.sumLng+=fixed.lng; w.cnt++; wardAgg.set(ward,w); }
 
@@ -321,6 +308,7 @@ function renderFiltered(){
     else if(!mapCfg.routeByNV) pushRoute('_all_',{lat:fixed.lat,lng:fixed.lng});
   }
 
+  // ❌ Không vẽ nhãn phường
   renderWardLabelsFromPoints(wardAgg);
 
   if(count>0 && L.latLngBounds && mapCfg.autoFit && bounds.isValid()) map.fitBounds(bounds.pad(0.15));
@@ -366,33 +354,26 @@ function updateProximityLabels(){
   }
 }
 
-// KH gần nhất tô xanh lá
+// KH gần nhất tô xanh lá & đánh số
 function updateNearestNumbers(){
   if (MARKERS_DATA.length===0) return;
 
-  // Điểm tham chiếu: vị trí của tôi (nếu có) hoặc tâm bản đồ
   const ref = MY_MARKER ? MY_MARKER.getLatLng() : map.getCenter();
-
-  // Tính khoảng cách & xếp hạng
   const arr = MARKERS_DATA.map((it, idx)=>({ idx, d: distM(ref, {lat:it.lat, lng:it.lng}) }));
   arr.sort((a,b)=>a.d-b.d);
 
-  const NEAREST_COLOR = '#22c55e'; // xanh lá cho KH gần nhất
+  const NEAREST_COLOR = '#22c55e';
 
   for (let i=0;i<arr.length;i++){
     const it = MARKERS_DATA[arr[i].idx];
     it.rank = i+1;
 
-    // Màu mặc định theo trạng thái (nếu bật), không thì xanh dương
     let color = colorForStatus(it.status);
-
-    // KH gần nhất → bắt buộc xanh lá
     if (i === 0) color = NEAREST_COLOR;
 
     it.marker.setIcon(makeNumIconCached(i+1, color));
   }
 }
-
 const updateNearestNumbersTh = throttle(updateNearestNumbers, 250);
 const updateProximityLabelsTh = throttle(updateProximityLabels, 250);
 
@@ -499,174 +480,74 @@ function renderConfigPanel(){
   ['cfgMarkerSize','cfgTheme','cfg_radiusKm'].forEach(id=>document.getElementById(id).addEventListener('change',preview));
   ['cfg_autoFit','cfg_cluster','cfg_labelKH','cfg_tooltip','cfg_routeByNV','cfg_showDistance','cfg_colorByStatus','cfg_showRadius']
     .forEach(id=>document.getElementById(id).addEventListener('change',()=>{ document.getElementById('rowRadius').style.display=document.getElementById('cfg_showRadius').checked?'':''; preview(); }));
-  document.getElementById('cfgSave').addEventListener('click',()=>{ saveMapCfg(mapCfg); alert('✅ Đã lưu cấu hình.'); });
+  // (ĐOẠN MỚI — TỰ THU GỌN SAU KHI LƯU)
+document.getElementById('cfgSave').addEventListener('click', () => {
+  // Lấy config hiện tại trên UI rồi render lại 1 lần cho chắc
+  mapCfg = getCfg();
+  saveMapCfg(mapCfg);
+  preview(); // áp dụng ngay (nếu bạn muốn giữ nguyên trạng thái bản đồ sau lưu thì có thể bỏ dòng này)
+
+  // Thu gọn phần thân panel ngay lập tức
+  const bodyEl = document.querySelector('#mapConfigPanel .cfg-body');
+  bodyEl && bodyEl.classList.add('hidden');
+
+  // Chống bấm nhanh nhiều lần → disable nút trong 1 nhịp
+  const btn = document.getElementById('cfgSave');
+  btn && (btn.disabled = true);
+
+  // Đóng bàn phím ảo (nếu đang focus input)
+  try { document.activeElement && document.activeElement.blur && document.activeElement.blur(); } catch {}
+
+  // Thông báo sau 1 "tick" để UI kịp vẽ trạng thái đã gập
+  setTimeout(() => {
+    alert('✅ Đã lưu cấu hình.');
+    btn && (btn.disabled = false);
+  }, 0);
+});
+
 }
-
-
 
 /* ========= Supabase + định vị ========= */
 let supa=null; async function initSupabaseOnce(){ if(supa) return supa; try{ if(!window.supabase) return null; const KEY=(typeof window.getInternalKey==='function')?window.getInternalKey():''; const r=await fetch('/api/getConfig',{headers:{'x-internal-key':KEY}}); if(!r.ok) return null; const {url,anon}=await r.json(); if(!url||!anon) return null; supa=window.supabase.createClient(url,anon); }catch{} return supa; }
 function getNVFromStorage(){ try{ const nv=JSON.parse(localStorage.getItem('nv')||'{}'); if(nv&&nv.ma_nv) return {ma_nv:String(nv.ma_nv),ten_nv:nv.ten_nv||''}; }catch{} const raw=localStorage.getItem('ma_nv'); return raw?{ma_nv:String(raw),ten_nv:''}:null; }
 
-
-/* ========= TTS: TIẾNG VIỆT RÕ HƠN (chọn voice tốt, chậm nhịp, tách câu, đọc số) ========= */
-let __VI_VOICE = null;
-let __VOICES_READY = false;
-let __WARNED_NO_VI = false;
-
-/* ===== Bạn có thể chỉnh nhanh 3 thông số này để hợp tai mình ===== */
-const TTS_RATE  = 0.9;   // tốc độ: 0.8 (chậm) → 1.1 (nhanh), mặc định 0.9 cho rõ
-const TTS_PITCH = 1.0;   // cao độ: 0.8 → 1.2
-const TTS_VOL   = 1.0;   // âm lượng: 0.0 → 1.0
-
-/* Ưu tiên voice rõ: Microsoft Neural (Hoai/My) > Google Vietnamese > các voice VI khác */
-const PREFERRED_NAME_ORDER = [
-  /microsoft.*(hoai|my).*(online|neural)/i,
-  /microsoft.*vi-vn/i,
-  /google.*(vi|tiếng ?việt)/i,
-  /(tiếng ?việt|vietnam|viet)/i
-];
-const VI_LANG_HINTS = [/^vi(-|_|$)/i];
-
-function __pickVietnameseVoice(voices){
-  // 1) lọc theo lang vi-*
-  const viLang = voices.filter(v => VI_LANG_HINTS.some(rx => rx.test(v.lang||"")));
-  // 2) trong nhóm VI, ưu tiên theo tên mong muốn
-  for (const rx of PREFERRED_NAME_ORDER){
-    const hit = viLang.find(v => rx.test((v.name||"")+" "+(v.lang||"")));
-    if (hit) return hit;
-  }
-  // 3) nếu chưa có, trả bất kỳ voice VI
-  if (viLang.length) return viLang[0];
-  // 4) không có VI: trả null
-  return null;
-}
-
-function __loadVoicesOnce(){
-  return new Promise(resolve => {
-    const done = () => {
-      const voices = speechSynthesis.getVoices() || [];
-      if (voices.length){
-        __VI_VOICE = __pickVietnameseVoice(voices);
-        __VOICES_READY = true;
-        resolve(voices);
-        return true;
-      }
-      return false;
-    };
-    if (!done()){
-      const cb = () => { done(); speechSynthesis.onvoiceschanged = null; resolve(speechSynthesis.getVoices()||[]); };
-      speechSynthesis.onvoiceschanged = cb;
-      setTimeout(() => { done(); resolve(speechSynthesis.getVoices()||[]); }, 1200);
-    }
-  });
-}
-
-/* ===== Tiền xử lý nội dung để đọc rõ hơn ===== */
-function spellDigits(str){
-  // đọc chuỗi số thành từng số rời: "0987654321" => "0 9 8 7 6 5 4 3 2 1"
-  return String(str).split("").join(" ");
-}
-function normalizeForSpeak(text){
-  let s = String(text || "").trim();
-
-  // mở rộng 1 số viết tắt hay gặp để đọc rõ
-  s = s
-    //.replace(/\bKH\b/gi, "khách hàng")
-    .replace(/\bP\.\s*(\w+)/gi, "phường $1")
-    .replace(/\bQ\.\s*(\w+)/gi, "quận $1")
-    .replace(/\bTP\.\s*(\w+)/gi, "thành phố $1");
-
-  // tách số dài thành từng số (điện thoại, mã KH dạng số dài)
-  s = s.replace(/(\d{7,})/g, (_m, g1) => spellDigits(g1));
-
-  // thêm dấu phẩy nhẹ nơi hợp lý để ép ngắt nhịp
-  s = s.replace(/ - /g, ", ")
-       .replace(/\s{2,}/g, " ")
-       .replace(/([^\.,!?])$/g, "$1."); // chấm cuối câu nếu thiếu
-
-  return s;
-}
-
-/* ===== Chia câu dài thành mảnh ngắn < 120 ký tự, đọc nối tiếp ===== */
-function splitForClarity(text, maxLen=120){
-  const parts = [];
-  const sentences = String(text).split(/([\.!?、，,…]+)\s*/); // giữ dấu
-  let buf = "";
-
-  for (let i=0; i<sentences.length; i+=2){
-    const seg = (sentences[i] || "") + (sentences[i+1] || "");
-    if ((buf + " " + seg).trim().length > maxLen){
-      if (buf.trim()) parts.push(buf.trim());
-      buf = seg;
-    } else {
-      buf = (buf + " " + seg).trim();
-    }
-  }
-  if (buf.trim()) parts.push(buf.trim());
-
-  // fallback nếu không chia được
-  if (!parts.length) parts.push(String(text));
-  return parts;
-}
-
-/* ===== API đọc tiếng Việt rõ hơn ===== */
+/* ========= TTS: TIẾNG VIỆT RÕ HƠN ========= */
+let __VI_VOICE = null, __VOICES_READY = false, __WARNED_NO_VI = false;
+const TTS_RATE=0.9, TTS_PITCH=1.0, TTS_VOL=1.0;
+const PREFERRED_NAME_ORDER=[/microsoft.*(hoai|my).*(online|neural)/i,/microsoft.*vi-vn/i,/google.*(vi|tiếng ?việt)/i,/(tiếng ?việt|vietnam|viet)/i];
+const VI_LANG_HINTS=[/^vi(-|_|$)/i];
+function __pickVietnameseVoice(voices){ const viLang=voices.filter(v=>VI_LANG_HINTS.some(rx=>rx.test(v.lang||""))); for (const rx of PREFERRED_NAME_ORDER){ const hit=viLang.find(v=>rx.test((v.name||"")+" "+(v.lang||""))); if(hit) return hit; } if(viLang.length) return viLang[0]; return null; }
+function __loadVoicesOnce(){ return new Promise(resolve=>{ const done=()=>{ const voices=speechSynthesis.getVoices()||[]; if(voices.length){ __VI_VOICE=__pickVietnameseVoice(voices); __VOICES_READY=true; resolve(voices); return true; } return false; }; if(!done()){ const cb=()=>{ done(); speechSynthesis.onvoiceschanged=null; resolve(speechSynthesis.getVoices()||[]); }; speechSynthesis.onvoiceschanged=cb; setTimeout(()=>{ done(); resolve(speechSynthesis.getVoices()||[]); },1200); } }); }
+function spellDigits(str){ return String(str).split("").join(" "); }
+function normalizeForSpeak(text){ let s=String(text||"").trim(); s=s.replace(/\bP\.\s*(\w+)/gi,"phường $1").replace(/\bQ\.\s*(\w+)/gi,"quận $1").replace(/\bTP\.\s*(\w+)/gi,"thành phố $1"); s=s.replace(/(\d{7,})/g,(_m,g1)=>spellDigits(g1)); s=s.replace(/ - /g,", ").replace(/\s{2,}/g," ").replace(/([^\.,!?])$/g,"$1."); return s; }
+function splitForClarity(text,maxLen=120){ const parts=[]; const sentences=String(text).split(/([\.!?、，,…]+)\s*/); let buf=""; for(let i=0;i<sentences.length;i+=2){ const seg=(sentences[i]||"")+(sentences[i+1]||""); if((buf+" "+seg).trim().length>maxLen){ if(buf.trim()) parts.push(buf.trim()); buf=seg; } else { buf=(buf+" "+seg).trim(); } } if(buf.trim()) parts.push(buf.trim()); if(!parts.length) parts.push(String(text)); return parts; }
 async function speakVi(text){
   if (!('speechSynthesis' in window)) return;
-  if (!__VOICES_READY || !__VI_VOICE){
-    try { await __loadVoicesOnce(); } catch {}
-  }
-  if (!__VI_VOICE && !__WARNED_NO_VI){
-    __WARNED_NO_VI = true;
-    console.warn('[TTS] Thiết bị chưa có voice tiếng Việt.');
-    try {
-      alert('Thiết bị chưa có giọng tiếng Việt. Hãy cài Vietnamese voice (Windows/macOS/iOS/Android) rồi tải lại trang để phát âm rõ hơn.');
-    } catch {}
-  }
-
-  const prepared = normalizeForSpeak(text);
-  const chunks = splitForClarity(prepared, 120);
-
+  if (!__VOICES_READY || !__VI_VOICE){ try { await __loadVoicesOnce(); } catch {} }
+  if (!__VI_VOICE && !__WARNED_NO_VI){ __WARNED_NO_VI=true; try{ alert('Thiết bị chưa có giọng tiếng Việt. Hãy cài Vietnamese voice rồi tải lại trang.'); }catch{} }
+  const chunks = splitForClarity(normalizeForSpeak(text), 120);
   try { speechSynthesis.cancel(); } catch {}
   for (const chunk of chunks){
     const u = new SpeechSynthesisUtterance(chunk);
-    u.lang   = 'vi-VN';
-    u.rate   = TTS_RATE;
-    u.pitch  = TTS_PITCH;
-    u.volume = TTS_VOL;
-    if (__VI_VOICE) u.voice = __VI_VOICE;
-
-    // chèn khoảng dừng rất ngắn giữa các mảnh để rõ hơn
-    await new Promise(resolve => {
-      u.onend = () => setTimeout(resolve, 60);
-      speechSynthesis.speak(u);
-    });
+    u.lang='vi-VN'; u.rate=TTS_RATE; u.pitch=TTS_PITCH; u.volume=TTS_VOL;
+    if (__VI_VOICE) u.voice=__VI_VOICE;
+    await new Promise(res=>{ u.onend=()=>setTimeout(res,60); speechSynthesis.speak(u); });
   }
 }
-
-// Tiện test nhanh trong Console:
-window.testSpeakVi = async function(){
-  await __loadVoicesOnce();
-  console.log('Đang dùng voice:', __VI_VOICE ? {name:__VI_VOICE.name, lang:__VI_VOICE.lang} : '(không có VI)');
-  speakVi('Xin chào. Tôi sẽ đọc tiếng Việt, chậm và rõ hơn. Số điện thoại 0987654321.');
-};
-
+window.testSpeakVi = async function(){ await __loadVoicesOnce(); console.log('Voice:', __VI_VOICE ? {name:__VI_VOICE.name, lang:__VI_VOICE.lang} : '(none)'); speakVi('Xin chào. Tôi sẽ đọc tiếng Việt, chậm và rõ hơn.'); };
 
 /* ========= Vị trí của tôi ========= */
 let MY_MARKER=null, MY_RADIUS=null, MY_WATCH=null, LAST_SEND=0, LAST_CENTER_AT=0;
 const RECENTER_MS=4000, EDGE_PADDING_PX=60, RECENTER_MIN_MOVE_M=30;
-
 function drawMyLocation(lat,lng){
   const pos=[lat,lng];
   if(!MY_MARKER){ MY_MARKER=L.circleMarker(pos,{radius:9,weight:2,color:'#ef4444',fillColor:'#ef4444',fillOpacity:.9}).addTo(map).bindTooltip('Vị trí của tôi',{permanent:false,direction:'top'}); }
   else { MY_MARKER.setLatLng(pos); }
   if(!MY_RADIUS){ MY_RADIUS=L.circle(pos,{radius:300,color:'#ef4444',weight:2,fillOpacity:.06}).addTo(map); }
   else { MY_RADIUS.setLatLng(pos); }
-
   window.__myLatLng = { lat, lng };
 }
 function ensureInView(lat,lng){
-  // Luôn auto-follow
   const now=Date.now(); if(now-LAST_CENTER_AT<RECENTER_MS) return;
   const p=map.latLngToContainerPoint([lat,lng]), size=map.getSize();
   const nearEdge=p.x<EDGE_PADDING_PX||p.y<EDGE_PADDING_PX||p.x>size.x-EDGE_PADDING_PX||p.y>size.y-EDGE_PADDING_PX;
@@ -674,8 +555,6 @@ function ensureInView(lat,lng){
   if(nearEdge||moved>RECENTER_MIN_MOVE_M){ map.panTo([lat,lng],{animate:true,duration:.6}); LAST_CENTER_AT=now; }
 }
 async function saveMyLocation(ma_nv,lat,lng,accuracy){ const now=Date.now(); if(now-LAST_SEND<20000) return; LAST_SEND=now; try{ await initSupabaseOnce(); if(!supa) return; await supa.from('kv_nhan_vien').update({lat,lng,accuracy,updated_at:new Date().toISOString()}).eq('ma_nv',ma_nv); }catch{} }
-
-// Geolocation options + retry/backoff + flyTo
 const GP_OPTS = { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 };
 function humanGeoError(err){
   if (!err) return 'Lỗi vị trí không xác định';
@@ -697,39 +576,21 @@ function nearestFromLatLng(my){
   }
   return best? {cust:best, dist:dBest} : null;
 }
-
-/* Quy tắc mốc để đọc (mét) — từ xa đến gần */
 const DIST_BANDS = [500, 300, 200, 150, 100, 70, 50, 30, 20, 15, 10];
-let __nearestId = null;     // id của marker gần nhất hiện tại
-let __lastBand  = null;     // mốc đã đọc gần nhất (để chống spam)
-
-/* Làm tròn mượt để đọc: >50m làm tròn 10m; ≤50m đọc số lẻ chính xác */
-function roundDistanceForSpeech(m){
-  if (m > 50) return Math.round(m / 10) * 10;
-  return Math.max(1, Math.round(m));
-}
-
-function bandForDistance(m){
-  for (const b of DIST_BANDS){
-    if (m <= b) return b;
-  }
-  return null;
-}
-
-/* Tạo câu tiếng Việt tự nhiên tuỳ theo khoảng cách */
+let __nearestId = null, __lastBand = null;
+function roundDistanceForSpeech(m){ if (m > 50) return Math.round(m / 10) * 10; return Math.max(1, Math.round(m)); }
+function bandForDistance(m){ for (const b of DIST_BANDS){ if (m <= b) return b; } return null; }
 function phraseForDistance(m){
-  const d = roundDistanceForSpeech(m);
-  if (d > 100)        return `còn khoảng ${d} mét`;
-  if (d > 50)         return `còn ${d} mét`;
-  if (d > 20)         return `sắp tới, còn ${d} mét`;
-  if (d > 10)         return `rất gần, còn ${d} mét`;
-  if (d > 5)          return `sắp tới nơi, còn ${d} mét`;
-  if (d > 2)          return `chuẩn bị dừng, còn ${d} mét`;
-  if (d > 0)          return `đến nơi`;
+  const d=roundDistanceForSpeech(m);
+  if (d > 100) return `còn khoảng ${d} mét`;
+  if (d > 50)  return `còn ${d} mét`;
+  if (d > 20)  return `sắp tới, còn ${d} mét`;
+  if (d > 10)  return `rất gần, còn ${d} mét`;
+  if (d > 5)   return `sắp tới nơi, còn ${d} mét`;
+  if (d > 2)   return `chuẩn bị dừng, còn ${d} mét`;
+  if (d > 0)   return `đến nơi`;
   return `đến nơi`;
 }
-
-/* Gọi mỗi lần GPS cập nhật: đọc tên + khoảng cách khi đổi mốc */
 function onLocationProgress(pos){
   const { latitude, longitude } = pos.coords;
   const res = nearestFromLatLng({lat:latitude, lng:longitude});
@@ -739,35 +600,19 @@ function onLocationProgress(pos){
   const id = cust.marker?._leaflet_id ?? cust.name;
   const b = bandForDistance(dist);
 
-  // Đổi khách gần nhất → đọc tên ngay
-  if(__nearestId !== id){
-    __nearestId = id;
-    __lastBand  = null;
-    speakVi(`Khách hàng, ${cust.name}`);
-  }
+  if(__nearestId !== id){ __nearestId = id; __lastBand  = null; speakVi(`Khách hàng, ${cust.name}`); }
 
-  // Vượt qua mốc mới → đọc câu khoảng cách
   if(b && b !== __lastBand){
     __lastBand = b;
     const msg = phraseForDistance(dist);
-    // Ví dụ: "Khách hàng, A Quân, còn khoảng 200 mét"
-    if (msg === 'đến nơi'){
-      speakVi(`Đến nơi, ${cust.name}`);
-    } else {
-      speakVi(`Khách hàng, ${cust.name}, ${msg}`);
-    }
+    if (msg === 'đến nơi') speakVi(`Đến nơi, ${cust.name}`);
+    else speakVi(`Khách hàng, ${cust.name}, ${msg}`);
   }
 
-  // Về sát mục tiêu (<= 8m) → chốt một lần "đến nơi"
-  if(dist <= 8){
-    if (__lastBand !== 'arrived'){
-      __lastBand = 'arrived';
-      speakVi(`Đến nơi, ${cust.name}`);
-    }
-  }
+  if(dist <= 8 && __lastBand !== 'arrived'){ __lastBand = 'arrived'; speakVi(`Đến nơi, ${cust.name}`); }
 }
 
-/* ========= Nút 🚀 tới khách gần nhất: đọc tên + khoảng cách hiện tại ========= */
+/* ========= Nút 🚀 tới khách gần nhất ========= */
 function gotoNearestCustomer(){
   const p = MY_MARKER?.getLatLng() || window.__myLatLng;
   if(!p){ alert('Hãy bấm 📍 để lấy vị trí trước'); return; }
@@ -779,13 +624,9 @@ function gotoNearestCustomer(){
   if(cust.marker?.openPopup) cust.marker.openPopup();
 
   const msg = phraseForDistance(dist);
-  if (msg === 'đến nơi'){
-    speakVi(`Đến nơi, ${cust.name}`);
-  } else {
-    speakVi(`Khách hàng, ${cust.name}, ${msg}`);
-  }
+  if (msg === 'đến nơi') speakVi(`Đến nơi, ${cust.name}`);
+  else speakVi(`Khách hàng, ${cust.name}, ${msg}`);
 }
-
 
 /* ========= Start/Watch location ========= */
 async function startMyLocation(ma_nv, forceFly = false){
@@ -810,11 +651,8 @@ async function startMyLocation(ma_nv, forceFly = false){
       drawMyLocation(lat,lng);
 
       const target = {lat, lng};
-      if (forceFly || needHardRecenter(target)){
-        map.flyTo([lat,lng], Math.max(map.getZoom(), 16), { duration: 0.8 });
-      } else {
-        map.setView([lat,lng], Math.max(map.getZoom(), 15));
-      }
+      if (forceFly || needHardRecenter(target)) map.flyTo([lat,lng], Math.max(map.getZoom(), 16), { duration: 0.8 });
+      else map.setView([lat,lng], Math.max(map.getZoom(), 15));
 
       ensureInView(lat,lng);
       saveMyLocation(ma_nv, lat, lng, accuracy);
@@ -826,7 +664,7 @@ async function startMyLocation(ma_nv, forceFly = false){
       tries++;
       $status.textContent = '⚠️ ' + humanGeoError(err) + (tries<maxTries? ` • Thử lại (${tries}/${maxTries})…` : '');
       if (tries >= maxTries) { alert(humanGeoError(err)); break; }
-      await new Promise(r=>setTimeout(r, 1500*tries)); // backoff
+      await new Promise(r=>setTimeout(r, 1500*tries));
     }
   }
 
@@ -836,17 +674,12 @@ async function startMyLocation(ma_nv, forceFly = false){
     drawMyLocation(lat,lng);
 
     const target = {lat, lng};
-    if (needHardRecenter(target)) {
-      map.flyTo([lat,lng], Math.max(map.getZoom(), 16), { duration: 0.6 });
-    } else {
-      ensureInView(lat,lng);
-    }
+    if (needHardRecenter(target)) map.flyTo([lat,lng], Math.max(map.getZoom(), 16), { duration: 0.6 });
+    else ensureInView(lat,lng);
 
     saveMyLocation(ma_nv, lat, lng, accuracy);
     updateNearestNumbersTh();
     updateProximityLabelsTh();
-
-    // 🔊 đọc tên khách gần nhất theo ngưỡng
     onLocationProgress(pos);
   }, err=>{
     $status.textContent = '⚠️ Theo dõi vị trí: ' + humanGeoError(err);
@@ -854,30 +687,15 @@ async function startMyLocation(ma_nv, forceFly = false){
 }
 function stopMyLocation(){ if(MY_WATCH){ navigator.geolocation.clearWatch(MY_WATCH); MY_WATCH=null; } if(MY_MARKER){ map.removeLayer(MY_MARKER); MY_MARKER=null; } if(MY_RADIUS){ map.removeLayer(MY_RADIUS); MY_RADIUS=null; } }
 
-/* ========= Nút 🚀 tới khách gần nhất ========= */
-function gotoNearestCustomer(){
-  const p = MY_MARKER?.getLatLng() || window.__myLatLng;
-  if(!p){ alert('Hãy bấm 📍 để lấy vị trí trước'); return; }
-  const res = nearestFromLatLng({lat:p.lat, lng:p.lng});
-  if(!res){ speakVi('Không có khách nào đang hiển thị'); return; }
-
-  const { cust } = res;
-  map.setView([cust.lat, cust.lng], Math.max(map.getZoom(), 16));
-  if(cust.marker?.openPopup) cust.marker.openPopup();
-  speakVi(`${cust.name}`); // chỉ đọc tên
-}
-
 /* ========= UI & init ========= */
 function debounce(fn, ms=200){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
 function bindUI(){
-  // Hỗ trợ cả #btnLocate (nút nổi) và #btnMyLocation (nếu còn trong HTML cũ)
   const onLocateClick = async ()=>{
     const nv=getNVFromStorage(); const ma_nv=nv?.ma_nv||localStorage.getItem('ma_nv')||prompt('Nhập mã nhân viên:');
     if(!ma_nv) return alert('Thiếu mã nhân viên.');
     localStorage.setItem('ma_nv',ma_nv);
     localStorage.setItem('my_loc_auto','1');
 
-    // Nếu đã có chấm → fly ngay không chờ GPS mới
     if (MY_MARKER){
       const p = MY_MARKER.getLatLng();
       const z = map.getZoom();
@@ -885,16 +703,10 @@ function bindUI(){
     }
     startMyLocation(ma_nv, /*forceFly*/ true);
   };
-  document.querySelectorAll('#btnMyLocation, #btnLocate').forEach(btn=>{
-    btn.addEventListener('click', onLocateClick);
-  });
+  document.querySelectorAll('#btnMyLocation, #btnLocate').forEach(btn=>{ btn.addEventListener('click', onLocateClick); });
 
-  // Nút 🚀 (có thể đặt 2 nơi, dùng cùng id — querySelectorAll vẫn bắt được hết)
-  document.querySelectorAll('#btnNearest').forEach(btn=>{
-    btn.addEventListener('click', ()=> gotoNearestCustomer());
-  });
+  document.querySelectorAll('#btnNearest').forEach(btn=>{ btn.addEventListener('click', ()=> gotoNearestCustomer()); });
 
-  // Shims cho HTML onclick cũ (nếu bạn chưa gỡ)
   window.locateMe = onLocateClick;
   window._fallbackLocate = onLocateClick;
   window.gotoNearestCustomer = gotoNearestCustomer;
@@ -925,10 +737,8 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   renderConfigPanel();
   applyFilterFromURL();
 
-  // Preload voice VI sớm để tránh đọc giọng EN
   if ('speechSynthesis' in window) { try { await __loadVoicesOnce(); } catch {} }
 
-  // Tự động lấy vị trí nếu từng bật
   const nv=getNVFromStorage();
   if(nv?.ma_nv && localStorage.getItem('my_loc_auto')==='1'){
     let granted=false;
@@ -936,6 +746,5 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     if(granted) startMyLocation(nv.ma_nv);
   }
 
-  // Tải CSV tự động (không còn phụ thuộc nút Reload)
   await loadCSV();
 });
