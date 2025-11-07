@@ -3,25 +3,28 @@
 // 1️⃣ Khóa nội bộ (header x-internal-key)
 window.getInternalKey = () => "Trung@123";
 
-// 2️⃣ Cấu hình LOCAL Supabase (offline test + role key)
-const LOCAL_SUPABASE_CONFIG = {
-  url: "",   // 🔒 lấy từ /api/getConfig
-  anon: "",  // 🔒 lấy từ /api/getConfig
+// 1️⃣ Khóa nội bộ (header x-internal-key)
+window.getInternalKey = () => "Trung@123";
 
-  // ⚠️ Role key chỉ dùng nội bộ để test local (KHÔNG deploy public)
-  role: ""   // 🔒 lấy từ /api/getConfig (thường không trả cho client)
-};
+// 0️⃣ Tự động nạp config từ /api/getConfig (chỉ chứa key trên server, không lộ ra build)
+window.__RUNTIME_CFG = null;
+(async () => {
+  try {
+    const res = await fetch("/api/getConfig"); // Server trả JSON có key thật
+    if (res.ok) window.__RUNTIME_CFG = await res.json();
+  } catch {
+    console.warn("⚠️ Không kết nối được /api/getConfig — dùng fallback local");
+  }
+})();
+
+// 2️⃣ Cấu hình LOCAL Supabase (fallback khi offline)
+const LOCAL_SUPABASE_CONFIG = { url: "", anon: "", role: "" };
 
 // 3️⃣ Cấu hình MAP (Apps Script + Sheet)
-const LOCAL_APP_MAP = {
-  APPS_URL:   "",  // 🔒 lấy từ /api/getConfig
-  SHEET_ID:   "",  // 🔒 lấy từ /api/getConfig
-  SHARED_SECRET: "", // 🔒 lấy từ /api/getConfig
-  CSV_URL:    ""   // 🔒 lấy từ /api/getConfig
-};
+const LOCAL_APP_MAP = { APPS_URL: "", SHEET_ID: "", SHARED_SECRET: "", CSV_URL: "" };
 
-// 4️⃣ Webhook nội bộ (ẩn khỏi body JSON)
-const LOCAL_WEBHOOK = ""; // 🔒 tránh lộ; webhook thật lấy từ /api/getConfig → window._REMOTE_WEBHOOK
+// 4️⃣ Webhook nội bộ
+const LOCAL_WEBHOOK = "";
 
 // 5️⃣ Cấu hình hệ thống dọn rác (cleanup)
 const LOCAL_CLEANUP_CONFIG = {
