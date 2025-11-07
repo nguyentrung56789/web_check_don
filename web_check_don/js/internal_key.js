@@ -5,23 +5,23 @@ window.getInternalKey = () => "Trung@123";
 
 // 2️⃣ Cấu hình LOCAL Supabase (offline test + role key)
 const LOCAL_SUPABASE_CONFIG = {
-  url: "https://cywtgdtsxajczljspwxe.supabase.co",
-  anon: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5d3RnZHRzeGFqY3psanNwd3hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3MzI1NjQsImV4cCI6MjA3MjMwODU2NH0.FZ6z6kfUWyf8l7WnA5J1wkrAy7KjpU6VT65EdyXCka8",
+  url: "",   // 🔒 lấy từ /api/getConfig
+  anon: "",  // 🔒 lấy từ /api/getConfig
 
   // ⚠️ Role key chỉ dùng nội bộ để test local (KHÔNG deploy public)
-  role: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5d3RnZHRzeGFqY3psanNwd3hlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NjczMjU2NCwiZXhwIjoyMDcyMzA4NTY0fQ.z0re_7rP4COpMNARZ1-8U9bwF9bwH8YQOePYyHWMGto"
+  role: ""   // 🔒 lấy từ /api/getConfig (thường không trả cho client)
 };
 
 // 3️⃣ Cấu hình MAP (Apps Script + Sheet)
 const LOCAL_APP_MAP = {
-  APPS_URL: "https://script.google.com/macros/s/AKfycbxvwPYBOGUyex1ZOgM3E4g2sKMcz3QLao8DaiZz4oRJmnMOwFdF0M30fQD_QR2ubzcK/exec",
-  SHEET_ID: "18YC3kOwKLLvbzYeuXbZ-5U348EV_hAY2Y3wdot42P1c",
-  SHARED_SECRET: "t12345",
-  CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFLOQCFAQqdcQLP4Yxy0IAVk2f1GCs3nTpEdrITr5s47wOAdViQ3K0VkcQLQSRoLehUe8jFfXrvjkm/pub?output=csv",
+  APPS_URL:   "",  // 🔒 lấy từ /api/getConfig
+  SHEET_ID:   "",  // 🔒 lấy từ /api/getConfig
+  SHARED_SECRET: "", // 🔒 lấy từ /api/getConfig
+  CSV_URL:    ""   // 🔒 lấy từ /api/getConfig
 };
 
 // 4️⃣ Webhook nội bộ (ẩn khỏi body JSON)
-const LOCAL_WEBHOOK = "https://dhsybbqoe.datadex.vn/webhook/hoadon";
+const LOCAL_WEBHOOK = ""; // 🔒 tránh lộ; webhook thật lấy từ /api/getConfig → window._REMOTE_WEBHOOK
 
 // 5️⃣ Cấu hình hệ thống dọn rác (cleanup)
 const LOCAL_CLEANUP_CONFIG = {
@@ -94,4 +94,39 @@ window.getConfigCleanup = () => LOCAL_CLEANUP_CONFIG;
     if (!origFetch) throw new Error("fetch not available");
     return origFetch(input, init);
   };
+})();
+
+// 9️⃣ Ghi đè LINK/KEY từ /api/getConfig (đồng bộ, không đổi cấu trúc, không chạm hàm cũ)
+(function () {
+  try {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "/api/getConfig", false); // ⬅️ đồng bộ để có giá trị ngay khi file load
+    // Nếu cần lấy 'role' từ backend, có thể bật dòng dưới và API phải kiểm tra x-internal-key:
+    // xhr.setRequestHeader("x-internal-key", window.getInternalKey());
+    xhr.send();
+
+    if (xhr.status === 200) {
+      var cfg = JSON.parse(xhr.responseText) || {};
+
+      // --- Supabase ---
+      if (cfg.url)  LOCAL_SUPABASE_CONFIG.url  = cfg.url;
+      if (cfg.anon) LOCAL_SUPABASE_CONFIG.anon = cfg.anon;
+      if (cfg.role) LOCAL_SUPABASE_CONFIG.role = cfg.role; // thường chỉ backend dùng
+
+      // --- Map ---
+      if (cfg.map) {
+        if (cfg.map.APPS_URL)      LOCAL_APP_MAP.APPS_URL      = cfg.map.APPS_URL;
+        if (cfg.map.SHEET_ID)      LOCAL_APP_MAP.SHEET_ID      = cfg.map.SHEET_ID;
+        if (cfg.map.SHARED_SECRET) LOCAL_APP_MAP.SHARED_SECRET = cfg.map.SHARED_SECRET;
+        if (cfg.map.CSV_URL)       LOCAL_APP_MAP.CSV_URL       = cfg.map.CSV_URL;
+      }
+
+      // --- Webhook ---
+      if (cfg.webhook) window._REMOTE_WEBHOOK = cfg.webhook; // giữ const LOCAL_WEBHOOK nguyên
+    } else {
+      console.warn("⚠️ /api/getConfig trả mã:", xhr.status);
+    }
+  } catch (e) {
+    console.warn("⚠️ Không nạp được /api/getConfig:", e && e.message);
+  }
 })();
