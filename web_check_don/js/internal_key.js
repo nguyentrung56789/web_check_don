@@ -1,26 +1,5 @@
 // ======================== internal_key.js ========================
-
-// 1️⃣ Khóa nội bộ (header x-internal-key)
-window.getInternalKey = () => "Trung@123";
-
-// 2️⃣ Cấu hình LOCAL Supabase (offline test + role key)
-const LOCAL_SUPABASE_CONFIG = {
-  url: "",
-  anon: "",
-
-  // ⚠️ Role key chỉ dùng nội bộ để test local (KHÔNG deploy public)
-  role: ""
-};
-
-// 3️⃣ Cấu hình MAP (Apps Script + Sheet)
-const LOCAL_APP_MAP = {
-  APPS_URL: "",
-  SHEET_ID: "",
-  SHARED_SECRET: "t12345",
-  CSV_URL: "",
-};
-
-
+// 0️⃣ Nạp runtime từ /api/getConfig
 window.__RUNTIME_CFG = null;
 (async () => {
   try {
@@ -29,8 +8,28 @@ window.__RUNTIME_CFG = null;
   } catch {/* im lặng */}
 })();
 
-// 4️⃣ Webhook nội bộ (ẩn khỏi body JSON)
-const LOCAL_WEBHOOK = "https://dhsybbqoe.datadex.vn/webhook/hoadon";
+// 1️⃣ Khóa nội bộ (header x-internal-key)
+window.getInternalKey = () => "Trung@123";
+// 2️⃣ Cấu hình LOCAL Supabase (fallback khi offline — KHÔNG chứa key thật)
+const LOCAL_SUPABASE_CONFIG = {
+  url:  "",       // có thể để public URL nếu muốn, nhưng để rỗng là an toàn nhất
+  anon: "",       // ✨ KHÔNG ghi key tại đây
+  role: ""        // ✨ KHÔNG ghi key tại đây
+};
+
+// 3️⃣ Cấu hình MAP (fallback — không chứa bí mật)
+const LOCAL_APP_MAP = {
+  APPS_URL:    "",
+  SHEET_ID:    "",
+  SHARED_SECRET: "",
+  CSV_URL:     ""
+};
+
+// 4️⃣ Webhook nội bộ (fallback)
+const LOCAL_WEBHOOK = "";
+
+
+
 
 // 5️⃣ Cấu hình hệ thống dọn rác (cleanup)
 const LOCAL_CLEANUP_CONFIG = {
@@ -39,18 +38,17 @@ const LOCAL_CLEANUP_CONFIG = {
   AUTO_RUN_HOUR: 3,     // ⏰ Nếu sau này bạn muốn cron tự chạy (3h sáng)
 };
 
-// 6️⃣ getConfig ưu tiên runtime, fallback LOCAL_*
+// 6️⃣ Hàm lấy cấu hình dùng chung
 window.getConfig = function (key) {
-  const R = window.__RUNTIME_CFG || {};
   switch (key) {
-    case "url":        return R.url        ?? LOCAL_SUPABASE_CONFIG.url;
-    case "anon":       return R.anon       ?? LOCAL_SUPABASE_CONFIG.anon;
-    case "role":       return R.role       ?? LOCAL_SUPABASE_CONFIG.role;
-    case "webhook":    return R.webhook    ?? LOCAL_WEBHOOK;
-    case "map":        return R.map        ?? LOCAL_APP_MAP;
-    case "cleanup":    return R.cleanup    ?? LOCAL_CLEANUP_CONFIG;
-    case "render_api": return R.render_api ?? `${location.origin}/api_render/render.png`;
-    default:           return null;
+    case "url": return LOCAL_SUPABASE_CONFIG.url;
+    case "anon": return LOCAL_SUPABASE_CONFIG.anon;
+    case "role": return LOCAL_SUPABASE_CONFIG.role;   // 👈 thêm để test local
+    case "webhook": return LOCAL_WEBHOOK;
+    case "map": return LOCAL_APP_MAP;
+    case "cleanup": return LOCAL_CLEANUP_CONFIG;
+    case "render_api": return `${location.origin}/api_render/render.png`; // API render PNG
+    default: return null;
   }
 };
 
