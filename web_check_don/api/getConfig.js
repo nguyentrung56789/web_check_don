@@ -11,7 +11,7 @@ export default function handler(req, res) {
   const env = {
   url: process.env.SUPABASE_URL || '',
   anon: process.env.SUPABASE_ANON_KEY || '',
-  role: process.env.SUPABASE_ANON_KEY
+  role: process.env.SUPABASE_ROLE ||'',
   webhookUrl: process.env.link_webhook || '',
   mapUrl: process.env.link_map_apps_script || '',
   mapSheet: process.env.sheet_id_map || '',
