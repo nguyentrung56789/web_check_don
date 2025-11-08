@@ -1,43 +1,42 @@
-// ===== internal_key.js (bảo mật khi deploy) =====
+// ======================== internal_key.js (SECURE) ========================
 
-// 1️⃣ Khóa nội bộ
+// 1️⃣ Khóa nội bộ (header x-internal-key)
 window.getInternalKey = () => "Trung@123";
 
-// 2️⃣ Cấu hình rỗng — chỉ dùng tạm khi offline test
+// 2️⃣ Cấu hình trống — sẽ được nạp từ /api/getConfig
 const LOCAL_SUPABASE_CONFIG = { url: "", anon: "", role: "" };
 const LOCAL_APP_MAP = { APPS_URL: "", SHEET_ID: "", SHARED_SECRET: "", CSV_URL: "" };
 let LOCAL_WEBHOOK = "";
 
-// 3️⃣ Khi khởi chạy → tự động lấy cấu hình từ API (ẩn key thật)
+// 3️⃣ Khi load → gọi /api/getConfig để lấy từ ENV server (ẩn key thật)
 (async () => {
   try {
     const resp = await fetch("/api/getConfig", {
       headers: { "x-internal-key": window.getInternalKey() }
     });
-    if (!resp.ok) throw new Error(resp.status);
-    const data = await resp.json();
+    const cfg = await resp.json();
 
-    // Ghi đè giá trị nhận được
-    if (data.url)  LOCAL_SUPABASE_CONFIG.url  = data.url;
-    if (data.anon) LOCAL_SUPABASE_CONFIG.anon = data.anon;
-    if (data.role) LOCAL_SUPABASE_CONFIG.role = data.role;
-    if (data.webhookUrl) LOCAL_WEBHOOK = data.webhookUrl;
-    if (data.map) Object.assign(LOCAL_APP_MAP, data.map);
+    if (cfg.url)  LOCAL_SUPABASE_CONFIG.url  = cfg.url;
+    if (cfg.anon) LOCAL_SUPABASE_CONFIG.anon = cfg.anon;
+    if (cfg.role) LOCAL_SUPABASE_CONFIG.role = cfg.role;
+    if (cfg.webhookUrl) LOCAL_WEBHOOK = cfg.webhookUrl;
+    if (cfg.map) Object.assign(LOCAL_APP_MAP, cfg.map);
 
     console.log("✅ Config loaded from /api/getConfig");
-  } catch (err) {
-    console.error("❌ Không thể lấy /api/getConfig:", err);
+  } catch (e) {
+    console.error("❌ Không thể lấy /api/getConfig:", e);
   }
 })();
 
-// 4️⃣ Giữ nguyên API cho toàn hệ thống
-window.getConfig = (key) => ({
+// 4️⃣ Giữ nguyên hàm getConfig cho các file khác
+window.getConfig = (k) => ({
   url: LOCAL_SUPABASE_CONFIG.url,
   anon: LOCAL_SUPABASE_CONFIG.anon,
   role: LOCAL_SUPABASE_CONFIG.role,
   webhook: LOCAL_WEBHOOK,
   map: LOCAL_APP_MAP
-}[key] || null);
+}[k] || null);
+
 
 
 
