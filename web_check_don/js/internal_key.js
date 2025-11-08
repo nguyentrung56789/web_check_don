@@ -1,37 +1,43 @@
-// ===== internal_key.js (ngắn gọn) =====
+// ===== internal_key.js (bảo mật khi deploy) =====
 
 // 1️⃣ Khóa nội bộ
 window.getInternalKey = () => "Trung@123";
 
-// 2️⃣ Cấu hình LOCAL (fallback khi lỗi)
+// 2️⃣ Cấu hình rỗng — chỉ dùng tạm khi offline test
 const LOCAL_SUPABASE_CONFIG = { url: "", anon: "", role: "" };
 const LOCAL_APP_MAP = { APPS_URL: "", SHEET_ID: "", SHARED_SECRET: "", CSV_URL: "" };
 let LOCAL_WEBHOOK = "";
 
-// 3️⃣ Lấy cấu hình từ /api/getConfig
+// 3️⃣ Khi khởi chạy → tự động lấy cấu hình từ API (ẩn key thật)
 (async () => {
   try {
-    const r = await fetch("/api/getConfig", { headers: { "x-internal-key": window.getInternalKey() } });
-    const d = await r.json();
-    if (d.url)  LOCAL_SUPABASE_CONFIG.url  = d.url;
-    if (d.anon) LOCAL_SUPABASE_CONFIG.anon = d.anon;
-    if (d.role) LOCAL_SUPABASE_CONFIG.role = d.role;
-    if (d.webhookUrl) LOCAL_WEBHOOK = d.webhookUrl;
-    if (d.map) Object.assign(LOCAL_APP_MAP, d.map);
-    console.log("✅ Loaded from /api/getConfig");
-  } catch {
-    console.warn("⚠️ Dùng cấu hình LOCAL fallback");
+    const resp = await fetch("/api/getConfig", {
+      headers: { "x-internal-key": window.getInternalKey() }
+    });
+    if (!resp.ok) throw new Error(resp.status);
+    const data = await resp.json();
+
+    // Ghi đè giá trị nhận được
+    if (data.url)  LOCAL_SUPABASE_CONFIG.url  = data.url;
+    if (data.anon) LOCAL_SUPABASE_CONFIG.anon = data.anon;
+    if (data.role) LOCAL_SUPABASE_CONFIG.role = data.role;
+    if (data.webhookUrl) LOCAL_WEBHOOK = data.webhookUrl;
+    if (data.map) Object.assign(LOCAL_APP_MAP, data.map);
+
+    console.log("✅ Config loaded from /api/getConfig");
+  } catch (err) {
+    console.error("❌ Không thể lấy /api/getConfig:", err);
   }
 })();
 
-// 4️⃣ Hàm getConfig giữ nguyên cách dùng cũ
-window.getConfig = (k) => ({
+// 4️⃣ Giữ nguyên API cho toàn hệ thống
+window.getConfig = (key) => ({
   url: LOCAL_SUPABASE_CONFIG.url,
   anon: LOCAL_SUPABASE_CONFIG.anon,
   role: LOCAL_SUPABASE_CONFIG.role,
   webhook: LOCAL_WEBHOOK,
-  map: LOCAL_APP_MAP,
-}[k] || null);
+  map: LOCAL_APP_MAP
+}[key] || null);
 
 
 
