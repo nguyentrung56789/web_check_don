@@ -1,27 +1,37 @@
-// ======================== internal_key.js ========================
+// ===== internal_key.js (ngắn gọn) =====
 
-// 1️⃣ Khóa nội bộ (header x-internal-key)
+// 1️⃣ Khóa nội bộ
 window.getInternalKey = () => "Trung@123";
 
-// 2️⃣ Cấu hình LOCAL Supabase (offline test + role key)
-const LOCAL_SUPABASE_CONFIG = {
-  url: "https://cywtgdtsxajczljspwxe.supabase.co",
-  anon: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5d3RnZHRzeGFqY3psanNwd3hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3MzI1NjQsImV4cCI6MjA3MjMwODU2NH0.FZ6z6kfUWyf8l7WnA5J1wkrAy7KjpU6VT65EdyXCka8",
+// 2️⃣ Cấu hình LOCAL (fallback khi lỗi)
+const LOCAL_SUPABASE_CONFIG = { url: "", anon: "", role: "" };
+const LOCAL_APP_MAP = { APPS_URL: "", SHEET_ID: "", SHARED_SECRET: "", CSV_URL: "" };
+let LOCAL_WEBHOOK = "";
 
-  // ⚠️ Role key chỉ dùng nội bộ để test local (KHÔNG deploy public)
-  role: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5d3RnZHRzeGFqY3psanNwd3hlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NjczMjU2NCwiZXhwIjoyMDcyMzA4NTY0fQ.z0re_7rP4COpMNARZ1-8U9bwF9bwH8YQOePYyHWMGto"
-};
+// 3️⃣ Lấy cấu hình từ /api/getConfig
+(async () => {
+  try {
+    const r = await fetch("/api/getConfig", { headers: { "x-internal-key": window.getInternalKey() } });
+    const d = await r.json();
+    if (d.url)  LOCAL_SUPABASE_CONFIG.url  = d.url;
+    if (d.anon) LOCAL_SUPABASE_CONFIG.anon = d.anon;
+    if (d.role) LOCAL_SUPABASE_CONFIG.role = d.role;
+    if (d.webhookUrl) LOCAL_WEBHOOK = d.webhookUrl;
+    if (d.map) Object.assign(LOCAL_APP_MAP, d.map);
+    console.log("✅ Loaded from /api/getConfig");
+  } catch {
+    console.warn("⚠️ Dùng cấu hình LOCAL fallback");
+  }
+})();
 
-// 3️⃣ Cấu hình MAP (Apps Script + Sheet)
-const LOCAL_APP_MAP = {
-  APPS_URL: "https://script.google.com/macros/s/AKfycbxvwPYBOGUyex1ZOgM3E4g2sKMcz3QLao8DaiZz4oRJmnMOwFdF0M30fQD_QR2ubzcK/exec",
-  SHEET_ID: "18YC3kOwKLLvbzYeuXbZ-5U348EV_hAY2Y3wdot42P1c",
-  SHARED_SECRET: "t12345",
-  CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFLOQCFAQqdcQLP4Yxy0IAVk2f1GCs3nTpEdrITr5s47wOAdViQ3K0VkcQLQSRoLehUe8jFfXrvjkm/pub?output=csv",
-};
-
-// 4️⃣ Webhook nội bộ (ẩn khỏi body JSON)
-const LOCAL_WEBHOOK = "https://dhsybbqoe.datadex.vn/webhook/hoadon";
+// 4️⃣ Hàm getConfig giữ nguyên cách dùng cũ
+window.getConfig = (k) => ({
+  url: LOCAL_SUPABASE_CONFIG.url,
+  anon: LOCAL_SUPABASE_CONFIG.anon,
+  role: LOCAL_SUPABASE_CONFIG.role,
+  webhook: LOCAL_WEBHOOK,
+  map: LOCAL_APP_MAP,
+}[k] || null);
 
 
 
