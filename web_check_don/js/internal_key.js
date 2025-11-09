@@ -5,18 +5,19 @@ window.getInternalKey = () => "Trung@123";
 
 // 2️⃣ Cấu hình LOCAL Supabase (offline test + role key)
 const LOCAL_SUPABASE_CONFIG = {
-  url:  "",
+  url: "",
   anon: "",
+
   // ⚠️ Role key chỉ dùng nội bộ để test local (KHÔNG deploy public)
   role: ""
 };
 
 // 3️⃣ Cấu hình MAP (Apps Script + Sheet)
 const LOCAL_APP_MAP = {
-  APPS_URL:      "",
-  SHEET_ID:      "",
+  APPS_URL: "",
+  SHEET_ID: "",
   SHARED_SECRET: "",
-  CSV_URL:       "",
+  CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFLOQCFAQqdcQLP4Yxy0IAVk2f1GCs3nTpEdrITr5s47wOAdViQ3K0VkcQLQSRoLehUe8jFfXrvjkm/pub?output=csv",
 };
 
 // 4️⃣ Webhook nội bộ (ẩn khỏi body JSON)
@@ -32,11 +33,11 @@ const LOCAL_CLEANUP_CONFIG = {
 // 6️⃣ Hàm lấy cấu hình dùng chung
 window.getConfig = function (key) {
   switch (key) {
-    case "url":     return LOCAL_SUPABASE_CONFIG.url;
-    case "anon":    return LOCAL_SUPABASE_CONFIG.anon;
-    case "role":    return LOCAL_SUPABASE_CONFIG.role;
+    case "url": return LOCAL_SUPABASE_CONFIG.url;
+    case "anon": return LOCAL_SUPABASE_CONFIG.anon;
+    case "role": return LOCAL_SUPABASE_CONFIG.role;   // 👈 thêm để test local
     case "webhook": return LOCAL_WEBHOOK;
-    case "map":     return LOCAL_APP_MAP;
+    case "map": return LOCAL_APP_MAP;
     case "cleanup": return LOCAL_CLEANUP_CONFIG;
     case "render_api": return `${location.origin}/api_render/render.png`; // API render PNG
     default: return null;
@@ -77,11 +78,10 @@ window.getConfigCleanup = () => LOCAL_CLEANUP_CONFIG;
 
       // Fallback local (không gửi webhook ra ngoài)
       const body = JSON.stringify({
-        url:     LOCAL_SUPABASE_CONFIG.url,
-        anon:    LOCAL_SUPABASE_CONFIG.anon,
-        role:    LOCAL_SUPABASE_CONFIG.role,
-        // trả theo dạng object map để client cũ vẫn dùng được
-        map:     LOCAL_APP_MAP,
+        url: LOCAL_SUPABASE_CONFIG.url,
+        anon: LOCAL_SUPABASE_CONFIG.anon,
+        role: LOCAL_SUPABASE_CONFIG.role,
+        map: LOCAL_APP_MAP,
         cleanup: LOCAL_CLEANUP_CONFIG
       });
 
@@ -94,50 +94,4 @@ window.getConfigCleanup = () => LOCAL_CLEANUP_CONFIG;
     if (!origFetch) throw new Error("fetch not available");
     return origFetch(input, init);
   };
-})();
-
-// 9️⃣ Nạp cấu hình từ /api/getConfig (ghi đè LOCAL_* nếu server trả về)
-//    HỖ TRỢ CẢ 2 KIỂU: phẳng (APPS_URL, SHEET_ID, ...) và dạng map:{...}
-(async () => {
-  try {
-    const resp = await fetch("/api/getConfig", {
-      headers: { "x-internal-key": window.getInternalKey() }
-    });
-    if (!resp.ok) throw new Error("getConfig failed: " + resp.status);
-
-    const cfg = await resp.json();
-
-    // ---- Supabase (phẳng) ----
-    if (cfg.url)  LOCAL_SUPABASE_CONFIG.url  = cfg.url;
-    if (cfg.anon) LOCAL_SUPABASE_CONFIG.anon = cfg.anon;
-    if (cfg.role) LOCAL_SUPABASE_CONFIG.role = cfg.role;
-
-    // ---- MAP (phẳng) ----
-    if (cfg.APPS_URL)      LOCAL_APP_MAP.APPS_URL      = cfg.APPS_URL;
-    if (cfg.SHEET_ID)      LOCAL_APP_MAP.SHEET_ID      = cfg.SHEET_ID;
-    if (cfg.SHARED_SECRET) LOCAL_APP_MAP.SHARED_SECRET = cfg.SHARED_SECRET;
-    if (cfg.CSV_URL)       LOCAL_APP_MAP.CSV_URL       = cfg.CSV_URL;
-
-    // ---- MAP (tương thích ngược: nếu server trả dạng map:{...}) ----
-    if (cfg.map) {
-      if (cfg.map.APPS_URL)      LOCAL_APP_MAP.APPS_URL      = cfg.map.APPS_URL;
-      if (cfg.map.SHEET_ID)      LOCAL_APP_MAP.SHEET_ID      = cfg.map.SHEET_ID;
-      if (cfg.map.SHARED_SECRET) LOCAL_APP_MAP.SHARED_SECRET = cfg.map.SHARED_SECRET;
-      if (cfg.map.CSV_URL)       LOCAL_APP_MAP.CSV_URL       = cfg.map.CSV_URL;
-    }
-
-    // (tuỳ chọn) webhook: chỉ set nếu bạn muốn public trên client
-    // if (cfg.webhookUrl) LOCAL_WEBHOOK = cfg.webhookUrl;
-
-    console.log("✅ getConfig loaded:", {
-      url: LOCAL_SUPABASE_CONFIG.url,
-      anon: !!LOCAL_SUPABASE_CONFIG.anon,
-      role: !!LOCAL_SUPABASE_CONFIG.role,
-      APPS_URL: LOCAL_APP_MAP.APPS_URL,
-      SHEET_ID: LOCAL_APP_MAP.SHEET_ID,
-      CSV_URL: LOCAL_APP_MAP.CSV_URL
-    });
-  } catch (e) {
-    console.warn("⚠️ Không lấy được /api/getConfig — dùng LOCAL fallback:", e);
-  }
 })();
