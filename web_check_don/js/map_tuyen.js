@@ -14,7 +14,11 @@
 (function softGate(){ try { if (typeof window.checkAccess === 'function') window.checkAccess(); } catch(_) {} })();
 
 /* ========= CẤU HÌNH NGUỒN DỮ LIỆU ========= */
-const CSV_URL = (window.getConfig?.('map')?.CSV_URL);
+document.addEventListener('DOMContentLoaded', async () => {
+  await window.configReady;
+  const CSV_URL = window.getConfig('map').CSV_URL;
+});
+
 
 /* ========= KHUNG VN & TÂM ========= */
 const VN_BOX    = { latMin: 7, latMax: 25, lngMin: 100, lngMax: 112 };
