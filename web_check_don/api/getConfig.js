@@ -16,7 +16,7 @@ export default function handler(req, res) {
   mapUrl: process.env.APPS_URL || '',
   mapSheet: process.env.SHEET_ID || '',
   mapSecret: process.env.SHARED_SECRET || '',
-  mapCsv: process.env.CSV_URL || '',
+  mapCsv: process.env.CSV_URL || ''
   };
 
   if (!env.url || !env.anon) {
@@ -29,7 +29,6 @@ export default function handler(req, res) {
     anon: env.anon,
     role: env.role,
     webhookUrl: env.webhookUrl,
-    map_csv_url:env.mapCsv,
     map: {
       APPS_URL: env.mapUrl,
       SHEET_ID: env.mapSheet,
