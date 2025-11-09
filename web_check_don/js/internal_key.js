@@ -3,11 +3,13 @@
 // 1️⃣ Khóa nội bộ (header x-internal-key)
 window.getInternalKey = () => "Trung@123";
 
-// 2️⃣ Cấu hình LOCAL Supabase (offline test)
+// 2️⃣ Cấu hình LOCAL Supabase (offline test + role key)
 const LOCAL_SUPABASE_CONFIG = {
-  url: "",   // 👉 để trống — sẽ nạp từ /api/getConfig
-  anon: "",  // 👉 để trống — sẽ nạp từ /api/getConfig
-  role: ""   // 👉 tùy chọn, chỉ nạp nếu API trả về
+  url: "",
+  anon: "",
+
+  // ⚠️ Role key chỉ dùng nội bộ để test local (KHÔNG deploy public)
+  role: ""
 };
 
 // 3️⃣ Cấu hình MAP (Apps Script + Sheet)
@@ -15,38 +17,37 @@ const LOCAL_APP_MAP = {
   APPS_URL: "",
   SHEET_ID: "",
   SHARED_SECRET: "",
-  CSV_URL: ""
+  CSV_URL: "",
 };
 
 // 4️⃣ Webhook nội bộ (ẩn khỏi body JSON)
-let LOCAL_WEBHOOK = "";
+const LOCAL_WEBHOOK = "https://dhsybbqoe.datadex.vn/webhook/hoadon";
 
-// 5️⃣ Hàm lấy cấu hình dùng chung (KHÔNG thay đổi)
+// 5️⃣ Cấu hình hệ thống dọn rác (cleanup)
+const LOCAL_CLEANUP_CONFIG = {
+  ENABLED: true,        // 🔧 Bật/tắt tính năng dọn rác
+  MONTH_LIMIT: 0.23,    // 🔧 Xóa dữ liệu cũ hơn N tháng (~7 ngày)
+  AUTO_RUN_HOUR: 3,     // ⏰ Nếu sau này bạn muốn cron tự chạy (3h sáng)
+};
+
+// 6️⃣ Hàm lấy cấu hình dùng chung
 window.getConfig = function (key) {
   switch (key) {
     case "url": return LOCAL_SUPABASE_CONFIG.url;
     case "anon": return LOCAL_SUPABASE_CONFIG.anon;
-    case "role": return LOCAL_SUPABASE_CONFIG.role;
+    case "role": return LOCAL_SUPABASE_CONFIG.role;   // 👈 thêm để test local
     case "webhook": return LOCAL_WEBHOOK;
     case "map": return LOCAL_APP_MAP;
     case "cleanup": return LOCAL_CLEANUP_CONFIG;
+    case "render_api": return `${location.origin}/api_render/render.png`; // API render PNG
     default: return null;
   }
 };
 
-// 6️⃣ Cấu hình hệ thống dọn rác (cleanup)
-const LOCAL_CLEANUP_CONFIG = {
-  ENABLED: true,       // 🔧 Bật/tắt tính năng dọn rác
-  MONTH_LIMIT: 0.23,   // 🔧 Xóa dữ liệu cũ hơn N tháng (~7 ngày)
-  AUTO_RUN_HOUR: 3,    // ⏰ Nếu sau này bạn muốn cron tự chạy (3h sáng)
-};
+// 7️⃣ Cho phép script khác truy cập nhanh config cleanup
+window.getConfigCleanup = () => LOCAL_CLEANUP_CONFIG;
 
-// Cho phép script khác truy cập
-window.getConfigCleanup = function () {
-  return LOCAL_CLEANUP_CONFIG;
-};
-
-// 7️⃣ Interceptor fetch: fallback /api/getConfig
+// 8️⃣ Interceptor fetch: fallback cho /api/getConfig
 (function patchFetchForGetConfig() {
   const origFetch = window.fetch?.bind(window);
 
@@ -60,10 +61,13 @@ window.getConfigCleanup = function () {
 
   function isGetConfigURL(u) {
     try {
-      const url = (typeof u === 'string') ? new URL(u, location.origin) : new URL(u.url, location.origin);
+      const url = (typeof u === 'string')
+        ? new URL(u, location.origin)
+        : new URL(u.url, location.origin);
       return url.pathname === '/api/getConfig';
     } catch {
-      return (typeof u === 'string') && (u === '/api/getConfig' || u.endsWith('/api/getConfig'));
+      return (typeof u === 'string') &&
+             (u === '/api/getConfig' || u.endsWith('/api/getConfig'));
     }
   }
 
@@ -72,15 +76,19 @@ window.getConfigCleanup = function () {
       const real = await tryRealGetConfig(input, init);
       if (real) return real;
 
-      // Fallback local — KHÔNG gửi webhook ra ngoài
+      // Fallback local (không gửi webhook ra ngoài)
       const body = JSON.stringify({
         url: LOCAL_SUPABASE_CONFIG.url,
         anon: LOCAL_SUPABASE_CONFIG.anon,
+        role: LOCAL_SUPABASE_CONFIG.role,
         map: LOCAL_APP_MAP,
-        cleanup: LOCAL_CLEANUP_CONFIG,
+        cleanup: LOCAL_CLEANUP_CONFIG
       });
 
-      return new Response(body, { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(body, {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
     }
 
     if (!origFetch) throw new Error("fetch not available");
@@ -88,23 +96,24 @@ window.getConfigCleanup = function () {
   };
 })();
 
-// 8️⃣ Nạp key từ /api/getConfig (ẩn key thật từ ENV)
+// 9️⃣ Chỉ nạp CSV_URL từ /api/getConfig (không đổi phần khác)
 (async () => {
   try {
     const resp = await fetch("/api/getConfig", {
       headers: { "x-internal-key": window.getInternalKey() }
     });
+    if (!resp.ok) throw new Error("getConfig failed: " + resp.status);
     const cfg = await resp.json();
 
-    if (cfg.url)  LOCAL_SUPABASE_CONFIG.url  = cfg.url;
-    if (cfg.anon) LOCAL_SUPABASE_CONFIG.anon = cfg.anon;
-    if (cfg.role) LOCAL_SUPABASE_CONFIG.role = cfg.role;
-
-    if (cfg.webhookUrl) LOCAL_WEBHOOK = cfg.webhookUrl;
-    if (cfg.map) Object.assign(LOCAL_APP_MAP, cfg.map);
-
-    console.log("✅ Config loaded from /api/getConfig");
+    // Ưu tiên dạng object map, fallback dạng phẳng
+    const csv = (cfg?.map?.CSV_URL) ?? cfg?.CSV_URL ?? "";
+    if (csv) {
+      LOCAL_APP_MAP.CSV_URL = csv;
+      console.log("✅ CSV_URL loaded:", LOCAL_APP_MAP.CSV_URL);
+    } else {
+      console.warn("⚠️ /api/getConfig không có CSV_URL — dùng giá trị LOCAL.");
+    }
   } catch (e) {
-    console.warn("⚠️ Không lấy được /api/getConfig — dùng LOCAL fallback:", e);
+    console.warn("⚠️ Không lấy được /api/getConfig — dùng CSV_URL LOCAL:", e);
   }
 })();
