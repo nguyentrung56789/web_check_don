@@ -29,6 +29,7 @@ export default function handler(req, res) {
     anon: env.anon,
     role: env.role,
     webhookUrl: env.webhookUrl,
+    map_csv_url:env.mapCsv,
     map: {
       APPS_URL: env.mapUrl,
       SHEET_ID: env.mapSheet,
