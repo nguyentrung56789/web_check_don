@@ -272,8 +272,49 @@ function bindExpandButton(){
   });
 }
 
-/* ================== NHÂN VIÊN (cho chọn NV đóng) ================== */
-let EMPLOYEES=[]; let LAST_ACTIVE_TR=null;
+/* ================== NHÂN VIÊN (chọn NV giao) ================== */
+let EMPLOYEES=[]; 
+let LAST_ACTIVE_TR=null;
+
+/* Bỏ dấu tiếng Việt để so khớp tên linh hoạt */
+function vnFold(s){
+  return String(s||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().trim();
+}
+
+/* ===== Chỉ mục nhân viên: tra nhanh theo ID hoặc tên (không dấu) ===== */
+let EMP_BY_ID   = new Map();   // "216939" -> {id, ten_nv, sender_id}
+let EMP_BY_NAME = new Map();   // "phong be" -> {id, ten_nv, sender_id}
+
+function buildEmpIndex(){
+  EMP_BY_ID.clear(); EMP_BY_NAME.clear();
+  for (const e of (EMPLOYEES||[])) {
+    if (!e) continue;
+    const idStr = String(e.id ?? '').trim();
+    if (idStr) EMP_BY_ID.set(idStr, e);
+    const nameKey = vnFold(e.ten_nv);
+    if (nameKey) EMP_BY_NAME.set(nameKey, e);
+  }
+}
+
+/* Tìm NV theo nội dung gõ trong ô:
+   - Nếu toàn số -> coi là ID
+   - Ngược lại -> coi là TÊN (không dấu, không phân biệt hoa/thường)
+*/
+function findEmpByInput(inputVal){
+  const v = String(inputVal || '').trim();
+  if (!v) return null;
+
+  if (/^\d+$/.test(v)) return EMP_BY_ID.get(v) || null; // gõ ID
+
+  const key = vnFold(v); // gõ tên
+  let emp = EMP_BY_NAME.get(key);
+  if (emp) return emp;
+  for (const [k, e] of EMP_BY_NAME.entries()){ // bắt đầu bằng...
+    if (k.startsWith(key)) return e;
+  }
+  return null;
+}
+
 async function loadEmployees(){
   try{
     const {data,error}=await supa.from('kv_nhan_vien')
@@ -286,8 +327,11 @@ async function loadEmployees(){
   }
 }
 function renderEmpDatalist(){
-  const el=document.getElementById('empList');
-  if(el) el.innerHTML = EMPLOYEES.map(e=>`<option value="${esc(e.ten_nv)}"></option>`).join('');
+  const el = document.getElementById('empList');
+  if(!el) return;
+  el.innerHTML = (EMPLOYEES||[])
+    .map(e => `<option value="${esc(e.ten_nv || '')}"></option>`)
+    .join('');
 }
 
 /* ================== OVERLAY CHI TIẾT ================== */
@@ -316,7 +360,6 @@ function bindScanAndButtons(){
   const btnCheck=document.getElementById('btnCheck');
   const btnPrepTop=document.getElementById('btnPrepTop'); if(btnPrepTop) btnPrepTop.style.display='none';
 
-  // Placeholder theo yêu cầu
   if (scan) scan.placeholder = 'Quét mã hóa đơn/mã vận đơn';
 
   scan?.focus();
@@ -337,18 +380,16 @@ function bindScanAndButtons(){
   if($to)  $to.onchange  =()=>{ resetToPage1(); reload(); };
   document.getElementById('btnReload')?.addEventListener('click', ()=>{
     if($q) $q.value=''; if($from) $from.value=''; if($to) $to.value='';
-    setDefaultDateFilters(); // đặt lại 'to' = hôm nay nếu trống
+    setDefaultDateFilters();
     resetToPage1(); reload();
   });
 
-  // Lọc COD
   const selCOD = document.getElementById('filterLoaiDon');
   selCOD?.addEventListener('change', ()=>{
     FILTER_COD = selCOD.value; // '', 'true', 'false'
     resetToPage1(); reload();
   });
 
-  // Lọc Trạng thái
   const selTT = document.getElementById('filterTrangThai');
   selTT?.addEventListener('change', ()=>{
     FILTER_STATUS = selTT.value;  // đã lowercase
@@ -368,11 +409,26 @@ function renderStatusCell(ma, val){
            : low.includes('đang giao hàng') ? 'ok'
            : (low.includes('thành công')||low.includes('đã giao')||low==='done') ? 'ok'
            : (low.includes('chờ')||low.includes('đang')) ? 'wait'
-           : (low.includes('hủy')||low.includes('fail')) ? 'err' : '';
+           : (low.includes('hủy')||low.includes('huỷ')||low.includes('fail')) ? 'err' : '';
   const label = s || '—';
-  return `<span class="badge ${cls}">${esc(label)}</span>` +
-         (has ? ` <a class="link-soft" target="_blank" href="xem_trang_thai_don.html?ma_hd=${encodeURIComponent(ma)}">xem</a>` : '');
+
+  const badge = `<span class="badge ${cls}">${esc(label)}</span>`;
+
+  // Chỉ hiện link khi đúng trạng thái "Đã kiểm đơn"
+  const isDaKiemDon = low.replace(/\s+/g,' ').trim() === 'đã kiểm đơn';
+  const nutDaGiao = isDaKiemDon
+    ? ` <a href="#"
+           class="btn-da-giao"
+           data-ma="${esc(ma)}"
+           style="margin-left:6px; font-weight:500; color:#9ca3af; text-decoration:none; opacity:.7;">
+         Đã giao
+       </a>`
+    : '';
+
+  return badge + nutDaGiao;
 }
+
+
 
 /* === Helper: lấy tên NV hiện tại (ưu tiên sessionStorage, fallback localStorage) === */
 function getCurrentNVName(){
@@ -387,18 +443,61 @@ function getCurrentNVName(){
   return '';
 }
 
+/* === Cập nhật “Đã giao” → Giao thành công === */
+async function markDaGiao(ma_hd){
+  if (!supa) { showSlideBanner('❌ Supabase chưa khởi tạo', 'err'); return; }
+  if (!ma_hd){ showSlideBanner('❌ Thiếu mã hóa đơn', 'err'); return; }
+
+  // Lấy MÃ NV đăng nhập có sẵn
+  const nvId = (window.NV_ID)
+    || (function(){ try{ return JSON.parse(localStorage.getItem('nv')||'{}').ma_nv || ''; }catch{ return ''; }})()
+    || (function(){ try{ return JSON.parse(sessionStorage.getItem('nv_ctx')||'{}').ma_nv || ''; }catch{ return ''; }})();
+
+  if (!nvId){
+    showSlideBanner('⚠️ Thiếu mã nhân viên đăng nhập', 'err');
+    return;
+  }
+
+  const nowISO = new Date().toISOString();
+
+  try{
+    const { data, error } = await supa
+      .from(TABLE)
+      .update({
+        trang_thai: 'Giao thành công',
+        ngay_giao_thanh_cong: nowISO, // dùng cột này
+        nv_giao_hang: String(nvId)    // NV đăng nhập (mã)
+      })
+      .eq('ma_hd', ma_hd)
+      .select('*')
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (typeof window.updateRowFromRecord === 'function') {
+      window.updateRowFromRecord(data || { ma_hd, trang_thai:'Giao thành công', ngay_giao_thanh_cong: nowISO, nv_giao_hang: String(nvId) });
+    } else {
+      await reload();
+    }
+
+    showSlideBanner(`✅ Đơn ${esc(ma_hd)} → Giao thành công (NV: ${esc(nvId)})`, 'ok');
+  }catch(e){
+    showSlideBanner('❌ Lỗi cập nhật: ' + esc(e.message || e), 'err');
+  }
+}
+
+
 async function checkAndOpenByScan(code){
   try{
     setScanMsg('ok','Đang kiểm tra…');
 
-    // Cho phép dán nhầm URL có ?ma_hd=...
     const urlMatch = String(code).match(/[?&]ma_hd=([^&#]+)/i);
     if (urlMatch) code = decodeURIComponent(urlMatch[1]);
 
-    // 1) Ưu tiên tìm theo ma_hd
-    let { data, error } = await supa.from(TABLE).select('ma_hd').eq('ma_hd', code).maybeSingle();
+    // 1) Ưu tiên ma_hd
+    let { data } = await supa.from(TABLE).select('ma_hd').eq('ma_hd', code).maybeSingle();
 
-    // 2) Không thấy ma_hd -> thử ma_vd
+    // 2) fallback ma_vd
     if (!data || !data.ma_hd) {
       const alt = await supa.from(TABLE)
         .select('ma_hd, ma_vd')
@@ -413,36 +512,95 @@ async function checkAndOpenByScan(code){
       }
     }
 
-    // 3) Có kết quả -> mở form con
-const tenNV = getCurrentNVName();
-const qs = new URLSearchParams({ ma_hd: data.ma_hd });
+    const tenNV = getCurrentNVName();
+    const qs = new URLSearchParams({ ma_hd: data.ma_hd });
 
-// 🔍 Kiểm tra trạng thái đơn
-const { data: detail } = await supa.from(TABLE)
-  .select('trang_thai')
-  .eq('ma_hd', data.ma_hd)
-  .maybeSingle();
+    const { data: detail } = await supa.from(TABLE)
+      .select('trang_thai')
+      .eq('ma_hd', data.ma_hd)
+      .maybeSingle();
 
-const trangThai = (detail?.trang_thai || '').trim().toLowerCase();
-if (trangThai.includes('huỷ') || trangThai.includes('hủy')) {
-  showSlideBanner('⚠️ Đơn hàng này đã bị hủy — không thể mở chi tiết.', 'err');
-  setScanMsg('err', 'Đơn hàng đã hủy');
-  return; // ⛔ Dừng, không mở form
+    const trangThai = (detail?.trang_thai || '').trim().toLowerCase();
+    if (trangThai.includes('huỷ') || trangThai.includes('hủy')) {
+      showSlideBanner('⚠️ Đơn hàng này đã bị hủy — không thể mở chi tiết.', 'err');
+      setScanMsg('err', 'Đơn hàng đã hủy');
+      return;
+    }
+
+    if (tenNV) qs.set('nv_xn', tenNV);
+    setScanMsg('ok','Đã tìm thấy — mở chi tiết…');
+    openOverlay(`check_don_giao_hang.html?${qs.toString()}`);
+  } catch(err) {
+    showSlideBanner('❌ Lỗi: ' + esc(err.message || err), 'err');
+    setScanMsg('err','Đã xảy ra lỗi');
+  }
 }
 
-if (tenNV) qs.set('nv_xn', tenNV);
-setScanMsg('ok','Đã tìm thấy — mở chi tiết…');
-openOverlay(`check_don_giao_hang.html?${qs.toString()}`);
-} catch(err) {
-  showSlideBanner('❌ Lỗi: ' + esc(err.message || err), 'err');
-  setScanMsg('err','Đã xảy ra lỗi');
+/* ================== WEBHOOK HELPER ================== */
+function getWebhookUrl(){
+  try { return String((window.getConfig && window.getConfig('webhook')) || ''); }
+  catch { return ''; }
 }
+function getOrderInfoFromRow(tr){
+  if (!tr) return { ma_hd:'', ten_kh:'', dia_chi:'' };
+  const ma_hd  = String(tr.getAttribute('data-ma') || '').trim();
+  const ten_kh = (tr.querySelector('[data-cell="ten_kh"]')?.textContent || '').trim();
+  const dia_chi = String(tr.getAttribute('data-diachi') || '').trim();
+  return { ma_hd, ten_kh, dia_chi };
 }
 
+/**
+ * Gửi webhook giao hàng DIGIAOHANG.
+ * YÊU CẦU: url webhook; có ma_nv, ma_hd, ten_kh, sender_id; dia_chi optional
+ * @returns {Promise<boolean>} true nếu gửi OK, false nếu lỗi
+ */
+async function sendGiaohangWebhook({ ma_nv, ma_hd, ten_kh, sender_id, dia_chi }) {
+  const url = getWebhookUrl();
+  if (!url) { showSlideBanner('❌ Thiếu webhook', 'err'); return false; }
+  if (!ma_hd) { showSlideBanner('❌ Thiếu mã hóa đơn (ma_hd)', 'err'); return false; }
+  if (!ma_nv) { showSlideBanner('❌ Thiếu mã nhân viên (ma_nv)', 'err'); return false; }
+  if (!sender_id) { showSlideBanner('⚠️ Nhân viên chưa đăng ký gửi tin (thiếu sender_id)', 'err'); return false; }
+
+  try {
+    const payload = {
+      action: 'digiaohang',
+      ma_nv: String(ma_nv),
+      ma_hd: String(ma_hd),
+      ten_kh: String(ten_kh || ''),
+      sender_id: String(sender_id),
+      dia_chi: String(dia_chi || '')
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      showSlideBanner('❌ Gửi tin thất bại: ' + (t || res.status), 'err');
+      return false;
+    }
+
+    showSlideBanner('✅ Đã gửi tin nhắn giao hàng (digiaohang)', 'ok');
+    try {
+      if (typeof pushNotify === 'function') {
+        const kh = ten_kh ? ` • KH: <i>${esc(ten_kh)}</i>` : '';
+        const dc = dia_chi ? ` • ĐC: <i>${esc(dia_chi)}</i>` : '';
+        pushNotify(`✉️ digiaohang • Đơn <b>${esc(String(ma_hd))}</b> • NV <i>${esc(String(ma_nv))}</i>${kh}${dc}`);
+      }
+    } catch {}
+    return true;
+  } catch (e) {
+    showSlideBanner('❌ Lỗi kết nối webhook', 'err');
+    return false;
+  }
+}
 
 /* ================== BẢNG & HÀNH ĐỘNG ================== */
 function bindTableActions(){
-  const tb=document.getElementById('tbody');
+  const tb = document.getElementById('tbody');
 
   tb?.addEventListener('change', (e)=>{
     const cb = e.target.closest?.('.row-chk');
@@ -466,8 +624,46 @@ function bindTableActions(){
     tr.classList.add('active-row'); LAST_ACTIVE_TR=tr;
   });
 
-  // GỬI TIN từng dòng (thay cho giao hàng)
-  tb?.addEventListener
+  // ===== GỬI TIN từng dòng → webhook action="digiaohang" + kiểm tra sender_id =====
+// ===== NÚT/LINK “Đã giao” → cập nhật trạng thái =====
+tb?.addEventListener('click', async (e)=>{
+  const btnGiao = e.target.closest?.('.btn-da-giao');
+  if (!btnGiao) return;
+
+  e.preventDefault(); // vì là <a href="#">
+  const ma = btnGiao.getAttribute('data-ma') || '';
+  if (!ma){ showSlideBanner('❌ Không xác định được mã hóa đơn', 'err'); return; }
+
+  // "disable" cho <a>
+  const old = btnGiao.textContent;
+  btnGiao.dataset.busy = '1';
+  btnGiao.style.pointerEvents = 'none';
+  btnGiao.style.opacity = '.5';
+  btnGiao.textContent = 'Đang cập nhật…';
+
+  try{
+    await markDaGiao(ma);
+  } finally {
+    btnGiao.textContent = old;
+    btnGiao.style.pointerEvents = '';
+    btnGiao.style.opacity = '';
+    delete btnGiao.dataset.busy;
+  }
+});
+
+
+  // ===== NÚT “Đã giao” → cập nhật trạng thái/ghi log nhân viên/giờ giao =====
+  tb?.addEventListener('click', async (e)=>{
+    const btnGiao = e.target.closest?.('.btn-da-giao');
+    if (!btnGiao) return;
+
+    const ma = btnGiao.getAttribute('data-ma') || '';
+    if (!ma){ showSlideBanner('❌ Không xác định được mã hóa đơn', 'err'); return; }
+
+    btnGiao.disabled = true;
+    const old = btnGiao.textContent; btnGiao.textContent = 'Đang cập nhật…';
+    await markDaGiao(ma).finally(()=>{ btnGiao.disabled = false; btnGiao.textContent = old; });
+  });
 }
 
 /* ======= Header checkbox & đếm theo dòng đang HIỂN THỊ ======= */
@@ -531,10 +727,7 @@ function bindFilterCheckedOnly(){
   });
 }
 
-/* ================== XEM BẢN ĐỒ TUYẾN (ưu tiên DOM, fallback Supabase) ================== */
-/* ================== XEM BẢN ĐỒ TUYẾN — mở form overlay & lọc ma_kh ================== */
-
-/* Lấy danh sách ma_hd đang chọn (ổn định theo checkbox + chỉ dòng đang hiển thị) */
+/* ================== XEM BẢN ĐỒ TUYẾN (overlay) ================== */
 function getCheckedOrderIds() {
   const rows = [...document.querySelectorAll('#tbody tr[data-ma] .row-chk:checked')]
     .map(cb => cb.closest('tr[data-ma]'))
@@ -548,7 +741,6 @@ function getCheckedOrderIds() {
   return out;
 }
 
-/* Lấy ma_kh trực tiếp từ DOM (data-kh đã render trong reload()) */
 function getCheckedCustomerIdsFromDOM(){
   const rows = [...document.querySelectorAll('#tbody tr[data-ma] .row-chk:checked')]
     .map(cb => cb.closest('tr[data-ma]'))
@@ -562,7 +754,6 @@ function getCheckedCustomerIdsFromDOM(){
   return ids;
 }
 
-/* Preview ngắn cho danh sách ma_kh (banner + notify nếu có) */
 function previewMAKH(ids){
   const total = Array.isArray(ids) ? ids.length : 0;
   if (!total){
@@ -579,19 +770,17 @@ function previewMAKH(ids){
   } catch {}
 }
 
-/* Mở overlay map_tuyen.html và TIÊM query “ma: …” vào ô #q của map */
 async function openMapOverlayInjected(maList){
   const ids = (Array.isArray(maList)?maList:[])
     .map(s=>String(s||'').trim()).filter(Boolean);
   if (!ids.length){ alert('Không có mã khách.'); return; }
 
-  const q = 'ma: ' + ids.join(' ');  // ✅ chỉ lọc theo mã khách
+  const q = 'ma: ' + ids.join(' ');
 
   const ov=document.getElementById('detailOverlay');
   const fr=document.getElementById('detailFrame');
   if(!ov || !fr){ alert('Thiếu overlay/frame (#detailOverlay, #detailFrame).'); return; }
 
-  // Chuẩn bị URL map (kèm token nếu có)
   const target = new URL('map_tuyen.html', location.href);
   target.searchParams.set('no_logo', '1');
 
@@ -602,11 +791,9 @@ async function openMapOverlayInjected(maList){
   }
   if (token) target.searchParams.set('token', token);
 
-  // Hiện overlay trước, rồi gắn src
   fr.removeAttribute('src');
   ov.style.display='flex';
 
-  // Hàm TIÊM q vào input #q trên trang map rồi phát sự kiện input
   const inject = ()=>{
     try{
       const doc = fr.contentWindow?.document;
@@ -621,26 +808,21 @@ async function openMapOverlayInjected(maList){
 
   fr.onload = ()=>{
     if (inject()) return;
-    // Map có thể khởi tạo chậm → retry một chút
     let n=0, max=20;
     const iv = setInterval(()=>{ if (inject() || ++n>=max) clearInterval(iv); }, 150);
   };
 
   fr.src = target.toString();
 
-  // Preview & banner
   previewMAKH(ids);
   try { showSlideBanner('🗺️ Đang mở bản đồ tuyến (overlay)…', 'ok'); } catch {}
   try { if (typeof pushNotify==='function') pushNotify('🗺️ Mở map (overlay) với truy vấn: <code>'+q.replace(/</g,'&lt;')+'</code>'); } catch {}
 }
 
-/* Handler chính: gom ma_kh (DOM → fallback Supabase) rồi mở overlay map */
 async function handleViewRouteOverlay(){
   try{
-    // 1) ƯU TIÊN: đọc ma_kh từ DOM (nhanh & đúng thứ tự chọn)
     let ids = getCheckedCustomerIdsFromDOM();
 
-    // 2) FALLBACK: nếu DOM chưa có/không đủ → truy vấn Supabase từ ma_hd
     if (!ids.length){
       const selHD = getCheckedOrderIds();
       if (!selHD.length){ alert('⚠️ Chưa chọn đơn nào!'); return; }
@@ -665,7 +847,6 @@ async function handleViewRouteOverlay(){
       return;
     }
 
-    // 3) ✅ MỞ MAP TRONG OVERLAY + ép filter chỉ theo MÃ
     await openMapOverlayInjected(ids);
 
   }catch(e){
@@ -673,8 +854,6 @@ async function handleViewRouteOverlay(){
     alert('❌ Lỗi khi mở bản đồ tuyến (overlay): ' + (e.message || e));
   }
 }
-
-/* Bind nút xem bản đồ → mở overlay */
 function bindViewRouteButton(){
   const btn = document.getElementById('btnViewRoute');
   if(!btn) return;
@@ -683,7 +862,6 @@ function bindViewRouteButton(){
     handleViewRouteOverlay();
   });
 }
-
 
 /* ================== CẬP NHẬT ĐƠN HÀNG (WEBHOOK) ================== */
 async function onCapNhatDon(){
@@ -746,8 +924,7 @@ async function fetchDistinctStatuses(qtxt, from, to){
   if(hi) q=q.lt('ngay',hi);
   if (FILTER_COD === 'true') q = q.eq('don_hang', true);
   else if (FILTER_COD === 'false') q = q.or('don_hang.eq.false,don_hang.is.null');
-  const { data, error } = await q;
-  if (error) return [];
+  const { data } = await q;
   const set = new Set((data||[]).map(r => (r.trang_thai||'').toString().trim()).filter(Boolean));
   return [...set];
 }
@@ -763,7 +940,6 @@ async function reload(){
 
   if(tb) tb.innerHTML='<tr><td colspan="11" class="empty">Đang tải…</td></tr>';
 
-  // XÂY DỰNG TRUY VẤN
   let q = supa.from(TABLE).select('*', { count: 'exact' });
 
   if(qtxt) q=q.or(`ma_hd.ilike.%${qtxt}%,ten_kh.ilike.%${qtxt}%`);
@@ -772,14 +948,12 @@ async function reload(){
   if(lo) q=q.gte('ngay',lo);
   if(hi) q=q.lt('ngay',hi);
 
-  // Lọc COD đúng kiểu boolean
   if (FILTER_COD === 'true') {
-    q = q.eq('don_hang', true);                      // chỉ COD
+    q = q.eq('don_hang', true);
   } else if (FILTER_COD === 'false') {
-    q = q.or('don_hang.eq.false,don_hang.is.null');  // không COD (kể cả null)
+    q = q.or('don_hang.eq.false,don_hang.is.null');
   }
 
-  // Lọc Trạng thái server-side để count/page đúng (case-insensitive, gần-exact)
   if (FILTER_STATUS) {
     q = q.ilike('trang_thai', `%${FILTER_STATUS}%`);
   }
@@ -801,7 +975,6 @@ async function reload(){
     return;
   }
 
-  // Dropdown trạng thái theo filter hiện tại (không theo trang)
   const distinctStatuses = await fetchDistinctStatuses(qtxt, from, to);
   renderStatusFilterOptions(distinctStatuses);
 
@@ -814,14 +987,18 @@ async function reload(){
   }
 
   if (tb) tb.innerHTML = data.map(r=>{
-    const maRaw = r.ma_hd || ''; const ma = esc(maRaw);
-    const checked = SELECTED.has(maRaw) ? 'checked' : ''; const selCls  = checked ? ' is-selected' : '';
+    const maRaw = r.ma_hd || '';
+    const ma = esc(maRaw);
+    const checked = SELECTED.has(maRaw) ? 'checked' : '';
+    const selCls  = checked ? ' is-selected' : '';
+
     return `
       <tr class="${selCls}" data-ma="${maRaw}" data-kh="${esc(r.ma_kh||'')}"
           data-xacnhan="${esc(r.nv_check_don||'')}"
           data-dong="${esc(r.nv_dong_hang||'')}"
           data-prepdate="${esc(r.ngay_chuan_bi_don||'')}"
-          data-dongdate="${esc(r.ngay_dong_hang||'')}">
+          data-dongdate="${esc(r.ngay_dong_hang||'')}"
+          data-diachi="${esc(r.dia_chi || r.diachi || '')}">
         <td class="sel"><input type="checkbox" class="row-chk" ${checked} /></td>
         <td data-cell="ma_hd">${ma}</td>
         <td class="col-don-hang" data-cell="don_hang" style="text-align:center">${renderDonHangCell(r.don_hang, maRaw)}</td>
@@ -829,13 +1006,22 @@ async function reload(){
         <td data-cell="ten_kh">${esc(r.ten_kh||'')}</td>
         <td data-cell="tong_tien" class="right">${r.tong_tien!=null ? Number(r.tong_tien).toLocaleString('vi-VN') : ''}</td>
         <td data-cell="trang_thai">${renderStatusCell(maRaw, r.trang_thai)}</td>
-        <td data-cell="ngay_xn" class="col-ngay-xn">${fmtDateHTML(r.ngay_check_don)}</td>
+
+        <td data-cell="ngay_xn" class="col-ngay-xn" style="min-width:180px;white-space:nowrap">
+          ${fmtDateHTML(r.ngay_check_don)}
+        </td>
+
         <td data-cell="nv_xn" class="col-nv-xn">${esc(r.nv_check_don||'')}</td>
+
         <td data-cell="nv_dong" class="col-nv-dh">
           <input class="emp-input" list="empList" data-ma="${ma}"
+                 style="min-width:160px"
                  placeholder="— chọn / tìm NV —" value="${esc(r.nv_dong_hang||'')}">
         </td>
-        <td data-cell="btn_send">${!r.ngay_dong_hang ? `<button class="btn-send-row" data-ma="${ma}">Gửi tin</button>` : ''}</td>
+
+        <td data-cell="btn_send">
+          ${!r.ngay_dong_hang ? `<button class="btn-send-row" data-ma="${ma}">Gửi tin</button>` : ''}
+        </td>
       </tr>`;
   }).join('');
 
@@ -850,7 +1036,6 @@ async function init(){
   try{
     const nameCell = document.getElementById('tblName'); if(nameCell) nameCell.textContent = TABLE;
 
-    // guard: supabase-js đã load?
     if (!window.supabase || !window.supabase.createClient) {
       setState(false, 'Thiếu supabase-js (chưa load script @supabase/supabase-js@2 trước file app)');
       console.error('[INIT] supabase-js not found');
@@ -882,17 +1067,15 @@ async function init(){
     return;
   }
 
-  // tự điền ngày hôm nay nếu input trống
   const capEl = document.getElementById('capDate');
   if (capEl && !capEl.value) capEl.value = todayYMD();
-  setDefaultDateFilters(); // mặc định 'to' = hôm nay nếu đang trống
+  setDefaultDateFilters();
 
-  // load các state lưu cục bộ
   loadSelected(); loadFilterState(); loadStatusFilter();
 
   applyExpandState(); bindExpandButton(); showUserBar();
   bindPager();
-  await loadEmployees(); renderEmpDatalist();
+  await loadEmployees(); buildEmpIndex(); renderEmpDatalist();
   bindScanAndButtons(); bindOverlayControls();
   bindTableActions(); bindHeaderSelectAll();
   bindFilterCheckedOnly(); bindViewRouteButton();
@@ -983,6 +1166,7 @@ document.addEventListener('DOMContentLoaded', init);
     if (items.length > 100) list.removeChild(items[items.length-1]);
     bumpBell(1);
   }
+  window.pushNotify = window.pushNotify || pushNotify;
 
   function updateRowFromRecord(r){
     if(!r || !r.ma_hd) return false;
@@ -1018,7 +1202,6 @@ document.addEventListener('DOMContentLoaded', init);
     return true;
   }
 
-  // Không reload khi có tín hiệu realtime
   function setupRealtime(){
     if (!supa) return false;
     const ch = supa.channel('rt-don_hang')
@@ -1064,7 +1247,6 @@ document.addEventListener('DOMContentLoaded', init);
     else pushNotify(`⚠️ Ngày cập nhật không hợp lệ`);
   });
 
-  // Dọn kết nối khi rời trang
   window.addEventListener('beforeunload', ()=>{
     try { window.__DON_HANG_RT_CH__?.unsubscribe(); } catch {}
   });
