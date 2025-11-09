@@ -17,7 +17,7 @@ const LOCAL_APP_MAP = {
   apps_url: "",
   sheet_id: "",
   shared_secret: "",
-  csv_url: "",
+  csv_url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFLOQCFAQqdcQLP4Yxy0IAVk2f1GCs3nTpEdrITr5s47wOAdViQ3K0VkcQLQSRoLehUe8jFfXrvjkm/pub?output=csv",
 };
 
 // 4️⃣ Webhook nội bộ (ẩn khỏi body JSON)
