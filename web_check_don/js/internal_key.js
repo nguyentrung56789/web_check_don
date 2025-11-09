@@ -7,9 +7,8 @@ window.getInternalKey = () => "Trung@123";
 const LOCAL_SUPABASE_CONFIG = {
   url: "",
   anon: "",
-
-  // ⚠️ Role key chỉ dùng nội bộ để test local (KHÔNG deploy public)
-  role: ""
+  role: "",
+  csv_url: ""
 };
 
 // 3️⃣ Cấu hình MAP (Apps Script + Sheet)
@@ -17,7 +16,7 @@ const LOCAL_APP_MAP = {
   apps_url: "",
   sheet_id: "",
   shared_secret: "",
-  csv_url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFLOQCFAQqdcQLP4Yxy0IAVk2f1GCs3nTpEdrITr5s47wOAdViQ3K0VkcQLQSRoLehUe8jFfXrvjkm/pub?output=csv",
+  //csv_url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFLOQCFAQqdcQLP4Yxy0IAVk2f1GCs3nTpEdrITr5s47wOAdViQ3K0VkcQLQSRoLehUe8jFfXrvjkm/pub?output=csv",
 };
 
 // 4️⃣ Webhook nội bộ (ẩn khỏi body JSON)
@@ -40,7 +39,7 @@ window.getConfig = function (key) {
     case "apps_url": return LOCAL_APP_MAP.apps_url;
     case "sheet_id": return LOCAL_APP_MAP.sheet_id;
     case "shared_secret": return LOCAL_APP_MAP.shared_secret;
-    case "csv_url": return LOCAL_APP_MAP.csv_url;
+    case "csv_url": return LOCAL_SUPABASE_CONFIG.csv_url;
     case "cleanup": return LOCAL_CLEANUP_CONFIG;
     case "render_api": return `${location.origin}/api_render/render.png`; // API render PNG
     default: return null;
@@ -87,7 +86,7 @@ window.getConfigCleanup = () => LOCAL_CLEANUP_CONFIG;
         apps_url: LOCAL_APP_MAP.apps_url,
         sheet_id: LOCAL_APP_MAP.sheet_id,
         shared_secret: LOCAL_APP_MAP.shared_secret,
-        csv_url: LOCAL_APP_MAP.csv_url,
+        csv_url: LOCAL_SUPABASE_CONFIG.csv_url,
         cleanup: LOCAL_CLEANUP_CONFIG
       });
 
