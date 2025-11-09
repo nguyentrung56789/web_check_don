@@ -91,7 +91,7 @@ window.getConfigCleanup = () => LOCAL_CLEANUP_CONFIG;
         sheet_id:      LOCAL_APP_MAP.sheet_id,
         shared_secret: LOCAL_APP_MAP.shared_secret,
         csv_url:       LOCAL_APP_MAP.csv_url,
-
+        webhookUrl: LOCAL_WEBHOOK,
         cleanup: LOCAL_CLEANUP_CONFIG
       });
 
