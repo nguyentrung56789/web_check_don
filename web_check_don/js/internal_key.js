@@ -14,10 +14,10 @@ const LOCAL_SUPABASE_CONFIG = {
 
 // 3️⃣ Cấu hình MAP (Apps Script + Sheet)
 const LOCAL_APP_MAP = {
-  APPS_URL: "",
-  SHEET_ID: "",
-  SHARED_SECRET: "",
-  CSV_URL: "",
+  apps_url: "",
+  sheet_id: "",
+  shared_secret: "",
+  csv_url: "",
 };
 
 // 4️⃣ Webhook nội bộ (ẩn khỏi body JSON)
@@ -37,7 +37,10 @@ window.getConfig = function (key) {
     case "anon": return LOCAL_SUPABASE_CONFIG.anon;
     case "role": return LOCAL_SUPABASE_CONFIG.role;   // 👈 thêm để test local
     case "webhook": return LOCAL_WEBHOOK;
-    case "map": return LOCAL_APP_MAP;
+    case "apps_url": return LOCAL_APP_MAP.apps_url;
+    case "sheet_id": return LOCAL_APP_MAP.sheet_id;
+    case "shared_secret": return LOCAL_APP_MAP.shared_secret;
+    case "csv_url": return LOCAL_APP_MAP.csv_url;
     case "cleanup": return LOCAL_CLEANUP_CONFIG;
     case "render_api": return `${location.origin}/api_render/render.png`; // API render PNG
     default: return null;
@@ -81,7 +84,10 @@ window.getConfigCleanup = () => LOCAL_CLEANUP_CONFIG;
         url: LOCAL_SUPABASE_CONFIG.url,
         anon: LOCAL_SUPABASE_CONFIG.anon,
         role: LOCAL_SUPABASE_CONFIG.role,
-        map: LOCAL_APP_MAP,
+        apps_url: return LOCAL_APP_MAP.apps_url,
+        sheet_id: return LOCAL_APP_MAP.sheet_id,
+        shared_secret: return LOCAL_APP_MAP.shared_secret,
+        csv_url: return LOCAL_APP_MAP.csv_url,
         cleanup: LOCAL_CLEANUP_CONFIG
       });
 
