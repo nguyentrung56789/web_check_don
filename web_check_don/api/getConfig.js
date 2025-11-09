@@ -30,10 +30,10 @@ export default function handler(req, res) {
     role: env.role,
     webhookUrl: env.webhookUrl,
     
-      APPS_URL: env.mapUrl,
-      SHEET_ID: env.mapSheet,
-      SHARED_SECRET: env.mapSecret,
-      CSV_URL: env.mapCsv,
+      apps_url: env.mapUrl,
+      sheet_id: env.mapSheet,
+      shared_secret: env.mapSecret,
+      csv_url: env.mapCsv,
    
   });
 }
