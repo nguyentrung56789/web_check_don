@@ -340,7 +340,27 @@ function bindOverlayControls(){
   document.getElementById('detailClose')?.addEventListener('click', closeOverlay);
   document.getElementById('detailOpenNew')?.addEventListener('click', ()=>{ if(fr?.src) window.open(fr.src,'_blank'); });
   ov?.addEventListener('click',e=>{ if(e.target.id==='detailOverlay') closeOverlay(); });
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ const open=ov && getComputedStyle(ov).display!=='none'; if(open) closeOverlay(); }});
+  document.addEventListener('keydown', (e) => {
+  // Chỉ xử lý phím Escape
+  if (e.key !== 'Escape') return;
+
+  // Bỏ qua nếu đang gõ trong input/textarea/select hoặc contenteditable
+  const t = e.target;
+  const isTyping = t && (
+    t.tagName === 'INPUT' ||
+    t.tagName === 'TEXTAREA' ||
+    t.tagName === 'SELECT' ||
+    t.isContentEditable
+  );
+  if (isTyping) return;
+
+  // Đang mở overlay thì đóng
+  if (ov && getComputedStyle(ov).display !== 'none') {
+    e.preventDefault();
+    closeOverlay();
+  }
+});
+
 }
 function openOverlay(url){
   const ov=document.getElementById('detailOverlay'); const fr=document.getElementById('detailFrame');
