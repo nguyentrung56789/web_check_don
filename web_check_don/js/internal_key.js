@@ -5,21 +5,22 @@ window.getInternalKey = () => "Trung@123";
 
 // 2️⃣ Cấu hình LOCAL Supabase (offline test + role key)
 const LOCAL_SUPABASE_CONFIG = {
-  url: "",
+  url:  "",
   anon: "",
   role: ""
 };
 
 // 3️⃣ Cấu hình MAP (Apps Script + Sheet) — key phẳng
 const LOCAL_APP_MAP = {
-  apps_url: "",
-  sheet_id: "",
+  apps_url:      "",
+  sheet_id:      "",
   shared_secret: "",
-  csv_url: "" // có thể điền sẵn link CSV để fallback khi server không trả về
+  csv_url:       ""    // có thể điền sẵn link CSV để fallback khi server không trả về
 };
 
 // 4️⃣ Webhook nội bộ (ẩn khỏi body JSON)
-const LOCAL_WEBHOOK = "";
+// ⚠️ PHẢI là let để có thể cập nhật từ /api/getConfig
+let LOCAL_WEBHOOK = "";
 
 // 5️⃣ Cấu hình hệ thống dọn rác (cleanup)
 const LOCAL_CLEANUP_CONFIG = {
@@ -86,12 +87,15 @@ window.getConfigCleanup = () => LOCAL_CLEANUP_CONFIG;
         anon: LOCAL_SUPABASE_CONFIG.anon,
         role: LOCAL_SUPABASE_CONFIG.role,
 
-        // map (phẳng)
+        // MAP (phẳng)
         apps_url:      LOCAL_APP_MAP.apps_url,
         sheet_id:      LOCAL_APP_MAP.sheet_id,
         shared_secret: LOCAL_APP_MAP.shared_secret,
         csv_url:       LOCAL_APP_MAP.csv_url,
+
+        // Giữ đúng tên field server đang trả
         webhookUrl: LOCAL_WEBHOOK,
+
         cleanup: LOCAL_CLEANUP_CONFIG
       });
 
@@ -106,6 +110,7 @@ window.getConfigCleanup = () => LOCAL_CLEANUP_CONFIG;
   };
 })();
 
+// 9️⃣ Nạp cấu hình runtime từ server (nếu có) rồi ghi vào LOCAL_*
 window.configReady = (async () => {
   try {
     const resp = await fetch("/api/getConfig", {
@@ -125,7 +130,7 @@ window.configReady = (async () => {
     if (cfg.shared_secret) LOCAL_APP_MAP.shared_secret = cfg.shared_secret;
     if (cfg.csv_url)       LOCAL_APP_MAP.csv_url       = cfg.csv_url;
 
-    // 🔔 Webhook
+    // 🔔 Webhook (tên field từ server: webhookUrl)
     if (cfg.webhookUrl)    LOCAL_WEBHOOK = cfg.webhookUrl;
 
     // Cleanup (nếu có)
@@ -137,3 +142,21 @@ window.configReady = (async () => {
   }
 })();
 
+// 🔧 Tiện ích kiểm tra nhanh (tuỳ chọn)
+window.dumpConfig = () => ({
+  url: window.getConfig('url'),
+  anon: window.getConfig('anon'),
+  role: window.getConfig('role'),
+  apps_url: window.getConfig('apps_url'),
+  sheet_id: window.getConfig('sheet_id'),
+  csv_url: window.getConfig('csv_url'),
+  webhook: window.getConfig('webhook'),
+  cleanup: window.getConfig('cleanup')
+});
+window.pingWebhook = async () => {
+  const u = window.getConfig('webhook');
+  if (!u) { alert('Thiếu webhook'); return false; }
+  const r = await fetch(u, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'ping'})});
+  alert(r.ok ? '✅ Webhook OK' : ('❌ Webhook lỗi ' + r.status));
+  return r.ok;
+};
