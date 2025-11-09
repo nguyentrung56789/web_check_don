@@ -14,7 +14,53 @@
 (function softGate(){ try { if (typeof window.checkAccess === 'function') window.checkAccess(); } catch(_) {} })();
 
 /* ========= CẤU HÌNH NGUỒN DỮ LIỆU ========= */
-const CSV_URL = window.getConfig('csv_url');
+// ⛳️ 1) BỎ dòng cũ:
+// const CSV_URL = (window.getConfig?.('map')?.CSV_URL);
+
+// ⛳️ 2) THÊM biến CSV_URL rỗng (để set sau khi configReady xong):
+let CSV_URL = "";
+
+// ...giữ nguyên toàn bộ code của bạn...
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // 🔐 Chờ internal_key.js tải xong config từ /api/getConfig
+  if (window.configReady?.then) {
+    try { await window.configReady; } catch {}
+  }
+
+  // 👉 Lấy csv_url theo key phẳng từ getConfig
+  CSV_URL = window.getConfig('csv_url') || "";  // nếu server không trả -> dùng LOCAL (nếu bạn đã set sẵn)
+
+  if (!CSV_URL) {
+    alert("CSV_URL chưa được cấu hình!");
+    return;
+  }
+
+  // Gọi các init bạn đang làm sẵn (giữ nguyên)
+  bindUI();
+  renderConfigPanel();
+  applyFilterFromURL();
+
+  if ('speechSynthesis' in window) {
+    try { await __loadVoicesOnce(); } catch {}
+  }
+
+  const nv = getNVFromStorage();
+  if (nv?.ma_nv && localStorage.getItem('my_loc_auto') === '1') {
+    let granted = false;
+    try {
+      if (navigator.permissions?.query) {
+        const perm = await navigator.permissions.query({ name: 'geolocation' });
+        granted = (perm.state === 'granted');
+      }
+    } catch {}
+    if (granted) startMyLocation(nv.ma_nv);
+  }
+
+  // Cuối cùng: tải CSV
+  await loadCSV();
+});
+
 
 
 
