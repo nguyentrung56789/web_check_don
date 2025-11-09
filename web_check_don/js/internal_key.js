@@ -7,16 +7,15 @@ window.getInternalKey = () => "Trung@123";
 const LOCAL_SUPABASE_CONFIG = {
   url: "",
   anon: "",
-  role: "",
-  csv_url: ""
+  role: ""
 };
 
-// 3️⃣ Cấu hình MAP (Apps Script + Sheet)
+// 3️⃣ Cấu hình MAP (Apps Script + Sheet) — key phẳng
 const LOCAL_APP_MAP = {
   apps_url: "",
   sheet_id: "",
   shared_secret: "",
-  //csv_url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFLOQCFAQqdcQLP4Yxy0IAVk2f1GCs3nTpEdrITr5s47wOAdViQ3K0VkcQLQSRoLehUe8jFfXrvjkm/pub?output=csv",
+  csv_url: "" // có thể điền sẵn link CSV để fallback khi server không trả về
 };
 
 // 4️⃣ Webhook nội bộ (ẩn khỏi body JSON)
@@ -26,30 +25,33 @@ const LOCAL_WEBHOOK = "";
 const LOCAL_CLEANUP_CONFIG = {
   ENABLED: true,        // 🔧 Bật/tắt tính năng dọn rác
   MONTH_LIMIT: 0.23,    // 🔧 Xóa dữ liệu cũ hơn N tháng (~7 ngày)
-  AUTO_RUN_HOUR: 3,     // ⏰ Nếu sau này bạn muốn cron tự chạy (3h sáng)
+  AUTO_RUN_HOUR: 3      // ⏰ Nếu sau này bạn muốn cron tự chạy (3h sáng)
 };
 
-// 6️⃣ Hàm lấy cấu hình dùng chung
+// 6️⃣ Hàm lấy cấu hình dùng chung (trả về theo key phẳng)
 window.getConfig = function (key) {
   switch (key) {
-    case "url": return LOCAL_SUPABASE_CONFIG.url;
-    case "anon": return LOCAL_SUPABASE_CONFIG.anon;
-    case "role": return LOCAL_SUPABASE_CONFIG.role;   // 👈 thêm để test local
-    case "webhook": return LOCAL_WEBHOOK;
-    case "apps_url": return LOCAL_APP_MAP.apps_url;
-    case "sheet_id": return LOCAL_APP_MAP.sheet_id;
+    case "url":           return LOCAL_SUPABASE_CONFIG.url;
+    case "anon":          return LOCAL_SUPABASE_CONFIG.anon;
+    case "role":          return LOCAL_SUPABASE_CONFIG.role;
+    case "webhook":       return LOCAL_WEBHOOK;
+
+    // MAP (phẳng)
+    case "apps_url":      return LOCAL_APP_MAP.apps_url;
+    case "sheet_id":      return LOCAL_APP_MAP.sheet_id;
     case "shared_secret": return LOCAL_APP_MAP.shared_secret;
-    case "csv_url": return LOCAL_SUPABASE_CONFIG.csv_url;
-    case "cleanup": return LOCAL_CLEANUP_CONFIG;
-    case "render_api": return `${location.origin}/api_render/render.png`; // API render PNG
-    default: return null;
+    case "csv_url":       return LOCAL_APP_MAP.csv_url;
+
+    case "cleanup":       return LOCAL_CLEANUP_CONFIG;
+    case "render_api":    return `${location.origin}/api_render/render.png`;
+    default:              return null;
   }
 };
 
 // 7️⃣ Cho phép script khác truy cập nhanh config cleanup
 window.getConfigCleanup = () => LOCAL_CLEANUP_CONFIG;
 
-// 8️⃣ Interceptor fetch: fallback cho /api/getConfig
+// 8️⃣ Interceptor fetch: fallback cho /api/getConfig (nếu server down → trả về LOCAL)
 (function patchFetchForGetConfig() {
   const origFetch = window.fetch?.bind(window);
 
@@ -80,13 +82,16 @@ window.getConfigCleanup = () => LOCAL_CLEANUP_CONFIG;
 
       // Fallback local (không gửi webhook ra ngoài)
       const body = JSON.stringify({
-        url: LOCAL_SUPABASE_CONFIG.url,
+        url:  LOCAL_SUPABASE_CONFIG.url,
         anon: LOCAL_SUPABASE_CONFIG.anon,
         role: LOCAL_SUPABASE_CONFIG.role,
-        apps_url: LOCAL_APP_MAP.apps_url,
-        sheet_id: LOCAL_APP_MAP.sheet_id,
+
+        // map (phẳng)
+        apps_url:      LOCAL_APP_MAP.apps_url,
+        sheet_id:      LOCAL_APP_MAP.sheet_id,
         shared_secret: LOCAL_APP_MAP.shared_secret,
-        csv_url: LOCAL_SUPABASE_CONFIG.csv_url,
+        csv_url:       LOCAL_APP_MAP.csv_url,
+
         cleanup: LOCAL_CLEANUP_CONFIG
       });
 
@@ -99,4 +104,39 @@ window.getConfigCleanup = () => LOCAL_CLEANUP_CONFIG;
     if (!origFetch) throw new Error("fetch not available");
     return origFetch(input, init);
   };
+})();
+
+// 9️⃣ Nạp config từ /api/getConfig (ghi đè LOCAL_*) + expose configReady
+window.configReady = (async () => {
+  try {
+    const resp = await fetch("/api/getConfig", {
+      headers: { "x-internal-key": window.getInternalKey?.() || "" }
+    });
+    if (!resp.ok) throw new Error("getConfig failed: " + resp.status);
+
+    const cfg = await resp.json();
+
+    // ---- Supabase ----
+    if (cfg.url)  LOCAL_SUPABASE_CONFIG.url  = cfg.url;
+    if (cfg.anon) LOCAL_SUPABASE_CONFIG.anon = cfg.anon;
+    if (cfg.role) LOCAL_SUPABASE_CONFIG.role = cfg.role;
+
+    // ---- MAP (phẳng) ----
+    if (cfg.apps_url)      LOCAL_APP_MAP.apps_url      = cfg.apps_url;
+    if (cfg.sheet_id)      LOCAL_APP_MAP.sheet_id      = cfg.sheet_id;
+    if (cfg.shared_secret) LOCAL_APP_MAP.shared_secret = cfg.shared_secret;
+    if (cfg.csv_url)       LOCAL_APP_MAP.csv_url       = cfg.csv_url;
+
+    // ---- CLEANUP (nếu server có trả về) ----
+    if (cfg.cleanup && typeof cfg.cleanup === 'object') {
+      Object.assign(LOCAL_CLEANUP_CONFIG, cfg.cleanup);
+    }
+
+    console.log("✅ getConfig loaded", {
+      url: LOCAL_SUPABASE_CONFIG.url,
+      csv_url: LOCAL_APP_MAP.csv_url
+    });
+  } catch (e) {
+    console.warn("⚠️ Không lấy được /api/getConfig — dùng LOCAL fallback:", e);
+  }
 })();
