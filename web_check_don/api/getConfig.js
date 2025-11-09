@@ -33,7 +33,7 @@ export default function handler(req, res) {
       APPS_URL: env.mapUrl,
       SHEET_ID: env.mapSheet,
       SHARED_SECRET: env.mapSecret,
-      CSV_URL:env.mapCsv,
+      CSV_URL: env.mapCsv,
       WEBHOOK_URL: env.webhookUrl,
     }
   });
