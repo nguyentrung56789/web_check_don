@@ -401,34 +401,6 @@ function bindScanAndButtons(){
 }
 
 /* ================== CHECK ================== */
-function renderStatusCell(ma, val){
-  const s = (val || '').toString().trim();
-  const has = !!s;
-  const low = s.toLowerCase();
-  const cls = low.includes('chuẩn bị') ? 'wait'
-           : low.includes('đang giao hàng') ? 'ok'
-           : (low.includes('thành công')||low.includes('đã giao')||low==='done') ? 'ok'
-           : (low.includes('chờ')||low.includes('đang')) ? 'wait'
-           : (low.includes('hủy')||low.includes('huỷ')||low.includes('fail')) ? 'err' : '';
-  const label = s || '—';
-
-  const badge = `<span class="badge ${cls}">${esc(label)}</span>`;
-
-  // Chỉ hiện link khi đúng trạng thái "Đã kiểm đơn"
-  const isDaKiemDon = low.replace(/\s+/g,' ').trim() === 'đã kiểm đơn';
-  const nutDaGiao = isDaKiemDon
-    ? ` <a href="#"
-           class="btn-da-giao"
-           data-ma="${esc(ma)}"
-           style="margin-left:6px; font-weight:500; color:#9ca3af; text-decoration:none; opacity:.7;">
-         Đã giao
-       </a>`
-    : '';
-
-  return badge + nutDaGiao;
-}
-
-
 
 /* === Helper: lấy tên NV hiện tại (ưu tiên sessionStorage, fallback localStorage) === */
 function getCurrentNVName(){
@@ -443,49 +415,18 @@ function getCurrentNVName(){
   return '';
 }
 
-/* === Cập nhật “Đã giao” → Giao thành công === */
-async function markDaGiao(ma_hd){
-  if (!supa) { showSlideBanner('❌ Supabase chưa khởi tạo', 'err'); return; }
-  if (!ma_hd){ showSlideBanner('❌ Thiếu mã hóa đơn', 'err'); return; }
-
-  // Lấy MÃ NV đăng nhập có sẵn
-  const nvId = (window.NV_ID)
-    || (function(){ try{ return JSON.parse(localStorage.getItem('nv')||'{}').ma_nv || ''; }catch{ return ''; }})()
-    || (function(){ try{ return JSON.parse(sessionStorage.getItem('nv_ctx')||'{}').ma_nv || ''; }catch{ return ''; }})();
-
-  if (!nvId){
-    showSlideBanner('⚠️ Thiếu mã nhân viên đăng nhập', 'err');
-    return;
-  }
-
-  const nowISO = new Date().toISOString();
-
-  try{
-    const { data, error } = await supa
-      .from(TABLE)
-      .update({
-        trang_thai: 'Giao thành công',
-        ngay_giao_thanh_cong: nowISO, // dùng cột này
-        nv_giao_hang: String(nvId)    // NV đăng nhập (mã)
-      })
-      .eq('ma_hd', ma_hd)
-      .select('*')
-      .maybeSingle();
-
-    if (error) throw error;
-
-    if (typeof window.updateRowFromRecord === 'function') {
-      window.updateRowFromRecord(data || { ma_hd, trang_thai:'Giao thành công', ngay_giao_thanh_cong: nowISO, nv_giao_hang: String(nvId) });
-    } else {
-      await reload();
-    }
-
-    showSlideBanner(`✅ Đơn ${esc(ma_hd)} → Giao thành công (NV: ${esc(nvId)})`, 'ok');
-  }catch(e){
-    showSlideBanner('❌ Lỗi cập nhật: ' + esc(e.message || e), 'err');
-  }
+/* === Helper: lấy mã NV hiện tại (ma_nv) === */
+function getCurrentNVID(){
+  try {
+    const s = JSON.parse(sessionStorage.getItem('nv_ctx') || '{}');
+    if (s && s.ma_nv) return String(s.ma_nv).trim();
+  } catch {}
+  try {
+    const nv = JSON.parse(localStorage.getItem('nv') || '{}');
+    if (nv && nv.ma_nv) return String(nv.ma_nv).trim();
+  } catch {}
+  return '';
 }
-
 
 async function checkAndOpenByScan(code){
   try{
@@ -598,6 +539,74 @@ async function sendGiaohangWebhook({ ma_nv, ma_hd, ten_kh, sender_id, dia_chi })
   }
 }
 
+/* ================== TRẠNG THÁI + NÚT "ĐÃ GIAO" ================== */
+function renderStatusCell(ma, val){
+  const raw = (val || '').toString().trim();
+  const low = raw.toLowerCase();
+  const label = raw || '—';
+
+  const cls = low.includes('chuẩn bị') ? 'wait'
+           : low.includes('đang giao hàng') ? 'ok'
+           : (low.includes('thành công')||low.includes('đã giao')||low==='done') ? 'ok'
+           : (low.includes('chờ')||low.includes('đang')) ? 'wait'
+           : (low.includes('hủy')||low.includes('huỷ')||low.includes('fail')) ? 'err' : '';
+
+  const shouldShowBtn = (vnFold(raw) === vnFold('Đã kiểm đơn'));
+
+  const btn = shouldShowBtn
+    ? ` <button class="btn-da-giao" data-ma="${esc(ma)}" title="Cập nhật sang Giao thành công">Đã giao</button>`
+    : '';
+
+  return `<span class="badge ${cls}">${esc(label)}</span>${btn}`;
+}
+
+/**
+ * Đánh dấu đơn "Giao thành công"
+ * - cập nhật DB
+ * - cập nhật ngay UI (không reload) qua updateRowFromRecord
+ * - ẩn nút "Đã giao"
+ */
+async function markDaGiao(ma_hd, btnEl){
+  if (!supa){ showSlideBanner('❌ Supabase chưa khởi tạo', 'err'); return; }
+  const nv_id = getCurrentNVID();
+  if (!nv_id){ showSlideBanner('⚠️ Thiếu mã NV đăng nhập (ma_nv)', 'err'); return; }
+  if (!ma_hd){ showSlideBanner('❌ Thiếu mã hóa đơn', 'err'); return; }
+
+  const patch = {
+    trang_thai: 'Giao thành công',
+    ngay_giao_thanh_cong: new Date().toISOString(),
+    nv_giao_hang: nv_id
+  };
+
+  const oldTxt = btnEl?.textContent;
+  if (btnEl){ btnEl.disabled = true; btnEl.textContent = 'Đang cập nhật…'; }
+
+  try{
+    const { data, error } = await supa
+      .from(TABLE)
+      .update(patch)
+      .eq('ma_hd', ma_hd)
+      .select('*')
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) throw new Error('Không nhận được bản ghi sau cập nhật');
+
+    updateRowFromRecord(data);
+    if (btnEl){ btnEl.style.display = 'none'; }
+
+    showSlideBanner('✅ Đã cập nhật: Giao thành công', 'ok');
+    try{
+      if (typeof pushNotify === 'function'){
+        pushNotify(`✅ Đơn <b>${esc(ma_hd)}</b> → <i>Giao thành công</i> • NV: <b>${esc(nv_id)}</b>`);
+      }
+    }catch{}
+  }catch(e){
+    showSlideBanner('❌ Lỗi cập nhật: ' + esc(e.message||e), 'err');
+    if (btnEl){ btnEl.disabled = false; btnEl.textContent = oldTxt || 'Đã giao'; }
+  }
+}
+
 /* ================== BẢNG & HÀNH ĐỘNG ================== */
 function bindTableActions(){
   const tb = document.getElementById('tbody');
@@ -624,45 +633,50 @@ function bindTableActions(){
     tr.classList.add('active-row'); LAST_ACTIVE_TR=tr;
   });
 
-  // ===== GỬI TIN từng dòng → webhook action="digiaohang" + kiểm tra sender_id =====
-// ===== NÚT/LINK “Đã giao” → cập nhật trạng thái =====
-tb?.addEventListener('click', async (e)=>{
-  const btnGiao = e.target.closest?.('.btn-da-giao');
-  if (!btnGiao) return;
-
-  e.preventDefault(); // vì là <a href="#">
-  const ma = btnGiao.getAttribute('data-ma') || '';
-  if (!ma){ showSlideBanner('❌ Không xác định được mã hóa đơn', 'err'); return; }
-
-  // "disable" cho <a>
-  const old = btnGiao.textContent;
-  btnGiao.dataset.busy = '1';
-  btnGiao.style.pointerEvents = 'none';
-  btnGiao.style.opacity = '.5';
-  btnGiao.textContent = 'Đang cập nhật…';
-
-  try{
-    await markDaGiao(ma);
-  } finally {
-    btnGiao.textContent = old;
-    btnGiao.style.pointerEvents = '';
-    btnGiao.style.opacity = '';
-    delete btnGiao.dataset.busy;
-  }
-});
-
-
-  // ===== NÚT “Đã giao” → cập nhật trạng thái/ghi log nhân viên/giờ giao =====
+  // ====== Click nút "Đã giao" ======
   tb?.addEventListener('click', async (e)=>{
-    const btnGiao = e.target.closest?.('.btn-da-giao');
-    if (!btnGiao) return;
+    const doneBtn = e.target.closest?.('.btn-da-giao');
+    if (doneBtn){
+      const tr = doneBtn.closest('tr[data-ma]');
+      if(!tr){ showSlideBanner('❌ Không xác định được dòng', 'err'); return; }
+      const ma = (tr.getAttribute('data-ma') || '').trim();
+      if (!ma){ showSlideBanner('❌ Thiếu mã hóa đơn', 'err'); return; }
+      await markDaGiao(ma, doneBtn);
+      return;
+    }
 
-    const ma = btnGiao.getAttribute('data-ma') || '';
-    if (!ma){ showSlideBanner('❌ Không xác định được mã hóa đơn', 'err'); return; }
+    // ====== GỬI TIN từng dòng → webhook action="digiaohang" ======
+    const btn = e.target.closest?.('.btn-send-row');
+    if(!btn) return;
 
-    btnGiao.disabled = true;
-    const old = btnGiao.textContent; btnGiao.textContent = 'Đang cập nhật…';
-    await markDaGiao(ma).finally(()=>{ btnGiao.disabled = false; btnGiao.textContent = old; });
+    const tr = btn.closest('tr[data-ma]');
+    if(!tr){ showSlideBanner('❌ Không xác định được dòng', 'err'); return; }
+
+    const { ma_hd, ten_kh, dia_chi } = getOrderInfoFromRow(tr);
+    if(!ma_hd){ showSlideBanner('❌ Thiếu mã hóa đơn', 'err'); return; }
+
+    const inp = tr.querySelector('.emp-input');
+    const emp = findEmpByInput(inp?.value || '');
+    if (!emp){
+      showSlideBanner('⚠️ Vui lòng chọn nhân viên giao hàng (gõ tên/ID)', 'err');
+      inp?.focus();
+      return;
+    }
+    if (!emp.sender_id){
+      showSlideBanner('⚠️ Nhân viên chưa đăng ký gửi tin (thiếu sender_id)', 'err');
+      return;
+    }
+
+    const old = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Đang gửi…';
+    await sendGiaohangWebhook({
+      ma_nv: String(emp.id),
+      ma_hd,
+      ten_kh,
+      sender_id: String(emp.sender_id),
+      dia_chi
+    });
+    btn.disabled = false; btn.textContent = old || 'Gửi tin';
   });
 }
 
@@ -783,6 +797,7 @@ async function openMapOverlayInjected(maList){
 
   const target = new URL('map_tuyen.html', location.href);
   target.searchParams.set('no_logo', '1');
+  target.searchParams.set('q', q); // truyền q qua URL để chắc chắn
 
   let token = '';
   try { token = sessionStorage.getItem('APP_ACCESS') || ''; } catch {}
@@ -860,6 +875,14 @@ function bindViewRouteButton(){
   btn.addEventListener('click', (e)=>{
     e.preventDefault();
     handleViewRouteOverlay();
+  });
+
+  // phím tắt G → mở map
+  document.addEventListener('keydown', (e)=>{
+    if (e.key.toLowerCase() === 'g' && !e.altKey && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      handleViewRouteOverlay();
+    }
   });
 }
 
@@ -998,6 +1021,8 @@ async function reload(){
           data-dong="${esc(r.nv_dong_hang||'')}"
           data-prepdate="${esc(r.ngay_chuan_bi_don||'')}"
           data-dongdate="${esc(r.ngay_dong_hang||'')}"
+          data-giaothanhcong="${esc(r.ngay_giao_thanh_cong||'')}"
+          data-nv_giaohang="${esc(r.nv_giao_hang||'')}"
           data-diachi="${esc(r.dia_chi || r.diachi || '')}">
         <td class="sel"><input type="checkbox" class="row-chk" ${checked} /></td>
         <td data-cell="ma_hd">${ma}</td>
@@ -1066,6 +1091,21 @@ async function init(){
     console.error('[INIT] exception', e);
     return;
   }
+
+  // Tiêm CSS cho nút "Đã giao"
+  (function injectDoneBtnCSS(){
+    if (document.getElementById('btnDaGiaoStyle')) return;
+    const style = document.createElement('style');
+    style.id = 'btnDaGiaoStyle';
+    style.textContent = `
+      .btn-da-giao{
+        background:#10b981; color:#fff; border:none;
+        padding:6px 10px; border-radius:8px; font-weight:600; cursor:pointer;
+      }
+      .btn-da-giao:disabled{ opacity:.6; cursor:default; }
+    `;
+    document.head.appendChild(style);
+  })();
 
   const capEl = document.getElementById('capDate');
   if (capEl && !capEl.value) capEl.value = todayYMD();
@@ -1173,10 +1213,12 @@ document.addEventListener('DOMContentLoaded', init);
     const tr = document.querySelector(`#tbody tr[data-ma="${CSS.escape(r.ma_hd)}"]`);
     if(!tr) return false;
 
-    tr.dataset.xacnhan  = (r.nv_check_don || '').trim();
-    tr.dataset.dong     = (r.nv_dong_hang || '').trim();
-    tr.dataset.prepdate = r.ngay_chuan_bi_don || '';
-    tr.dataset.dongdate = r.ngay_dong_hang || '';
+    tr.dataset.xacnhan          = (r.nv_check_don || '').trim();
+    tr.dataset.dong             = (r.nv_dong_hang || '').trim();
+    tr.dataset.prepdate         = r.ngay_chuan_bi_don || '';
+    tr.dataset.dongdate         = r.ngay_dong_hang || '';
+    tr.dataset.giaothanhcong    = r.ngay_giao_thanh_cong || '';
+    tr.dataset.nv_giaohang      = r.nv_giao_hang || '';
 
     const cDonHang = tr.querySelector('[data-cell="don_hang"]');
     const cNgay    = tr.querySelector('[data-cell="ngay"]');
@@ -1197,6 +1239,15 @@ document.addEventListener('DOMContentLoaded', init);
     if (cNgayXN)  cNgayXN.innerHTML  = fmtDateHTML(r.ngay_check_don);
     if (cNVXN)    cNVXN.textContent  = (r.nv_check_don||'');
     if (inputNVDH)  inputNVDH.value  = (r.nv_dong_hang||'');
+
+    // Ẩn nút "Đã giao" nếu trạng thái đã giao xong
+    const delivered = (()=> {
+      const s = vnFold(r.trang_thai || '');
+      return s.includes(vnFold('thành công')) || s.includes(vnFold('đã giao')) || s.includes('done');
+    })();
+    if (delivered){
+      tr.querySelectorAll('.btn-da-giao').forEach(b=> b.style.display='none');
+    }
 
     if (btnSend){ btnSend.style.display = r.ngay_dong_hang ? 'none' : ''; }
     return true;
