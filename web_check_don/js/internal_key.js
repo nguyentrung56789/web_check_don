@@ -84,10 +84,10 @@ window.getConfigCleanup = () => LOCAL_CLEANUP_CONFIG;
         url: LOCAL_SUPABASE_CONFIG.url,
         anon: LOCAL_SUPABASE_CONFIG.anon,
         role: LOCAL_SUPABASE_CONFIG.role,
-        apps_url: return LOCAL_APP_MAP.apps_url,
-        sheet_id: return LOCAL_APP_MAP.sheet_id,
-        shared_secret: return LOCAL_APP_MAP.shared_secret,
-        csv_url: return LOCAL_APP_MAP.csv_url,
+        apps_url: LOCAL_APP_MAP.apps_url,
+        sheet_id: LOCAL_APP_MAP.sheet_id,
+        shared_secret: LOCAL_APP_MAP.shared_secret,
+        csv_url: LOCAL_APP_MAP.csv_url,
         cleanup: LOCAL_CLEANUP_CONFIG
       });
 
