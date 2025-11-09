@@ -12,10 +12,11 @@ export default function handler(req, res) {
   url: process.env.SUPABASE_URL || '',
   anon: process.env.SUPABASE_ANON_KEY || '',
   role: process.env.SUPABASE_ROLE ||'',
-  webhookUrl: process.env.link_webhook || '',
-  mapUrl: process.env.link_map_apps_script || '',
-  mapSheet: process.env.sheet_id_map || '',
-  mapSecret: process.env.MAP_SHARED_SECRET || '',
+  webhookUrl: process.env.WEBHOOK_URL || '',
+  mapUrl: process.env.APPS_URL || '',
+  mapSheet: process.env.SHEET_ID || '',
+  mapSecret: process.env.SHARED_SECRET || '',
+  mapCsv: process.env.CSV_URL || '',
   };
 
   if (!env.url || !env.anon) {
@@ -32,6 +33,7 @@ export default function handler(req, res) {
       APPS_URL: env.mapUrl,
       SHEET_ID: env.mapSheet,
       SHARED_SECRET: env.mapSecret,
+      CSV_URL:env.mapCsv,
       WEBHOOK_URL: env.webhookUrl,
     }
   });
