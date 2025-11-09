@@ -14,7 +14,8 @@
 (function softGate(){ try { if (typeof window.checkAccess === 'function') window.checkAccess(); } catch(_) {} })();
 
 /* ========= CẤU HÌNH NGUỒN DỮ LIỆU ========= */
-const CSV_URL = (window.getConfig?.('map')?.CSV_URL);
+const CSV_URL = window.getConfig('csv_url');
+
 
 
 /* ========= KHUNG VN & TÂM ========= */
