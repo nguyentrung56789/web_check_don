@@ -106,37 +106,34 @@ window.getConfigCleanup = () => LOCAL_CLEANUP_CONFIG;
   };
 })();
 
-// 9️⃣ Nạp config từ /api/getConfig (ghi đè LOCAL_*) + expose configReady
 window.configReady = (async () => {
   try {
     const resp = await fetch("/api/getConfig", {
       headers: { "x-internal-key": window.getInternalKey?.() || "" }
     });
     if (!resp.ok) throw new Error("getConfig failed: " + resp.status);
-
     const cfg = await resp.json();
 
-    // ---- Supabase ----
+    // Supabase
     if (cfg.url)  LOCAL_SUPABASE_CONFIG.url  = cfg.url;
     if (cfg.anon) LOCAL_SUPABASE_CONFIG.anon = cfg.anon;
     if (cfg.role) LOCAL_SUPABASE_CONFIG.role = cfg.role;
 
-    // ---- MAP (phẳng) ----
+    // MAP (phẳng)
     if (cfg.apps_url)      LOCAL_APP_MAP.apps_url      = cfg.apps_url;
     if (cfg.sheet_id)      LOCAL_APP_MAP.sheet_id      = cfg.sheet_id;
     if (cfg.shared_secret) LOCAL_APP_MAP.shared_secret = cfg.shared_secret;
     if (cfg.csv_url)       LOCAL_APP_MAP.csv_url       = cfg.csv_url;
 
-    // ---- CLEANUP (nếu server có trả về) ----
+    // 🔔 Webhook
+    if (cfg.webhookUrl)    LOCAL_WEBHOOK = cfg.webhookUrl;
+
+    // Cleanup (nếu có)
     if (cfg.cleanup && typeof cfg.cleanup === 'object') {
       Object.assign(LOCAL_CLEANUP_CONFIG, cfg.cleanup);
     }
-
-    console.log("✅ getConfig loaded", {
-      url: LOCAL_SUPABASE_CONFIG.url,
-      csv_url: LOCAL_APP_MAP.csv_url
-    });
   } catch (e) {
-    console.warn("⚠️ Không lấy được /api/getConfig — dùng LOCAL fallback:", e);
+    console.warn("Không lấy được /api/getConfig — dùng LOCAL fallback:", e);
   }
 })();
+
