@@ -5,11 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Kiểm tra đơn hàng (don_hang)</title>
 
+<!-- Kiểm tra quyền truy cập bằng token -->
 <script src="./js/auth_token.js"></script>
 <script>checkAccess();</script>
 
+<!-- LẤY key nội bộ để gọi /api/getConfig -->
 <script src="./js/internal_key.js"></script>
 
+<!-- Supabase JS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
 
 <link rel="stylesheet" href="./css/check_don.css" />
@@ -117,6 +120,7 @@
       <label class="inline-label" for="filterTrangThai">Trạng thái:</label>
       <select id="filterTrangThai" title="Lọc theo cột trạng_thái">
         <option value="">Tất cả</option>
+        <option value="da kiem don">Đã kiểm đơn</option>
       </select>
 
       <span class="right-end">
@@ -266,6 +270,7 @@
 
   elPrev?.addEventListener('click', ()=> goTo(st.page - 1));
   elNext?.addEventListener('click', ()=> goTo(st.page + 1));
+
   elSize?.addEventListener('change', ()=>{
     const v = parseInt(elSize.value, 10) || 100;
     st.size = v;
@@ -306,6 +311,12 @@
 
   if (!tbody || !filterLoaiDon || !filterTrangThai) return;
 
+  // Danh sách trạng thái gốc, không bị mất sau nhiều lần lọc
+  const MASTER_STATUS_OPTIONS = new Map();
+
+  // Ép có sẵn "Đã kiểm đơn" ngay từ đầu
+  MASTER_STATUS_OPTIONS.set('da kiem don', 'Đã kiểm đơn');
+
   function normalizeVN(v){
     return String(v || '')
       .normalize('NFD')
@@ -327,6 +338,12 @@
     return norm === 'tat ca' ? '' : norm;
   }
 
+  function getRealRows(){
+    return Array.from(tbody.querySelectorAll('tr')).filter(tr =>
+      !tr.classList.contains('__local-empty') && !tr.querySelector('.empty')
+    );
+  }
+
   function readCodValueFromRow(tr){
     const attrNames = [
       'data-cod',
@@ -344,7 +361,7 @@
       }
     }
 
-    const text = normalizeVN(tr.innerText);
+    const text = normalizeVN(tr.innerText || '');
 
     if (text.includes('don khong cod') || text.includes('khong cod')) return 'false';
     if (text.includes('don hang cod')) return 'true';
@@ -362,7 +379,7 @@
     for (const name of attrNames){
       const raw = tr.getAttribute(name);
       if (raw !== null && raw !== ''){
-        return normalizeVN(raw);
+        return String(raw || '').trim();
       }
     }
 
@@ -372,9 +389,55 @@
       tr.children[6] ||
       null;
 
-    if (statusCell) return normalizeVN(statusCell.textContent || '');
+    return String(statusCell ? statusCell.textContent : '').trim();
+  }
 
-    return normalizeVN(tr.innerText || '');
+  function collectStatusesFromCurrentSelect(){
+    Array.from(filterTrangThai.options).forEach(opt => {
+      const label = String(opt.text || '').replace(/\s+/g, ' ').trim();
+      const norm = normalizeVN(label);
+      if (!label || norm === 'tat ca') return;
+      if (!MASTER_STATUS_OPTIONS.has(norm)){
+        MASTER_STATUS_OPTIONS.set(norm, label);
+      }
+    });
+  }
+
+  function collectStatusesFromRows(){
+    getRealRows().forEach(tr => {
+      const raw = readTrangThaiFromRow(tr).replace(/\s+/g, ' ').trim();
+      const norm = normalizeVN(raw);
+      if (!raw || !norm) return;
+      if (!MASTER_STATUS_OPTIONS.has(norm)){
+        MASTER_STATUS_OPTIONS.set(norm, raw);
+      }
+    });
+  }
+
+  function rebuildTrangThaiSelectPreserveValue(){
+    const currentText = String(filterTrangThai.options[filterTrangThai.selectedIndex]?.text || '').trim();
+    const currentNorm = normalizeVN(currentText);
+
+    filterTrangThai.innerHTML = '';
+    filterTrangThai.appendChild(new Option('Tất cả', ''));
+
+    Array.from(MASTER_STATUS_OPTIONS.entries())
+      .sort((a, b) => a[1].localeCompare(b[1], 'vi'))
+      .forEach(([norm, label]) => {
+        const opt = new Option(label, norm);
+        if (currentNorm && currentNorm === norm) opt.selected = true;
+        filterTrangThai.appendChild(opt);
+      });
+
+    if (!currentNorm || currentNorm === 'tat ca'){
+      filterTrangThai.value = '';
+    }
+  }
+
+  function refreshMasterStatuses(){
+    collectStatusesFromCurrentSelect();
+    collectStatusesFromRows();
+    rebuildTrangThaiSelectPreserveValue();
   }
 
   function removeLocalEmpty(){
@@ -382,10 +445,7 @@
   }
 
   function hideBuiltInEmptyRowsWhenHasData(){
-    const realRows = Array.from(tbody.querySelectorAll('tr')).filter(tr =>
-      !tr.classList.contains('__local-empty') && !tr.querySelector('.empty')
-    );
-
+    const realRows = getRealRows();
     tbody.querySelectorAll('tr').forEach(tr => {
       if (tr.querySelector('.empty') && !tr.classList.contains('__local-empty')){
         tr.style.display = realRows.length > 0 ? 'none' : '';
@@ -394,12 +454,7 @@
   }
 
   function ensureLocalEmpty(){
-    const hasVisibleRealRow = Array.from(tbody.querySelectorAll('tr')).some(tr => {
-      if (tr.classList.contains('__local-empty')) return false;
-      if (tr.querySelector('.empty')) return false;
-      return tr.style.display !== 'none';
-    });
-
+    const hasVisibleRealRow = getRealRows().some(tr => tr.style.display !== 'none');
     if (!hasVisibleRealRow){
       const tr = document.createElement('tr');
       tr.className = '__local-empty';
@@ -432,7 +487,7 @@
       }
 
       if (ok && ttVal){
-        const rowTT = readTrangThaiFromRow(tr);
+        const rowTT = normalizeVN(readTrangThaiFromRow(tr));
         const matched = rowTT.includes(ttVal) || ttVal.includes(rowTT);
         if (!matched) ok = false;
       }
@@ -442,10 +497,7 @@
 
     hideBuiltInEmptyRowsWhenHasData();
 
-    const realRows = Array.from(tbody.querySelectorAll('tr')).filter(tr =>
-      !tr.classList.contains('__local-empty') && !tr.querySelector('.empty')
-    );
-
+    const realRows = getRealRows();
     const visibleRows = realRows.filter(tr => tr.style.display !== 'none');
 
     if (realRows.length > 0 && visibleRows.length === 0){
@@ -468,19 +520,27 @@
   if (originalReload){
     window.reload = async function(...args){
       const result = await originalReload.apply(this, args);
-      setTimeout(applyLocalFilters, 0);
+      setTimeout(() => {
+        refreshMasterStatuses();
+        applyLocalFilters();
+      }, 0);
       return result;
     };
   } else {
     const mo = new MutationObserver(() => {
+      refreshMasterStatuses();
       applyLocalFilters();
     });
     mo.observe(tbody, { childList:true, subtree:true });
   }
 
-  window.applyLocalDonHangFilters = applyLocalFilters;
+  setTimeout(() => {
+    refreshMasterStatuses();
+    applyLocalFilters();
+  }, 0);
 
-  setTimeout(applyLocalFilters, 0);
+  window.applyLocalDonHangFilters = applyLocalFilters;
+  window.refreshMasterTrangThaiOptions = refreshMasterStatuses;
 })();
 </script>
 
