@@ -5,20 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Kiểm tra đơn hàng (don_hang)</title>
 
-<!-- Kiểm tra quyền truy cập bằng token -->
 <script src="./js/auth_token.js"></script>
 <script>checkAccess();</script>
 
-<!-- LẤY key nội bộ để gọi /api/getConfig (định nghĩa window.getInternalKey) -->
 <script src="./js/internal_key.js"></script>
 
-<!-- Supabase JS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
 
 <link rel="stylesheet" href="./css/check_don.css" />
 
 <style>
-  /* User bar */
   #userBar{
     position:fixed; top:8px; right:16px;
     display:flex; align-items:center; gap:10px; z-index:2000;
@@ -28,7 +24,6 @@
   #notifyBell{ background:none; border:0; cursor:pointer; font-size:18px; line-height:1; color:#fbbf24; }
   #notifyBell:hover{ filter:brightness(1.1); }
 
-  /* Panel thông báo */
   #notifyPanel{ position:fixed; top:40px; right:16px; width:280px; display:none; overflow:hidden; z-index:2001;
     background:#0f1830; color:#e6edff; border:1px solid #2a3d6a; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.45); }
   #notifyPanel .np-head{ padding:10px 12px; font-weight:700; border-bottom:1px solid #22345c; background:#11214a; }
@@ -37,7 +32,6 @@
   #notifyPanel .np-item time{ display:block; font-size:12px; color:#9aa7c7; margin-top:4px; }
   #notifyPanel .np-empty{ padding:14px; color:#9aa7c7; font-size:14px; text-align:center; }
 
-  /* Cột kích thước */
   th.col-don-hang, td.col-don-hang { width: 180px; max-width: 260px; }
   th.col-nv-xn, td.col-nv-xn,
   th.col-nv-gl, td.col-nv-gl { width: 120px; max-width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -50,16 +44,13 @@
   #capDate{ min-width:180px; }
   #btnCapNhatDon{ white-space:nowrap; }
 
-  /* (tuỳ chọn) tinh chỉnh pager */
   #pager .btn-action{ padding:8px 12px; }
   #pgSize{ padding:6px 10px; background:#0b1220; color:#e6edff; border:1px solid #2a3d6a; border-radius:8px; }
 </style>
 </head>
 <body>
-<!-- Banner trượt xuống khi có thông báo -->
 <div id="slideBanner" class="slide-banner"></div>
 
-<!-- Chuông thông báo -->
 <button id="notifyBell" title="Thông báo" aria-label="Thông báo">🔔</button>
 
 <div id="userBar" class="ub">
@@ -73,7 +64,6 @@
   </div>
 </div>
 
-<!-- Panel thông báo -->
 <div id="notifyPanel" role="dialog" aria-hidden="true">
   <div class="np-head">Thông báo</div>
   <div class="np-body" id="notifyList">
@@ -152,7 +142,6 @@
         </tbody>
       </table>
 
-      <!-- ✅ PAGER: phân trang offset-based -->
       <div id="pager" style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin-top:10px;flex-wrap:wrap">
         <div style="display:flex;align-items:center;gap:10px">
           <button id="pgPrev" class="btn-action">« Trước</button>
@@ -174,7 +163,6 @@
   </div>
 </div>
 
-<!-- Overlay chi tiết -->
 <div id="detailOverlay" aria-hidden="true">
   <div id="detailPanel" role="dialog" aria-modal="true" aria-label="Chi tiết đơn giao hàng">
     <div id="detailHead">
@@ -188,7 +176,6 @@
   </div>
 </div>
 
-<!-- Khởi tạo panel thông báo -->
 <script>
   (function notifInit(){
     const bell = document.getElementById('notifyBell');
@@ -208,7 +195,6 @@
   })();
 </script>
 
-<!-- QUAN TRỌNG: đặt API_BASE để check_don.js gọi đúng /api/getConfig khi chạy local -->
 <script>
   (function setApiBase(){
     const q = new URLSearchParams(location.search);
@@ -226,10 +212,8 @@
   })();
 </script>
 
-<!-- Ứng dụng -->
 <script src="./js/check_don.js"></script>
 
-<!-- ✅ CẦU NỐI PHÂN TRANG CHO check_don.js -->
 <script>
 (function paginationBridge(){
   const st = window.__PAGER = { size: 100, page: 1, total: 0 };
@@ -255,17 +239,18 @@
     if (typeof window.reload === 'function') window.reload();
   }
 
-  // Public API cho check_don.js
   window.getPageRange = function(){
     const from = (st.page - 1) * st.size;
     const to   = from + st.size - 1;
     return { from, to, size: st.size };
   };
+
   window.setTotalCount = function(n){
     st.total = Number(n) || 0;
     if (st.page > totalPages()) st.page = totalPages();
     updateUI();
   };
+
   window.resetToPage1 = function(){
     st.page = 1;
     updateUI();
@@ -281,17 +266,22 @@
     if (typeof window.reload === 'function') window.reload();
   });
 
-  ['q','from','to','filterLoaiDon','filterTrangThai'].forEach(id=>{
+  ['q','from','to'].forEach(id=>{
     const el = document.getElementById(id);
     if(!el) return;
-    const fire = ()=>{ window.resetToPage1(); if (typeof window.reload==='function') window.reload(); };
-    if (id==='q'){
+
+    const fire = ()=>{
+      window.resetToPage1();
+      if (typeof window.reload==='function') window.reload();
+    };
+
+    if (id === 'q'){
       let t = null;
       el.addEventListener('input', ()=>{
         clearTimeout(t);
         t = setTimeout(fire, 300);
       });
-    }else{
+    } else {
       el.addEventListener('change', fire);
     }
   });
@@ -300,6 +290,134 @@
 })();
 </script>
 
-<!-- LƯU Ý: không gắn thêm handler nào cho #btnViewRoute ở HTML để tránh mở trùng tab -->
+<script>
+(function localDropdownFilters(){
+  const tbody = document.getElementById('tbody');
+  const filterLoaiDon = document.getElementById('filterLoaiDon');
+  const filterTrangThai = document.getElementById('filterTrangThai');
+
+  if (!tbody || !filterLoaiDon || !filterTrangThai) return;
+
+  function normalizeText(v){
+    return String(v || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  }
+
+  function readCodValueFromRow(tr){
+    const attrNames = [
+      'data-cod',
+      'data-don_hang',
+      'data-don-hang',
+      'data-loai-don',
+      'data-loai_don'
+    ];
+
+    for (const name of attrNames){
+      const raw = tr.getAttribute(name);
+      if (raw !== null && raw !== '') return normalizeText(raw);
+    }
+
+    const allText = normalizeText(tr.innerText);
+    if (allText.includes('đơn hàng cod')) return 'true';
+    if (allText.includes('đơn không cod')) return 'false';
+
+    return '';
+  }
+
+  function readTrangThaiFromRow(tr){
+    const attrNames = [
+      'data-trang-thai',
+      'data-trang_thai',
+      'data-status'
+    ];
+
+    for (const name of attrNames){
+      const raw = tr.getAttribute(name);
+      if (raw !== null && raw !== '') return normalizeText(raw);
+    }
+
+    const cell =
+      tr.querySelector('td.col-trang-thai') ||
+      tr.children[6] ||
+      null;
+
+    return normalizeText(cell ? cell.textContent : '');
+  }
+
+  function applyLocalFilters(){
+    const codVal = normalizeText(filterLoaiDon.value);
+    const ttVal  = normalizeText(filterTrangThai.value);
+
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    let visible = 0;
+
+    rows.forEach(tr=>{
+      const emptyRow = tr.querySelector('.empty');
+      if (emptyRow){
+        tr.style.display = '';
+        return;
+      }
+
+      let ok = true;
+
+      if (codVal){
+        const rowCod = readCodValueFromRow(tr);
+        if (rowCod !== codVal) ok = false;
+      }
+
+      if (ttVal){
+        const rowTT = readTrangThaiFromRow(tr);
+        if (rowTT !== ttVal) ok = false;
+      }
+
+      tr.style.display = ok ? '' : 'none';
+      if (ok) visible++;
+    });
+
+    const empty = tbody.querySelector('tr.__local-empty');
+    if (empty) empty.remove();
+
+    const realRows = rows.filter(tr => !tr.querySelector('.empty'));
+    if (realRows.length > 0 && visible === 0){
+      const tr = document.createElement('tr');
+      tr.className = '__local-empty';
+      tr.innerHTML = `<td colspan="11" class="empty">Không có dữ liệu.</td>`;
+      tbody.appendChild(tr);
+    }
+  }
+
+  filterLoaiDon.addEventListener('change', ()=>{
+    window.resetToPage1?.();
+    applyLocalFilters();
+  });
+
+  filterTrangThai.addEventListener('change', ()=>{
+    window.resetToPage1?.();
+    applyLocalFilters();
+  });
+
+  const originalReload = typeof window.reload === 'function' ? window.reload : null;
+
+  if (originalReload){
+    window.reload = async function(...args){
+      const result = await originalReload.apply(this, args);
+      setTimeout(applyLocalFilters, 0);
+      return result;
+    };
+  } else {
+    const mo = new MutationObserver(()=>{
+      applyLocalFilters();
+    });
+    mo.observe(tbody, { childList:true, subtree:true });
+  }
+
+  window.applyLocalDonHangFilters = applyLocalFilters;
+
+  setTimeout(applyLocalFilters, 0);
+})();
+</script>
+
 </body>
 </html>
