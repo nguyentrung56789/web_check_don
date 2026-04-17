@@ -107,13 +107,6 @@
       <span id="selCount" class="badge" style="margin-left:8px">Đã chọn: <b id="chkCount">0</b></span>
       <button id="btnViewRoute" class="btn" type="button">Xem bản đồ tuyến</button>
 
-      <label class="inline-label" for="filterLoaiDon">Loại đơn hàng:</label>
-      <select id="filterLoaiDon" title="Lọc theo cột cod của don_hang">
-        <option value="">Tất cả</option>
-        <option value="true">Đơn hàng COD</option>
-        <option value="false">Đơn không COD</option>
-      </select>
-
       <label class="inline-label" for="filterTrangThai">Trạng thái:</label>
       <select id="filterTrangThai" title="Lọc theo cột trạng_thái">
         <option value="">Tất cả</option>
@@ -303,10 +296,9 @@
 <script>
 (function localDropdownFilters(){
   const tbody = document.getElementById('tbody');
-  const filterLoaiDon = document.getElementById('filterLoaiDon');
   const filterTrangThai = document.getElementById('filterTrangThai');
 
-  if (!tbody || !filterLoaiDon || !filterTrangThai) return;
+  if (!tbody || !filterTrangThai) return;
 
   const MASTER_STATUS_OPTIONS = new Map([
     ['da kiem don', 'Đã kiểm đơn']
@@ -323,10 +315,6 @@
       .toLowerCase();
   }
 
-  function getSelectedLoaiDonValue(){
-    return String(filterLoaiDon.value || '').trim().toLowerCase();
-  }
-
   function getSelectedTrangThaiNorm(){
     const text = filterTrangThai.options[filterTrangThai.selectedIndex]?.text || '';
     const norm = normalizeVN(text);
@@ -337,12 +325,6 @@
     return Array.from(tbody.querySelectorAll('tr')).filter(tr =>
       !tr.classList.contains('__local-empty') && !tr.querySelector('.empty')
     );
-  }
-
-  function readCodValueFromRow(tr){
-    const raw = tr.getAttribute('data-cod');
-    if (raw === 'true' || raw === 'false') return raw;
-    return '';
   }
 
   function readTrangThaiFromRow(tr){
@@ -385,7 +367,8 @@
   }
 
   function rebuildTrangThaiSelectPreserveValue(){
-    let currentNorm = getSelectedTrangThaiNorm();
+    let currentNorm = filterTrangThai.value || getSelectedTrangThaiNorm();
+    currentNorm = normalizeVN(currentNorm);
     if (!currentNorm || currentNorm === 'tat ca') currentNorm = 'da kiem don';
 
     filterTrangThai.innerHTML = '';
@@ -440,7 +423,6 @@
   }
 
   function applyLocalFilters(){
-    const codVal = getSelectedLoaiDonValue();
     const ttVal = getSelectedTrangThaiNorm();
 
     removeLocalEmpty();
@@ -456,11 +438,6 @@
       }
 
       let ok = true;
-
-      if (codVal){
-        const rowCod = readCodValueFromRow(tr);
-        if (rowCod !== codVal) ok = false;
-      }
 
       if (ok && ttVal){
         const rowTT = normalizeVN(readTrangThaiFromRow(tr));
@@ -480,11 +457,6 @@
       ensureLocalEmpty();
     }
   }
-
-  filterLoaiDon.addEventListener('change', () => {
-    window.resetToPage1?.();
-    applyLocalFilters();
-  });
 
   filterTrangThai.addEventListener('change', () => {
     window.resetToPage1?.();
