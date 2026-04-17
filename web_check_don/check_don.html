@@ -5,14 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Kiểm tra đơn hàng (don_hang)</title>
 
-<!-- Kiểm tra quyền truy cập bằng token -->
 <script src="./js/auth_token.js"></script>
 <script>checkAccess();</script>
 
-<!-- LẤY key nội bộ để gọi /api/getConfig -->
 <script src="./js/internal_key.js"></script>
 
-<!-- Supabase JS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
 
 <link rel="stylesheet" href="./css/check_don.css" />
@@ -120,7 +117,7 @@
       <label class="inline-label" for="filterTrangThai">Trạng thái:</label>
       <select id="filterTrangThai" title="Lọc theo cột trạng_thái">
         <option value="">Tất cả</option>
-        <option value="da kiem don">Đã kiểm đơn</option>
+        <option value="da kiem don" selected>Đã kiểm đơn</option>
       </select>
 
       <span class="right-end">
@@ -189,6 +186,121 @@
 </div>
 
 <script>
+(function notifInit(){
+  const bell = document.getElementById('notifyBell');
+  const panel = document.getElementById('notifyPanel');
+  const list  = document.getElementById('notifyList');
+  if(!bell || !panel) return;
+
+  function toggle(){ panel.style.display = (panel.style.display==='block' ? 'none' : 'block'); }
+  bell.addEventListener('click', toggle);
+  document.addEventListener('click', (e)=>{
+    if(panel.style.display!=='block') return;
+    if(panel.contains(e.target) || bell.contains(e.target)) return;
+    panel.style.display='none';
+  });
+
+  if(list){ list.innerHTML = `<div class="np-empty">Chưa có thông báo.</div>`; }
+})();
+</script>
+
+<script>
+(function setApiBase(){
+  const q = new URLSearchParams(location.search);
+  const override = q.get('apiBase');
+
+  let base = override || (location.origin.startsWith('http') ? location.origin : '');
+  if (!override && /localhost|127\.0\.0\.1/.test(location.hostname)) {
+    if (!base || (location.port && location.port !== '3000')) {
+      base = 'http://localhost:3000';
+    }
+  }
+
+  window.API_BASE = base.replace(/\/+$/,'');
+  console.log('[APP] API_BASE =', window.API_BASE, '| has key:', typeof window.getInternalKey==='function');
+})();
+</script>
+
+<script src="./js/check_don.js"></script>
+
+<script>
+(function paginationBridge(){
+  const st = window.__PAGER = { size: 100, page: 1, total: 0 };
+
+  const elPrev = document.getElementById('pgPrev');
+  const elNext = document.getElementById('pgNext');
+  const elSize = document.getElementById('pgSize');
+  const elInfo = document.getElementById('pgInfo');
+
+  function totalPages(){ return Math.max(1, Math.ceil(st.total / st.size)); }
+  function clampPage(n){ return Math.min(Math.max(1, n), totalPages()); }
+
+  function updateUI(){
+    if(elInfo) elInfo.textContent = `Trang ${st.page}/${totalPages()} — ${st.total} bản ghi`;
+    if(elPrev) elPrev.disabled = (st.page <= 1);
+    if(elNext) elNext.disabled = (st.page >= totalPages());
+    if(elSize && String(st.size) !== elSize.value) elSize.value = String(st.size);
+  }
+
+  function goTo(n){
+    st.page = clampPage(n);
+    updateUI();
+    if (typeof window.reload === 'function') window.reload();
+  }
+
+  window.getPageRange = function(){
+    const from = (st.page - 1) * st.size;
+    const to   = from + st.size - 1;
+    return { from, to, size: st.size };
+  };
+
+  window.setTotalCount = function(n){
+    st.total = Number(n) || 0;
+    if (st.page > totalPages()) st.page = totalPages();
+    updateUI();
+  };
+
+  window.resetToPage1 = function(){
+    st.page = 1;
+    updateUI();
+  };
+
+  elPrev?.addEventListener('click', ()=> goTo(st.page - 1));
+  elNext?.addEventListener('click', ()=> goTo(st.page + 1));
+
+  elSize?.addEventListener('change', ()=>{
+    const v = parseInt(elSize.value, 10) || 100;
+    st.size = v;
+    st.page = 1;
+    updateUI();
+    if (typeof window.reload === 'function') window.reload();
+  });
+
+  ['q','from','to'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+
+    const fire = ()=>{
+      window.resetToPage1();
+      if (typeof window.reload==='function') window.reload();
+    };
+
+    if (id === 'q'){
+      let t = null;
+      el.addEventListener('input', ()=>{
+        clearTimeout(t);
+        t = setTimeout(fire, 300);
+      });
+    } else {
+      el.addEventListener('change', fire);
+    }
+  });
+
+  updateUI();
+})();
+</script>
+
+<script>
 (function localDropdownFilters(){
   const tbody = document.getElementById('tbody');
   const filterLoaiDon = document.getElementById('filterLoaiDon');
@@ -196,7 +308,6 @@
 
   if (!tbody || !filterLoaiDon || !filterTrangThai) return;
 
-  // MASTER cố định, không rebuild theo dữ liệu đang lọc
   const MASTER_STATUS_OPTIONS = new Map([
     ['da kiem don', 'Đã kiểm đơn']
   ]);
@@ -213,7 +324,7 @@
   }
 
   function getSelectedLoaiDonValue(){
-    return String(filterLoaiDon.value || '').trim().toLowerCase(); // "", "true", "false"
+    return String(filterLoaiDon.value || '').trim().toLowerCase();
   }
 
   function getSelectedTrangThaiNorm(){
@@ -248,6 +359,7 @@
     const text = normalizeVN(tr.innerText || '');
     if (text.includes('don khong cod') || text.includes('khong cod')) return 'false';
     if (text.includes('don hang cod')) return 'true';
+
     return '';
   }
 
@@ -270,6 +382,63 @@
       null;
 
     return String(statusCell ? statusCell.textContent : '').trim();
+  }
+
+  function collectStatusesFromCurrentSelect(){
+    Array.from(filterTrangThai.options).forEach(opt => {
+      const label = String(opt.text || '').replace(/\s+/g, ' ').trim();
+      const norm = normalizeVN(label);
+      if (!label || norm === 'tat ca') return;
+      if (!MASTER_STATUS_OPTIONS.has(norm)){
+        MASTER_STATUS_OPTIONS.set(norm, label);
+      }
+    });
+  }
+
+  function collectStatusesFromRows(){
+    getRealRows().forEach(tr => {
+      const raw = readTrangThaiFromRow(tr).replace(/\s+/g, ' ').trim();
+      const norm = normalizeVN(raw);
+      if (!raw || !norm) return;
+      if (!MASTER_STATUS_OPTIONS.has(norm)){
+        MASTER_STATUS_OPTIONS.set(norm, raw);
+      }
+    });
+  }
+
+  function rebuildTrangThaiSelectPreserveValue(){
+    let currentNorm = getSelectedTrangThaiNorm();
+
+    if (!currentNorm || currentNorm === 'tat ca') {
+      currentNorm = 'da kiem don';
+    }
+
+    filterTrangThai.innerHTML = '';
+    filterTrangThai.appendChild(new Option('Tất cả', ''));
+
+    Array.from(MASTER_STATUS_OPTIONS.entries())
+      .sort((a, b) => a[1].localeCompare(b[1], 'vi'))
+      .forEach(([norm, label]) => {
+        const opt = new Option(label, norm);
+        if (currentNorm === norm) opt.selected = true;
+        filterTrangThai.appendChild(opt);
+      });
+
+    if (![...filterTrangThai.options].some(opt => opt.value === currentNorm)) {
+      if (currentNorm === 'da kiem don') {
+        const opt = new Option('Đã kiểm đơn', 'da kiem don');
+        opt.selected = true;
+        filterTrangThai.appendChild(opt);
+      } else {
+        filterTrangThai.value = '';
+      }
+    }
+  }
+
+  function refreshMasterStatuses(){
+    collectStatusesFromCurrentSelect();
+    collectStatusesFromRows();
+    rebuildTrangThaiSelectPreserveValue();
   }
 
   function removeLocalEmpty(){
@@ -295,55 +464,6 @@
     }
   }
 
-  // Chỉ bổ sung thêm trạng thái mới vào MASTER, không xóa cái cũ
-  function collectStatusesFromCurrentSelect(){
-    Array.from(filterTrangThai.options).forEach(opt => {
-      const label = String(opt.text || '').replace(/\s+/g, ' ').trim();
-      const norm = normalizeVN(label);
-      if (!label || norm === 'tat ca') return;
-      if (!MASTER_STATUS_OPTIONS.has(norm)){
-        MASTER_STATUS_OPTIONS.set(norm, label);
-      }
-    });
-  }
-
-  function collectStatusesFromRows(){
-    getRealRows().forEach(tr => {
-      const raw = readTrangThaiFromRow(tr).replace(/\s+/g, ' ').trim();
-      const norm = normalizeVN(raw);
-      if (!raw || !norm) return;
-      if (!MASTER_STATUS_OPTIONS.has(norm)){
-        MASTER_STATUS_OPTIONS.set(norm, raw);
-      }
-    });
-  }
-
-  // Rebuild select nhưng giữ nguyên selected hiện tại
-  function rebuildTrangThaiSelectPreserveValue(){
-    const currentNorm = getSelectedTrangThaiNorm();
-
-    filterTrangThai.innerHTML = '';
-    filterTrangThai.appendChild(new Option('Tất cả', ''));
-
-    Array.from(MASTER_STATUS_OPTIONS.entries())
-      .sort((a, b) => a[1].localeCompare(b[1], 'vi'))
-      .forEach(([norm, label]) => {
-        const opt = new Option(label, norm);
-        if (currentNorm && currentNorm === norm) opt.selected = true;
-        filterTrangThai.appendChild(opt);
-      });
-
-    if (!currentNorm){
-      filterTrangThai.value = '';
-    }
-  }
-
-  function refreshMasterStatuses(){
-    collectStatusesFromCurrentSelect();
-    collectStatusesFromRows();
-    rebuildTrangThaiSelectPreserveValue();
-  }
-
   function applyLocalFilters(){
     const codVal = getSelectedLoaiDonValue();
     const ttVal = getSelectedTrangThaiNorm();
@@ -362,13 +482,11 @@
 
       let ok = true;
 
-      // Lọc COD: CHỈ ẩn/hiện dòng, không đụng dropdown trạng thái
       if (codVal){
         const rowCod = readCodValueFromRow(tr);
         if (rowCod !== codVal) ok = false;
       }
 
-      // Lọc trạng thái
       if (ok && ttVal){
         const rowTT = normalizeVN(readTrangThaiFromRow(tr));
         const matched = rowTT.includes(ttVal) || ttVal.includes(rowTT);
@@ -388,19 +506,16 @@
     }
   }
 
-  // Đổi COD: KHÔNG rebuild status, KHÔNG reload
   filterLoaiDon.addEventListener('change', () => {
     window.resetToPage1?.();
     applyLocalFilters();
   });
 
-  // Đổi trạng thái: KHÔNG reload
   filterTrangThai.addEventListener('change', () => {
     window.resetToPage1?.();
     applyLocalFilters();
   });
 
-  // Chỉ khi reload dữ liệu server thật sự thì mới refresh MASTER_STATUS_OPTIONS
   const originalReload = typeof window.reload === 'function' ? window.reload : null;
 
   if (originalReload){
@@ -420,7 +535,6 @@
     mo.observe(tbody, { childList:true, subtree:true });
   }
 
-  // Init lần đầu
   setTimeout(() => {
     refreshMasterStatuses();
     applyLocalFilters();
