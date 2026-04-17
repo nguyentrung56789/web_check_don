@@ -19,41 +19,115 @@
     display:flex; align-items:center; gap:10px; z-index:2000;
     background:transparent;
   }
-  #userBar .name{ max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #userBar .name{
+    max-width:220px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
 
   #notifyBell{
-    background:none; border:0; cursor:pointer; font-size:18px; line-height:1; color:#fbbf24;
+    background:none;
+    border:0;
+    cursor:pointer;
+    font-size:18px;
+    line-height:1;
+    color:#fbbf24;
   }
   #notifyBell:hover{ filter:brightness(1.1); }
 
   #notifyPanel{
-    position:fixed; top:40px; right:16px; width:280px; display:none; overflow:hidden; z-index:2001;
-    background:#0f1830; color:#e6edff; border:1px solid #2a3d6a; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.45);
+    position:fixed;
+    top:40px;
+    right:16px;
+    width:280px;
+    display:none;
+    overflow:hidden;
+    z-index:2001;
+    background:#0f1830;
+    color:#e6edff;
+    border:1px solid #2a3d6a;
+    border-radius:12px;
+    box-shadow:0 8px 30px rgba(0,0,0,.45);
   }
-  #notifyPanel .np-head{ padding:10px 12px; font-weight:700; border-bottom:1px solid #22345c; background:#11214a; }
-  #notifyPanel .np-body{ max-height:50vh; overflow:auto; }
-  #notifyPanel .np-item{ padding:10px 12px; border-bottom:1px dashed #20345e; font-size:14px; }
-  #notifyPanel .np-item time{ display:block; font-size:12px; color:#9aa7c7; margin-top:4px; }
-  #notifyPanel .np-empty{ padding:14px; color:#9aa7c7; font-size:14px; text-align:center; }
+  #notifyPanel .np-head{
+    padding:10px 12px;
+    font-weight:700;
+    border-bottom:1px solid #22345c;
+    background:#11214a;
+  }
+  #notifyPanel .np-body{
+    max-height:50vh;
+    overflow:auto;
+  }
+  #notifyPanel .np-item{
+    padding:10px 12px;
+    border-bottom:1px dashed #20345e;
+    font-size:14px;
+  }
+  #notifyPanel .np-item time{
+    display:block;
+    font-size:12px;
+    color:#9aa7c7;
+    margin-top:4px;
+  }
+  #notifyPanel .np-empty{
+    padding:14px;
+    color:#9aa7c7;
+    font-size:14px;
+    text-align:center;
+  }
 
-  th.col-don-hang, td.col-don-hang { width:180px; max-width:260px; }
+  th.col-don-hang, td.col-don-hang{
+    width:180px;
+    max-width:260px;
+  }
   th.col-nv-xn, td.col-nv-xn,
-  th.col-nv-gl, td.col-nv-gl { width:120px; max-width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  th.col-ngay-dh, td.col-ngay-dh { width:140px; max-width:140px; white-space:nowrap; }
+  th.col-nv-gl, td.col-nv-gl{
+    width:120px;
+    max-width:120px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  th.col-ngay-dh, td.col-ngay-dh{
+    width:140px;
+    max-width:140px;
+    white-space:nowrap;
+  }
 
-  .inline-label{ font-size:14px; opacity:.85; }
-  #sbState{ gap:10px; }
+  .inline-label{
+    font-size:14px;
+    opacity:.85;
+  }
+
+  #sbState{
+    gap:10px;
+  }
 
   #capDate{ min-width:180px; }
   #btnCapNhatDon{ white-space:nowrap; }
 
   #pager .btn-action{ padding:8px 12px; }
+
   #pgSize{
     padding:6px 10px;
     background:#0b1220;
     color:#e6edff;
     border:1px solid #2a3d6a;
     border-radius:8px;
+  }
+
+  .grid table{
+    table-layout:fixed;
+  }
+
+  #tbody{
+    transition:opacity .12s ease;
+  }
+
+  #tbody tr{
+    transition:opacity .12s ease;
   }
 </style>
 </head>
@@ -156,6 +230,7 @@
           <button id="pgPrev" class="btn-action">« Trước</button>
           <button id="pgNext" class="btn-action">Sau »</button>
         </div>
+
         <div style="display:flex;align-items:center;gap:10px">
           <label for="pgSize" class="inline-label">Dòng/trang:</label>
           <select id="pgSize">
@@ -189,8 +264,8 @@
 (function notifInit(){
   const bell = document.getElementById('notifyBell');
   const panel = document.getElementById('notifyPanel');
-  const list  = document.getElementById('notifyList');
-  if(!bell || !panel) return;
+  const list = document.getElementById('notifyList');
+  if (!bell || !panel) return;
 
   bell.addEventListener('click', () => {
     panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
@@ -202,7 +277,9 @@
     panel.style.display = 'none';
   });
 
-  if (list) list.innerHTML = `<div class="np-empty">Chưa có thông báo.</div>`;
+  if (list) {
+    list.innerHTML = `<div class="np-empty">Chưa có thông báo.</div>`;
+  }
 })();
 </script>
 
@@ -256,7 +333,7 @@
 
   window.getPageRange = function(){
     const from = (st.page - 1) * st.size;
-    const to   = from + st.size - 1;
+    const to = from + st.size - 1;
     return { from, to, size: st.size };
   };
 
@@ -306,21 +383,13 @@
 </script>
 
 <script>
-(function trangThaiFilterClean(){
+(function trangThaiFilterStable(){
   const tbody = document.getElementById('tbody');
   const filterTrangThai = document.getElementById('filterTrangThai');
 
   if (!tbody || !filterTrangThai) return;
 
-  const STATUS_MAP = {
-    'cho lay lai': 'Chờ lấy lại',
-    'da chuyen hoan': 'Đã chuyển hoàn',
-    'da huy': 'Đã hủy',
-    'da kiem don': 'Đã kiểm đơn',
-    'da giao': 'Đã giao',
-    'dang giao hang': 'Đang giao hàng',
-    'giao thanh cong': 'Giao thành công'
-  };
+  let rafId = 0;
 
   function normalizeVN(text){
     return String(text || '')
@@ -374,8 +443,9 @@
     tbody.appendChild(tr);
   }
 
-  function applyFilter(){
+  function applyFilterNow(){
     const selected = getSelectedStatus();
+
     removeLocalEmpty();
 
     const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -412,34 +482,26 @@
     }
   }
 
+  function applyFilter(){
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(applyFilterNow);
+  }
+
   window.getSelectedTrangThaiFilter = function(){
     return getSelectedStatus();
   };
 
-  const originalReload = typeof window.reload === 'function' ? window.reload : null;
-
-  if (originalReload) {
-    window.reload = async function(...args){
-      const result = await originalReload.apply(this, args);
-      setTimeout(applyFilter, 0);
-      return result;
-    };
-  } else {
-    const mo = new MutationObserver(() => applyFilter());
-    mo.observe(tbody, { childList:true, subtree:true });
-  }
-
-  filterTrangThai.addEventListener('change', async () => {
-    window.resetToPage1?.();
-
-    if (typeof window.reload === 'function') {
-      await window.reload();
-    } else {
-      applyFilter();
-    }
+  filterTrangThai.addEventListener('change', () => {
+    applyFilter();
   });
 
-  setTimeout(applyFilter, 0);
+  const mo = new MutationObserver(() => {
+    applyFilter();
+  });
+
+  mo.observe(tbody, { childList:true, subtree:true });
+
+  applyFilter();
 })();
 </script>
 
