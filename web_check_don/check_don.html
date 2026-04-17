@@ -340,40 +340,18 @@
   }
 
   function readCodValueFromRow(tr){
-    const attrNames = [
-      'data-cod',
-      'data-don_hang',
-      'data-don-hang',
-      'data-loai-don',
-      'data-loai_don'
-    ];
-
-    for (const name of attrNames){
-      const raw = tr.getAttribute(name);
-      if (raw !== null && raw !== ''){
-        const v = String(raw).trim().toLowerCase();
-        if (v === 'true' || v === 'false') return v;
-      }
-    }
-
-    const text = normalizeVN(tr.innerText || '');
-    if (text.includes('don khong cod') || text.includes('khong cod')) return 'false';
-    if (text.includes('don hang cod')) return 'true';
-
+    const raw = tr.getAttribute('data-cod');
+    if (raw === 'true' || raw === 'false') return raw;
     return '';
   }
 
   function readTrangThaiFromRow(tr){
-    const attrNames = [
-      'data-trang-thai',
-      'data-trang_thai',
-      'data-status'
-    ];
+    const rawAttr =
+      tr.getAttribute('data-trang-thai') ||
+      tr.getAttribute('data-trang_thai') ||
+      tr.getAttribute('data-status');
 
-    for (const name of attrNames){
-      const raw = tr.getAttribute(name);
-      if (raw !== null && raw !== '') return String(raw).trim();
-    }
+    if (rawAttr) return String(rawAttr).trim();
 
     const statusCell =
       tr.querySelector('td.col-trang-thai') ||
@@ -408,10 +386,7 @@
 
   function rebuildTrangThaiSelectPreserveValue(){
     let currentNorm = getSelectedTrangThaiNorm();
-
-    if (!currentNorm || currentNorm === 'tat ca') {
-      currentNorm = 'da kiem don';
-    }
+    if (!currentNorm || currentNorm === 'tat ca') currentNorm = 'da kiem don';
 
     filterTrangThai.innerHTML = '';
     filterTrangThai.appendChild(new Option('Tất cả', ''));
@@ -539,9 +514,6 @@
     refreshMasterStatuses();
     applyLocalFilters();
   }, 0);
-
-  window.applyLocalDonHangFilters = applyLocalFilters;
-  window.refreshMasterTrangThaiOptions = refreshMasterStatuses;
 })();
 </script>
 
