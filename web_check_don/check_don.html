@@ -9,7 +9,6 @@
 <script>checkAccess();</script>
 
 <script src="./js/internal_key.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
 
 <link rel="stylesheet" href="./css/check_don.css" />
@@ -21,7 +20,10 @@
     background:transparent;
   }
   #userBar .name{ max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  #notifyBell{ background:none; border:0; cursor:pointer; font-size:18px; line-height:1; color:#fbbf24; }
+
+  #notifyBell{
+    background:none; border:0; cursor:pointer; font-size:18px; line-height:1; color:#fbbf24;
+  }
   #notifyBell:hover{ filter:brightness(1.1); }
 
   #notifyPanel{
@@ -34,15 +36,14 @@
   #notifyPanel .np-item time{ display:block; font-size:12px; color:#9aa7c7; margin-top:4px; }
   #notifyPanel .np-empty{ padding:14px; color:#9aa7c7; font-size:14px; text-align:center; }
 
-  th.col-don-hang, td.col-don-hang { width: 180px; max-width: 260px; }
+  th.col-don-hang, td.col-don-hang { width:180px; max-width:260px; }
   th.col-nv-xn, td.col-nv-xn,
-  th.col-nv-gl, td.col-nv-gl { width: 120px; max-width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  th.col-ngay-dh, td.col-ngay-dh { width: 140px; max-width:140px; white-space:nowrap; }
+  th.col-nv-gl, td.col-nv-gl { width:120px; max-width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  th.col-ngay-dh, td.col-ngay-dh { width:140px; max-width:140px; white-space:nowrap; }
 
-  .inline-label{ font-size:14px; opacity:.85 }
+  .inline-label{ font-size:14px; opacity:.85; }
   #sbState{ gap:10px; }
 
-  .update-row{ display:flex; gap:10px; align-items:center; margin:10px 0 0; flex-wrap:wrap; }
   #capDate{ min-width:180px; }
   #btnCapNhatDon{ white-space:nowrap; }
 
@@ -110,7 +111,13 @@
       <label class="inline-label" for="filterTrangThai">Trạng thái:</label>
       <select id="filterTrangThai" title="Lọc theo cột trạng_thái">
         <option value="">Tất cả</option>
+        <option value="cho lay lai">Chờ lấy lại</option>
+        <option value="da chuyen hoan">Đã chuyển hoàn</option>
+        <option value="da huy">Đã hủy</option>
         <option value="da kiem don" selected>Đã kiểm đơn</option>
+        <option value="da giao">Đã giao</option>
+        <option value="dang giao hang">Đang giao hàng</option>
+        <option value="giao thanh cong">Giao thành công</option>
       </select>
 
       <span class="right-end">
@@ -185,15 +192,17 @@
   const list  = document.getElementById('notifyList');
   if(!bell || !panel) return;
 
-  function toggle(){ panel.style.display = (panel.style.display==='block' ? 'none' : 'block'); }
-  bell.addEventListener('click', toggle);
-  document.addEventListener('click', (e)=>{
-    if(panel.style.display!=='block') return;
-    if(panel.contains(e.target) || bell.contains(e.target)) return;
-    panel.style.display='none';
+  bell.addEventListener('click', () => {
+    panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
   });
 
-  if(list){ list.innerHTML = `<div class="np-empty">Chưa có thông báo.</div>`; }
+  document.addEventListener('click', (e) => {
+    if (panel.style.display !== 'block') return;
+    if (panel.contains(e.target) || bell.contains(e.target)) return;
+    panel.style.display = 'none';
+  });
+
+  if (list) list.innerHTML = `<div class="np-empty">Chưa có thông báo.</div>`;
 })();
 </script>
 
@@ -210,7 +219,6 @@
   }
 
   window.API_BASE = base.replace(/\/+$/,'');
-  console.log('[APP] API_BASE =', window.API_BASE, '| has key:', typeof window.getInternalKey==='function');
 })();
 </script>
 
@@ -225,14 +233,19 @@
   const elSize = document.getElementById('pgSize');
   const elInfo = document.getElementById('pgInfo');
 
-  function totalPages(){ return Math.max(1, Math.ceil(st.total / st.size)); }
-  function clampPage(n){ return Math.min(Math.max(1, n), totalPages()); }
+  function totalPages(){
+    return Math.max(1, Math.ceil(st.total / st.size));
+  }
+
+  function clampPage(n){
+    return Math.min(Math.max(1, n), totalPages());
+  }
 
   function updateUI(){
-    if(elInfo) elInfo.textContent = `Trang ${st.page}/${totalPages()} — ${st.total} bản ghi`;
-    if(elPrev) elPrev.disabled = (st.page <= 1);
-    if(elNext) elNext.disabled = (st.page >= totalPages());
-    if(elSize && String(st.size) !== elSize.value) elSize.value = String(st.size);
+    if (elInfo) elInfo.textContent = `Trang ${st.page}/${totalPages()} — ${st.total} bản ghi`;
+    if (elPrev) elPrev.disabled = st.page <= 1;
+    if (elNext) elNext.disabled = st.page >= totalPages();
+    if (elSize && String(st.size) !== elSize.value) elSize.value = String(st.size);
   }
 
   function goTo(n){
@@ -258,29 +271,28 @@
     updateUI();
   };
 
-  elPrev?.addEventListener('click', ()=> goTo(st.page - 1));
-  elNext?.addEventListener('click', ()=> goTo(st.page + 1));
+  elPrev?.addEventListener('click', () => goTo(st.page - 1));
+  elNext?.addEventListener('click', () => goTo(st.page + 1));
 
-  elSize?.addEventListener('change', ()=>{
-    const v = parseInt(elSize.value, 10) || 100;
-    st.size = v;
+  elSize?.addEventListener('change', () => {
+    st.size = parseInt(elSize.value, 10) || 100;
     st.page = 1;
     updateUI();
     if (typeof window.reload === 'function') window.reload();
   });
 
-  ['q','from','to'].forEach(id=>{
+  ['q','from','to'].forEach(id => {
     const el = document.getElementById(id);
-    if(!el) return;
+    if (!el) return;
 
-    const fire = ()=>{
+    const fire = () => {
       window.resetToPage1();
-      if (typeof window.reload==='function') window.reload();
+      if (typeof window.reload === 'function') window.reload();
     };
 
-    if (id === 'q'){
+    if (id === 'q') {
       let t = null;
-      el.addEventListener('input', ()=>{
+      el.addEventListener('input', () => {
         clearTimeout(t);
         t = setTimeout(fire, 300);
       });
@@ -294,18 +306,24 @@
 </script>
 
 <script>
-(function localDropdownFilters(){
+(function trangThaiFilterClean(){
   const tbody = document.getElementById('tbody');
   const filterTrangThai = document.getElementById('filterTrangThai');
 
   if (!tbody || !filterTrangThai) return;
 
-  const MASTER_STATUS_OPTIONS = new Map([
-    ['da kiem don', 'Đã kiểm đơn']
-  ]);
+  const STATUS_MAP = {
+    'cho lay lai': 'Chờ lấy lại',
+    'da chuyen hoan': 'Đã chuyển hoàn',
+    'da huy': 'Đã hủy',
+    'da kiem don': 'Đã kiểm đơn',
+    'da giao': 'Đã giao',
+    'dang giao hang': 'Đang giao hàng',
+    'giao thanh cong': 'Giao thành công'
+  };
 
-  function normalizeVN(v){
-    return String(v || '')
+  function normalizeVN(text){
+    return String(text || '')
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/đ/g, 'd')
@@ -315,10 +333,25 @@
       .toLowerCase();
   }
 
-  function getSelectedTrangThaiNorm(){
-    const text = filterTrangThai.options[filterTrangThai.selectedIndex]?.text || '';
-    const norm = normalizeVN(text);
-    return norm === 'tat ca' ? '' : norm;
+  function getSelectedStatus(){
+    return normalizeVN(filterTrangThai.value || '');
+  }
+
+  function readRowStatus(tr){
+    const attr =
+      tr.getAttribute('data-trang-thai') ||
+      tr.getAttribute('data-trang_thai') ||
+      tr.getAttribute('data-status');
+
+    if (attr) return String(attr).trim();
+
+    const cell =
+      tr.querySelector('td.col-trang-thai') ||
+      tr.querySelector('[data-col="trang-thai"]') ||
+      tr.children[6] ||
+      null;
+
+    return String(cell ? cell.textContent : '').trim();
   }
 
   function getRealRows(){
@@ -327,104 +360,22 @@
     );
   }
 
-  function readTrangThaiFromRow(tr){
-    const rawAttr =
-      tr.getAttribute('data-trang-thai') ||
-      tr.getAttribute('data-trang_thai') ||
-      tr.getAttribute('data-status');
-
-    if (rawAttr) return String(rawAttr).trim();
-
-    const statusCell =
-      tr.querySelector('td.col-trang-thai') ||
-      tr.querySelector('[data-col="trang-thai"]') ||
-      tr.children[6] ||
-      null;
-
-    return String(statusCell ? statusCell.textContent : '').trim();
-  }
-
-  function collectStatusesFromCurrentSelect(){
-    Array.from(filterTrangThai.options).forEach(opt => {
-      const label = String(opt.text || '').replace(/\s+/g, ' ').trim();
-      const norm = normalizeVN(label);
-      if (!label || norm === 'tat ca') return;
-      if (!MASTER_STATUS_OPTIONS.has(norm)){
-        MASTER_STATUS_OPTIONS.set(norm, label);
-      }
-    });
-  }
-
-  function collectStatusesFromRows(){
-    getRealRows().forEach(tr => {
-      const raw = readTrangThaiFromRow(tr).replace(/\s+/g, ' ').trim();
-      const norm = normalizeVN(raw);
-      if (!raw || !norm) return;
-      if (!MASTER_STATUS_OPTIONS.has(norm)){
-        MASTER_STATUS_OPTIONS.set(norm, raw);
-      }
-    });
-  }
-
-  function rebuildTrangThaiSelectPreserveValue(){
-    let currentNorm = filterTrangThai.value || getSelectedTrangThaiNorm();
-    currentNorm = normalizeVN(currentNorm);
-    if (!currentNorm || currentNorm === 'tat ca') currentNorm = 'da kiem don';
-
-    filterTrangThai.innerHTML = '';
-    filterTrangThai.appendChild(new Option('Tất cả', ''));
-
-    Array.from(MASTER_STATUS_OPTIONS.entries())
-      .sort((a, b) => a[1].localeCompare(b[1], 'vi'))
-      .forEach(([norm, label]) => {
-        const opt = new Option(label, norm);
-        if (currentNorm === norm) opt.selected = true;
-        filterTrangThai.appendChild(opt);
-      });
-
-    if (![...filterTrangThai.options].some(opt => opt.value === currentNorm)) {
-      if (currentNorm === 'da kiem don') {
-        const opt = new Option('Đã kiểm đơn', 'da kiem don');
-        opt.selected = true;
-        filterTrangThai.appendChild(opt);
-      } else {
-        filterTrangThai.value = '';
-      }
-    }
-  }
-
-  function refreshMasterStatuses(){
-    collectStatusesFromCurrentSelect();
-    collectStatusesFromRows();
-    rebuildTrangThaiSelectPreserveValue();
-  }
-
   function removeLocalEmpty(){
     tbody.querySelectorAll('tr.__local-empty').forEach(tr => tr.remove());
   }
 
-  function hideBuiltInEmptyRowsWhenHasData(){
-    const realRows = getRealRows();
-    tbody.querySelectorAll('tr').forEach(tr => {
-      if (tr.querySelector('.empty') && !tr.classList.contains('__local-empty')){
-        tr.style.display = realRows.length > 0 ? 'none' : '';
-      }
-    });
-  }
-
   function ensureLocalEmpty(){
-    const hasVisibleRealRow = getRealRows().some(tr => tr.style.display !== 'none');
-    if (!hasVisibleRealRow){
-      const tr = document.createElement('tr');
-      tr.className = '__local-empty';
-      tr.innerHTML = `<td colspan="11" class="empty">Không có dữ liệu.</td>`;
-      tbody.appendChild(tr);
-    }
+    const visible = getRealRows().some(tr => tr.style.display !== 'none');
+    if (visible) return;
+
+    const tr = document.createElement('tr');
+    tr.className = '__local-empty';
+    tr.innerHTML = `<td colspan="11" class="empty">Không có dữ liệu.</td>`;
+    tbody.appendChild(tr);
   }
 
-  function applyLocalFilters(){
-    const ttVal = getSelectedTrangThaiNorm();
-
+  function applyFilter(){
+    const selected = getSelectedStatus();
     removeLocalEmpty();
 
     const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -432,60 +383,63 @@
     rows.forEach(tr => {
       if (tr.classList.contains('__local-empty')) return;
 
-      if (tr.querySelector('.empty')){
+      if (tr.querySelector('.empty')) {
         tr.style.display = '';
         return;
       }
 
-      let ok = true;
-
-      if (ok && ttVal){
-        const rowTT = normalizeVN(readTrangThaiFromRow(tr));
-        const matched = rowTT.includes(ttVal) || ttVal.includes(rowTT);
-        if (!matched) ok = false;
+      if (!selected) {
+        tr.style.display = '';
+        return;
       }
 
+      const rowStatus = normalizeVN(readRowStatus(tr));
+      const ok = rowStatus.includes(selected) || selected.includes(rowStatus);
       tr.style.display = ok ? '' : 'none';
     });
-
-    hideBuiltInEmptyRowsWhenHasData();
 
     const realRows = getRealRows();
     const visibleRows = realRows.filter(tr => tr.style.display !== 'none');
 
-    if (realRows.length > 0 && visibleRows.length === 0){
+    tbody.querySelectorAll('tr').forEach(tr => {
+      if (tr.querySelector('.empty') && !tr.classList.contains('__local-empty')) {
+        tr.style.display = realRows.length > 0 ? 'none' : '';
+      }
+    });
+
+    if (realRows.length > 0 && visibleRows.length === 0) {
       ensureLocalEmpty();
     }
   }
 
-  filterTrangThai.addEventListener('change', () => {
-    window.resetToPage1?.();
-    applyLocalFilters();
-  });
+  window.getSelectedTrangThaiFilter = function(){
+    return getSelectedStatus();
+  };
 
   const originalReload = typeof window.reload === 'function' ? window.reload : null;
 
-  if (originalReload){
+  if (originalReload) {
     window.reload = async function(...args){
       const result = await originalReload.apply(this, args);
-      setTimeout(() => {
-        refreshMasterStatuses();
-        applyLocalFilters();
-      }, 0);
+      setTimeout(applyFilter, 0);
       return result;
     };
   } else {
-    const mo = new MutationObserver(() => {
-      refreshMasterStatuses();
-      applyLocalFilters();
-    });
+    const mo = new MutationObserver(() => applyFilter());
     mo.observe(tbody, { childList:true, subtree:true });
   }
 
-  setTimeout(() => {
-    refreshMasterStatuses();
-    applyLocalFilters();
-  }, 0);
+  filterTrangThai.addEventListener('change', async () => {
+    window.resetToPage1?.();
+
+    if (typeof window.reload === 'function') {
+      await window.reload();
+    } else {
+      applyFilter();
+    }
+  });
+
+  setTimeout(applyFilter, 0);
 })();
 </script>
 
