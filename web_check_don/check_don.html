@@ -5,14 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Kiểm tra đơn hàng (don_hang)</title>
 
-<!-- Kiểm tra quyền truy cập bằng token -->
 <script src="./js/auth_token.js"></script>
 <script>checkAccess();</script>
 
-<!-- LẤY key nội bộ để gọi /api/getConfig -->
 <script src="./js/internal_key.js"></script>
 
-<!-- Supabase JS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
 
 <link rel="stylesheet" href="./css/check_don.css" />
@@ -51,8 +48,11 @@
 
   #pager .btn-action{ padding:8px 12px; }
   #pgSize{
-    padding:6px 10px; background:#0b1220; color:#e6edff;
-    border:1px solid #2a3d6a; border-radius:8px;
+    padding:6px 10px;
+    background:#0b1220;
+    color:#e6edff;
+    border:1px solid #2a3d6a;
+    border-radius:8px;
   }
 </style>
 </head>
@@ -84,7 +84,7 @@
     <h1>Kiểm tra đơn hàng</h1>
 
     <div class="scan-row">
-      <input id="scan" placeholder="Quét / nhập mã hóa đơn" />
+      <input id="scan" placeholder="Quét mã hóa đơn/mã vận đơn" />
       <button id="btnCheck" class="btn-action">Check đơn hàng</button>
       <button id="btnPrepTop" class="btn-action">Chuẩn bị đơn</button>
     </div>
@@ -274,7 +274,6 @@
     if (typeof window.reload === 'function') window.reload();
   });
 
-  // Chỉ các filter này mới reload dữ liệu server
   ['q','from','to'].forEach(id=>{
     const el = document.getElementById(id);
     if(!el) return;
@@ -345,9 +344,9 @@
       }
     }
 
-    // fallback đọc text trong dòng nếu check_don.js chưa gắn data-cod
     const text = normalizeVN(tr.innerText);
-    if (text.includes('don khong cod')) return 'false';
+
+    if (text.includes('don khong cod') || text.includes('khong cod')) return 'false';
     if (text.includes('don hang cod')) return 'true';
 
     return '';
@@ -367,26 +366,41 @@
       }
     }
 
-    const cell =
+    const statusCell =
       tr.querySelector('td.col-trang-thai') ||
+      tr.querySelector('[data-col="trang-thai"]') ||
       tr.children[6] ||
       null;
 
-    return normalizeVN(cell ? cell.textContent : '');
+    if (statusCell) return normalizeVN(statusCell.textContent || '');
+
+    return normalizeVN(tr.innerText || '');
   }
 
   function removeLocalEmpty(){
     tbody.querySelectorAll('tr.__local-empty').forEach(tr => tr.remove());
   }
 
+  function hideBuiltInEmptyRowsWhenHasData(){
+    const realRows = Array.from(tbody.querySelectorAll('tr')).filter(tr =>
+      !tr.classList.contains('__local-empty') && !tr.querySelector('.empty')
+    );
+
+    tbody.querySelectorAll('tr').forEach(tr => {
+      if (tr.querySelector('.empty') && !tr.classList.contains('__local-empty')){
+        tr.style.display = realRows.length > 0 ? 'none' : '';
+      }
+    });
+  }
+
   function ensureLocalEmpty(){
-    const hasRealVisibleRow = Array.from(tbody.querySelectorAll('tr')).some(tr => {
+    const hasVisibleRealRow = Array.from(tbody.querySelectorAll('tr')).some(tr => {
       if (tr.classList.contains('__local-empty')) return false;
       if (tr.querySelector('.empty')) return false;
       return tr.style.display !== 'none';
     });
 
-    if (!hasRealVisibleRow){
+    if (!hasVisibleRealRow){
       const tr = document.createElement('tr');
       tr.className = '__local-empty';
       tr.innerHTML = `<td colspan="11" class="empty">Không có dữ liệu.</td>`;
@@ -417,13 +431,16 @@
         if (rowCod !== codVal) ok = false;
       }
 
-      if (ttVal){
+      if (ok && ttVal){
         const rowTT = readTrangThaiFromRow(tr);
-        if (rowTT !== ttVal) ok = false;
+        const matched = rowTT.includes(ttVal) || ttVal.includes(rowTT);
+        if (!matched) ok = false;
       }
 
       tr.style.display = ok ? '' : 'none';
     });
+
+    hideBuiltInEmptyRowsWhenHasData();
 
     const realRows = Array.from(tbody.querySelectorAll('tr')).filter(tr =>
       !tr.classList.contains('__local-empty') && !tr.querySelector('.empty')
@@ -431,23 +448,17 @@
 
     const visibleRows = realRows.filter(tr => tr.style.display !== 'none');
 
-    tbody.querySelectorAll('tr').forEach(tr => {
-      if (tr.querySelector('.empty') && !tr.classList.contains('__local-empty')){
-        tr.style.display = realRows.length ? 'none' : '';
-      }
-    });
-
     if (realRows.length > 0 && visibleRows.length === 0){
       ensureLocalEmpty();
     }
   }
 
-  filterLoaiDon.addEventListener('change', ()=>{
+  filterLoaiDon.addEventListener('change', () => {
     window.resetToPage1?.();
     applyLocalFilters();
   });
 
-  filterTrangThai.addEventListener('change', ()=>{
+  filterTrangThai.addEventListener('change', () => {
     window.resetToPage1?.();
     applyLocalFilters();
   });
