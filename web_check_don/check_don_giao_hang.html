@@ -108,14 +108,6 @@ tr.over td{background:rgba(255,107,107,.08)}
 tr.done .kiem-input{border-color:rgba(45,212,191,.45)}
 tr.over .kiem-input{border-color:var(--err);color:#ffb4b4}
 
-tr.active-row td{
-  background:rgba(105,180,255,.08) !important;
-}
-tr.active-row .kiem-input{
-  border-color:var(--active);
-  box-shadow:0 0 0 2px rgba(105,180,255,.18);
-}
-
 tfoot td{padding:12px 10px;border-top:1px solid var(--line);font-weight:700}
 .total-blue{color:var(--ok);font-size:16px}
 
@@ -134,13 +126,10 @@ tfoot td{padding:12px 10px;border-top:1px solid var(--line);font-weight:700}
   border-radius:8px;
   padding:6px 8px;
   transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
-}
-
-/* Mặc định ẩn spinner */
-.kiem-input{
   appearance:textfield;
   -moz-appearance:textfield;
 }
+
 .kiem-input::-webkit-outer-spin-button,
 .kiem-input::-webkit-inner-spin-button{
   -webkit-appearance:none;
@@ -148,11 +137,12 @@ tfoot td{padding:12px 10px;border-top:1px solid var(--line);font-weight:700}
   display:none;
 }
 
-/* Chỉ hiện spinner ở dòng active */
+/* chỉ dòng nào kiểm hàng > 0 mới hiện tăng giảm */
 tr.show-spin .kiem-input{
   appearance:auto;
   -moz-appearance:auto;
 }
+
 tr.show-spin .kiem-input::-webkit-outer-spin-button,
 tr.show-spin .kiem-input::-webkit-inner-spin-button{
   -webkit-appearance:auto;
@@ -429,6 +419,7 @@ function updateButtonsState(){
 function decorateRow(tr, qty, kiem){
   tr.classList.remove('done','over');
   const tick=tr.querySelector('.kiem-tick');
+
   if(kiem>qty){
     tr.classList.add('over');
     tick.textContent='';
@@ -440,24 +431,11 @@ function decorateRow(tr, qty, kiem){
   }
 }
 
-function clearActiveRow(){
-  document.querySelectorAll('#ctBody tr[data-ma]').forEach(tr=>{
-    tr.classList.remove('show-spin','active-row');
-  });
-}
-
-function showSpinOnlyForRow(targetTr, shouldScroll=false){
-  clearActiveRow();
-  if(!targetTr) return;
-
-  targetTr.classList.add('show-spin','active-row');
-
-  if(shouldScroll){
-    targetTr.scrollIntoView({
-      behavior:'smooth',
-      block:'center'
-    });
-  }
+/* chỉ hiện tăng giảm khi giá trị > 0 */
+function updateSpinByValue(tr){
+  const inp = tr.querySelector('.kiem-input');
+  const v = Math.max(0, Number(inp?.value || 0));
+  tr.classList.toggle('show-spin', v > 0);
 }
 
 function bumpInputValue(inp, step=1){
@@ -559,14 +537,19 @@ async function loadOrderLines(){
 
     function recalc(){
       let sK=0;
+
       rows.forEach(tr=>{
         const qty=Number(tr.dataset.qty)||0;
         const inp=tr.querySelector('.kiem-input');
         const v=Math.max(0, Number(inp.value || 0));
+
         inp.value=v;
         sK+=v;
-        decorateRow(tr,qty,v);
+
+        decorateRow(tr, qty, v);
+        updateSpinByValue(tr);
       });
+
       document.getElementById('sumKiem').textContent=sK;
       updateButtonsState();
     }
@@ -575,17 +558,11 @@ async function loadOrderLines(){
       const qty=Number(tr.dataset.qty)||0;
       const inp=tr.querySelector('.kiem-input');
 
-      decorateRow(tr,qty,Number(inp.value||0));
-
-      inp.addEventListener('focus', ()=>{
-        showSpinOnlyForRow(tr);
-      });
-
-      inp.addEventListener('click', ()=>{
-        showSpinOnlyForRow(tr);
-      });
+      decorateRow(tr, qty, Number(inp.value || 0));
+      updateSpinByValue(tr);
 
       inp.addEventListener('input', recalc);
+
       inp.addEventListener('keydown', (e)=>{
         if(e.key === 'Enter'){
           e.preventDefault();
@@ -704,14 +681,11 @@ function bindItemsUI(){
       return;
     }
 
-    showSpinOnlyForRow(tr, true);
-
     const inp=tr.querySelector('.kiem-input');
     bumpInputValue(inp, 1);
 
     requestAnimationFrame(()=>{
       inp.focus({preventScroll:true});
-      inp.select?.();
     });
 
     scan.value='';
@@ -757,12 +731,7 @@ function bindItemsUI(){
         : `còn ${badCount} dòng chưa khớp. kiểm tra lại nhé.`;
 
       setSBState(false,msg);
-
-      if(firstBadEl){
-        showSpinOnlyForRow(firstBadEl, true);
-        firstBadEl.querySelector('.kiem-input')?.focus({preventScroll:true});
-      }
-
+      firstBadEl?.scrollIntoView({behavior:'smooth',block:'center'});
       IS_SUBMITTING=false;
       return;
     }
