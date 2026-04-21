@@ -129,6 +129,10 @@ tfoot td{padding:12px 10px;border-top:1px solid var(--line);font-weight:700}
   appearance:textfield;
   -moz-appearance:textfield;
 }
+.kiem-input[readonly]{
+  opacity:.7;
+  cursor:not-allowed;
+}
 
 .kiem-input::-webkit-outer-spin-button,
 .kiem-input::-webkit-inner-spin-button{
@@ -435,7 +439,16 @@ function decorateRow(tr, qty, kiem){
 function updateSpinByValue(tr){
   const inp = tr.querySelector('.kiem-input');
   const v = Math.max(0, Number(inp?.value || 0));
-  tr.classList.toggle('show-spin', v > 0);
+  const canEdit = v >= 1;
+
+  tr.classList.toggle('show-spin', canEdit);
+
+  if(inp){
+    inp.readOnly = !canEdit;
+    inp.tabIndex = canEdit ? 0 : -1;
+    inp.setAttribute('aria-readonly', String(!canEdit));
+    inp.title = canEdit ? '' : 'Dòng có kiểm hàng = 0 chỉ tăng bằng quét mã';
+  }
 }
 
 function bumpInputValue(inp, step=1){
@@ -684,11 +697,13 @@ function bindItemsUI(){
     const inp=tr.querySelector('.kiem-input');
     bumpInputValue(inp, 1);
 
+    scan.value='';
+
     requestAnimationFrame(()=>{
-      inp.focus({preventScroll:true});
+      scan.focus({preventScroll:true});
+      scan.select?.();
     });
 
-    scan.value='';
     setSBState(true,`đã cộng kiểm hàng cho mã: ${esc(code)}`);
   });
 
