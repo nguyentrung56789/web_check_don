@@ -25,6 +25,25 @@
       font-size: 20px;
     }
 
+    .toolbar {
+      margin-bottom: 10px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .input {
+      height: 38px;
+      min-width: 190px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 0 10px;
+      font-size: 14px;
+      background: #fff;
+      color: #111827;
+    }
+
     .sheet-box {
       width: 100%;
       overflow: auto;
@@ -71,27 +90,6 @@
     .center {
       text-align: center;
     }
-
-    .toolbar {
-      margin-bottom: 10px;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    button {
-      border: 0;
-      background: #2563eb;
-      color: white;
-      padding: 8px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    button:hover {
-      background: #1d4ed8;
-    }
   </style>
 </head>
 <body>
@@ -100,8 +98,15 @@
   <h2>Sheet hóa đơn</h2>
 
   <div class="toolbar">
-    <button onclick="addRow()">+ Thêm dòng</button>
-    <button onclick="clearRows()">Xóa dữ liệu</button>
+    <select id="filterNhanVien" class="input">
+      <option value="">Tất cả nhân viên</option>
+    </select>
+
+    <select id="filterThuongHieu" class="input">
+      <option value="">Tất cả thương hiệu</option>
+      <option value="hang_thuong">Hàng thường</option>
+      <option value="doc_quyen">Độc quyền</option>
+    </select>
   </div>
 
   <div class="sheet-box">
@@ -149,33 +154,58 @@
 </div>
 
 <script>
-  const columns = 15;
+  async function loadNhanVien() {
+    const select = document.getElementById('filterNhanVien');
 
-  function addRow() {
-    const tbody = document.getElementById('tbody');
-    const tr = document.createElement('tr');
+    try {
+      const cfgRes = await fetch('/api/getConfig');
+      const cfg = await cfgRes.json();
 
-    for (let i = 0; i < columns; i++) {
-      const td = document.createElement('td');
-      td.contentEditable = 'true';
+      const res = await fetch(
+        `${cfg.url}/rest/v1/kv_nhan_vien?select=ma_nv,ten_nv&order=ma_nv.asc`,
+        {
+          headers: {
+            apikey: cfg.anon,
+            Authorization: `Bearer ${cfg.anon}`,
+          },
+        }
+      );
 
-      if ([7, 8, 9, 10, 11, 13].includes(i)) {
-        td.className = 'num';
+      const data = await res.json();
+
+      select.innerHTML = '<option value="">Tất cả nhân viên</option>';
+
+      for (const nv of data) {
+        const maNv = String(nv.ma_nv || '').trim();
+        const tenNv = String(nv.ten_nv || '').trim();
+
+        if (!maNv) continue;
+
+        const opt = document.createElement('option');
+        opt.value = maNv;
+        opt.textContent = tenNv ? `${maNv} - ${tenNv}` : maNv;
+        select.appendChild(opt);
       }
-
-      tr.appendChild(td);
+    } catch (err) {
+      console.error('Không tải được nhân viên:', err);
+      select.innerHTML = '<option value="">Không tải được nhân viên</option>';
     }
-
-    tbody.appendChild(tr);
   }
 
-  function clearRows() {
-    if (!confirm('Xóa toàn bộ dữ liệu?')) return;
+  function applyFilter() {
+    const maNv = document.getElementById('filterNhanVien').value;
+    const thuongHieu = document.getElementById('filterThuongHieu').value;
 
-    const tbody = document.getElementById('tbody');
-    tbody.innerHTML = '';
-    addRow();
+    console.log('ma_nv:', maNv);
+    console.log('thuong_hieu:', thuongHieu);
+
+    // Sau này nếu có dữ liệu thật trong bảng thì lọc ở đây.
   }
+
+  document.getElementById('filterNhanVien').addEventListener('change', applyFilter);
+  document.getElementById('filterThuongHieu').addEventListener('change', applyFilter);
+
+  loadNhanVien();
 </script>
 
 </body>
