@@ -53,7 +53,13 @@
 
     select[multiple] {
       height: 92px;
-      min-width: 240px;
+      min-width: 250px;
+    }
+
+    .status {
+      font-size: 13px;
+      color: #6b7280;
+      padding-top: 25px;
     }
 
     .sheet-box {
@@ -90,11 +96,6 @@
 
     tr.hidden { display: none; }
 
-    td[contenteditable="true"]:focus {
-      outline: 2px solid #2563eb;
-      background: #eff6ff;
-    }
-
     .num { text-align: right; }
     .center { text-align: center; }
   </style>
@@ -120,6 +121,8 @@
         <option value="doc_quyen">Độc quyền</option>
       </select>
     </div>
+
+    <div id="status" class="status">Đang tải dữ liệu...</div>
   </div>
 
   <div class="sheet-box">
@@ -144,37 +147,50 @@
           <th>ghichu</th>
         </tr>
       </thead>
-      <tbody id="tbody">
-        <tr>
-          <td contenteditable="true"></td>
-          <td contenteditable="true"></td>
-          <td contenteditable="true"></td>
-          <td contenteditable="true"></td>
-          <td contenteditable="true"></td>
-          <td contenteditable="true"></td>
-          <td contenteditable="true"></td>
-          <td contenteditable="true"></td>
-          <td contenteditable="true" class="num"></td>
-          <td contenteditable="true" class="num"></td>
-          <td contenteditable="true" class="num"></td>
-          <td contenteditable="true" class="num"></td>
-          <td contenteditable="true" class="num"></td>
-          <td contenteditable="true"></td>
-          <td contenteditable="true" class="num"></td>
-          <td contenteditable="true"></td>
-        </tr>
-      </tbody>
+      <tbody id="tbody"></tbody>
     </table>
   </div>
 </div>
 
 <script>
-  const COL_MA_NV = 1;
-  const COL_NV_BAN = 2;
-  const COL_THUONG_HIEU = 7;
+  const TABLE_NAME = 'hoa_don_ban_chitiet';
 
-  function textCell(row, index) {
-    return String(row.cells[index]?.textContent || '').trim();
+  const columns = [
+    'ma_hd',
+    'ma_nv',
+    'nv_ban',
+    'ngay',
+    'ma_kh',
+    'ten_kh',
+    'ten_hh',
+    'thuong_hieu',
+    'sl',
+    'sl_tra',
+    'sl_thuc',
+    'don_gia',
+    'thanh_tien',
+    'ngay_thu',
+    'tien_thu',
+    'ghichu',
+  ];
+
+  let allRows = [];
+
+  function text(value) {
+    return value === null || value === undefined ? '' : String(value);
+  }
+
+  function money(value) {
+    const n = Number(value || 0);
+    if (!Number.isFinite(n)) return '';
+    return Math.round(n).toLocaleString('vi-VN');
+  }
+
+  function formatValue(key, value) {
+    if (['sl', 'sl_tra', 'sl_thuc', 'don_gia', 'thanh_tien', 'tien_thu'].includes(key)) {
+      return money(value);
+    }
+    return text(value);
   }
 
   function getSelectedMaNv() {
@@ -184,19 +200,15 @@
       .filter(Boolean);
   }
 
-  function loadNhanVienFromTable() {
+  function renderNhanVienFilter(rows) {
     const select = document.getElementById('filterMaNv');
-    const rows = Array.from(document.querySelectorAll('#tbody tr'));
     const mapNv = new Map();
 
     for (const row of rows) {
-      const maNv = textCell(row, COL_MA_NV);
-      const tenNv = textCell(row, COL_NV_BAN);
-
+      const maNv = text(row.ma_nv).trim();
+      const tenNv = text(row.nv_ban).trim();
       if (!maNv) continue;
-      if (!mapNv.has(maNv)) {
-        mapNv.set(maNv, tenNv);
-      }
+      if (!mapNv.has(maNv)) mapNv.set(maNv, tenNv);
     }
 
     select.innerHTML = '<option value="">Tất cả nhân viên</option>';
@@ -209,14 +221,35 @@
     }
   }
 
+  function renderTable(rows) {
+    const tbody = document.getElementById('tbody');
+    tbody.innerHTML = '';
+
+    for (const row of rows) {
+      const tr = document.createElement('tr');
+
+      for (const key of columns) {
+        const td = document.createElement('td');
+        td.textContent = formatValue(key, row[key]);
+
+        if (['sl', 'sl_tra', 'sl_thuc', 'don_gia', 'thanh_tien', 'tien_thu'].includes(key)) {
+          td.className = 'num';
+        }
+
+        tr.appendChild(td);
+      }
+
+      tbody.appendChild(tr);
+    }
+  }
+
   function applyFilter() {
     const selectedMaNv = getSelectedMaNv();
     const thuongHieuFilter = document.getElementById('filterThuongHieu').value;
-    const rows = Array.from(document.querySelectorAll('#tbody tr'));
 
-    for (const row of rows) {
-      const maNv = textCell(row, COL_MA_NV);
-      const thuongHieu = textCell(row, COL_THUONG_HIEU).toUpperCase();
+    const filtered = allRows.filter(row => {
+      const maNv = text(row.ma_nv).trim();
+      const thuongHieu = text(row.thuong_hieu).toUpperCase();
 
       const matchNv =
         selectedMaNv.length === 0 ||
@@ -234,19 +267,55 @@
         matchThuongHieu = !coDQ;
       }
 
-      row.classList.toggle('hidden', !(matchNv && matchThuongHieu));
+      return matchNv && matchThuongHieu;
+    });
+
+    renderTable(filtered);
+    document.getElementById('status').textContent =
+      `Hiển thị ${filtered.length}/${allRows.length} dòng`;
+  }
+
+  async function loadData() {
+    const status = document.getElementById('status');
+
+    try {
+      status.textContent = 'Đang tải dữ liệu...';
+
+      const cfgRes = await fetch('/api/getConfig');
+      const cfg = await cfgRes.json();
+
+      const selectCols = columns.join(',');
+
+      const res = await fetch(
+        `${cfg.url}/rest/v1/${TABLE_NAME}?select=${selectCols}&order=ngay_thu.desc&limit=5000`,
+        {
+          headers: {
+            apikey: cfg.anon,
+            Authorization: `Bearer ${cfg.anon}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText);
+      }
+
+      allRows = await res.json();
+
+      renderNhanVienFilter(allRows);
+      applyFilter();
+    } catch (err) {
+      console.error(err);
+      status.textContent = 'Lỗi tải dữ liệu';
+      alert('Không tải được dữ liệu từ hoa_don_ban_chitiet');
     }
   }
 
   document.getElementById('filterMaNv').addEventListener('change', applyFilter);
   document.getElementById('filterThuongHieu').addEventListener('change', applyFilter);
 
-  document.getElementById('tbody').addEventListener('input', function () {
-    loadNhanVienFromTable();
-    applyFilter();
-  });
-
-  loadNhanVienFromTable();
+  loadData();
 </script>
 
 </body>
