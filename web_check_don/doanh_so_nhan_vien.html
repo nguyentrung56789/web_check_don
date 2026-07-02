@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sheet hóa đơn</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -16,9 +14,7 @@
       color: #111827;
     }
 
-    .wrap {
-      padding: 16px;
-    }
+    .wrap { padding: 16px; }
 
     h2 {
       margin: 0 0 12px;
@@ -30,18 +26,34 @@
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
-      align-items: center;
+      align-items: flex-start;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .field label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
     }
 
     .input {
-      height: 38px;
       min-width: 190px;
       border: 1px solid #d1d5db;
       border-radius: 6px;
-      padding: 0 10px;
+      padding: 8px 10px;
       font-size: 14px;
       background: #fff;
       color: #111827;
+    }
+
+    select[multiple] {
+      height: 92px;
+      min-width: 240px;
     }
 
     .sheet-box {
@@ -54,7 +66,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 1400px;
+      min-width: 1500px;
       font-size: 14px;
     }
 
@@ -74,22 +86,17 @@
       text-align: center;
     }
 
-    td {
-      background: #fff;
-    }
+    td { background: #fff; }
+
+    tr.hidden { display: none; }
 
     td[contenteditable="true"]:focus {
       outline: 2px solid #2563eb;
       background: #eff6ff;
     }
 
-    .num {
-      text-align: right;
-    }
-
-    .center {
-      text-align: center;
-    }
+    .num { text-align: right; }
+    .center { text-align: center; }
   </style>
 </head>
 <body>
@@ -98,15 +105,21 @@
   <h2>Sheet hóa đơn</h2>
 
   <div class="toolbar">
-    <select id="filterNhanVien" class="input">
-      <option value="">Tất cả nhân viên</option>
-    </select>
+    <div class="field">
+      <label>Nhân viên</label>
+      <select id="filterMaNv" class="input" multiple>
+        <option value="">Tất cả nhân viên</option>
+      </select>
+    </div>
 
-    <select id="filterThuongHieu" class="input">
-      <option value="">Tất cả thương hiệu</option>
-      <option value="hang_thuong">Hàng thường</option>
-      <option value="doc_quyen">Độc quyền</option>
-    </select>
+    <div class="field">
+      <label>Thương hiệu</label>
+      <select id="filterThuongHieu" class="input">
+        <option value="">Tất cả</option>
+        <option value="hang_thuong">Hàng thường</option>
+        <option value="doc_quyen">Độc quyền</option>
+      </select>
+    </div>
   </div>
 
   <div class="sheet-box">
@@ -114,6 +127,7 @@
       <thead>
         <tr>
           <th>ma_hd</th>
+          <th>ma_nv</th>
           <th>nv_ban</th>
           <th>ngay</th>
           <th>ma_kh</th>
@@ -139,6 +153,7 @@
           <td contenteditable="true"></td>
           <td contenteditable="true"></td>
           <td contenteditable="true"></td>
+          <td contenteditable="true"></td>
           <td contenteditable="true" class="num"></td>
           <td contenteditable="true" class="num"></td>
           <td contenteditable="true" class="num"></td>
@@ -154,58 +169,84 @@
 </div>
 
 <script>
-  async function loadNhanVien() {
-    const select = document.getElementById('filterNhanVien');
+  const COL_MA_NV = 1;
+  const COL_NV_BAN = 2;
+  const COL_THUONG_HIEU = 7;
 
-    try {
-      const cfgRes = await fetch('/api/getConfig');
-      const cfg = await cfgRes.json();
+  function textCell(row, index) {
+    return String(row.cells[index]?.textContent || '').trim();
+  }
 
-      const res = await fetch(
-        `${cfg.url}/rest/v1/kv_nhan_vien?select=ma_nv,ten_nv&order=ma_nv.asc`,
-        {
-          headers: {
-            apikey: cfg.anon,
-            Authorization: `Bearer ${cfg.anon}`,
-          },
-        }
-      );
+  function getSelectedMaNv() {
+    const select = document.getElementById('filterMaNv');
+    return Array.from(select.selectedOptions)
+      .map(opt => opt.value)
+      .filter(Boolean);
+  }
 
-      const data = await res.json();
+  function loadNhanVienFromTable() {
+    const select = document.getElementById('filterMaNv');
+    const rows = Array.from(document.querySelectorAll('#tbody tr'));
+    const mapNv = new Map();
 
-      select.innerHTML = '<option value="">Tất cả nhân viên</option>';
+    for (const row of rows) {
+      const maNv = textCell(row, COL_MA_NV);
+      const tenNv = textCell(row, COL_NV_BAN);
 
-      for (const nv of data) {
-        const maNv = String(nv.ma_nv || '').trim();
-        const tenNv = String(nv.ten_nv || '').trim();
-
-        if (!maNv) continue;
-
-        const opt = document.createElement('option');
-        opt.value = maNv;
-        opt.textContent = tenNv ? `${maNv} - ${tenNv}` : maNv;
-        select.appendChild(opt);
+      if (!maNv) continue;
+      if (!mapNv.has(maNv)) {
+        mapNv.set(maNv, tenNv);
       }
-    } catch (err) {
-      console.error('Không tải được nhân viên:', err);
-      select.innerHTML = '<option value="">Không tải được nhân viên</option>';
+    }
+
+    select.innerHTML = '<option value="">Tất cả nhân viên</option>';
+
+    for (const [maNv, tenNv] of mapNv.entries()) {
+      const opt = document.createElement('option');
+      opt.value = maNv;
+      opt.textContent = tenNv ? `${maNv} - ${tenNv}` : maNv;
+      select.appendChild(opt);
     }
   }
 
   function applyFilter() {
-    const maNv = document.getElementById('filterNhanVien').value;
-    const thuongHieu = document.getElementById('filterThuongHieu').value;
+    const selectedMaNv = getSelectedMaNv();
+    const thuongHieuFilter = document.getElementById('filterThuongHieu').value;
+    const rows = Array.from(document.querySelectorAll('#tbody tr'));
 
-    console.log('ma_nv:', maNv);
-    console.log('thuong_hieu:', thuongHieu);
+    for (const row of rows) {
+      const maNv = textCell(row, COL_MA_NV);
+      const thuongHieu = textCell(row, COL_THUONG_HIEU).toUpperCase();
 
-    // Sau này nếu có dữ liệu thật trong bảng thì lọc ở đây.
+      const matchNv =
+        selectedMaNv.length === 0 ||
+        selectedMaNv.includes(maNv);
+
+      const coDQ = thuongHieu.includes('DQ');
+
+      let matchThuongHieu = true;
+
+      if (thuongHieuFilter === 'doc_quyen') {
+        matchThuongHieu = coDQ;
+      }
+
+      if (thuongHieuFilter === 'hang_thuong') {
+        matchThuongHieu = !coDQ;
+      }
+
+      row.classList.toggle('hidden', !(matchNv && matchThuongHieu));
+    }
   }
 
-  document.getElementById('filterNhanVien').addEventListener('change', applyFilter);
+  document.getElementById('filterMaNv').addEventListener('change', applyFilter);
   document.getElementById('filterThuongHieu').addEventListener('change', applyFilter);
 
-  loadNhanVien();
+  document.getElementById('tbody').addEventListener('input', function () {
+    loadNhanVienFromTable();
+    applyFilter();
+  });
+
+  loadNhanVienFromTable();
 </script>
 
 </body>
