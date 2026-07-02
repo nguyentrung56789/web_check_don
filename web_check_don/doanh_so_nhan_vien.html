@@ -43,7 +43,7 @@
 
     .input {
       height: 38px;
-      min-width: 220px;
+      min-width: 170px;
       border: 1px solid #d1d5db;
       border-radius: 6px;
       padding: 0 10px;
@@ -51,6 +51,21 @@
       background: #fff;
       color: #111827;
     }
+
+    .btn {
+      height: 38px;
+      border: 0;
+      border-radius: 6px;
+      padding: 0 14px;
+      background: #16a34a;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn:hover { background: #15803d; }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
 
     .multi {
       position: relative;
@@ -85,9 +100,7 @@
       padding: 6px;
     }
 
-    .multi.open .multi-panel {
-      display: block;
-    }
+    .multi.open .multi-panel { display: block; }
 
     .multi-item {
       display: flex;
@@ -99,14 +112,19 @@
       font-size: 14px;
     }
 
-    .multi-item:hover {
-      background: #f3f4f6;
-    }
+    .multi-item:hover { background: #f3f4f6; }
 
     .status {
       font-size: 13px;
       color: #6b7280;
       padding-top: 24px;
+    }
+
+    .summary {
+      margin: 10px 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: #111827;
     }
 
     .sheet-box {
@@ -141,6 +159,56 @@
 
     td { background: #fff; }
     .num { text-align: right; }
+
+    .pager {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      font-size: 14px;
+      color: #111827;
+    }
+
+    .page-size {
+      height: 36px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 0 10px;
+      background: #fff;
+      font-size: 14px;
+    }
+
+    .page-btn {
+      width: 34px;
+      height: 34px;
+      border: 0;
+      background: transparent;
+      color: #374151;
+      cursor: pointer;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .page-btn:disabled {
+      color: #cbd5e1;
+      cursor: not-allowed;
+    }
+
+    .page-input {
+      width: 64px;
+      height: 34px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 14px;
+      background: #fff;
+    }
+
+    .page-info {
+      color: #374151;
+      font-weight: 600;
+      margin-left: 8px;
+    }
   </style>
 </head>
 <body>
@@ -166,8 +234,25 @@
       </select>
     </div>
 
+    <div class="field">
+      <label>Từ ngày thu</label>
+      <input id="fromNgayThu" class="input" type="text" placeholder="dd/mm/yyyy">
+    </div>
+
+    <div class="field">
+      <label>Đến ngày thu</label>
+      <input id="toNgayThu" class="input" type="text" placeholder="dd/mm/yyyy">
+    </div>
+
+    <div class="field">
+      <label>&nbsp;</label>
+      <button type="button" id="btnLoadAll" class="btn">Load all</button>
+    </div>
+
     <div id="status" class="status">Đang tải dữ liệu...</div>
   </div>
+
+  <div id="summary" class="summary">Tổng tiền thu: 0</div>
 
   <div class="sheet-box">
     <table>
@@ -193,10 +278,41 @@
       <tbody id="tbody"></tbody>
     </table>
   </div>
+
+  <div class="pager">
+    <span>Hiển thị</span>
+
+    <select id="pageSizeSelect" class="page-size">
+      <option value="50">50 dòng</option>
+      <option value="100" selected>100 dòng</option>
+      <option value="200">200 dòng</option>
+      <option value="500">500 dòng</option>
+    </select>
+
+    <button type="button" id="btnFirstPage" class="page-btn">⇤</button>
+    <button type="button" id="btnPrevPage" class="page-btn">‹</button>
+
+    <input id="pageInput" class="page-input" type="number" min="1" value="1">
+
+    <button type="button" id="btnNextPage" class="page-btn">›</button>
+    <button type="button" id="btnLastPage" class="page-btn">⇥</button>
+
+    <span id="pageInfo" class="page-info">0 - 0 trong 0 giao dịch</span>
+  </div>
 </div>
 
 <script>
   const TABLE_NAME = 'hoa_don_ban_chitiet';
+
+  let PAGE_SIZE = 100;
+  let allRows = [];
+  let currentPage = 1;
+  let totalCount = 0;
+  let cfg = null;
+  let loading = false;
+  let loadedAll = false;
+
+  const selectedMaNv = new Set();
 
   const columns = [
     'ma_hd',
@@ -216,9 +332,6 @@
     'ghichu',
   ];
 
-  let allRows = [];
-  const selectedMaNv = new Set();
-
   function text(value) {
     return value === null || value === undefined ? '' : String(value);
   }
@@ -236,19 +349,35 @@
     return text(value);
   }
 
+  function dateInputToNumber(value) {
+    const s = String(value || '').trim();
+    if (!s) return null;
+
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!m) return null;
+
+    const dd = m[1].padStart(2, '0');
+    const mm = m[2].padStart(2, '0');
+    const yyyy = m[3];
+
+    return Number(`${yyyy}${mm}${dd}`);
+  }
+
+  function ngayThuToNumber(value) {
+    const n = Number(String(value || '').trim());
+    return Number.isFinite(n) ? n : null;
+  }
+
   function updateMaNvButton() {
     const btn = document.getElementById('maNvBtn');
-    const count = selectedMaNv.size;
-
-    if (count === 0) {
-      btn.textContent = 'Tất cả nhân viên';
-    } else {
-      btn.textContent = `Đã chọn ${count} nhân viên`;
-    }
+    btn.textContent = selectedMaNv.size === 0
+      ? 'Tất cả nhân viên'
+      : `Đã chọn ${selectedMaNv.size} nhân viên`;
   }
 
   function renderNhanVienFilter(rows) {
     const panel = document.getElementById('maNvPanel');
+    const oldSelected = new Set(selectedMaNv);
     const mapNv = new Map();
 
     for (const row of rows) {
@@ -270,10 +399,11 @@
       const label = document.createElement('label');
       label.className = 'multi-item';
 
+      const checked = oldSelected.has(maNv) ? 'checked' : '';
       const textShow = tenNv ? `${maNv} - ${tenNv}` : maNv;
 
       label.innerHTML = `
-        <input type="checkbox" class="ma-nv-check" value="${maNv}">
+        <input type="checkbox" class="ma-nv-check" value="${maNv}" ${checked}>
         <span>${textShow}</span>
       `;
 
@@ -287,6 +417,7 @@
         cb.checked = false;
       });
 
+      this.checked = false;
       updateMaNvButton();
       applyFilter();
     });
@@ -304,6 +435,8 @@
         applyFilter();
       });
     });
+
+    updateMaNvButton();
   }
 
   function renderTable(rows) {
@@ -328,12 +461,15 @@
     }
   }
 
-  function applyFilter() {
+  function getFilteredRows() {
     const thuongHieuFilter = document.getElementById('filterThuongHieu').value;
+    const fromNgayThu = dateInputToNumber(document.getElementById('fromNgayThu').value);
+    const toNgayThu = dateInputToNumber(document.getElementById('toNgayThu').value);
 
-    const filtered = allRows.filter(row => {
+    return allRows.filter(row => {
       const maNv = text(row.ma_nv).trim();
       const thuongHieu = text(row.thuong_hieu).toUpperCase();
+      const ngayThu = ngayThuToNumber(row.ngay_thu);
 
       const matchNv =
         selectedMaNv.size === 0 ||
@@ -351,32 +487,85 @@
         matchThuongHieu = !coDQ;
       }
 
-      return matchNv && matchThuongHieu;
+      const matchNgayThu =
+        (!fromNgayThu || (ngayThu && ngayThu >= fromNgayThu)) &&
+        (!toNgayThu || (ngayThu && ngayThu <= toNgayThu));
+
+      return matchNv && matchThuongHieu && matchNgayThu;
     });
-
-    renderTable(filtered);
-
-    document.getElementById('status').textContent =
-      `Hiển thị ${filtered.length}/${allRows.length} dòng`;
   }
 
-  async function loadData() {
-    const status = document.getElementById('status');
+  function updateSummary(rows) {
+    const tongTienThu = rows.reduce((sum, row) => {
+      return sum + Number(row.tien_thu || 0);
+    }, 0);
+
+    document.getElementById('summary').textContent =
+      `Tổng tiền thu: ${money(tongTienThu)}`;
+  }
+
+  function renderPager() {
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    const from = totalCount === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+    const to = Math.min(currentPage * PAGE_SIZE, totalCount);
+
+    document.getElementById('pageInput').value = currentPage;
+    document.getElementById('pageInput').max = totalPages;
+
+    document.getElementById('pageInfo').textContent =
+      `${from} - ${to} trong ${totalCount} giao dịch`;
+
+    document.getElementById('btnFirstPage').disabled = currentPage <= 1;
+    document.getElementById('btnPrevPage').disabled = currentPage <= 1;
+    document.getElementById('btnNextPage').disabled = currentPage >= totalPages;
+    document.getElementById('btnLastPage').disabled = currentPage >= totalPages;
+  }
+
+  function applyFilter() {
+    const filtered = getFilteredRows();
+
+    renderTable(filtered);
+    updateSummary(filtered);
+    renderPager();
+
+    document.getElementById('status').textContent =
+      loadedAll
+        ? `Hiển thị ${filtered.length}/${allRows.length} dòng`
+        : `Trang ${currentPage} - Hiển thị ${filtered.length}/${allRows.length} dòng`;
+  }
+
+  async function getConfig() {
+    if (cfg) return cfg;
+
+    const cfgRes = await fetch('/api/getConfig');
+    cfg = await cfgRes.json();
+
+    return cfg;
+  }
+
+  async function loadPage(page) {
+    if (loading) return;
 
     try {
-      status.textContent = 'Đang tải dữ liệu...';
+      loading = true;
+      loadedAll = false;
+      currentPage = page;
 
-      const cfgRes = await fetch('/api/getConfig');
-      const cfg = await cfgRes.json();
+      document.getElementById('status').textContent = `Đang tải trang ${page}...`;
 
+      const config = await getConfig();
       const selectCols = columns.join(',');
+      const from = (page - 1) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
 
       const res = await fetch(
-        `${cfg.url}/rest/v1/${TABLE_NAME}?select=${selectCols}&order=ngay_thu.desc&limit=5000`,
+        `${config.url}/rest/v1/${TABLE_NAME}?select=${selectCols}&order=ngay_thu.desc`,
         {
           headers: {
-            apikey: cfg.anon,
-            Authorization: `Bearer ${cfg.anon}`,
+            apikey: config.anon,
+            Authorization: `Bearer ${config.anon}`,
+            Range: `${from}-${to}`,
+            Prefer: 'count=exact',
           },
         }
       );
@@ -386,14 +575,80 @@
         throw new Error(errText);
       }
 
+      const contentRange = res.headers.get('content-range') || '';
+      const m = contentRange.match(/\/(\d+)$/);
+      if (m) totalCount = Number(m[1]);
+
       allRows = await res.json();
 
       renderNhanVienFilter(allRows);
       applyFilter();
     } catch (err) {
       console.error(err);
-      status.textContent = 'Lỗi tải dữ liệu';
+      document.getElementById('status').textContent = 'Lỗi tải dữ liệu';
       alert('Không tải được dữ liệu: ' + err.message);
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function loadAll() {
+    if (loading) return;
+
+    const btnLoadAll = document.getElementById('btnLoadAll');
+
+    try {
+      loading = true;
+      btnLoadAll.disabled = true;
+      loadedAll = true;
+      allRows = [];
+
+      const config = await getConfig();
+      const selectCols = columns.join(',');
+      let page = 1;
+
+      while (true) {
+        document.getElementById('status').textContent =
+          `Đang load all... đã tải ${allRows.length} dòng`;
+
+        const from = (page - 1) * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+
+        const res = await fetch(
+          `${config.url}/rest/v1/${TABLE_NAME}?select=${selectCols}&order=ngay_thu.desc`,
+          {
+            headers: {
+              apikey: config.anon,
+              Authorization: `Bearer ${config.anon}`,
+              Range: `${from}-${to}`,
+            },
+          }
+        );
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(errText);
+        }
+
+        const rows = await res.json();
+        allRows = allRows.concat(rows);
+
+        if (rows.length < PAGE_SIZE) break;
+        page++;
+      }
+
+      totalCount = allRows.length;
+      currentPage = 1;
+
+      renderNhanVienFilter(allRows);
+      applyFilter();
+    } catch (err) {
+      console.error(err);
+      document.getElementById('status').textContent = 'Lỗi tải dữ liệu';
+      alert('Không load all được: ' + err.message);
+    } finally {
+      loading = false;
+      btnLoadAll.disabled = false;
     }
   }
 
@@ -409,8 +664,45 @@
   });
 
   document.getElementById('filterThuongHieu').addEventListener('change', applyFilter);
+  document.getElementById('fromNgayThu').addEventListener('input', applyFilter);
+  document.getElementById('toNgayThu').addEventListener('input', applyFilter);
 
-  loadData();
+  document.getElementById('pageSizeSelect').addEventListener('change', function () {
+    PAGE_SIZE = Number(this.value || 100);
+    loadPage(1);
+  });
+
+  document.getElementById('btnFirstPage').addEventListener('click', function () {
+    loadPage(1);
+  });
+
+  document.getElementById('btnPrevPage').addEventListener('click', function () {
+    if (currentPage > 1) loadPage(currentPage - 1);
+  });
+
+  document.getElementById('btnNextPage').addEventListener('click', function () {
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    if (currentPage < totalPages) loadPage(currentPage + 1);
+  });
+
+  document.getElementById('btnLastPage').addEventListener('click', function () {
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    loadPage(totalPages);
+  });
+
+  document.getElementById('pageInput').addEventListener('change', function () {
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    let page = Number(this.value || 1);
+
+    if (page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+
+    loadPage(page);
+  });
+
+  document.getElementById('btnLoadAll').addEventListener('click', loadAll);
+
+  loadPage(1);
 </script>
 
 </body>
