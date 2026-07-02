@@ -53,9 +53,7 @@
       color: #111827;
     }
 
-    #searchInput {
-      min-width: 260px;
-    }
+    #searchInput { min-width: 260px; }
 
     .btn {
       height: 38px;
@@ -75,6 +73,7 @@
     .multi {
       position: relative;
       min-width: 300px;
+      max-width: 430px;
     }
 
     .multi-btn {
@@ -87,6 +86,9 @@
       text-align: left;
       font-size: 14px;
       cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .multi-panel {
@@ -168,13 +170,8 @@
       user-select: none;
     }
 
-    th.sortable {
-      cursor: pointer;
-    }
-
-    th.sortable:hover {
-      background: #dbe3ee;
-    }
+    th.sortable { cursor: pointer; }
+    th.sortable:hover { background: #dbe3ee; }
 
     .th-inner {
       display: flex;
@@ -201,9 +198,7 @@
       z-index: 5;
     }
 
-    .resizer:hover {
-      background: rgba(37, 99, 235, .25);
-    }
+    .resizer:hover { background: rgba(37, 99, 235, .25); }
 
     .num { text-align: right; }
     .hidden-col { display: none; }
@@ -306,7 +301,7 @@
 
     <div class="field">
       <label>Tìm kiếm</label>
-      <input id="searchInput" class="input" type="text" placeholder="Tìm trong tất cả cột...">
+      <input id="searchInput" class="input" type="text" placeholder="Gõ xong sẽ tự lọc...">
     </div>
 
     <div class="field">
@@ -359,11 +354,12 @@
   let currentPage = 1;
   let cfg = null;
   let loading = false;
-
   let sortKey = '';
   let sortDir = 'asc';
+  let searchTimer = null;
 
   const selectedMaNv = new Set();
+  const mapMaNvTen = new Map();
 
   const columns = [
     { key: 'ma_hd', label: 'ma_hd', width: 120 },
@@ -413,11 +409,7 @@
     const s = String(value || '').trim();
     if (!/^\d{8}$/.test(s)) return s;
 
-    const yyyy = s.slice(0, 4);
-    const mm = s.slice(4, 6);
-    const dd = s.slice(6, 8);
-
-    return `${dd}/${mm}/${yyyy.slice(2)}`;
+    return `${s.slice(6, 8)}/${s.slice(4, 6)}/${s.slice(2, 4)}`;
   }
 
   function ngayThuToNumber(value) {
@@ -426,9 +418,7 @@
   }
 
   function formatValue(key, value) {
-    if (key === 'ngay' || key === 'ngay_thu') {
-      return yyyymmddToDdMmYy(value);
-    }
+    if (key === 'ngay' || key === 'ngay_thu') return yyyymmddToDdMmYy(value);
 
     if (['sl', 'sl_tra', 'sl_thuc', 'don_gia', 'thanh_tien', 'tien_thu'].includes(key)) {
       return money(value);
@@ -529,9 +519,22 @@
 
   function updateMaNvButton() {
     const btn = document.getElementById('maNvBtn');
-    btn.textContent = selectedMaNv.size === 0
-      ? 'Tất cả nhân viên'
-      : `Đã chọn ${selectedMaNv.size} nhân viên`;
+
+    if (selectedMaNv.size === 0) {
+      btn.textContent = 'Tất cả nhân viên';
+      return;
+    }
+
+    const names = Array.from(selectedMaNv).map(maNv => {
+      const tenNv = mapMaNvTen.get(maNv) || '';
+      return tenNv ? `${maNv} - ${tenNv}` : maNv;
+    });
+
+    if (names.length <= 2) {
+      btn.textContent = names.join(', ');
+    } else {
+      btn.textContent = `${names[0]}, ${names[1]} +${names.length - 2}`;
+    }
   }
 
   function renderNhanVienFilter(rows) {
@@ -539,12 +542,15 @@
     const oldSelected = new Set(selectedMaNv);
     const mapNv = new Map();
 
+    mapMaNvTen.clear();
+
     for (const row of rows) {
       const maNv = text(row.ma_nv).trim();
       const tenNv = text(row.nv_ban).trim();
 
       if (!maNv) continue;
       if (!mapNv.has(maNv)) mapNv.set(maNv, tenNv);
+      if (!mapMaNvTen.has(maNv)) mapMaNvTen.set(maNv, tenNv);
     }
 
     panel.innerHTML = '';
@@ -621,9 +627,7 @@
   }
 
   function updateSummary(rows) {
-    const tongTienThu = rows.reduce((sum, row) => {
-      return sum + Number(row.tien_thu || 0);
-    }, 0);
+    const tongTienThu = rows.reduce((sum, row) => sum + Number(row.tien_thu || 0), 0);
 
     document.getElementById('summary').textContent =
       `Tổng tiền thu: ${money(tongTienThu)}`;
@@ -778,15 +782,19 @@
 
   document.addEventListener('click', function (e) {
     const box = document.getElementById('maNvMulti');
-    if (!box.contains(e.target)) {
-      box.classList.remove('open');
-    }
+    if (!box.contains(e.target)) box.classList.remove('open');
   });
 
   document.getElementById('filterThuongHieu').addEventListener('change', applyFilter);
   document.getElementById('fromNgayThu').addEventListener('input', applyFilter);
   document.getElementById('toNgayThu').addEventListener('input', applyFilter);
-  document.getElementById('searchInput').addEventListener('input', applyFilter);
+
+  document.getElementById('searchInput').addEventListener('input', function () {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      applyFilter();
+    }, 500);
+  });
 
   document.getElementById('pageSizeSelect').addEventListener('change', function () {
     PAGE_SIZE = Number(this.value || 100);
