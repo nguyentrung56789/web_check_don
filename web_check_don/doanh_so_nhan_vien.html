@@ -53,6 +53,10 @@
       color: #111827;
     }
 
+    #searchInput {
+      min-width: 260px;
+    }
+
     .btn {
       height: 38px;
       border: 0;
@@ -133,14 +137,15 @@
       overflow: auto;
       background: white;
       border: 1px solid #d1d5db;
-      max-height: calc(100vh - 210px);
+      max-height: calc(100vh - 250px);
     }
 
     table {
-      width: 100%;
+      width: max-content;
+      min-width: 100%;
       border-collapse: collapse;
-      min-width: 1450px;
       font-size: 14px;
+      table-layout: fixed;
     }
 
     th, td {
@@ -148,6 +153,9 @@
       padding: 8px;
       text-align: left;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      background: #fff;
     }
 
     th {
@@ -157,10 +165,48 @@
       background: #e5e7eb;
       font-weight: 700;
       text-align: center;
+      user-select: none;
     }
 
-    td { background: #fff; }
+    th.sortable {
+      cursor: pointer;
+    }
+
+    th.sortable:hover {
+      background: #dbe3ee;
+    }
+
+    .th-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      position: relative;
+      height: 100%;
+    }
+
+    .sort-mark {
+      color: #2563eb;
+      font-size: 12px;
+      min-width: 12px;
+    }
+
+    .resizer {
+      position: absolute;
+      top: 0;
+      right: -4px;
+      width: 8px;
+      height: 100%;
+      cursor: col-resize;
+      z-index: 5;
+    }
+
+    .resizer:hover {
+      background: rgba(37, 99, 235, .25);
+    }
+
     .num { text-align: right; }
+    .hidden-col { display: none; }
 
     .pager {
       position: fixed;
@@ -259,6 +305,11 @@
     </div>
 
     <div class="field">
+      <label>Tìm kiếm</label>
+      <input id="searchInput" class="input" type="text" placeholder="Tìm trong tất cả cột...">
+    </div>
+
+    <div class="field">
       <label>&nbsp;</label>
       <button type="button" id="btnLoadAll" class="btn">Load all</button>
     </div>
@@ -269,25 +320,9 @@
   <div id="summary" class="summary">Tổng tiền thu: 0</div>
 
   <div class="sheet-box">
-    <table>
+    <table id="sheetTable">
       <thead>
-        <tr>
-          <th>ma_hd</th>
-          <th>ma_nv</th>
-          <th>nv_ban</th>
-          <th>ngay</th>
-          <th>ten_kh</th>
-          <th>ten_hh</th>
-          <th>thuong_hieu</th>
-          <th>sl</th>
-          <th>sl_tra</th>
-          <th>sl_thuc</th>
-          <th>don_gia</th>
-          <th>thanh_tien</th>
-          <th>ngay_thu</th>
-          <th>tien_thu</th>
-          <th>ghichu</th>
-        </tr>
+        <tr id="headerRow"></tr>
       </thead>
       <tbody id="tbody"></tbody>
     </table>
@@ -325,25 +360,30 @@
   let cfg = null;
   let loading = false;
 
+  let sortKey = '';
+  let sortDir = 'asc';
+
   const selectedMaNv = new Set();
 
   const columns = [
-    'ma_hd',
-    'ma_nv',
-    'nv_ban',
-    'ngay',
-    'ten_kh',
-    'ten_hh',
-    'thuong_hieu',
-    'sl',
-    'sl_tra',
-    'sl_thuc',
-    'don_gia',
-    'thanh_tien',
-    'ngay_thu',
-    'tien_thu',
-    'ghichu',
+    { key: 'ma_hd', label: 'ma_hd', width: 120 },
+    { key: 'ma_nv', label: 'ma_nv', width: 90, hidden: true },
+    { key: 'nv_ban', label: 'nv_ban', width: 120 },
+    { key: 'ngay', label: 'ngay', width: 110, type: 'date' },
+    { key: 'ten_kh', label: 'ten_kh', width: 260 },
+    { key: 'ten_hh', label: 'ten_hh', width: 520 },
+    { key: 'thuong_hieu', label: 'thuong_hieu', width: 160 },
+    { key: 'sl', label: 'sl', width: 60, type: 'number' },
+    { key: 'sl_tra', label: 'sl_tra', width: 70, type: 'number' },
+    { key: 'sl_thuc', label: 'sl_thuc', width: 80, type: 'number' },
+    { key: 'don_gia', label: 'don_gia', width: 100, type: 'number' },
+    { key: 'thanh_tien', label: 'thanh_tien', width: 120, type: 'number' },
+    { key: 'ngay_thu', label: 'ngay_thu', width: 110, type: 'date' },
+    { key: 'tien_thu', label: 'tien_thu', width: 120, type: 'number' },
+    { key: 'ghichu', label: 'ghichu', width: 220 },
   ];
+
+  const selectColumns = columns.map(c => c.key);
 
   function text(value) {
     return value === null || value === undefined ? '' : String(value);
@@ -353,13 +393,6 @@
     const n = Number(value || 0);
     if (!Number.isFinite(n)) return '';
     return Math.round(n).toLocaleString('vi-VN');
-  }
-
-  function formatValue(key, value) {
-    if (['sl', 'sl_tra', 'sl_thuc', 'don_gia', 'thanh_tien', 'tien_thu'].includes(key)) {
-      return money(value);
-    }
-    return text(value);
   }
 
   function dateInputToNumber(value) {
@@ -376,9 +409,122 @@
     return Number(`${yyyy}${mm}${dd}`);
   }
 
+  function yyyymmddToDdMmYy(value) {
+    const s = String(value || '').trim();
+    if (!/^\d{8}$/.test(s)) return s;
+
+    const yyyy = s.slice(0, 4);
+    const mm = s.slice(4, 6);
+    const dd = s.slice(6, 8);
+
+    return `${dd}/${mm}/${yyyy.slice(2)}`;
+  }
+
   function ngayThuToNumber(value) {
     const n = Number(String(value || '').trim());
     return Number.isFinite(n) ? n : null;
+  }
+
+  function formatValue(key, value) {
+    if (key === 'ngay' || key === 'ngay_thu') {
+      return yyyymmddToDdMmYy(value);
+    }
+
+    if (['sl', 'sl_tra', 'sl_thuc', 'don_gia', 'thanh_tien', 'tien_thu'].includes(key)) {
+      return money(value);
+    }
+
+    return text(value);
+  }
+
+  function getSortValue(row, col) {
+    const value = row[col.key];
+
+    if (col.type === 'number' || col.type === 'date') {
+      const n = Number(value || 0);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    return text(value).toLowerCase();
+  }
+
+  function renderHeader() {
+    const headerRow = document.getElementById('headerRow');
+    headerRow.innerHTML = '';
+
+    for (const col of columns) {
+      const th = document.createElement('th');
+      th.dataset.key = col.key;
+      th.style.width = `${col.width}px`;
+      th.className = 'sortable' + (col.hidden ? ' hidden-col' : '');
+
+      const mark = sortKey === col.key ? (sortDir === 'asc' ? '▲' : '▼') : '';
+
+      th.innerHTML = `
+        <div class="th-inner">
+          <span>${col.label}</span>
+          <span class="sort-mark">${mark}</span>
+          <span class="resizer"></span>
+        </div>
+      `;
+
+      th.addEventListener('click', function (e) {
+        if (e.target.classList.contains('resizer')) return;
+        toggleSort(col.key);
+      });
+
+      headerRow.appendChild(th);
+    }
+
+    enableColumnResize();
+  }
+
+  function enableColumnResize() {
+    document.querySelectorAll('.resizer').forEach(resizer => {
+      resizer.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const th = e.target.closest('th');
+        const key = th.dataset.key;
+        const col = columns.find(c => c.key === key);
+
+        const startX = e.clientX;
+        const startWidth = th.offsetWidth;
+
+        function onMove(ev) {
+          const nextWidth = Math.max(50, startWidth + ev.clientX - startX);
+          col.width = nextWidth;
+          th.style.width = `${nextWidth}px`;
+
+          const index = columns.findIndex(c => c.key === key) + 1;
+          document.querySelectorAll(`#sheetTable tbody td:nth-child(${index})`).forEach(td => {
+            td.style.width = `${nextWidth}px`;
+          });
+        }
+
+        function onUp() {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        }
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    });
+  }
+
+  function toggleSort(key) {
+    if (sortKey === key) {
+      sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortKey = key;
+      sortDir = 'asc';
+    }
+
+    currentPage = 1;
+    renderHeader();
+    renderCurrentPage();
   }
 
   function updateMaNvButton() {
@@ -459,13 +605,13 @@
     for (const row of rows) {
       const tr = document.createElement('tr');
 
-      for (const key of columns) {
+      for (const col of columns) {
         const td = document.createElement('td');
-        td.textContent = formatValue(key, row[key]);
+        td.textContent = formatValue(col.key, row[col.key]);
+        td.style.width = `${col.width}px`;
 
-        if (['sl', 'sl_tra', 'sl_thuc', 'don_gia', 'thanh_tien', 'tien_thu'].includes(key)) {
-          td.className = 'num';
-        }
+        if (col.hidden) td.classList.add('hidden-col');
+        if (col.type === 'number') td.classList.add('num');
 
         tr.appendChild(td);
       }
@@ -487,6 +633,7 @@
     const thuongHieuFilter = document.getElementById('filterThuongHieu').value;
     const fromNgayThu = dateInputToNumber(document.getElementById('fromNgayThu').value);
     const toNgayThu = dateInputToNumber(document.getElementById('toNgayThu').value);
+    const search = text(document.getElementById('searchInput').value).toLowerCase().trim();
 
     filteredRows = allRows.filter(row => {
       const maNv = text(row.ma_nv).trim();
@@ -504,7 +651,11 @@
         (!fromNgayThu || (ngayThu && ngayThu >= fromNgayThu)) &&
         (!toNgayThu || (ngayThu && ngayThu <= toNgayThu));
 
-      return matchNv && matchThuongHieu && matchNgayThu;
+      const matchSearch =
+        !search ||
+        columns.some(col => text(formatValue(col.key, row[col.key])).toLowerCase().includes(search));
+
+      return matchNv && matchThuongHieu && matchNgayThu && matchSearch;
     });
 
     currentPage = 1;
@@ -512,18 +663,31 @@
   }
 
   function renderCurrentPage() {
-    const total = filteredRows.length;
+    let rows = [...filteredRows];
+
+    if (sortKey) {
+      const col = columns.find(c => c.key === sortKey);
+      rows.sort((a, b) => {
+        const av = getSortValue(a, col);
+        const bv = getSortValue(b, col);
+
+        if (av < bv) return sortDir === 'asc' ? -1 : 1;
+        if (av > bv) return sortDir === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    const total = rows.length;
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
     if (currentPage > totalPages) currentPage = totalPages;
     if (currentPage < 1) currentPage = 1;
 
     const startIndex = (currentPage - 1) * PAGE_SIZE;
-    const endIndex = startIndex + PAGE_SIZE;
-    const pageRows = filteredRows.slice(startIndex, endIndex);
+    const pageRows = rows.slice(startIndex, startIndex + PAGE_SIZE);
 
     renderTable(pageRows);
-    updateSummary(filteredRows);
+    updateSummary(rows);
     renderPager(total, pageRows.length);
   }
 
@@ -566,7 +730,7 @@
       document.getElementById('status').textContent = 'Đang tải dữ liệu...';
 
       const config = await getConfig();
-      const selectCols = columns.join(',');
+      const selectCols = selectColumns.join(',');
       const pageSize = 1000;
       let offset = 0;
 
@@ -622,6 +786,7 @@
   document.getElementById('filterThuongHieu').addEventListener('change', applyFilter);
   document.getElementById('fromNgayThu').addEventListener('input', applyFilter);
   document.getElementById('toNgayThu').addEventListener('input', applyFilter);
+  document.getElementById('searchInput').addEventListener('input', applyFilter);
 
   document.getElementById('pageSizeSelect').addEventListener('change', function () {
     PAGE_SIZE = Number(this.value || 100);
@@ -662,6 +827,7 @@
 
   document.getElementById('btnLoadAll').addEventListener('click', loadAll);
 
+  renderHeader();
   loadAll();
 </script>
 
