@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sheet hóa đơn</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      color: #111827;
+    }
+
+    .wrap {
+      padding: 16px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
+    .sheet-box {
+      width: 100%;
+      overflow: auto;
+      background: white;
+      border: 1px solid #d1d5db;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1400px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 8px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #e5e7eb;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    td {
+      background: #fff;
+    }
+
+    td[contenteditable="true"]:focus {
+      outline: 2px solid #2563eb;
+      background: #eff6ff;
+    }
+
+    .num {
+      text-align: right;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .toolbar {
+      margin-bottom: 10px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      background: #2563eb;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+  <h2>Sheet hóa đơn</h2>
+
+  <div class="toolbar">
+    <button onclick="addRow()">+ Thêm dòng</button>
+    <button onclick="clearRows()">Xóa dữ liệu</button>
+  </div>
+
+  <div class="sheet-box">
+    <table id="sheetTable">
+      <thead>
+        <tr>
+          <th>ma_hd</th>
+          <th>nv_ban</th>
+          <th>ngay</th>
+          <th>ma_kh</th>
+          <th>ten_kh</th>
+          <th>ten_hh</th>
+          <th>thuong_hieu</th>
+          <th>sl</th>
+          <th>sl_tra</th>
+          <th>sl_thuc</th>
+          <th>don_gia</th>
+          <th>thanh_tien</th>
+          <th>ngay_thu</th>
+          <th>tien_thu</th>
+          <th>ghichu</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr>
+          <td contenteditable="true"></td>
+          <td contenteditable="true"></td>
+          <td contenteditable="true"></td>
+          <td contenteditable="true"></td>
+          <td contenteditable="true"></td>
+          <td contenteditable="true"></td>
+          <td contenteditable="true"></td>
+          <td contenteditable="true" class="num"></td>
+          <td contenteditable="true" class="num"></td>
+          <td contenteditable="true" class="num"></td>
+          <td contenteditable="true" class="num"></td>
+          <td contenteditable="true" class="num"></td>
+          <td contenteditable="true"></td>
+          <td contenteditable="true" class="num"></td>
+          <td contenteditable="true"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  const columns = 15;
+
+  function addRow() {
+    const tbody = document.getElementById('tbody');
+    const tr = document.createElement('tr');
+
+    for (let i = 0; i < columns; i++) {
+      const td = document.createElement('td');
+      td.contentEditable = 'true';
+
+      if ([7, 8, 9, 10, 11, 13].includes(i)) {
+        td.className = 'num';
+      }
+
+      tr.appendChild(td);
+    }
+
+    tbody.appendChild(tr);
+  }
+
+  function clearRows() {
+    if (!confirm('Xóa toàn bộ dữ liệu?')) return;
+
+    const tbody = document.getElementById('tbody');
+    tbody.innerHTML = '';
+    addRow();
+  }
+</script>
+
+</body>
+</html>
