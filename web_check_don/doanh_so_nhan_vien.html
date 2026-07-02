@@ -9,6 +9,7 @@
 
     body {
       margin: 0;
+      padding-bottom: 58px;
       font-family: Arial, sans-serif;
       background: #f4f6f8;
       color: #111827;
@@ -132,6 +133,7 @@
       overflow: auto;
       background: white;
       border: 1px solid #d1d5db;
+      max-height: calc(100vh - 210px);
     }
 
     table {
@@ -161,19 +163,27 @@
     .num { text-align: right; }
 
     .pager {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 100;
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 8px 0;
+      padding: 8px 16px;
       font-size: 14px;
       color: #111827;
+      background: #f4f6f8;
+      border-top: 1px solid #d1d5db;
     }
 
     .page-size {
-      height: 36px;
+      height: 38px;
+      min-width: 118px;
       border: 1px solid #d1d5db;
-      border-radius: 8px;
-      padding: 0 10px;
+      border-radius: 10px;
+      padding: 0 12px;
       background: #fff;
       font-size: 14px;
     }
@@ -189,6 +199,11 @@
       line-height: 1;
     }
 
+    .page-btn:hover:not(:disabled) {
+      background: #e5e7eb;
+      border-radius: 8px;
+    }
+
     .page-btn:disabled {
       color: #cbd5e1;
       cursor: not-allowed;
@@ -198,7 +213,7 @@
       width: 64px;
       height: 34px;
       border: 1px solid #d1d5db;
-      border-radius: 8px;
+      border-radius: 10px;
       text-align: center;
       font-size: 14px;
       background: #fff;
@@ -206,8 +221,7 @@
 
     .page-info {
       color: #374151;
-      font-weight: 600;
-      margin-left: 8px;
+      font-weight: 700;
     }
   </style>
 </head>
@@ -306,11 +320,10 @@
 
   let PAGE_SIZE = 100;
   let allRows = [];
+  let filteredRows = [];
   let currentPage = 1;
-  let totalCount = 0;
   let cfg = null;
   let loading = false;
-  let loadedAll = false;
 
   const selectedMaNv = new Set();
 
@@ -461,40 +474,6 @@
     }
   }
 
-  function getFilteredRows() {
-    const thuongHieuFilter = document.getElementById('filterThuongHieu').value;
-    const fromNgayThu = dateInputToNumber(document.getElementById('fromNgayThu').value);
-    const toNgayThu = dateInputToNumber(document.getElementById('toNgayThu').value);
-
-    return allRows.filter(row => {
-      const maNv = text(row.ma_nv).trim();
-      const thuongHieu = text(row.thuong_hieu).toUpperCase();
-      const ngayThu = ngayThuToNumber(row.ngay_thu);
-
-      const matchNv =
-        selectedMaNv.size === 0 ||
-        selectedMaNv.has(maNv);
-
-      const coDQ = thuongHieu.includes('DQ');
-
-      let matchThuongHieu = true;
-
-      if (thuongHieuFilter === 'doc_quyen') {
-        matchThuongHieu = coDQ;
-      }
-
-      if (thuongHieuFilter === 'hang_thuong') {
-        matchThuongHieu = !coDQ;
-      }
-
-      const matchNgayThu =
-        (!fromNgayThu || (ngayThu && ngayThu >= fromNgayThu)) &&
-        (!toNgayThu || (ngayThu && ngayThu <= toNgayThu));
-
-      return matchNv && matchThuongHieu && matchNgayThu;
-    });
-  }
-
   function updateSummary(rows) {
     const tongTienThu = rows.reduce((sum, row) => {
       return sum + Number(row.tien_thu || 0);
@@ -504,34 +483,66 @@
       `Tổng tiền thu: ${money(tongTienThu)}`;
   }
 
-  function renderPager() {
-    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-    const from = totalCount === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
-    const to = Math.min(currentPage * PAGE_SIZE, totalCount);
+  function applyFilter() {
+    const thuongHieuFilter = document.getElementById('filterThuongHieu').value;
+    const fromNgayThu = dateInputToNumber(document.getElementById('fromNgayThu').value);
+    const toNgayThu = dateInputToNumber(document.getElementById('toNgayThu').value);
+
+    filteredRows = allRows.filter(row => {
+      const maNv = text(row.ma_nv).trim();
+      const thuongHieu = text(row.thuong_hieu).toUpperCase();
+      const ngayThu = ngayThuToNumber(row.ngay_thu);
+
+      const matchNv = selectedMaNv.size === 0 || selectedMaNv.has(maNv);
+      const coDQ = thuongHieu.includes('DQ');
+
+      let matchThuongHieu = true;
+      if (thuongHieuFilter === 'doc_quyen') matchThuongHieu = coDQ;
+      if (thuongHieuFilter === 'hang_thuong') matchThuongHieu = !coDQ;
+
+      const matchNgayThu =
+        (!fromNgayThu || (ngayThu && ngayThu >= fromNgayThu)) &&
+        (!toNgayThu || (ngayThu && ngayThu <= toNgayThu));
+
+      return matchNv && matchThuongHieu && matchNgayThu;
+    });
+
+    currentPage = 1;
+    renderCurrentPage();
+  }
+
+  function renderCurrentPage() {
+    const total = filteredRows.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    const endIndex = startIndex + PAGE_SIZE;
+    const pageRows = filteredRows.slice(startIndex, endIndex);
+
+    renderTable(pageRows);
+    updateSummary(filteredRows);
+    renderPager(total, pageRows.length);
+  }
+
+  function renderPager(total, pageRowsCount) {
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const from = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+    const to = Math.min(currentPage * PAGE_SIZE, total);
 
     document.getElementById('pageInput').value = currentPage;
     document.getElementById('pageInput').max = totalPages;
-
-    document.getElementById('pageInfo').textContent =
-      `${from} - ${to} trong ${totalCount} giao dịch`;
+    document.getElementById('pageInfo').textContent = `${from} - ${to} trong ${total} giao dịch`;
 
     document.getElementById('btnFirstPage').disabled = currentPage <= 1;
     document.getElementById('btnPrevPage').disabled = currentPage <= 1;
     document.getElementById('btnNextPage').disabled = currentPage >= totalPages;
     document.getElementById('btnLastPage').disabled = currentPage >= totalPages;
-  }
-
-  function applyFilter() {
-    const filtered = getFilteredRows();
-
-    renderTable(filtered);
-    updateSummary(filtered);
-    renderPager();
 
     document.getElementById('status').textContent =
-      loadedAll
-        ? `Hiển thị ${filtered.length}/${allRows.length} dòng`
-        : `Trang ${currentPage} - Hiển thị ${filtered.length}/${allRows.length} dòng`;
+      `Hiển thị ${pageRowsCount} dòng / ${total} dòng sau lọc`;
   }
 
   async function getConfig() {
@@ -543,55 +554,6 @@
     return cfg;
   }
 
-  async function loadPage(page) {
-    if (loading) return;
-
-    try {
-      loading = true;
-      loadedAll = false;
-      currentPage = page;
-
-      document.getElementById('status').textContent = `Đang tải trang ${page}...`;
-
-      const config = await getConfig();
-      const selectCols = columns.join(',');
-      const from = (page - 1) * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-
-      const res = await fetch(
-        `${config.url}/rest/v1/${TABLE_NAME}?select=${selectCols}&order=ngay_thu.desc`,
-        {
-          headers: {
-            apikey: config.anon,
-            Authorization: `Bearer ${config.anon}`,
-            Range: `${from}-${to}`,
-            Prefer: 'count=exact',
-          },
-        }
-      );
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText);
-      }
-
-      const contentRange = res.headers.get('content-range') || '';
-      const m = contentRange.match(/\/(\d+)$/);
-      if (m) totalCount = Number(m[1]);
-
-      allRows = await res.json();
-
-      renderNhanVienFilter(allRows);
-      applyFilter();
-    } catch (err) {
-      console.error(err);
-      document.getElementById('status').textContent = 'Lỗi tải dữ liệu';
-      alert('Không tải được dữ liệu: ' + err.message);
-    } finally {
-      loading = false;
-    }
-  }
-
   async function loadAll() {
     if (loading) return;
 
@@ -600,27 +562,24 @@
     try {
       loading = true;
       btnLoadAll.disabled = true;
-      loadedAll = true;
       allRows = [];
+      document.getElementById('status').textContent = 'Đang tải dữ liệu...';
 
       const config = await getConfig();
       const selectCols = columns.join(',');
-      let page = 1;
+      const pageSize = 1000;
+      let offset = 0;
 
       while (true) {
         document.getElementById('status').textContent =
-          `Đang load all... đã tải ${allRows.length} dòng`;
-
-        const from = (page - 1) * PAGE_SIZE;
-        const to = from + PAGE_SIZE - 1;
+          `Đang tải... ${allRows.length} dòng`;
 
         const res = await fetch(
-          `${config.url}/rest/v1/${TABLE_NAME}?select=${selectCols}&order=ngay_thu.desc`,
+          `${config.url}/rest/v1/${TABLE_NAME}?select=${selectCols}&order=ngay_thu.desc&offset=${offset}&limit=${pageSize}`,
           {
             headers: {
               apikey: config.anon,
               Authorization: `Bearer ${config.anon}`,
-              Range: `${from}-${to}`,
             },
           }
         );
@@ -633,19 +592,16 @@
         const rows = await res.json();
         allRows = allRows.concat(rows);
 
-        if (rows.length < PAGE_SIZE) break;
-        page++;
+        if (rows.length < pageSize) break;
+        offset += pageSize;
       }
-
-      totalCount = allRows.length;
-      currentPage = 1;
 
       renderNhanVienFilter(allRows);
       applyFilter();
     } catch (err) {
       console.error(err);
       document.getElementById('status').textContent = 'Lỗi tải dữ liệu';
-      alert('Không load all được: ' + err.message);
+      alert('Không tải được dữ liệu: ' + err.message);
     } finally {
       loading = false;
       btnLoadAll.disabled = false;
@@ -669,40 +625,44 @@
 
   document.getElementById('pageSizeSelect').addEventListener('change', function () {
     PAGE_SIZE = Number(this.value || 100);
-    loadPage(1);
+    currentPage = 1;
+    renderCurrentPage();
   });
 
   document.getElementById('btnFirstPage').addEventListener('click', function () {
-    loadPage(1);
+    currentPage = 1;
+    renderCurrentPage();
   });
 
   document.getElementById('btnPrevPage').addEventListener('click', function () {
-    if (currentPage > 1) loadPage(currentPage - 1);
+    currentPage--;
+    renderCurrentPage();
   });
 
   document.getElementById('btnNextPage').addEventListener('click', function () {
-    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-    if (currentPage < totalPages) loadPage(currentPage + 1);
+    currentPage++;
+    renderCurrentPage();
   });
 
   document.getElementById('btnLastPage').addEventListener('click', function () {
-    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-    loadPage(totalPages);
+    currentPage = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
+    renderCurrentPage();
   });
 
   document.getElementById('pageInput').addEventListener('change', function () {
-    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
     let page = Number(this.value || 1);
 
     if (page < 1) page = 1;
     if (page > totalPages) page = totalPages;
 
-    loadPage(page);
+    currentPage = page;
+    renderCurrentPage();
   });
 
   document.getElementById('btnLoadAll').addEventListener('click', loadAll);
 
-  loadPage(1);
+  loadAll();
 </script>
 
 </body>
