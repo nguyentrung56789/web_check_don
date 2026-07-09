@@ -1,11 +1,12 @@
 /* ================== CẬP NHẬT ĐƠN HÀNG (WEBHOOK) ================== */
 async function onCapNhatDon(){
+  console.log('[CAP NHAT DON] Function started');
+
   const ymd = getCapDateISO();   // yyyy-mm-dd
   const btn = document.getElementById('btnCapNhatDon');
 
   const oldText = btn ? btn.textContent : '⚡ Cập nhật đơn hàng';
 
-  // Khóa nút để tránh bấm nhiều lần
   if (btn) {
     btn.disabled = true;
     btn.textContent = '⏳ Đang cập nhật...';
@@ -16,6 +17,9 @@ async function onCapNhatDon(){
 
   try {
     const webhookUrl = (window.getConfig && window.getConfig("webhook")) || "";
+
+    console.log('[CAP NHAT DON] webhookUrl:', webhookUrl);
+    console.log('[CAP NHAT DON] ngay_cap_nhat:', ymd);
 
     if (!webhookUrl) {
       setState(false, "Thiếu webhook");
@@ -32,8 +36,8 @@ async function onCapNhatDon(){
 
     const res = await fetch(webhookUrl, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json' 
+      headers: {
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         action: 'capnhathoadon',
@@ -43,6 +47,9 @@ async function onCapNhatDon(){
 
     const responseText = await res.text().catch(() => '');
     const seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+
+    console.log('[CAP NHAT DON] status:', res.status);
+    console.log('[CAP NHAT DON] response:', responseText);
 
     if (!res.ok) {
       const errMsg = responseText || String(res.status);
@@ -63,7 +70,6 @@ async function onCapNhatDon(){
       return;
     }
 
-    // Tới đây nghĩa là webhook đã trả phản hồi xong
     const doneMsg = responseText
       ? `✅ Cập nhật xong ngày ${isoToVN(ymd)} sau ${seconds}s. Phản hồi: ${responseText}`
       : `✅ Cập nhật xong ngày ${isoToVN(ymd)} sau ${seconds}s.`;
@@ -77,7 +83,6 @@ async function onCapNhatDon(){
       );
     }
 
-    // Webhook xong thì tải lại bảng
     if (typeof reload === 'function') {
       await reload();
     }
@@ -88,6 +93,8 @@ async function onCapNhatDon(){
 
   } catch (e) {
     const msg = e && e.message ? e.message : String(e);
+
+    console.error('[CAP NHAT DON] error:', e);
 
     setState(false, 'Lỗi kết nối webhook');
     showSlideBanner('❌ Lỗi kết nối webhook: ' + esc(msg), 'err');
@@ -103,7 +110,6 @@ async function onCapNhatDon(){
     }, 3000);
 
   } finally {
-    // Mở lại nút
     if (btn) {
       btn.disabled = false;
       btn.textContent = oldText;
