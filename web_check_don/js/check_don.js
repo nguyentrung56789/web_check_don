@@ -145,76 +145,11 @@ function isoToVN(ymd){
   return `${m[3]}-${m[2]}-${m[1]}`;
 }
 
-/* ====== helper lấy ngày cho nút Cập nhật (đã nâng cấp) ====== */
+/* ====== helper ngày ====== */
 function todayYMD() {
   const d = new Date();
   const p = n => String(n).padStart(2,'0');
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
-}
-
-function forceCapDateToday(){
-  const el = document.getElementById('capDate');
-  if (!el) return;
-
-  // input type="date" bắt buộc value dạng yyyy-mm-dd
-  el.value = todayYMD();
-}
-
-function initCapDateAndButton(){
-  forceCapDateToday();
-
-  const btn = document.getElementById('btnCapNhatDon');
-  if (btn && btn.dataset.bound !== '1') {
-    btn.dataset.bound = '1';
-    btn.addEventListener('click', onCapNhatDon);
-  }
-}
-
-async function ensureAppConfig(){
-  if (window.APP_CONFIG && Object.keys(window.APP_CONFIG).length) {
-    return window.APP_CONFIG;
-  }
-
-  const INTERNAL_KEY = (typeof window.getInternalKey === 'function')
-    ? window.getInternalKey()
-    : '';
-
-  const base = (window.API_BASE || '').replace(/\/+$/,'');
-  const cfgUrl = base ? `${base}/api/getConfig` : '/api/getConfig';
-
-  const r = await fetch(cfgUrl, {
-    headers: { 'x-internal-key': INTERNAL_KEY }
-  });
-
-  if (!r.ok) {
-    const text = await r.text().catch(() => '');
-    throw new Error(`Không lấy được config (${r.status}) ${text}`);
-  }
-
-  const cfg = await r.json().catch(() => ({}));
-
-  window.APP_CONFIG = cfg || {};
-
-  if (typeof window.getConfig !== 'function') {
-    window.getConfig = function(key){
-      return window.APP_CONFIG ? window.APP_CONFIG[key] : '';
-    };
-  }
-
-  return window.APP_CONFIG;
-}
-
-async function getWebhookUrl(){
-  const cfg = await ensureAppConfig();
-
-  return (
-    cfg.webhook ||
-    cfg.webhookUrl ||
-    cfg.webhook_url ||
-    cfg.WEBHOOK ||
-    cfg.WEBHOOK_URL ||
-    ''
-  );
 }
 function getCapDateISO(){
   const el = document.getElementById('capDate');
@@ -222,10 +157,8 @@ function getCapDateISO(){
 
   let v = (el.value || '').trim();
 
-  // 1) yyyy-mm-dd (chuẩn input type="date")
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
 
-  // 2) dd-mm-yyyy hoặc dd/mm/yyyy -> chuyển sang yyyy-mm-dd
   const m = v.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})$/);
   if (m) {
     const [, d, mo, y] = m;
@@ -234,10 +167,15 @@ function getCapDateISO(){
     return ymd;
   }
 
-  // 3) rỗng/không hợp lệ -> dùng hôm nay
   const ymd = todayYMD();
   el.value = ymd;
   return ymd;
+}
+
+/* Mặc định ô to = hôm nay khi đang trống */
+function setDefaultDateFilters(){
+  const toEl = document.getElementById('to');
+  if (toEl && !toEl.value) toEl.value = todayYMD();
 }
 
 function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
@@ -334,12 +272,53 @@ function bindExpandButton(){
   });
 }
 
-/* ================== NHÂN VIÊN (cho chọn NV giao) ================== */
-let EMPLOYEES=[]; let LAST_ACTIVE_TR=null;
+/* ================== NHÂN VIÊN (chọn NV giao) ================== */
+let EMPLOYEES=[]; 
+let LAST_ACTIVE_TR=null;
+
+/* Bỏ dấu tiếng Việt để so khớp tên linh hoạt */
+function vnFold(s){
+  return String(s||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().trim();
+}
+
+/* ===== Chỉ mục nhân viên: tra nhanh theo ID hoặc tên (không dấu) ===== */
+let EMP_BY_ID   = new Map();   // "216939" -> {id, ten_nv, sender_id}
+let EMP_BY_NAME = new Map();   // "phong be" -> {id, ten_nv, sender_id}
+
+function buildEmpIndex(){
+  EMP_BY_ID.clear(); EMP_BY_NAME.clear();
+  for (const e of (EMPLOYEES||[])) {
+    if (!e) continue;
+    const idStr = String(e.id ?? '').trim();
+    if (idStr) EMP_BY_ID.set(idStr, e);
+    const nameKey = vnFold(e.ten_nv);
+    if (nameKey) EMP_BY_NAME.set(nameKey, e);
+  }
+}
+
+/* Tìm NV theo nội dung gõ trong ô:
+   - Nếu toàn số -> coi là ID
+   - Ngược lại -> coi là TÊN (không dấu, không phân biệt hoa/thường)
+*/
+function findEmpByInput(inputVal){
+  const v = String(inputVal || '').trim();
+  if (!v) return null;
+
+  if (/^\d+$/.test(v)) return EMP_BY_ID.get(v) || null; // gõ ID
+
+  const key = vnFold(v); // gõ tên
+  let emp = EMP_BY_NAME.get(key);
+  if (emp) return emp;
+  for (const [k, e] of EMP_BY_NAME.entries()){ // bắt đầu bằng...
+    if (k.startsWith(key)) return e;
+  }
+  return null;
+}
+
 async function loadEmployees(){
   try{
     const {data,error}=await supa.from('kv_nhan_vien')
-      .select('id,ten_nv').eq('hoat_dong', true).order('ten_nv',{ascending:true});
+      .select('id,ten_nv,sender_id').eq('hoat_dong', true).order('ten_nv',{ascending:true});
     if(error) throw error;
     EMPLOYEES = Array.isArray(data)?data:[];
   }catch(e){
@@ -348,8 +327,11 @@ async function loadEmployees(){
   }
 }
 function renderEmpDatalist(){
-  const el=document.getElementById('empList');
-  if(el) el.innerHTML = EMPLOYEES.map(e=>`<option value="${esc(e.ten_nv)}"></option>`).join('');
+  const el = document.getElementById('empList');
+  if(!el) return;
+  el.innerHTML = (EMPLOYEES||[])
+    .map(e => `<option value="${esc(e.ten_nv || '')}"></option>`)
+    .join('');
 }
 
 /* ================== OVERLAY CHI TIẾT ================== */
@@ -378,7 +360,6 @@ function bindScanAndButtons(){
   const btnCheck=document.getElementById('btnCheck');
   const btnPrepTop=document.getElementById('btnPrepTop'); if(btnPrepTop) btnPrepTop.style.display='none';
 
-  // Placeholder theo yêu cầu
   if (scan) scan.placeholder = 'Quét mã hóa đơn/mã vận đơn';
 
   scan?.focus();
@@ -398,39 +379,28 @@ function bindScanAndButtons(){
   if($from)$from.onchange=()=>{ resetToPage1(); reload(); };
   if($to)  $to.onchange  =()=>{ resetToPage1(); reload(); };
   document.getElementById('btnReload')?.addEventListener('click', ()=>{
-    if($q) $q.value=''; if($from) $from.value=''; if($to) $to.value=''; resetToPage1(); reload();
+    if($q) $q.value=''; if($from) $from.value=''; if($to) $to.value='';
+    setDefaultDateFilters();
+    resetToPage1(); reload();
   });
 
-  // Lọc COD
   const selCOD = document.getElementById('filterLoaiDon');
   selCOD?.addEventListener('change', ()=>{
     FILTER_COD = selCOD.value; // '', 'true', 'false'
     resetToPage1(); reload();
   });
 
-  // Lọc Trạng thái
   const selTT = document.getElementById('filterTrangThai');
   selTT?.addEventListener('change', ()=>{
     FILTER_STATUS = selTT.value;  // đã lowercase
     saveStatusFilter();
     resetToPage1(); reload();
   });
+
+  document.getElementById('btnCapNhatDon')?.addEventListener('click', onCapNhatDon);
 }
 
 /* ================== CHECK ================== */
-function renderStatusCell(ma, val){
-  const s = (val || '').toString().trim();
-  const has = !!s;
-  const low = s.toLowerCase();
-  const cls = low.includes('chuẩn bị') ? 'wait'
-           : low.includes('đang giao hàng') ? 'ok'
-           : (low.includes('thành công')||low.includes('đã giao')||low==='done') ? 'ok'
-           : (low.includes('chờ')||low.includes('đang')) ? 'wait'
-           : (low.includes('hủy')||low.includes('fail')) ? 'err' : '';
-  const label = s || '—';
-  return `<span class="badge ${cls}">${esc(label)}</span>` +
-         (has ? ` <a class="link-soft" target="_blank" href="xem_trang_thai_don.html?ma_hd=${encodeURIComponent(ma)}">xem</a>` : '');
-}
 
 /* === Helper: lấy tên NV hiện tại (ưu tiên sessionStorage, fallback localStorage) === */
 function getCurrentNVName(){
@@ -445,18 +415,30 @@ function getCurrentNVName(){
   return '';
 }
 
+/* === Helper: lấy mã NV hiện tại (ma_nv) === */
+function getCurrentNVID(){
+  try {
+    const s = JSON.parse(sessionStorage.getItem('nv_ctx') || '{}');
+    if (s && s.ma_nv) return String(s.ma_nv).trim();
+  } catch {}
+  try {
+    const nv = JSON.parse(localStorage.getItem('nv') || '{}');
+    if (nv && nv.ma_nv) return String(nv.ma_nv).trim();
+  } catch {}
+  return '';
+}
+
 async function checkAndOpenByScan(code){
   try{
     setScanMsg('ok','Đang kiểm tra…');
 
-    // Cho phép dán nhầm URL có ?ma_hd=...
     const urlMatch = String(code).match(/[?&]ma_hd=([^&#]+)/i);
     if (urlMatch) code = decodeURIComponent(urlMatch[1]);
 
-    // 1) Ưu tiên tìm theo ma_hd
-    let { data, error } = await supa.from(TABLE).select('ma_hd').eq('ma_hd', code).maybeSingle();
+    // 1) Ưu tiên ma_hd
+    let { data } = await supa.from(TABLE).select('ma_hd').eq('ma_hd', code).maybeSingle();
 
-    // 2) Không thấy ma_hd -> thử ma_vd
+    // 2) fallback ma_vd
     if (!data || !data.ma_hd) {
       const alt = await supa.from(TABLE)
         .select('ma_hd, ma_vd')
@@ -471,22 +453,163 @@ async function checkAndOpenByScan(code){
       }
     }
 
-    // 3) Có kết quả -> mở form con
     const tenNV = getCurrentNVName();
     const qs = new URLSearchParams({ ma_hd: data.ma_hd });
-    if (tenNV) qs.set('nv_xn', tenNV);
 
+    const { data: detail } = await supa.from(TABLE)
+      .select('trang_thai')
+      .eq('ma_hd', data.ma_hd)
+      .maybeSingle();
+
+    const trangThai = (detail?.trang_thai || '').trim().toLowerCase();
+    if (trangThai.includes('huỷ') || trangThai.includes('hủy')) {
+      showSlideBanner('⚠️ Đơn hàng này đã bị hủy — không thể mở chi tiết.', 'err');
+      setScanMsg('err', 'Đơn hàng đã hủy');
+      return;
+    }
+
+    if (tenNV) qs.set('nv_xn', tenNV);
     setScanMsg('ok','Đã tìm thấy — mở chi tiết…');
     openOverlay(`check_don_giao_hang.html?${qs.toString()}`);
-  }catch(err){
+  } catch(err) {
     showSlideBanner('❌ Lỗi: ' + esc(err.message || err), 'err');
     setScanMsg('err','Đã xảy ra lỗi');
   }
 }
 
+/* ================== WEBHOOK HELPER ================== */
+function getWebhookUrl(){
+  try { return String((window.getConfig && window.getConfig('webhook')) || ''); }
+  catch { return ''; }
+}
+function getOrderInfoFromRow(tr){
+  if (!tr) return { ma_hd:'', ten_kh:'', dia_chi:'' };
+  const ma_hd  = String(tr.getAttribute('data-ma') || '').trim();
+  const ten_kh = (tr.querySelector('[data-cell="ten_kh"]')?.textContent || '').trim();
+  const dia_chi = String(tr.getAttribute('data-diachi') || '').trim();
+  return { ma_hd, ten_kh, dia_chi };
+}
+
+/**
+ * Gửi webhook giao hàng DIGIAOHANG.
+ * YÊU CẦU: url webhook; có ma_nv, ma_hd, ten_kh, sender_id; dia_chi optional
+ * @returns {Promise<boolean>} true nếu gửi OK, false nếu lỗi
+ */
+async function sendGiaohangWebhook({ ma_nv, ma_hd, ten_kh, sender_id, dia_chi }) {
+  const url = getWebhookUrl();
+  if (!url) { showSlideBanner('❌ Thiếu webhook', 'err'); return false; }
+  if (!ma_hd) { showSlideBanner('❌ Thiếu mã hóa đơn (ma_hd)', 'err'); return false; }
+  if (!ma_nv) { showSlideBanner('❌ Thiếu mã nhân viên (ma_nv)', 'err'); return false; }
+  if (!sender_id) { showSlideBanner('⚠️ Nhân viên chưa đăng ký gửi tin (thiếu sender_id)', 'err'); return false; }
+
+  try {
+    const payload = {
+      action: 'digiaohang',
+      ma_nv: String(ma_nv),
+      ma_hd: String(ma_hd),
+      ten_kh: String(ten_kh || ''),
+      sender_id: String(sender_id),
+      dia_chi: String(dia_chi || '')
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      showSlideBanner('❌ Gửi tin thất bại: ' + (t || res.status), 'err');
+      return false;
+    }
+
+    showSlideBanner('✅ Đã gửi tin nhắn giao hàng (digiaohang)', 'ok');
+    try {
+      if (typeof pushNotify === 'function') {
+        const kh = ten_kh ? ` • KH: <i>${esc(ten_kh)}</i>` : '';
+        const dc = dia_chi ? ` • ĐC: <i>${esc(dia_chi)}</i>` : '';
+        pushNotify(`✉️ digiaohang • Đơn <b>${esc(String(ma_hd))}</b> • NV <i>${esc(String(ma_nv))}</i>${kh}${dc}`);
+      }
+    } catch {}
+    return true;
+  } catch (e) {
+    showSlideBanner('❌ Lỗi kết nối webhook', 'err');
+    return false;
+  }
+}
+
+/* ================== TRẠNG THÁI + NÚT "ĐÃ GIAO" ================== */
+function renderStatusCell(ma, val){
+  const raw = (val || '').toString().trim();
+  const low = raw.toLowerCase();
+  const label = raw || '—';
+
+  const cls = low.includes('chuẩn bị') ? 'wait'
+           : low.includes('đang giao hàng') ? 'ok'
+           : (low.includes('thành công')||low.includes('đã giao')||low==='done') ? 'ok'
+           : (low.includes('chờ')||low.includes('đang')) ? 'wait'
+           : (low.includes('hủy')||low.includes('huỷ')||low.includes('fail')) ? 'err' : '';
+
+  const shouldShowBtn = (vnFold(raw) === vnFold('Đã kiểm đơn'));
+
+  const btn = shouldShowBtn
+    ? ` <button class="btn-da-giao" data-ma="${esc(ma)}" title="Cập nhật sang Giao thành công">Đã giao</button>`
+    : '';
+
+  return `<span class="badge ${cls}">${esc(label)}</span>${btn}`;
+}
+
+/**
+ * Đánh dấu đơn "Giao thành công"
+ * - cập nhật DB
+ * - cập nhật ngay UI (không reload) qua updateRowFromRecord
+ * - ẩn nút "Đã giao"
+ */
+async function markDaGiao(ma_hd, btnEl){
+  if (!supa){ showSlideBanner('❌ Supabase chưa khởi tạo', 'err'); return; }
+  const nv_id = getCurrentNVID();
+  if (!nv_id){ showSlideBanner('⚠️ Thiếu mã NV đăng nhập (ma_nv)', 'err'); return; }
+  if (!ma_hd){ showSlideBanner('❌ Thiếu mã hóa đơn', 'err'); return; }
+
+  const patch = {
+    trang_thai: 'Giao thành công',
+    ngay_giao_thanh_cong: new Date().toISOString(),
+    nv_giao_hang: nv_id
+  };
+
+  const oldTxt = btnEl?.textContent;
+  if (btnEl){ btnEl.disabled = true; btnEl.textContent = 'Đang cập nhật…'; }
+
+  try{
+    const { data, error } = await supa
+      .from(TABLE)
+      .update(patch)
+      .eq('ma_hd', ma_hd)
+      .select('*')
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) throw new Error('Không nhận được bản ghi sau cập nhật');
+
+    updateRowFromRecord(data);
+    if (btnEl){ btnEl.style.display = 'none'; }
+
+    showSlideBanner('✅ Đã cập nhật: Giao thành công', 'ok');
+    try{
+      if (typeof pushNotify === 'function'){
+        pushNotify(`✅ Đơn <b>${esc(ma_hd)}</b> → <i>Giao thành công</i> • NV: <b>${esc(nv_id)}</b>`);
+      }
+    }catch{}
+  }catch(e){
+    showSlideBanner('❌ Lỗi cập nhật: ' + esc(e.message||e), 'err');
+    if (btnEl){ btnEl.disabled = false; btnEl.textContent = oldTxt || 'Đã giao'; }
+  }
+}
+
 /* ================== BẢNG & HÀNH ĐỘNG ================== */
 function bindTableActions(){
-  const tb=document.getElementById('tbody');
+  const tb = document.getElementById('tbody');
 
   tb?.addEventListener('change', (e)=>{
     const cb = e.target.closest?.('.row-chk');
@@ -510,51 +633,50 @@ function bindTableActions(){
     tr.classList.add('active-row'); LAST_ACTIVE_TR=tr;
   });
 
-  // Giao hàng từng dòng (webhook + update)
+  // ====== Click nút "Đã giao" ======
   tb?.addEventListener('click', async (e)=>{
-    const btn=e.target.closest?.('.btn-ship-row'); if(!btn) return;
+    const doneBtn = e.target.closest?.('.btn-da-giao');
+    if (doneBtn){
+      const tr = doneBtn.closest('tr[data-ma]');
+      if(!tr){ showSlideBanner('❌ Không xác định được dòng', 'err'); return; }
+      const ma = (tr.getAttribute('data-ma') || '').trim();
+      if (!ma){ showSlideBanner('❌ Thiếu mã hóa đơn', 'err'); return; }
+      await markDaGiao(ma, doneBtn);
+      return;
+    }
+
+    // ====== GỬI TIN từng dòng → webhook action="digiaohang" ======
+    const btn = e.target.closest?.('.btn-send-row');
+    if(!btn) return;
+
     const tr = btn.closest('tr[data-ma]');
-    const ma = tr?.dataset.ma;
-    const xacNhan = (tr?.dataset.xacnhan || '').trim();
-    const hadShipDate = !!(tr?.dataset.shipdate || '').trim();
-    const hadPrepDate = !!(tr?.dataset.prepdate || '').trim();
+    if(!tr){ showSlideBanner('❌ Không xác định được dòng', 'err'); return; }
 
-    if(!tr) return;
-    if(tr.dataset.sending === '1') return; // chống double-click race
-    if(hadShipDate){ return; }
-    if(!hadPrepDate){ setScanMsg('wait','(Lưu ý) đơn chưa có ngày chuẩn bị.'); }
+    const { ma_hd, ten_kh, dia_chi } = getOrderInfoFromRow(tr);
+    if(!ma_hd){ showSlideBanner('❌ Thiếu mã hóa đơn', 'err'); return; }
+
     const inp = tr.querySelector('.emp-input');
-    const tenNV = (inp && inp.value || '').trim();
+    const emp = findEmpByInput(inp?.value || '');
+    if (!emp){
+      showSlideBanner('⚠️ Vui lòng chọn nhân viên giao hàng (gõ tên/ID)', 'err');
+      inp?.focus();
+      return;
+    }
+    if (!emp.sender_id){
+      showSlideBanner('⚠️ Nhân viên chưa đăng ký gửi tin (thiếu sender_id)', 'err');
+      return;
+    }
 
-    if(!xacNhan){ setScanMsg('err','Chưa có nhân viên xác nhận đơn.'); return; }
-    if(!tenNV){ setScanMsg('err','Vui lòng chọn nhân viên giao.'); inp?.classList.add('err'); inp?.focus(); return; }
-    if(!EMPLOYEES.some(x=>x.ten_nv===tenNV)){ setScanMsg('err','Tên nhân viên giao không khớp danh sách.'); inp?.classList.add('err'); inp?.focus(); return; }
-
-    btn.disabled=true; const keep=btn.textContent; btn.textContent='Đang gửi…';
-    tr.dataset.sending = '1';
-    try{
-      const webhookUrl = (window.getConfig && window.getConfig("webhook")) || "";
-      if (!webhookUrl) { setState(false, "Thiếu webhook"); return; }
-      const r = await fetch(webhookUrl,{
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ action:'giaohang', ma_hd: ma, nv_check_don: xacNhan, nv_giao_hang:tenNV})
-      });
-      if(!r.ok){ const t = await r.text().catch(()=> ''); throw new Error(`Webhook lỗi (${r.status}): ${t||'không rõ'}`); }
-
-      const nowISO = new Date().toISOString();
-      await supa.from(TABLE)
-        .update({ trang_thai: 'Đang giao hàng', nv_giao_hang: tenNV, ngay_di_giao: nowISO })
-        .eq('ma_hd', ma).throwOnError();
-
-      const cellTT = tr.querySelector('[data-cell="trang_thai"]');
-      if (cellTT) cellTT.innerHTML = renderStatusCell(ma, 'Đang giao hàng');
-      tr.dataset.giao = tenNV;
-      tr.dataset.shipdate = nowISO;
-      btn.style.display='none';
-      inp?.classList.remove('err');
-      setScanMsg('ok', `Đơn ${esc(ma)} đã chuyển sang "Đang giao hàng"`);
-    }catch(err){ setScanMsg('err', `❌ Lỗi giao hàng: ${esc(err.message||err)}`); }
-    finally{ btn.disabled=false; btn.textContent=keep; tr.dataset.sending = '0'; }
+    const old = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Đang gửi…';
+    await sendGiaohangWebhook({
+      ma_nv: String(emp.id),
+      ma_hd,
+      ten_kh,
+      sender_id: String(emp.sender_id),
+      dia_chi
+    });
+    btn.disabled = false; btn.textContent = old || 'Gửi tin';
   });
 }
 
@@ -619,7 +741,7 @@ function bindFilterCheckedOnly(){
   });
 }
 
-/* ================== XEM BẢN ĐỒ TUYẾN (ưu tiên DOM, fallback Supabase) ================== */
+/* ================== XEM BẢN ĐỒ TUYẾN (overlay) ================== */
 function getCheckedOrderIds() {
   const rows = [...document.querySelectorAll('#tbody tr[data-ma] .row-chk:checked')]
     .map(cb => cb.closest('tr[data-ma]'))
@@ -632,72 +754,51 @@ function getCheckedOrderIds() {
   }
   return out;
 }
-function getCheckedCustomerCodesFromDOM(){
+
+function getCheckedCustomerIdsFromDOM(){
   const rows = [...document.querySelectorAll('#tbody tr[data-ma] .row-chk:checked')]
     .map(cb => cb.closest('tr[data-ma]'))
     .filter(tr => tr && getComputedStyle(tr).display !== 'none');
 
-  const seen = new Set(); const out=[];
-  for (const tr of rows) {
-    const kh = (tr.dataset.kh || '').trim();
-    if (kh && !seen.has(kh)) { seen.add(kh); out.push(kh); } // unique theo thứ tự
+  const seen = new Set(); const ids = [];
+  for (const tr of rows){
+    const kh = (tr.getAttribute('data-kh') || '').trim();
+    if (kh && !seen.has(kh)){ seen.add(kh); ids.push(kh); }
   }
-  return out;
+  return ids;
 }
 
-async function handleViewRoute(){
-  try {
-    // 1) lấy ma_kh trực tiếp từ DOM
-    let ids = getCheckedCustomerCodesFromDOM();
-
-    // 2) fallback: đổi từ ma_hd -> ma_kh bằng Supabase
-    if (!ids.length) {
-      const selHD = getCheckedOrderIds();
-      if (!selHD.length) { alert('⚠️ Chưa chọn đơn nào!'); return; }
-      if (!supa) throw new Error('Supabase chưa khởi tạo');
-      const { data, error } = await supa
-        .from('don_hang')
-        .select('ma_hd, ma_kh')
-        .in('ma_hd', selHD);
-      if (error) throw error;
-
-      const seen = new Set(); ids = [];
-      for (const r of (data || [])) {
-        const v = (r.ma_kh || '').trim();
-        if (v && !seen.has(v)) { seen.add(v); ids.push(v); } // unique
-      }
-    }
-
-    if (!ids.length) {
-      alert('⚠️ Các dòng đã chọn không có ma_kh. Vui lòng kiểm tra dữ liệu.');
-      return;
-    }
-
-    // 3) Mở map an toàn ở TAB MỚI (truyền token + xử lý q dài)
-    const queryForMap = 'ma: ' + ids.join(' ');
-    openMapInNewTabSecure(queryForMap);
-  } catch (e) {
-    console.error(e);
-    alert('❌ Lỗi khi mở bản đồ tuyến: ' + (e.message || e));
+function previewMAKH(ids){
+  const total = Array.isArray(ids) ? ids.length : 0;
+  if (!total){
+    try { showSlideBanner('⚠️ Không có mã khách (ma_kh)', 'err'); } catch {}
+    return;
   }
+  const short = ids.slice(0, 20).join(' ');
+  const more  = total > 20 ? ` … (+${total-20} nữa)` : '';
+  try { showSlideBanner(`🔎 Thu được ${total} mã KH: ${short}${more}`, 'ok'); } catch {}
+  try { 
+    if (typeof pushNotify === 'function'){
+      pushNotify(`📍 Đã thu <b>${total}</b> mã KH:<br><pre style="white-space:pre-wrap;margin:6px 0 0">${ids.join(' ')}</pre>`);
+    } 
+  } catch {}
 }
 
-/* >>> helper mở tab mới, set token + q (kể cả chuỗi dài) */
-function openMapInNewTabSecure(queryForMap){
+async function openMapOverlayInjected(maList){
+  const ids = (Array.isArray(maList)?maList:[])
+    .map(s=>String(s||'').trim()).filter(Boolean);
+  if (!ids.length){ alert('Không có mã khách.'); return; }
+
+  const q = 'ma: ' + ids.join(' ');
+
+  const ov=document.getElementById('detailOverlay');
+  const fr=document.getElementById('detailFrame');
+  if(!ov || !fr){ alert('Thiếu overlay/frame (#detailOverlay, #detailFrame).'); return; }
+
   const target = new URL('map_tuyen.html', location.href);
+  target.searchParams.set('no_logo', '1');
+  target.searchParams.set('q', q); // truyền q qua URL để chắc chắn
 
-  // Nếu q quá dài → dùng sessionStorage + #use_session=1
-  const tryUrl = new URL('map_tuyen.html', location.href);
-  tryUrl.searchParams.set('q', queryForMap);
-  const useSession = tryUrl.toString().length > 1800;
-
-  if (useSession) {
-    target.hash = '#use_session=1';
-  } else {
-    target.searchParams.set('q', queryForMap);
-  }
-
-  // Lấy token đã cấp quyền ở tab hiện tại
   let token = '';
   try { token = sessionStorage.getItem('APP_ACCESS') || ''; } catch {}
   if (!token && typeof window.makeAccess === 'function') {
@@ -705,127 +806,106 @@ function openMapInNewTabSecure(queryForMap){
   }
   if (token) target.searchParams.set('token', token);
 
-  // Mở tab mới; nếu popup bị chặn → mở cùng tab
-  const win = window.open('', '_blank');
-  if (!win || win.closed) {
-    if (useSession) {
-      try { sessionStorage.setItem('map_query', queryForMap); } catch {}
-    }
-    location.assign(target.toString());
-    return;
-  }
+  fr.removeAttribute('src');
+  ov.style.display='flex';
 
-  // Ghi sessionStorage trong tab mới rồi replace sang URL đích
-  const bootstrapHTML = `
-<!doctype html><html><head><meta charset="utf-8"><title>Loading…</title></head>
-<body>
-<script>
-try {
-  ${useSession ? `sessionStorage.setItem('map_query', ${JSON.stringify(queryForMap)});` : ''}
-  ${token ? `sessionStorage.setItem('APP_ACCESS', ${JSON.stringify(token)});` : ''}
-} catch (e) {}
-location.replace(${JSON.stringify(target.toString())});
-<\/script>
-Loading…
-</body></html>`.trim();
+  const inject = ()=>{
+    try{
+      const doc = fr.contentWindow?.document;
+      if (!doc) return false;
+      const input = doc.getElementById('q') || doc.querySelector('input[name="q"]');
+      if (!input) return false;
+      input.value = q;
+      input.dispatchEvent(new Event('input', { bubbles:true }));
+      return true;
+    }catch(_){ return false; }
+  };
 
-  win.document.open();
-  win.document.write(bootstrapHTML);
-  win.document.close();
+  fr.onload = ()=>{
+    if (inject()) return;
+    let n=0, max=20;
+    const iv = setInterval(()=>{ if (inject() || ++n>=max) clearInterval(iv); }, 150);
+  };
+
+  fr.src = target.toString();
+
+  previewMAKH(ids);
+  try { showSlideBanner('🗺️ Đang mở bản đồ tuyến (overlay)…', 'ok'); } catch {}
+  try { if (typeof pushNotify==='function') pushNotify('🗺️ Mở map (overlay) với truy vấn: <code>'+q.replace(/</g,'&lt;')+'</code>'); } catch {}
 }
 
+async function handleViewRouteOverlay(){
+  try{
+    let ids = getCheckedCustomerIdsFromDOM();
+
+    if (!ids.length){
+      const selHD = getCheckedOrderIds();
+      if (!selHD.length){ alert('⚠️ Chưa chọn đơn nào!'); return; }
+      if (!supa) throw new Error('Supabase chưa khởi tạo');
+
+      const { data, error } = await supa
+        .from('don_hang')
+        .select('ma_hd, ma_kh')
+        .in('ma_hd', selHD);
+      if (error) throw error;
+
+      const seen = new Set(); ids = [];
+      for (const r of (data || [])){
+        const v = (r.ma_kh || '').trim();
+        if (v && !seen.has(v)){ seen.add(v); ids.push(v); }
+      }
+    }
+
+    if (!ids.length){
+      alert('⚠️ Các dòng đã chọn không có ma_kh. Vui lòng kiểm tra dữ liệu.');
+      try { showSlideBanner('⚠️ Không có ma_kh để mở bản đồ', 'err'); } catch {}
+      return;
+    }
+
+    await openMapOverlayInjected(ids);
+
+  }catch(e){
+    console.error(e);
+    alert('❌ Lỗi khi mở bản đồ tuyến (overlay): ' + (e.message || e));
+  }
+}
 function bindViewRouteButton(){
-  document.getElementById('btnViewRoute')
-    ?.addEventListener('click', (e)=>{ e.preventDefault(); handleViewRoute(); });
+  const btn = document.getElementById('btnViewRoute');
+  if(!btn) return;
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    handleViewRouteOverlay();
+  });
+
+
 }
 
 /* ================== CẬP NHẬT ĐƠN HÀNG (WEBHOOK) ================== */
 async function onCapNhatDon(){
-  forceCapDateToday();
-
-  const ymd = getCapDateISO();
-  const btn = document.getElementById('btnCapNhatDon');
-  const oldText = btn ? btn.textContent : '⚡ Cập nhật đơn hàng';
-
-  if (btn) {
-    btn.disabled = true;
-    btn.classList.remove('is-done', 'is-error');
-    btn.classList.add('is-loading');
-    btn.textContent = 'Đang cập nhật...';
-  }
-
-  setState(true, `đang cập nhật đơn hàng ngày ${isoToVN(ymd)}...`);
-  showSlideBanner(`⏳ Đang cập nhật đơn hàng ngày ${isoToVN(ymd)}...`, 'ok');
+  const ymd = getCapDateISO();   // luôn có giá trị hợp lệ
+  setState(true, 'đang cập nhật…');
 
   try{
-    const webhookUrl = await getWebhookUrl();
-
-    if (!webhookUrl) {
-      throw new Error('Thiếu webhook trong /api/getConfig');
-    }
-
-    const res = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'capnhathoadon',
-        ngay_cap_nhat: ymd
-      })
+    const webhookUrl = (window.getConfig && window.getConfig("webhook")) || "";
+    if (!webhookUrl) { setState(false, "Thiếu webhook"); return; }
+    const res = await fetch(webhookUrl,{
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ action:'capnhathoadon', ngay_cap_nhat: ymd })
     });
 
-    const text = await res.text().catch(() => '');
-
-    if (!res.ok) {
-      throw new Error(text || `Webhook lỗi ${res.status}`);
+    if(!res.ok){
+      const text = await res.text().catch(()=> '');
+      setState(false, 'Cập nhật lỗi: ' + (text || res.status));
+      setTimeout(()=>setState(true,'sẵn sàng'), 3000);
+      return;
     }
 
-    setState(true, `OK - đã cập nhật ngày ${isoToVN(ymd)}`);
-    showSlideBanner(`✅ Cập nhật đơn hàng ngày ${isoToVN(ymd)} thành công`, 'ok');
-
-    if (btn) {
-      btn.classList.remove('is-loading', 'is-error');
-      btn.classList.add('is-done');
-      btn.textContent = '✅ Cập nhật xong';
-    }
-
-    // Có Supabase thì reload lại bảng, không có thì bỏ qua
-    if (typeof reload === 'function' && supa) {
-      await reload();
-    }
-
-    setTimeout(() => {
-      if (btn) {
-        btn.classList.remove('is-done', 'is-error');
-        btn.textContent = oldText;
-      }
-      setState(true, 'sẵn sàng');
-    }, 2500);
-
+    setState(true, `đã gửi cập nhật cho ${isoToVN(ymd)}`);
+    setTimeout(()=>setState(true,'sẵn sàng'), 2000);
   }catch(e){
-    const msg = e.message || e || 'Lỗi không xác định';
-
-    setState(false, `Cập nhật lỗi: ${msg}`);
-    showSlideBanner(`❌ Cập nhật lỗi: ${esc(msg)}`, 'err');
-
-    if (btn) {
-      btn.classList.remove('is-loading', 'is-done');
-      btn.classList.add('is-error');
-      btn.textContent = '❌ Lỗi cập nhật';
-    }
-
-    setTimeout(() => {
-      if (btn) {
-        btn.classList.remove('is-error');
-        btn.textContent = oldText;
-      }
-      setState(true, 'sẵn sàng');
-    }, 3000);
-
-  }finally{
-    if (btn) {
-      btn.disabled = false;
-      btn.classList.remove('is-loading');
-    }
+    setState(false, 'Lỗi kết nối webhook');
+    setTimeout(()=>setState(true,'sẵn sàng'), 3000);
   }
 }
 
@@ -861,8 +941,7 @@ async function fetchDistinctStatuses(qtxt, from, to){
   if(hi) q=q.lt('ngay',hi);
   if (FILTER_COD === 'true') q = q.eq('don_hang', true);
   else if (FILTER_COD === 'false') q = q.or('don_hang.eq.false,don_hang.is.null');
-  const { data, error } = await q;
-  if (error) return [];
+  const { data } = await q;
   const set = new Set((data||[]).map(r => (r.trang_thai||'').toString().trim()).filter(Boolean));
   return [...set];
 }
@@ -878,7 +957,6 @@ async function reload(){
 
   if(tb) tb.innerHTML='<tr><td colspan="11" class="empty">Đang tải…</td></tr>';
 
-  // XÂY DỰNG TRUY VẤN
   let q = supa.from(TABLE).select('*', { count: 'exact' });
 
   if(qtxt) q=q.or(`ma_hd.ilike.%${qtxt}%,ten_kh.ilike.%${qtxt}%`);
@@ -887,14 +965,12 @@ async function reload(){
   if(lo) q=q.gte('ngay',lo);
   if(hi) q=q.lt('ngay',hi);
 
-  // Lọc COD đúng kiểu boolean
   if (FILTER_COD === 'true') {
-    q = q.eq('don_hang', true);                      // chỉ COD
+    q = q.eq('don_hang', true);
   } else if (FILTER_COD === 'false') {
-    q = q.or('don_hang.eq.false,don_hang.is.null');  // không COD (kể cả null)
+    q = q.or('don_hang.eq.false,don_hang.is.null');
   }
 
-  // Lọc Trạng thái server-side để count/page đúng (case-insensitive, gần-exact)
   if (FILTER_STATUS) {
     q = q.ilike('trang_thai', `%${FILTER_STATUS}%`);
   }
@@ -916,7 +992,6 @@ async function reload(){
     return;
   }
 
-  // Dropdown trạng thái theo filter hiện tại (không theo trang)
   const distinctStatuses = await fetchDistinctStatuses(qtxt, from, to);
   renderStatusFilterOptions(distinctStatuses);
 
@@ -929,14 +1004,20 @@ async function reload(){
   }
 
   if (tb) tb.innerHTML = data.map(r=>{
-    const maRaw = r.ma_hd || ''; const ma = esc(maRaw);
-    const checked = SELECTED.has(maRaw) ? 'checked' : ''; const selCls  = checked ? ' is-selected' : '';
+    const maRaw = r.ma_hd || '';
+    const ma = esc(maRaw);
+    const checked = SELECTED.has(maRaw) ? 'checked' : '';
+    const selCls  = checked ? ' is-selected' : '';
+
     return `
       <tr class="${selCls}" data-ma="${maRaw}" data-kh="${esc(r.ma_kh||'')}"
           data-xacnhan="${esc(r.nv_check_don||'')}"
-          data-giao="${esc(r.nv_giao_hang||'')}"
+          data-dong="${esc(r.nv_dong_hang||'')}"
           data-prepdate="${esc(r.ngay_chuan_bi_don||'')}"
-          data-shipdate="${esc(r.ngay_di_giao||'')}">
+          data-dongdate="${esc(r.ngay_dong_hang||'')}"
+          data-giaothanhcong="${esc(r.ngay_giao_thanh_cong||'')}"
+          data-nv_giaohang="${esc(r.nv_giao_hang||'')}"
+          data-diachi="${esc(r.dia_chi || r.diachi || '')}">
         <td class="sel"><input type="checkbox" class="row-chk" ${checked} /></td>
         <td data-cell="ma_hd">${ma}</td>
         <td class="col-don-hang" data-cell="don_hang" style="text-align:center">${renderDonHangCell(r.don_hang, maRaw)}</td>
@@ -944,13 +1025,22 @@ async function reload(){
         <td data-cell="ten_kh">${esc(r.ten_kh||'')}</td>
         <td data-cell="tong_tien" class="right">${r.tong_tien!=null ? Number(r.tong_tien).toLocaleString('vi-VN') : ''}</td>
         <td data-cell="trang_thai">${renderStatusCell(maRaw, r.trang_thai)}</td>
-        <td data-cell="ngay_xn" class="col-ngay-xn">${fmtDateHTML(r.ngay_check_don)}</td>
-        <td data-cell="nv_xn" class="col-nv-xn">${esc(r.nv_check_don||'')}</td>
-        <td data-cell="nv_giao" class="col-nv-gl">
-          <input class="emp-input" list="empList" data-ma="${ma}"
-                 placeholder="— chọn / tìm NV —" value="${esc(r.nv_giao_hang||'')}">
+
+        <td data-cell="ngay_xn" class="col-ngay-xn" style="min-width:180px;white-space:nowrap">
+          ${fmtDateHTML(r.ngay_check_don)}
         </td>
-        <td data-cell="btn_ship">${!r.ngay_di_giao ? `<button class="btn-ship-row" data-ma="${ma}">Giao hàng</button>` : ''}</td>
+
+        <td data-cell="nv_xn" class="col-nv-xn">${esc(r.nv_check_don||'')}</td>
+
+        <td data-cell="nv_dong" class="col-nv-dh">
+          <input class="emp-input" list="empList" data-ma="${ma}"
+                 style="min-width:160px"
+                 placeholder="— chọn / tìm NV —" value="${esc(r.nv_dong_hang||'')}">
+        </td>
+
+        <td data-cell="btn_send">
+          ${!r.ngay_dong_hang ? `<button class="btn-send-row" data-ma="${ma}">Gửi tin</button>` : ''}
+        </td>
       </tr>`;
   }).join('');
 
@@ -962,86 +1052,72 @@ async function reload(){
 /* ================== KHỞI TẠO ================== */
 async function init(){
   if (!__ACCESS_OK__) return;
-
-  // Bắt buộc chạy đầu tiên:
-  // ô ngày luôn hiện hôm nay, nút cập nhật luôn có sự kiện,
-  // kể cả config/Supabase bị lỗi.
-  initCapDateAndButton();
-
   try{
-    const nameCell = document.getElementById('tblName');
-    if(nameCell) nameCell.textContent = TABLE;
+    const nameCell = document.getElementById('tblName'); if(nameCell) nameCell.textContent = TABLE;
 
-    // guard: supabase-js đã load?
     if (!window.supabase || !window.supabase.createClient) {
-      setState(false, 'Thiếu supabase-js');
+      setState(false, 'Thiếu supabase-js (chưa load script @supabase/supabase-js@2 trước file app)');
       console.error('[INIT] supabase-js not found');
       return;
     }
 
-    const cfg = await ensureAppConfig();
+    const INTERNAL_KEY = (typeof window.getInternalKey==='function') ? window.getInternalKey() : '';
+    const base = (window.API_BASE || '').replace(/\/+$/,'');
+    const cfgUrl = base ? `${base}/api/getConfig` : '/api/getConfig';
+    const r = await fetch(cfgUrl, { headers: { 'x-internal-key': INTERNAL_KEY } });
+    if(!r.ok){
+      setState(false, `Không lấy được config (${r.status})`);
+      console.error('[INIT] getConfig failed', r.status, await r.text().catch(()=>'')); 
+      return;
+    }
+    const cfg = await r.json().catch(()=> ({}));
     const { url, anon } = (cfg || {});
-
     if(!url || !anon){
       setState(false, 'Thiếu url/anon trong config');
       console.error('[INIT] Invalid config', cfg);
       return;
     }
-
     supa = window.supabase.createClient(url, anon);
     window.supa = supa;
-
     setState(true,'sẵn sàng');
   }catch(e){
-    setState(false, esc(e.message || e));
+    setState(false, esc(e.message||e));
     console.error('[INIT] exception', e);
     return;
   }
 
-  // load các state lưu cục bộ
-  loadSelected();
-  loadFilterState();
-  loadStatusFilter();
+  // Tiêm CSS cho nút "Đã giao"
+  (function injectDoneBtnCSS(){
+    if (document.getElementById('btnDaGiaoStyle')) return;
+    const style = document.createElement('style');
+    style.id = 'btnDaGiaoStyle';
+    style.textContent = `
+      .btn-da-giao{
+        background:#10b981; color:#fff; border:none;
+        padding:6px 10px; border-radius:8px; font-weight:600; cursor:pointer;
+      }
+      .btn-da-giao:disabled{ opacity:.6; cursor:default; }
+    `;
+    document.head.appendChild(style);
+  })();
 
-  applyExpandState();
-  bindExpandButton();
-  showUserBar();
+  const capEl = document.getElementById('capDate');
+  if (capEl && !capEl.value) capEl.value = todayYMD();
+  setDefaultDateFilters();
 
+  loadSelected(); loadFilterState(); loadStatusFilter();
+
+  applyExpandState(); bindExpandButton(); showUserBar();
   bindPager();
+  await loadEmployees(); buildEmpIndex(); renderEmpDatalist();
+  bindScanAndButtons(); bindOverlayControls();
+  bindTableActions(); bindHeaderSelectAll();
+  bindFilterCheckedOnly(); bindViewRouteButton();
 
-  await loadEmployees();
-  renderEmpDatalist();
-
-  bindScanAndButtons();
-  bindOverlayControls();
-  bindTableActions();
-  bindHeaderSelectAll();
-  bindFilterCheckedOnly();
-  bindViewRouteButton();
-
-  applyFilterChecked();
-  updateCheckedCount();
-
+  applyFilterChecked(); updateCheckedCount();
   await reload();
 }
 document.addEventListener('DOMContentLoaded', init);
-
-/* ================== BẢO HIỂM NGÀY CẬP NHẬT ================== */
-(function autoInitCapUpdate(){
-  function run(){
-    try {
-      initCapDateAndButton();
-    } catch (e) {
-      console.warn('[autoInitCapUpdate]', e);
-    }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', run);
-  } else {
-    run();
-  }
-})();
 
 /* ========== SUPABASE REALTIME + THÔNG BÁO CHUÔNG ========== */
 (function(){
@@ -1124,16 +1200,19 @@ document.addEventListener('DOMContentLoaded', init);
     if (items.length > 100) list.removeChild(items[items.length-1]);
     bumpBell(1);
   }
+  window.pushNotify = window.pushNotify || pushNotify;
 
   function updateRowFromRecord(r){
     if(!r || !r.ma_hd) return false;
     const tr = document.querySelector(`#tbody tr[data-ma="${CSS.escape(r.ma_hd)}"]`);
     if(!tr) return false;
 
-    tr.dataset.xacnhan  = (r.nv_check_don || '').trim();
-    tr.dataset.giao     = (r.nv_giao_hang || '').trim();
-    tr.dataset.prepdate = r.ngay_chuan_bi_don || '';
-    tr.dataset.shipdate = r.ngay_di_giao || '';
+    tr.dataset.xacnhan          = (r.nv_check_don || '').trim();
+    tr.dataset.dong             = (r.nv_dong_hang || '').trim();
+    tr.dataset.prepdate         = r.ngay_chuan_bi_don || '';
+    tr.dataset.dongdate         = r.ngay_dong_hang || '';
+    tr.dataset.giaothanhcong    = r.ngay_giao_thanh_cong || '';
+    tr.dataset.nv_giaohang      = r.nv_giao_hang || '';
 
     const cDonHang = tr.querySelector('[data-cell="don_hang"]');
     const cNgay    = tr.querySelector('[data-cell="ngay"]');
@@ -1142,9 +1221,9 @@ document.addEventListener('DOMContentLoaded', init);
     const cTT      = tr.querySelector('[data-cell="trang_thai"]');
     const cNgayXN  = tr.querySelector('[data-cell="ngay_xn"]');
     const cNVXN    = tr.querySelector('[data-cell="nv_xn"]');
-    const cNVGL    = tr.querySelector('[data-cell="nv_giao"]');
-    const inputNVGL  = cNVGL?.querySelector('.emp-input');
-    const btnShip    = tr.querySelector('.btn-ship-row');
+    const cNVDH    = tr.querySelector('[data-cell="nv_dong"]');
+    const inputNVDH  = cNVDH?.querySelector('.emp-input');
+    const btnSend    = tr.querySelector('.btn-send-row');
 
     if (cDonHang) cDonHang.innerHTML = renderDonHangCell(r.don_hang, r.ma_hd);
     if (cNgay)    cNgay.innerHTML    = fmtDateHTML(r.ngay);
@@ -1153,13 +1232,21 @@ document.addEventListener('DOMContentLoaded', init);
     if (cTT)      cTT.innerHTML      = renderStatusCell(r.ma_hd, r.trang_thai);
     if (cNgayXN)  cNgayXN.innerHTML  = fmtDateHTML(r.ngay_check_don);
     if (cNVXN)    cNVXN.textContent  = (r.nv_check_don||'');
-    if (inputNVGL)  inputNVGL.value  = (r.nv_giao_hang||'');
+    if (inputNVDH)  inputNVDH.value  = (r.nv_dong_hang||'');
 
-    if (btnShip){ btnShip.style.display = r.ngay_di_giao ? 'none' : ''; }
+    // Ẩn nút "Đã giao" nếu trạng thái đã giao xong
+    const delivered = (()=> {
+      const s = vnFold(r.trang_thai || '');
+      return s.includes(vnFold('thành công')) || s.includes(vnFold('đã giao')) || s.includes('done');
+    })();
+    if (delivered){
+      tr.querySelectorAll('.btn-da-giao').forEach(b=> b.style.display='none');
+    }
+
+    if (btnSend){ btnSend.style.display = r.ngay_dong_hang ? 'none' : ''; }
     return true;
   }
 
-  // Không reload khi có tín hiệu realtime
   function setupRealtime(){
     if (!supa) return false;
     const ch = supa.channel('rt-don_hang')
@@ -1205,7 +1292,6 @@ document.addEventListener('DOMContentLoaded', init);
     else pushNotify(`⚠️ Ngày cập nhật không hợp lệ`);
   });
 
-  // Dọn kết nối khi rời trang
   window.addEventListener('beforeunload', ()=>{
     try { window.__DON_HANG_RT_CH__?.unsubscribe(); } catch {}
   });
