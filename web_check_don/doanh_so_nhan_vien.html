@@ -7,6 +7,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
+  <!-- Lịch chọn ngày -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
+
   <style>
     * { box-sizing: border-box; }
 
@@ -54,6 +59,17 @@
       font-size: 14px;
       background: #fff;
       color: #111827;
+    }
+
+    .input:focus {
+      outline: none;
+      border-color: #111827;
+      box-shadow: 0 0 0 2px rgba(17, 24, 39, .12);
+    }
+
+    .date-input {
+      cursor: pointer;
+      background: #fff;
     }
 
     #searchInput { min-width: 260px; }
@@ -302,12 +318,12 @@
 
     <div class="field">
       <label>Từ ngày thu</label>
-      <input id="fromNgayThu" class="input" type="text" placeholder="dd/mm/yyyy">
+      <input id="fromNgayThu" class="input date-input" type="text" placeholder="dd/mm/yyyy" autocomplete="off">
     </div>
 
     <div class="field">
       <label>Đến ngày thu</label>
-      <input id="toNgayThu" class="input" type="text" placeholder="dd/mm/yyyy">
+      <input id="toNgayThu" class="input date-input" type="text" placeholder="dd/mm/yyyy" autocomplete="off">
     </div>
 
     <div class="field">
@@ -940,6 +956,39 @@
     }
   }
 
+  function initDatePickers() {
+    if (typeof flatpickr === 'undefined') {
+      console.warn('Flatpickr chưa tải được.');
+      return;
+    }
+
+    flatpickr('#fromNgayThu', {
+      dateFormat: 'd/m/Y',
+      allowInput: true,
+      disableMobile: true,
+      locale: 'vn',
+      onChange: function () {
+        applyFilter();
+      },
+      onClose: function () {
+        applyFilter();
+      }
+    });
+
+    flatpickr('#toNgayThu', {
+      dateFormat: 'd/m/Y',
+      allowInput: true,
+      disableMobile: true,
+      locale: 'vn',
+      onChange: function () {
+        applyFilter();
+      },
+      onClose: function () {
+        applyFilter();
+      }
+    });
+  }
+
   document.getElementById('maNvBtn').addEventListener('click', function () {
     document.getElementById('maNvMulti').classList.toggle('open');
   });
@@ -1000,6 +1049,7 @@
   document.getElementById('btnLoadAll').addEventListener('click', loadAll);
   document.getElementById('btnExportExcel').addEventListener('click', exportExcel);
 
+  initDatePickers();
   renderHeader();
   loadAll();
 </script>
