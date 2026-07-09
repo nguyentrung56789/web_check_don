@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sheet hóa đơn</title>
 
-  <!-- Thư viện xuất Excel -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
@@ -688,16 +687,14 @@
 
     if (sortKey) {
       const col = columns.find(c => c.key === sortKey);
-      if (col) {
-        rows.sort((a, b) => {
-          const av = getSortValue(a, col);
-          const bv = getSortValue(b, col);
+      rows.sort((a, b) => {
+        const av = getSortValue(a, col);
+        const bv = getSortValue(b, col);
 
-          if (av < bv) return sortDir === 'asc' ? -1 : 1;
-          if (av > bv) return sortDir === 'asc' ? 1 : -1;
-          return 0;
-        });
-      }
+        if (av < bv) return sortDir === 'asc' ? -1 : 1;
+        if (av > bv) return sortDir === 'asc' ? 1 : -1;
+        return 0;
+      });
     }
 
     const total = rows.length;
@@ -857,7 +854,7 @@
       .slice(0, 80);
   }
 
-  function getFilterTextForFileName() {
+  function getExcelFileName() {
     const nvText = cleanFileName(getSelectedNhanVienText());
     const thuongHieu = cleanFileName(getThuongHieuText());
 
@@ -869,18 +866,16 @@
       .trim()
       .replaceAll('/', '');
 
-    let range = '';
-    if (from || to) {
-      range = `_${from || 'all'}_${to || 'all'}`;
-    }
+    const now = new Date();
+    const p = n => String(n).padStart(2, '0');
 
-    return `${nvText || 'tat_ca_nv'}_${thuongHieu || 'tat_ca'}${range}`;
+    return `hoa_don_${nvText || 'tat_ca_nv'}_${thuongHieu || 'tat_ca'}_${from || 'all'}_${to || 'all'}_${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}_${p(now.getHours())}${p(now.getMinutes())}.xlsx`;
   }
 
   function exportExcel() {
     try {
       if (typeof XLSX === 'undefined') {
-        alert('Chưa tải được thư viện Excel. Kiểm tra mạng hoặc CDN xlsx.');
+        alert('Chưa tải được thư viện Excel.');
         return;
       }
 
@@ -893,24 +888,13 @@
 
       const exportColumns = columns.filter(col => !col.hidden);
 
-      const nhanVienLabel = getFieldLabelByControlId('maNvBtn');
-      const thuongHieuLabel = getFieldLabelByControlId('filterThuongHieu');
-      const fromNgayThuLabel = getFieldLabelByControlId('fromNgayThu');
-      const toNgayThuLabel = getFieldLabelByControlId('toNgayThu');
-
-      const nhanVienText = getSelectedNhanVienText();
-      const thuongHieuText = getThuongHieuText();
-      const fromNgayThu = String(document.getElementById('fromNgayThu').value || '').trim() || 'Tất cả';
-      const toNgayThu = String(document.getElementById('toNgayThu').value || '').trim() || 'Tất cả';
-      const tongTienThu = getTongTienThu(rows);
-
       const titleRows = [
         ['Sheet hóa đơn'],
-        [nhanVienLabel, nhanVienText],
-        [thuongHieuLabel, thuongHieuText],
-        [fromNgayThuLabel, fromNgayThu],
-        [toNgayThuLabel, toNgayThu],
-        ['Tổng tiền thu', money(tongTienThu)],
+        [getFieldLabelByControlId('maNvBtn'), getSelectedNhanVienText()],
+        [getFieldLabelByControlId('filterThuongHieu'), getThuongHieuText()],
+        [getFieldLabelByControlId('fromNgayThu'), String(document.getElementById('fromNgayThu').value || '').trim() || 'Tất cả'],
+        [getFieldLabelByControlId('toNgayThu'), String(document.getElementById('toNgayThu').value || '').trim() || 'Tất cả'],
+        ['Tổng tiền thu', money(getTongTienThu(rows))],
         []
       ];
 
@@ -948,13 +932,7 @@
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Hoa don');
 
-      const now = new Date();
-      const p = n => String(n).padStart(2, '0');
-
-      const fileName =
-        `hoa_don_${getFilterTextForFileName()}_${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}_${p(now.getHours())}${p(now.getMinutes())}.xlsx`;
-
-      XLSX.writeFile(wb, fileName);
+      XLSX.writeFile(wb, getExcelFileName());
 
     } catch (err) {
       console.error(err);
