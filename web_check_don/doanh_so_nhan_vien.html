@@ -2,292 +2,842 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin — Tính doanh số</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sheet hóa đơn</title>
   <style>
-    :root {
-      --bg:#0f172a;
-      --card:#111827;
-      --txt:#e5e7eb;
-      --muted:#9ca3af;
-      --pri:#22c55e;
-      --view:#38bdf8;
-      --err:#ef4444;
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding-bottom: 58px;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      color: #111827;
     }
 
-    *{box-sizing:border-box}
+    .wrap { padding: 16px; }
 
-    body{
-      margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-      background:linear-gradient(120deg,#0b1220,#0a0f1a);
-      color:var(--txt);
-      min-height:100dvh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:24px;
+    h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
     }
 
-    .card{
-      width:100%;
-      max-width:520px;
-      background:var(--card);
-      border:1px solid #1f2937;
-      border-radius:18px;
-      padding:22px 22px 18px;
-      box-shadow:0 10px 30px rgba(0,0,0,.35);
+    .toolbar {
+      margin-bottom: 10px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-start;
     }
 
-    h1{margin:0 0 4px;font-size:20px}
-
-    p{
-      margin:0 0 18px;
-      color:var(--muted);
-      font-size:14px;
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
 
-    .row{
-      display:flex;
-      gap:12px;
-      align-items:end;
-      margin:10px 0 6px;
+    .field label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
     }
 
-    label{
-      display:block;
-      font-size:12px;
-      color:var(--muted);
-      margin:0 0 6px;
+    .input {
+      height: 38px;
+      min-width: 170px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 0 10px;
+      font-size: 14px;
+      background: #fff;
+      color: #111827;
     }
 
-    input[type="month"]{
-      appearance:none;
-      width:100%;
-      padding:12px 14px;
-      border-radius:12px;
-      border:1px solid #263144;
-      background:#0b1220;
-      color:var(--txt);
-      outline:none;
-      font-size:15px;
+    #searchInput { min-width: 260px; }
+
+    .btn {
+      height: 38px;
+      border: 0;
+      border-radius: 6px;
+      padding: 0 14px;
+      background: #16a34a;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
     }
 
-    button{
-      white-space:nowrap;
-      padding:12px 16px;
-      border-radius:12px;
-      border:1px solid #1d2a3d;
-      background:var(--pri);
-      color:#06240f;
-      font-weight:700;
-      font-size:15px;
-      cursor:pointer;
-      transition:transform .04s ease, filter .15s ease;
+    .btn:hover { background: #15803d; }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+
+    .multi {
+      position: relative;
+      min-width: 300px;
+      max-width: 430px;
     }
 
-    button:hover{filter:brightness(1.06)}
-    button:active{transform:translateY(1px)}
-    button:disabled{opacity:.7;cursor:not-allowed}
-
-    .btn-view{
-      width:100%;
-      margin-top:14px;
-      background:var(--view);
-      color:#041923;
+    .multi-btn {
+      width: 100%;
+      height: 38px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      padding: 0 10px;
+      text-align: left;
+      font-size: 14px;
+      cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .hint{
-      font-size:12px;
-      color:var(--muted);
-      margin-top:8px;
+    .multi-panel {
+      display: none;
+      position: absolute;
+      top: 42px;
+      left: 0;
+      z-index: 20;
+      width: 100%;
+      max-height: 260px;
+      overflow: auto;
+      background: #fff;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      box-shadow: 0 8px 20px rgba(0,0,0,.12);
+      padding: 6px;
     }
 
-    .toast{
-      margin-top:14px;
-      padding:10px 12px;
-      border-radius:12px;
-      font-size:14px;
-      display:none;
-      border:1px solid #273244;
-      background:#0a1220;
+    .multi.open .multi-panel { display: block; }
+
+    .multi-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 8px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 14px;
     }
 
-    .toast.ok{
-      border-color:#1e4d36;
-      background:#0b1f17;
-      color:#b9f4d2;
+    .multi-item:hover { background: #f3f4f6; }
+
+    .status {
+      font-size: 13px;
+      color: #6b7280;
+      padding-top: 24px;
     }
 
-    .toast.err{
-      border-color:#4a2323;
-      background:#1a0e0e;
-      color:#fecaca;
+    .summary {
+      margin: 10px 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: #111827;
     }
 
-    .spinner{
-      display:none;
-      margin-left:8px;
-      width:16px;
-      height:16px;
-      border-radius:50%;
-      border:2px solid rgba(255,255,255,.25);
-      border-top-color:#fff;
-      animation:spin 1s linear infinite;
+    .sheet-box {
+      width: 100%;
+      overflow: auto;
+      background: white;
+      border: 1px solid #d1d5db;
+      max-height: calc(100vh - 250px);
     }
 
-    @keyframes spin{to{transform:rotate(360deg)}}
+    table {
+      width: max-content;
+      min-width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      table-layout: fixed;
+    }
 
-    @media (max-width:520px){
-      .row{
-        flex-direction:column;
-        align-items:stretch;
-      }
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 8px;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      background: #fff;
+    }
 
-      .row button{
-        width:100%;
-      }
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #e5e7eb;
+      font-weight: 700;
+      text-align: center;
+      user-select: none;
+    }
+
+    th.sortable { cursor: pointer; }
+    th.sortable:hover { background: #dbe3ee; }
+
+    .th-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      position: relative;
+      height: 100%;
+    }
+
+    .sort-mark {
+      color: #2563eb;
+      font-size: 12px;
+      min-width: 12px;
+    }
+
+    .resizer {
+      position: absolute;
+      top: 0;
+      right: -4px;
+      width: 8px;
+      height: 100%;
+      cursor: col-resize;
+      z-index: 5;
+    }
+
+    .resizer:hover { background: rgba(37, 99, 235, .25); }
+
+    .num { text-align: right; }
+    .hidden-col { display: none; }
+
+    .pager {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      font-size: 14px;
+      color: #111827;
+      background: #f4f6f8;
+      border-top: 1px solid #d1d5db;
+    }
+
+    .page-size {
+      height: 38px;
+      min-width: 118px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 0 12px;
+      background: #fff;
+      font-size: 14px;
+    }
+
+    .page-btn {
+      width: 34px;
+      height: 34px;
+      border: 0;
+      background: transparent;
+      color: #374151;
+      cursor: pointer;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .page-btn:hover:not(:disabled) {
+      background: #e5e7eb;
+      border-radius: 8px;
+    }
+
+    .page-btn:disabled {
+      color: #cbd5e1;
+      cursor: not-allowed;
+    }
+
+    .page-input {
+      width: 64px;
+      height: 34px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 14px;
+      background: #fff;
+    }
+
+    .page-info {
+      color: #374151;
+      font-weight: 700;
     }
   </style>
 </head>
-
 <body>
-  <div class="card">
-    <h1>🧮 Tính doanh số</h1>
-    <p>Chọn <b>năm-tháng</b> rồi bấm nút bên phải. Hệ thống sẽ gửi webhook kèm tháng <code>yyyy-mm</code>.</p>
 
-    <div class="row">
-      <div style="flex:1">
-        <label for="ym">Năm-tháng (yyyy-mm)</label>
-        <input id="ym" type="month" required />
-      </div>
+<div class="wrap">
+  <h2>Sheet hóa đơn</h2>
 
-      <div>
-        <button id="btn">
-          Tính doanh số <span id="spin" class="spinner"></span>
-        </button>
+  <div class="toolbar">
+    <div class="field">
+      <label>Nhân viên</label>
+      <div id="maNvMulti" class="multi">
+        <button type="button" id="maNvBtn" class="multi-btn">Tất cả nhân viên</button>
+        <div id="maNvPanel" class="multi-panel"></div>
       </div>
     </div>
 
-    <div class="hint">Lưu ý: định dạng chính xác ví dụ <code>2025-11</code>.</div>
+    <div class="field">
+      <label>Thương hiệu</label>
+      <select id="filterThuongHieu" class="input">
+        <option value="">Tất cả</option>
+        <option value="hang_thuong">Hàng thường</option>
+        <option value="doc_quyen">Độc quyền</option>
+      </select>
+    </div>
 
-    <!-- Nút xem doanh số -->
-    <button id="btnXemDoanhSo" class="btn-view">
-      📊 Xem doanh số
-    </button>
+    <div class="field">
+      <label>Từ ngày thu</label>
+      <input id="fromNgayThu" class="input" type="text" placeholder="dd/mm/yyyy">
+    </div>
 
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div class="field">
+      <label>Đến ngày thu</label>
+      <input id="toNgayThu" class="input" type="text" placeholder="dd/mm/yyyy">
+    </div>
+
+    <div class="field">
+      <label>Tìm kiếm</label>
+      <input id="searchInput" class="input" type="text" placeholder="Gõ xong sẽ tự lọc...">
+    </div>
+
+    <div class="field">
+      <label>&nbsp;</label>
+      <button type="button" id="btnLoadAll" class="btn">Load all</button>
+    </div>
+
+    <div id="status" class="status">Đang tải dữ liệu...</div>
   </div>
 
-  <script>
-    // Mặc định điền tháng hiện tại yyyy-mm
-    (function setDefaultMonth(){
-      const ym = document.getElementById('ym');
-      const d = new Date();
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      ym.value = `${y}-${m}`;
-    })();
+  <div id="summary" class="summary">Tổng tiền thu: 0</div>
 
-    const btn = document.getElementById('btn');
-    const ymInp = document.getElementById('ym');
-    const toast = document.getElementById('toast');
-    const spin = document.getElementById('spin');
-    const btnXemDoanhSo = document.getElementById('btnXemDoanhSo');
+  <div class="sheet-box">
+    <table id="sheetTable">
+      <thead>
+        <tr id="headerRow"></tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
 
-    function showToast(msg, ok = false){
-      toast.textContent = msg;
-      toast.className = 'toast ' + (ok ? 'ok' : 'err');
-      toast.style.display = 'block';
+  <div class="pager">
+    <span>Hiển thị</span>
+
+    <select id="pageSizeSelect" class="page-size">
+      <option value="50">50 dòng</option>
+      <option value="100" selected>100 dòng</option>
+      <option value="200">200 dòng</option>
+      <option value="500">500 dòng</option>
+    </select>
+
+    <button type="button" id="btnFirstPage" class="page-btn">⇤</button>
+    <button type="button" id="btnPrevPage" class="page-btn">‹</button>
+
+    <input id="pageInput" class="page-input" type="number" min="1" value="1">
+
+    <button type="button" id="btnNextPage" class="page-btn">›</button>
+    <button type="button" id="btnLastPage" class="page-btn">⇥</button>
+
+    <span id="pageInfo" class="page-info">0 - 0 trong 0 giao dịch</span>
+  </div>
+</div>
+
+<script>
+  const TABLE_NAME = 'hoa_don_ban_chitiet';
+
+  let PAGE_SIZE = 100;
+  let allRows = [];
+  let filteredRows = [];
+  let currentPage = 1;
+  let cfg = null;
+  let loading = false;
+  let sortKey = '';
+  let sortDir = 'asc';
+  let searchTimer = null;
+
+  const selectedMaNv = new Set();
+  const mapMaNvTen = new Map();
+
+  const columns = [
+    { key: 'ma_hd', label: 'ma_hd', width: 120 },
+    { key: 'ma_nv', label: 'ma_nv', width: 90, hidden: true },
+    { key: 'nv_ban', label: 'nv_ban', width: 120 },
+    { key: 'ngay', label: 'ngay', width: 110, type: 'date' },
+    { key: 'ten_kh', label: 'ten_kh', width: 260 },
+    { key: 'ten_hh', label: 'ten_hh', width: 520 },
+    { key: 'thuong_hieu', label: 'thuong_hieu', width: 160 },
+    { key: 'sl', label: 'sl', width: 60, type: 'number' },
+    { key: 'sl_tra', label: 'sl_tra', width: 70, type: 'number' },
+    { key: 'sl_thuc', label: 'sl_thuc', width: 80, type: 'number' },
+    { key: 'don_gia', label: 'don_gia', width: 100, type: 'number' },
+    { key: 'thanh_tien', label: 'thanh_tien', width: 120, type: 'number' },
+    { key: 'ngay_thu', label: 'ngay_thu', width: 110, type: 'date' },
+    { key: 'tien_thu', label: 'tien_thu', width: 120, type: 'number' },
+    { key: 'ghichu', label: 'ghichu', width: 220 },
+  ];
+
+  const selectColumns = columns.map(c => c.key);
+
+  function text(value) {
+    return value === null || value === undefined ? '' : String(value);
+  }
+
+  function money(value) {
+    const n = Number(value || 0);
+    if (!Number.isFinite(n)) return '';
+    return Math.round(n).toLocaleString('vi-VN');
+  }
+
+  function dateInputToNumber(value) {
+    const s = String(value || '').trim();
+    if (!s) return null;
+
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!m) return null;
+
+    const dd = m[1].padStart(2, '0');
+    const mm = m[2].padStart(2, '0');
+    const yyyy = m[3];
+
+    return Number(`${yyyy}${mm}${dd}`);
+  }
+
+  function yyyymmddToDdMmYy(value) {
+    const s = String(value || '').trim();
+    if (!/^\d{8}$/.test(s)) return s;
+
+    return `${s.slice(6, 8)}/${s.slice(4, 6)}/${s.slice(2, 4)}`;
+  }
+
+  function ngayThuToNumber(value) {
+    const n = Number(String(value || '').trim());
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function formatValue(key, value) {
+    if (key === 'ngay' || key === 'ngay_thu') return yyyymmddToDdMmYy(value);
+
+    if (['sl', 'sl_tra', 'sl_thuc', 'don_gia', 'thanh_tien', 'tien_thu'].includes(key)) {
+      return money(value);
     }
 
-    function validateMonth(v){
-      return /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
+    return text(value);
+  }
+
+  function getSortValue(row, col) {
+    const value = row[col.key];
+
+    if (col.type === 'number' || col.type === 'date') {
+      const n = Number(value || 0);
+      return Number.isFinite(n) ? n : 0;
     }
 
-    function openPageWithToken(path){
-      const currentParams = new URLSearchParams(window.location.search);
-      const url = new URL(path, window.location.href);
+    return text(value).toLowerCase();
+  }
 
-      currentParams.forEach((value, key) => {
-        url.searchParams.set(key, value);
+  function renderHeader() {
+    const headerRow = document.getElementById('headerRow');
+    headerRow.innerHTML = '';
+
+    for (const col of columns) {
+      const th = document.createElement('th');
+      th.dataset.key = col.key;
+      th.style.width = `${col.width}px`;
+      th.className = 'sortable' + (col.hidden ? ' hidden-col' : '');
+
+      const mark = sortKey === col.key ? (sortDir === 'asc' ? '▲' : '▼') : '';
+
+      th.innerHTML = `
+        <div class="th-inner">
+          <span>${col.label}</span>
+          <span class="sort-mark">${mark}</span>
+          <span class="resizer"></span>
+        </div>
+      `;
+
+      th.addEventListener('click', function (e) {
+        if (e.target.classList.contains('resizer')) return;
+        toggleSort(col.key);
       });
 
-      const token =
-        currentParams.get('token') ||
-        currentParams.get('access_token') ||
-        currentParams.get('t') ||
-        localStorage.getItem('token') ||
-        localStorage.getItem('access_token') ||
-        localStorage.getItem('cod_token') ||
-        sessionStorage.getItem('token') ||
-        sessionStorage.getItem('access_token') ||
-        sessionStorage.getItem('cod_token') ||
-        '';
-
-      if (token && !url.searchParams.get('token')) {
-        url.searchParams.set('token', token);
-      }
-
-      window.location.href = url.href;
+      headerRow.appendChild(th);
     }
 
-    async function callWebhook(month){
-      const url = 'https://dhsybbqoe.datadex.vn/webhook/tinh_doanh_so';
+    enableColumnResize();
+  }
 
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month })
+  function enableColumnResize() {
+    document.querySelectorAll('.resizer').forEach(resizer => {
+      resizer.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const th = e.target.closest('th');
+        const key = th.dataset.key;
+        const col = columns.find(c => c.key === key);
+
+        const startX = e.clientX;
+        const startWidth = th.offsetWidth;
+
+        function onMove(ev) {
+          const nextWidth = Math.max(50, startWidth + ev.clientX - startX);
+          col.width = nextWidth;
+          th.style.width = `${nextWidth}px`;
+
+          const index = columns.findIndex(c => c.key === key) + 1;
+          document.querySelectorAll(`#sheetTable tbody td:nth-child(${index})`).forEach(td => {
+            td.style.width = `${nextWidth}px`;
+          });
+        }
+
+        function onUp() {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        }
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    });
+  }
+
+  function toggleSort(key) {
+    if (sortKey === key) {
+      sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortKey = key;
+      sortDir = 'asc';
+    }
+
+    currentPage = 1;
+    renderHeader();
+    renderCurrentPage();
+  }
+
+  function updateMaNvButton() {
+    const btn = document.getElementById('maNvBtn');
+
+    if (selectedMaNv.size === 0) {
+      btn.textContent = 'Tất cả nhân viên';
+      return;
+    }
+
+    const names = Array.from(selectedMaNv).map(maNv => {
+      const tenNv = mapMaNvTen.get(maNv) || '';
+      return tenNv ? `${maNv} - ${tenNv}` : maNv;
+    });
+
+    if (names.length <= 2) {
+      btn.textContent = names.join(', ');
+    } else {
+      btn.textContent = `${names[0]}, ${names[1]} +${names.length - 2}`;
+    }
+  }
+
+  function renderNhanVienFilter(rows) {
+    const panel = document.getElementById('maNvPanel');
+    const oldSelected = new Set(selectedMaNv);
+    const mapNv = new Map();
+
+    mapMaNvTen.clear();
+
+    for (const row of rows) {
+      const maNv = text(row.ma_nv).trim();
+      const tenNv = text(row.nv_ban).trim();
+
+      if (!maNv) continue;
+      if (!mapNv.has(maNv)) mapNv.set(maNv, tenNv);
+      if (!mapMaNvTen.has(maNv)) mapMaNvTen.set(maNv, tenNv);
+    }
+
+    panel.innerHTML = '';
+
+    const allItem = document.createElement('label');
+    allItem.className = 'multi-item';
+    allItem.innerHTML = `<input type="checkbox" id="checkAllNv"> <span>Tất cả nhân viên</span>`;
+    panel.appendChild(allItem);
+
+    for (const [maNv, tenNv] of mapNv.entries()) {
+      const label = document.createElement('label');
+      label.className = 'multi-item';
+
+      const checked = oldSelected.has(maNv) ? 'checked' : '';
+      const textShow = tenNv ? `${maNv} - ${tenNv}` : maNv;
+
+      label.innerHTML = `
+        <input type="checkbox" class="ma-nv-check" value="${maNv}" ${checked}>
+        <span>${textShow}</span>
+      `;
+
+      panel.appendChild(label);
+    }
+
+    document.getElementById('checkAllNv').addEventListener('change', function () {
+      selectedMaNv.clear();
+
+      document.querySelectorAll('.ma-nv-check').forEach(cb => {
+        cb.checked = false;
       });
 
-      let detail = '';
-      try { detail = await resp.text(); } catch(e){}
+      this.checked = false;
+      updateMaNvButton();
+      applyFilter();
+    });
 
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status} — ${detail || 'Gọi webhook thất bại'}`);
+    document.querySelectorAll('.ma-nv-check').forEach(cb => {
+      cb.addEventListener('change', function () {
+        if (this.checked) {
+          selectedMaNv.add(this.value);
+          document.getElementById('checkAllNv').checked = false;
+        } else {
+          selectedMaNv.delete(this.value);
+        }
+
+        updateMaNvButton();
+        applyFilter();
+      });
+    });
+
+    updateMaNvButton();
+  }
+
+  function renderTable(rows) {
+    const tbody = document.getElementById('tbody');
+    tbody.innerHTML = '';
+
+    for (const row of rows) {
+      const tr = document.createElement('tr');
+
+      for (const col of columns) {
+        const td = document.createElement('td');
+        td.textContent = formatValue(col.key, row[col.key]);
+        td.style.width = `${col.width}px`;
+
+        if (col.hidden) td.classList.add('hidden-col');
+        if (col.type === 'number') td.classList.add('num');
+
+        tr.appendChild(td);
       }
 
-      return detail;
+      tbody.appendChild(tr);
+    }
+  }
+
+  function updateSummary(rows) {
+    const tongTienThu = rows.reduce((sum, row) => sum + Number(row.tien_thu || 0), 0);
+
+    document.getElementById('summary').textContent =
+      `Tổng tiền thu: ${money(tongTienThu)}`;
+  }
+
+  function applyFilter() {
+    const thuongHieuFilter = document.getElementById('filterThuongHieu').value;
+    const fromNgayThu = dateInputToNumber(document.getElementById('fromNgayThu').value);
+    const toNgayThu = dateInputToNumber(document.getElementById('toNgayThu').value);
+    const search = text(document.getElementById('searchInput').value).toLowerCase().trim();
+
+    filteredRows = allRows.filter(row => {
+      const maNv = text(row.ma_nv).trim();
+      const thuongHieu = text(row.thuong_hieu).toUpperCase();
+      const ngayThu = ngayThuToNumber(row.ngay_thu);
+
+      const matchNv = selectedMaNv.size === 0 || selectedMaNv.has(maNv);
+      const coDQ = thuongHieu.includes('DQ');
+
+      let matchThuongHieu = true;
+      if (thuongHieuFilter === 'doc_quyen') matchThuongHieu = coDQ;
+      if (thuongHieuFilter === 'hang_thuong') matchThuongHieu = !coDQ;
+
+      const matchNgayThu =
+        (!fromNgayThu || (ngayThu && ngayThu >= fromNgayThu)) &&
+        (!toNgayThu || (ngayThu && ngayThu <= toNgayThu));
+
+      const matchSearch =
+        !search ||
+        columns.some(col => text(formatValue(col.key, row[col.key])).toLowerCase().includes(search));
+
+      return matchNv && matchThuongHieu && matchNgayThu && matchSearch;
+    });
+
+    currentPage = 1;
+    renderCurrentPage();
+  }
+
+  function renderCurrentPage() {
+    let rows = [...filteredRows];
+
+    if (sortKey) {
+      const col = columns.find(c => c.key === sortKey);
+      rows.sort((a, b) => {
+        const av = getSortValue(a, col);
+        const bv = getSortValue(b, col);
+
+        if (av < bv) return sortDir === 'asc' ? -1 : 1;
+        if (av > bv) return sortDir === 'asc' ? 1 : -1;
+        return 0;
+      });
     }
 
-    btn.addEventListener('click', async () => {
-      toast.style.display = 'none';
+    const total = rows.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-      const month = (ymInp.value || '').trim();
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
 
-      if (!validateMonth(month)) {
-        showToast('Lỗi tháng! Vui lòng chọn đúng định dạng YYYY-MM.', false);
-        ymInp.focus();
-        return;
-      }
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    const pageRows = rows.slice(startIndex, startIndex + PAGE_SIZE);
 
-      btn.disabled = true;
-      spin.style.display = 'inline-block';
+    renderTable(pageRows);
+    updateSummary(rows);
+    renderPager(total, pageRows.length);
+  }
 
-      try {
-        const resultText = await callWebhook(month);
-        showToast(
-          `Đã gửi tính doanh số cho tháng ${month}. ${resultText ? 'Phản hồi: ' + resultText : ''}`,
-          true
+  function renderPager(total, pageRowsCount) {
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const from = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+    const to = Math.min(currentPage * PAGE_SIZE, total);
+
+    document.getElementById('pageInput').value = currentPage;
+    document.getElementById('pageInput').max = totalPages;
+    document.getElementById('pageInfo').textContent = `${from} - ${to} trong ${total} giao dịch`;
+
+    document.getElementById('btnFirstPage').disabled = currentPage <= 1;
+    document.getElementById('btnPrevPage').disabled = currentPage <= 1;
+    document.getElementById('btnNextPage').disabled = currentPage >= totalPages;
+    document.getElementById('btnLastPage').disabled = currentPage >= totalPages;
+
+    document.getElementById('status').textContent =
+      `Hiển thị ${pageRowsCount} dòng / ${total} dòng sau lọc`;
+  }
+
+  async function getConfig() {
+    if (cfg) return cfg;
+
+    const cfgRes = await fetch('/api/getConfig');
+    cfg = await cfgRes.json();
+
+    return cfg;
+  }
+
+  async function loadAll() {
+    if (loading) return;
+
+    const btnLoadAll = document.getElementById('btnLoadAll');
+
+    try {
+      loading = true;
+      btnLoadAll.disabled = true;
+      allRows = [];
+      document.getElementById('status').textContent = 'Đang tải dữ liệu...';
+
+      const config = await getConfig();
+      const selectCols = selectColumns.join(',');
+      const pageSize = 1000;
+      let offset = 0;
+
+      while (true) {
+        document.getElementById('status').textContent =
+          `Đang tải... ${allRows.length} dòng`;
+
+        const res = await fetch(
+          `${config.url}/rest/v1/${TABLE_NAME}?select=${selectCols}&order=ngay_thu.desc&offset=${offset}&limit=${pageSize}`,
+          {
+            headers: {
+              apikey: config.anon,
+              Authorization: `Bearer ${config.anon}`,
+            },
+          }
         );
-      } catch (err) {
-        showToast(`Gọi webhook lỗi: ${err.message}`, false);
-      } finally {
-        btn.disabled = false;
-        spin.style.display = 'none';
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(errText);
+        }
+
+        const rows = await res.json();
+        allRows = allRows.concat(rows);
+
+        if (rows.length < pageSize) break;
+        offset += pageSize;
       }
-    });
 
-    // Bấm nút Xem doanh số sẽ mở form doanh_so_nhan_vien.html
-    btnXemDoanhSo.addEventListener('click', () => {
-      openPageWithToken('doanh_so_nhan_vien.html');
-    });
+      renderNhanVienFilter(allRows);
+      applyFilter();
+    } catch (err) {
+      console.error(err);
+      document.getElementById('status').textContent = 'Lỗi tải dữ liệu';
+      alert('Không tải được dữ liệu: ' + err.message);
+    } finally {
+      loading = false;
+      btnLoadAll.disabled = false;
+    }
+  }
 
-    // Nhấn Enter để chạy tính doanh số
-    ymInp.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') btn.click();
-    });
-  </script>
+  document.getElementById('maNvBtn').addEventListener('click', function () {
+    document.getElementById('maNvMulti').classList.toggle('open');
+  });
+
+  document.addEventListener('click', function (e) {
+    const box = document.getElementById('maNvMulti');
+    if (!box.contains(e.target)) box.classList.remove('open');
+  });
+
+  document.getElementById('filterThuongHieu').addEventListener('change', applyFilter);
+  document.getElementById('fromNgayThu').addEventListener('input', applyFilter);
+  document.getElementById('toNgayThu').addEventListener('input', applyFilter);
+
+  document.getElementById('searchInput').addEventListener('input', function () {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      applyFilter();
+    }, 500);
+  });
+
+  document.getElementById('pageSizeSelect').addEventListener('change', function () {
+    PAGE_SIZE = Number(this.value || 100);
+    currentPage = 1;
+    renderCurrentPage();
+  });
+
+  document.getElementById('btnFirstPage').addEventListener('click', function () {
+    currentPage = 1;
+    renderCurrentPage();
+  });
+
+  document.getElementById('btnPrevPage').addEventListener('click', function () {
+    currentPage--;
+    renderCurrentPage();
+  });
+
+  document.getElementById('btnNextPage').addEventListener('click', function () {
+    currentPage++;
+    renderCurrentPage();
+  });
+
+  document.getElementById('btnLastPage').addEventListener('click', function () {
+    currentPage = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
+    renderCurrentPage();
+  });
+
+  document.getElementById('pageInput').addEventListener('change', function () {
+    const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
+    let page = Number(this.value || 1);
+
+    if (page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+
+    currentPage = page;
+    renderCurrentPage();
+  });
+
+  document.getElementById('btnLoadAll').addEventListener('click', loadAll);
+
+  renderHeader();
+  loadAll();
+</script>
+
 </body>
 </html>
