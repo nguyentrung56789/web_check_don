@@ -1,8 +1,7 @@
 /* ================== CẬP NHẬT ĐƠN HÀNG (WEBHOOK) ================== */
 async function onCapNhatDon(){
-  const ymd = getCapDateISO();   // yyyy-mm-dd
+  const ymd = getCapDateISO();
   const btn = document.getElementById('btnCapNhatDon');
-
   const oldText = btn ? btn.textContent : '⚡ Cập nhật đơn hàng';
 
   if (btn) {
@@ -16,22 +15,29 @@ async function onCapNhatDon(){
   showSlideBanner(`⏳ Đang cập nhật đơn hàng ngày ${isoToVN(ymd)}...`, 'ok');
 
   try{
-    const webhookUrl = (window.getConfig && window.getConfig("webhook")) || "";
+    const webhookUrl =
+      (typeof window.getConfig === 'function' && window.getConfig('webhook')) ||
+      window.APP_CONFIG?.webhook ||
+      window.APP_CONFIG?.webhookUrl ||
+      window.APP_CONFIG?.webhook_url ||
+      '';
+
     if (!webhookUrl) {
-      throw new Error("Thiếu webhook");
+      throw new Error('Thiếu webhook trong /api/getConfig');
     }
 
-    const res = await fetch(webhookUrl,{
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'capnhathoadon',
         ngay_cap_nhat: ymd
       })
     });
 
-    if(!res.ok){
-      const text = await res.text().catch(()=> '');
+    const text = await res.text().catch(()=> '');
+
+    if (!res.ok) {
       throw new Error(text || `Webhook lỗi ${res.status}`);
     }
 
@@ -44,7 +50,6 @@ async function onCapNhatDon(){
       btn.textContent = '✅ Cập nhật xong';
     }
 
-    // Tải lại bảng sau khi webhook chạy xong
     if (typeof reload === 'function') {
       await reload();
     }
@@ -60,7 +65,7 @@ async function onCapNhatDon(){
   }catch(e){
     const msg = e.message || e || 'Lỗi không xác định';
 
-    setState(false, 'Cập nhật lỗi');
+    setState(false, `Cập nhật lỗi: ${msg}`);
     showSlideBanner(`❌ Cập nhật lỗi: ${esc(msg)}`, 'err');
 
     if (btn) {
