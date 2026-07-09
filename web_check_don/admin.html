@@ -11,7 +11,7 @@
       --txt:#e5e7eb;
       --muted:#9ca3af;
       --pri:#22c55e;
-      --pri2:#38bdf8;
+      --view:#38bdf8;
       --err:#ef4444;
     }
 
@@ -39,10 +39,7 @@
       box-shadow:0 10px 30px rgba(0,0,0,.35);
     }
 
-    h1{
-      margin:0 0 4px;
-      font-size:20px;
-    }
+    h1{margin:0 0 4px;font-size:20px}
 
     p{
       margin:0 0 18px;
@@ -89,23 +86,14 @@
       transition:transform .04s ease, filter .15s ease;
     }
 
-    button:hover{
-      filter:brightness(1.06);
-    }
+    button:hover{filter:brightness(1.06)}
+    button:active{transform:translateY(1px)}
+    button:disabled{opacity:.7;cursor:not-allowed}
 
-    button:active{
-      transform:translateY(1px);
-    }
-
-    button:disabled{
-      opacity:.7;
-      cursor:not-allowed;
-    }
-
-    .btn-secondary{
+    .btn-view{
       width:100%;
       margin-top:14px;
-      background:var(--pri2);
+      background:var(--view);
       color:#041923;
     }
 
@@ -148,9 +136,7 @@
       animation:spin 1s linear infinite;
     }
 
-    @keyframes spin{
-      to{transform:rotate(360deg)}
-    }
+    @keyframes spin{to{transform:rotate(360deg)}}
 
     @media (max-width:520px){
       .row{
@@ -185,9 +171,9 @@
 
     <div class="hint">Lưu ý: định dạng chính xác ví dụ <code>2025-11</code>.</div>
 
-    <!-- Nút mới -->
-    <button id="btnDoanhSoNhanVien" class="btn-secondary">
-      📊 Tính doanh số nhân viên
+    <!-- Nút xem doanh số -->
+    <button id="btnXemDoanhSo" class="btn-view">
+      📊 Xem doanh số
     </button>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -207,7 +193,7 @@
     const ymInp = document.getElementById('ym');
     const toast = document.getElementById('toast');
     const spin = document.getElementById('spin');
-    const btnDoanhSoNhanVien = document.getElementById('btnDoanhSoNhanVien');
+    const btnXemDoanhSo = document.getElementById('btnXemDoanhSo');
 
     function showToast(msg, ok = false){
       toast.textContent = msg;
@@ -223,12 +209,10 @@
       const currentParams = new URLSearchParams(window.location.search);
       const url = new URL(path, window.location.href);
 
-      // Mang toàn bộ query hiện tại sang trang mới
       currentParams.forEach((value, key) => {
         url.searchParams.set(key, value);
       });
 
-      // Nếu token đang nằm trong localStorage/sessionStorage thì bổ sung vào URL
       const token =
         currentParams.get('token') ||
         currentParams.get('access_token') ||
@@ -258,10 +242,7 @@
       });
 
       let detail = '';
-
-      try {
-        detail = await resp.text();
-      } catch(e) {}
+      try { detail = await resp.text(); } catch(e){}
 
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status} — ${detail || 'Gọi webhook thất bại'}`);
@@ -273,8 +254,7 @@
     btn.addEventListener('click', async () => {
       toast.style.display = 'none';
 
-      const raw = (ymInp.value || '').trim();
-      const month = raw;
+      const month = (ymInp.value || '').trim();
 
       if (!validateMonth(month)) {
         showToast('Lỗi tháng! Vui lòng chọn đúng định dạng YYYY-MM.', false);
@@ -299,8 +279,8 @@
       }
     });
 
-    // Nút mở form doanh số nhân viên
-    btnDoanhSoNhanVien.addEventListener('click', () => {
+    // Bấm nút Xem doanh số sẽ mở form doanh_so_nhan_vien.html
+    btnXemDoanhSo.addEventListener('click', () => {
       openPageWithToken('doanh_so_nhan_vien.html');
     });
 
