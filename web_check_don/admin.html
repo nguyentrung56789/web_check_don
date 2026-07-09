@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Admin — Tính doanh số</title>
+
   <style>
     :root {
       --bg:#0f172a;
@@ -15,9 +16,11 @@
       --err:#ef4444;
     }
 
-    *{box-sizing:border-box}
+    * {
+      box-sizing:border-box;
+    }
 
-    body{
+    body {
       margin:0;
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
       background:linear-gradient(120deg,#0b1220,#0a0f1a);
@@ -29,7 +32,7 @@
       padding:24px;
     }
 
-    .card{
+    .card {
       width:100%;
       max-width:520px;
       background:var(--card);
@@ -39,29 +42,32 @@
       box-shadow:0 10px 30px rgba(0,0,0,.35);
     }
 
-    h1{margin:0 0 4px;font-size:20px}
+    h1 {
+      margin:0 0 4px;
+      font-size:20px;
+    }
 
-    p{
+    p {
       margin:0 0 18px;
       color:var(--muted);
       font-size:14px;
     }
 
-    .row{
+    .row {
       display:flex;
       gap:12px;
       align-items:end;
       margin:10px 0 6px;
     }
 
-    label{
+    label {
       display:block;
       font-size:12px;
       color:var(--muted);
       margin:0 0 6px;
     }
 
-    input[type="month"]{
+    input[type="month"] {
       appearance:none;
       width:100%;
       padding:12px 14px;
@@ -73,7 +79,7 @@
       font-size:15px;
     }
 
-    button{
+    button {
       white-space:nowrap;
       padding:12px 16px;
       border-radius:12px;
@@ -86,24 +92,33 @@
       transition:transform .04s ease, filter .15s ease;
     }
 
-    button:hover{filter:brightness(1.06)}
-    button:active{transform:translateY(1px)}
-    button:disabled{opacity:.7;cursor:not-allowed}
+    button:hover {
+      filter:brightness(1.06);
+    }
 
-    .btn-view{
+    button:active {
+      transform:translateY(1px);
+    }
+
+    button:disabled {
+      opacity:.7;
+      cursor:not-allowed;
+    }
+
+    .btn-view {
       width:100%;
       margin-top:14px;
       background:var(--view);
       color:#041923;
     }
 
-    .hint{
+    .hint {
       font-size:12px;
       color:var(--muted);
       margin-top:8px;
     }
 
-    .toast{
+    .toast {
       margin-top:14px;
       padding:10px 12px;
       border-radius:12px;
@@ -111,21 +126,23 @@
       display:none;
       border:1px solid #273244;
       background:#0a1220;
+      word-break:break-word;
+      white-space:pre-wrap;
     }
 
-    .toast.ok{
+    .toast.ok {
       border-color:#1e4d36;
       background:#0b1f17;
       color:#b9f4d2;
     }
 
-    .toast.err{
+    .toast.err {
       border-color:#4a2323;
       background:#1a0e0e;
       color:#fecaca;
     }
 
-    .spinner{
+    .spinner {
       display:none;
       margin-left:8px;
       width:16px;
@@ -134,17 +151,22 @@
       border:2px solid rgba(255,255,255,.25);
       border-top-color:#fff;
       animation:spin 1s linear infinite;
+      vertical-align:middle;
     }
 
-    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes spin {
+      to {
+        transform:rotate(360deg);
+      }
+    }
 
-    @media (max-width:520px){
-      .row{
+    @media (max-width:520px) {
+      .row {
         flex-direction:column;
         align-items:stretch;
       }
 
-      .row button{
+      .row button {
         width:100%;
       }
     }
@@ -154,25 +176,30 @@
 <body>
   <div class="card">
     <h1>🧮 Tính doanh số</h1>
-    <p>Chọn <b>năm-tháng</b> rồi bấm nút bên phải. Hệ thống sẽ gửi webhook kèm tháng <code>yyyy-mm</code>.</p>
+
+    <p>
+      Chọn <b>năm-tháng</b> rồi bấm nút bên phải.
+      Hệ thống sẽ gửi webhook kèm tháng <code>yyyy-mm</code>.
+    </p>
 
     <div class="row">
       <div style="flex:1">
-        <label for="ym">Năm-tháng (yyyy-mm)</label>
+        <label for="ym">Năm-tháng yyyy-mm</label>
         <input id="ym" type="month" required />
       </div>
 
       <div>
-        <button id="btn">
+        <button id="btn" type="button">
           Tính doanh số <span id="spin" class="spinner"></span>
         </button>
       </div>
     </div>
 
-    <div class="hint">Lưu ý: định dạng chính xác ví dụ <code>2025-11</code>.</div>
+    <div class="hint">
+      Lưu ý: định dạng chính xác ví dụ <code>2025-11</code>.
+    </div>
 
-    <!-- Nút xem doanh số -->
-    <button id="btnXemDoanhSo" class="btn-view">
+    <button id="btnXemDoanhSo" type="button" class="btn-view">
       📊 Xem doanh số
     </button>
 
@@ -180,40 +207,64 @@
   </div>
 
   <script>
-    // Mặc định điền tháng hiện tại yyyy-mm
-    (function setDefaultMonth(){
-      const ym = document.getElementById('ym');
-      const d = new Date();
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      ym.value = `${y}-${m}`;
-    })();
+    // =========================
+    // CẤU HÌNH
+    // =========================
+    const WEBHOOK_TINH_DOANH_SO = 'https://n8n.clawbot.io.vn/webhook/tinh_doanh_so';
+    const FORM_XEM_DOANH_SO = 'doanh_so_nhan_vien.html';
 
+    // =========================
+    // ELEMENTS
+    // =========================
     const btn = document.getElementById('btn');
     const ymInp = document.getElementById('ym');
     const toast = document.getElementById('toast');
     const spin = document.getElementById('spin');
     const btnXemDoanhSo = document.getElementById('btnXemDoanhSo');
 
-    function showToast(msg, ok = false){
+    // =========================
+    // MẶC ĐỊNH THÁNG HIỆN TẠI
+    // =========================
+    (function setDefaultMonth() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      ymInp.value = `${y}-${m}`;
+    })();
+
+    // =========================
+    // UI HELPER
+    // =========================
+    function showToast(msg, ok = false) {
       toast.textContent = msg;
       toast.className = 'toast ' + (ok ? 'ok' : 'err');
       toast.style.display = 'block';
     }
 
-    function validateMonth(v){
+    function hideToast() {
+      toast.style.display = 'none';
+      toast.textContent = '';
+    }
+
+    function setLoading(isLoading) {
+      btn.disabled = isLoading;
+      spin.style.display = isLoading ? 'inline-block' : 'none';
+    }
+
+    // =========================
+    // VALIDATE
+    // =========================
+    function validateMonth(v) {
       return /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
     }
 
-    function openPageWithToken(path){
+    // =========================
+    // MỞ FORM KÈM TOKEN
+    // =========================
+    function getTokenFromAnywhere() {
       const currentParams = new URLSearchParams(window.location.search);
-      const url = new URL(path, window.location.href);
 
-      currentParams.forEach((value, key) => {
-        url.searchParams.set(key, value);
-      });
-
-      const token =
+      return (
         currentParams.get('token') ||
         currentParams.get('access_token') ||
         currentParams.get('t') ||
@@ -223,8 +274,21 @@
         sessionStorage.getItem('token') ||
         sessionStorage.getItem('access_token') ||
         sessionStorage.getItem('cod_token') ||
-        '';
+        ''
+      );
+    }
 
+    function openPageWithToken(path) {
+      const currentParams = new URLSearchParams(window.location.search);
+      const url = new URL(path, window.location.href);
+
+      // Mang toàn bộ query hiện tại sang trang mới
+      currentParams.forEach((value, key) => {
+        url.searchParams.set(key, value);
+      });
+
+      // Nếu chưa có token trên URL thì lấy từ local/session storage
+      const token = getTokenFromAnywhere();
       if (token && !url.searchParams.get('token')) {
         url.searchParams.set('token', token);
       }
@@ -232,17 +296,23 @@
       window.location.href = url.href;
     }
 
-    async function callWebhook(month){
-      const url = 'https://n8n.clawbot.io.vn/webhook/tinh_doanh_so';
+    // =========================
+    // GỌI WEBHOOK N8N
+    // Dùng form POST để tránh CORS preflight
+    // =========================
+    async function callWebhook(month) {
+      const formData = new URLSearchParams();
+      formData.append('month', month);
 
-      const resp = await fetch(url, {
+      const resp = await fetch(WEBHOOK_TINH_DOANH_SO, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month })
+        body: formData
       });
 
       let detail = '';
-      try { detail = await resp.text(); } catch(e){}
+      try {
+        detail = await resp.text();
+      } catch (e) {}
 
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status} — ${detail || 'Gọi webhook thất bại'}`);
@@ -251,8 +321,11 @@
       return detail;
     }
 
+    // =========================
+    // EVENTS
+    // =========================
     btn.addEventListener('click', async () => {
-      toast.style.display = 'none';
+      hideToast();
 
       const month = (ymInp.value || '').trim();
 
@@ -262,31 +335,31 @@
         return;
       }
 
-      btn.disabled = true;
-      spin.style.display = 'inline-block';
+      setLoading(true);
 
       try {
         const resultText = await callWebhook(month);
+
         showToast(
-          `Đã gửi tính doanh số cho tháng ${month}. ${resultText ? 'Phản hồi: ' + resultText : ''}`,
+          `Đã gửi tính doanh số cho tháng ${month}.` +
+          (resultText ? `\nPhản hồi: ${resultText}` : ''),
           true
         );
       } catch (err) {
         showToast(`Gọi webhook lỗi: ${err.message}`, false);
       } finally {
-        btn.disabled = false;
-        spin.style.display = 'none';
+        setLoading(false);
       }
     });
 
-    // Bấm nút Xem doanh số sẽ mở form doanh_so_nhan_vien.html
     btnXemDoanhSo.addEventListener('click', () => {
-      openPageWithToken('doanh_so_nhan_vien.html');
+      openPageWithToken(FORM_XEM_DOANH_SO);
     });
 
-    // Nhấn Enter để chạy tính doanh số
     ymInp.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') btn.click();
+      if (e.key === 'Enter') {
+        btn.click();
+      }
     });
   </script>
 </body>
