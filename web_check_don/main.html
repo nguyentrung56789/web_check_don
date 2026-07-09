@@ -145,16 +145,47 @@
 
   <!-- Menu chính: các nút sẽ được ẩn/hiện theo quyền trong main.js -->
   <main class="menu" role="main" aria-label="Menu chính">
-    <button id="admin"    class="admin-only hidden">👤 Admin</button>
-    <button id="donghang" class="dh-only hidden">📦 Đóng hàng COD</button>
-    <button id="checkdon" class="cd-only hidden">🧾 Check đơn</button>
-    <button id="mapview"  class="map-only hidden">🗺️ Xem bản đồ</button>
-    <button id="doanhso"  class="ds-only hidden">📊 Xem doanh số nhân viên</button>
+
+    <button
+      id="admin"
+      class="admin-only hidden"
+      onclick="openPageWithToken('web_check_don/admin.html')">
+      👤 Admin
+    </button>
+
+    <button
+      id="donghang"
+      class="dh-only hidden"
+      onclick="openPageWithToken('web_check_don/dong_hang_cod.html')">
+      📦 Đóng hàng COD
+    </button>
+
+    <button
+      id="checkdon"
+      class="cd-only hidden"
+      onclick="openPageWithToken('web_check_don/check_don.html')">
+      🧾 Check đơn
+    </button>
+
+    <button
+      id="mapview"
+      class="map-only hidden"
+      onclick="openPageWithToken('web_check_don/map.html')">
+      🗺️ Xem bản đồ
+    </button>
+
+    <button
+      id="doanhso"
+      class="ds-only hidden"
+      onclick="openPageWithToken('web_check_don/doanh_so_nhan_vien.html')">
+      📊 Xem doanh số nhân viên
+    </button>
+
   </main>
 
   <footer>© <span id="year"></span> COD Internal</footer>
 
-  <script type="module">
+  <script>
     document.getElementById('year').textContent = new Date().getFullYear();
 
     function getCurrentToken() {
@@ -167,45 +198,35 @@
         localStorage.getItem('token') ||
         localStorage.getItem('access_token') ||
         localStorage.getItem('cod_token') ||
+        sessionStorage.getItem('token') ||
+        sessionStorage.getItem('access_token') ||
+        sessionStorage.getItem('cod_token') ||
         ''
       );
     }
 
-    function openWithToken(path) {
+    function openPageWithToken(path) {
       const token = getCurrentToken();
-      const url = new URL(path, window.location.href);
+
+      /*
+        basePath lấy thư mục hiện tại của trang chính.
+        Ví dụ:
+        - Nếu trang hiện tại là https://abc.com/index.html
+          thì basePath là https://abc.com/
+        - Nếu trang hiện tại là https://abc.com/web_check_don/index.html
+          thì basePath là https://abc.com/web_check_don/
+      */
+      const basePath = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
+      const url = new URL(path, basePath);
 
       if (token) {
         url.searchParams.set('token', token);
       }
 
-      window.location.href = url.toString();
+      window.location.href = url.href;
     }
 
-    // Admin
-    document.getElementById('admin')?.addEventListener('click', () => {
-      openWithToken('web_check_don/admin.html');
-    });
-
-    // Đóng hàng COD
-    document.getElementById('donghang')?.addEventListener('click', () => {
-      openWithToken('web_check_don/dong_hang_cod.html');
-    });
-
-    // Check đơn
-    document.getElementById('checkdon')?.addEventListener('click', () => {
-      openWithToken('web_check_don/check_don.html');
-    });
-
-    // Xem bản đồ
-    document.getElementById('mapview')?.addEventListener('click', () => {
-      openWithToken('web_check_don/map.html');
-    });
-
-    // Xem doanh số nhân viên
-    document.getElementById('doanhso')?.addEventListener('click', () => {
-      openWithToken('web_check_don/doanh_so_nhan_vien.html');
-    });
+    window.openPageWithToken = openPageWithToken;
   </script>
 
   <!-- Module chính xác thực và mở quyền -->
