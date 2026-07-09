@@ -120,14 +120,15 @@
 
     .toast {
       margin-top:14px;
-      padding:10px 12px;
+      padding:12px 14px;
       border-radius:12px;
       font-size:14px;
       display:none;
       border:1px solid #273244;
       background:#0a1220;
       word-break:break-word;
-      white-space:pre-wrap;
+      white-space:normal;
+      line-height:1.45;
     }
 
     .toast.ok {
@@ -140,6 +141,18 @@
       border-color:#4a2323;
       background:#1a0e0e;
       color:#fecaca;
+    }
+
+    .toast h1,
+    .toast h2,
+    .toast h3 {
+      margin:0 0 8px;
+      color:#86efac;
+    }
+
+    .toast p {
+      margin:6px 0;
+      color:inherit;
     }
 
     .spinner {
@@ -235,14 +248,20 @@
     // =========================
     // UI HELPER
     // =========================
-    function showToast(msg, ok = false) {
-      toast.textContent = msg;
+    function showToast(msg, ok = false, isHtml = false) {
+      if (isHtml) {
+        toast.innerHTML = msg;
+      } else {
+        toast.textContent = msg;
+      }
+
       toast.className = 'toast ' + (ok ? 'ok' : 'err');
       toast.style.display = 'block';
     }
 
     function hideToast() {
       toast.style.display = 'none';
+      toast.innerHTML = '';
       toast.textContent = '';
     }
 
@@ -282,13 +301,12 @@
       const currentParams = new URLSearchParams(window.location.search);
       const url = new URL(path, window.location.href);
 
-      // Mang toàn bộ query hiện tại sang trang mới
       currentParams.forEach((value, key) => {
         url.searchParams.set(key, value);
       });
 
-      // Nếu chưa có token trên URL thì lấy từ local/session storage
       const token = getTokenFromAnywhere();
+
       if (token && !url.searchParams.get('token')) {
         url.searchParams.set('token', token);
       }
@@ -310,6 +328,7 @@
       });
 
       let detail = '';
+
       try {
         detail = await resp.text();
       } catch (e) {}
@@ -338,11 +357,17 @@
       setLoading(true);
 
       try {
-        const resultText = await callWebhook(month);
+        const resultHtml = await callWebhook(month);
 
         showToast(
-          `Đã gửi tính doanh số cho tháng ${month}.` +
-          (resultText ? `\nPhản hồi: ${resultText}` : ''),
+          resultHtml || `
+            <div>
+              <h3>✅ Đã tính doanh số xong</h3>
+              <p>Tháng đã xử lý: <b>${month}</b></p>
+              <p>Workflow n8n đã phản hồi thành công.</p>
+            </div>
+          `,
+          true,
           true
         );
       } catch (err) {
