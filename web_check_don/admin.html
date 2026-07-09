@@ -5,42 +5,166 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Admin — Tính doanh số</title>
   <style>
-    :root { --bg:#0f172a; --card:#111827; --txt:#e5e7eb; --muted:#9ca3af; --pri:#22c55e; --err:#ef4444; }
-    *{box-sizing:border-box} body{
-      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-      background:linear-gradient(120deg,#0b1220,#0a0f1a); color:var(--txt); min-height:100dvh;
-      display:flex; align-items:center; justify-content:center; padding:24px;
+    :root {
+      --bg:#0f172a;
+      --card:#111827;
+      --txt:#e5e7eb;
+      --muted:#9ca3af;
+      --pri:#22c55e;
+      --pri2:#38bdf8;
+      --err:#ef4444;
     }
+
+    *{box-sizing:border-box}
+
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      background:linear-gradient(120deg,#0b1220,#0a0f1a);
+      color:var(--txt);
+      min-height:100dvh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+
     .card{
-      width:100%; max-width:520px; background:var(--card); border:1px solid #1f2937;
-      border-radius:18px; padding:22px 22px 18px; box-shadow:0 10px 30px rgba(0,0,0,.35);
+      width:100%;
+      max-width:520px;
+      background:var(--card);
+      border:1px solid #1f2937;
+      border-radius:18px;
+      padding:22px 22px 18px;
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
     }
-    h1{margin:0 0 4px; font-size:20px}
-    p{margin:0 0 18px; color:var(--muted); font-size:14px}
-    .row{display:flex; gap:12px; align-items:end; margin:10px 0 6px}
-    label{display:block; font-size:12px; color:var(--muted); margin:0 0 6px}
+
+    h1{
+      margin:0 0 4px;
+      font-size:20px;
+    }
+
+    p{
+      margin:0 0 18px;
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    .row{
+      display:flex;
+      gap:12px;
+      align-items:end;
+      margin:10px 0 6px;
+    }
+
+    label{
+      display:block;
+      font-size:12px;
+      color:var(--muted);
+      margin:0 0 6px;
+    }
+
     input[type="month"]{
-      appearance:none; width:100%; padding:12px 14px; border-radius:12px; border:1px solid #263144;
-      background:#0b1220; color:var(--txt); outline:none; font-size:15px;
+      appearance:none;
+      width:100%;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid #263144;
+      background:#0b1220;
+      color:var(--txt);
+      outline:none;
+      font-size:15px;
     }
+
     button{
-      white-space:nowrap; padding:12px 16px; border-radius:12px; border:1px solid #1d2a3d;
-      background:var(--pri); color:#06240f; font-weight:700; font-size:15px; cursor:pointer;
-      transition:transform .04s ease;
+      white-space:nowrap;
+      padding:12px 16px;
+      border-radius:12px;
+      border:1px solid #1d2a3d;
+      background:var(--pri);
+      color:#06240f;
+      font-weight:700;
+      font-size:15px;
+      cursor:pointer;
+      transition:transform .04s ease, filter .15s ease;
     }
-    button:active{ transform:translateY(1px) }
-    .hint{font-size:12px; color:var(--muted); margin-top:8px}
+
+    button:hover{
+      filter:brightness(1.06);
+    }
+
+    button:active{
+      transform:translateY(1px);
+    }
+
+    button:disabled{
+      opacity:.7;
+      cursor:not-allowed;
+    }
+
+    .btn-secondary{
+      width:100%;
+      margin-top:14px;
+      background:var(--pri2);
+      color:#041923;
+    }
+
+    .hint{
+      font-size:12px;
+      color:var(--muted);
+      margin-top:8px;
+    }
+
     .toast{
-      margin-top:14px; padding:10px 12px; border-radius:12px; font-size:14px; display:none;
-      border:1px solid #273244; background:#0a1220;
+      margin-top:14px;
+      padding:10px 12px;
+      border-radius:12px;
+      font-size:14px;
+      display:none;
+      border:1px solid #273244;
+      background:#0a1220;
     }
-    .toast.ok{ border-color:#1e4d36; background:#0b1f17; color:#b9f4d2 }
-    .toast.err{ border-color:#4a2323; background:#1a0e0e; color:#fecaca }
-    .spinner{display:none; margin-left:8px; width:16px; height:16px; border-radius:50%;
-      border:2px solid rgba(255,255,255,.25); border-top-color:#fff; animation:spin 1s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .toast.ok{
+      border-color:#1e4d36;
+      background:#0b1f17;
+      color:#b9f4d2;
+    }
+
+    .toast.err{
+      border-color:#4a2323;
+      background:#1a0e0e;
+      color:#fecaca;
+    }
+
+    .spinner{
+      display:none;
+      margin-left:8px;
+      width:16px;
+      height:16px;
+      border-radius:50%;
+      border:2px solid rgba(255,255,255,.25);
+      border-top-color:#fff;
+      animation:spin 1s linear infinite;
+    }
+
+    @keyframes spin{
+      to{transform:rotate(360deg)}
+    }
+
+    @media (max-width:520px){
+      .row{
+        flex-direction:column;
+        align-items:stretch;
+      }
+
+      .row button{
+        width:100%;
+      }
+    }
   </style>
 </head>
+
 <body>
   <div class="card">
     <h1>🧮 Tính doanh số</h1>
@@ -51,54 +175,98 @@
         <label for="ym">Năm-tháng (yyyy-mm)</label>
         <input id="ym" type="month" required />
       </div>
+
       <div>
-        <button id="btn">Tính doanh số <span id="spin" class="spinner"></span></button>
+        <button id="btn">
+          Tính doanh số <span id="spin" class="spinner"></span>
+        </button>
       </div>
     </div>
 
     <div class="hint">Lưu ý: định dạng chính xác ví dụ <code>2025-11</code>.</div>
+
+    <!-- Nút mới -->
+    <button id="btnDoanhSoNhanVien" class="btn-secondary">
+      📊 Tính doanh số nhân viên
+    </button>
+
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
   </div>
 
   <script>
-    // Mặc định điền tháng hiện tại (yyyy-mm)
+    // Mặc định điền tháng hiện tại yyyy-mm
     (function setDefaultMonth(){
       const ym = document.getElementById('ym');
       const d = new Date();
       const y = d.getFullYear();
-      const m = String(d.getMonth()+1).padStart(2,'0');
+      const m = String(d.getMonth() + 1).padStart(2, '0');
       ym.value = `${y}-${m}`;
     })();
 
-    const btn   = document.getElementById('btn');
+    const btn = document.getElementById('btn');
     const ymInp = document.getElementById('ym');
     const toast = document.getElementById('toast');
-    const spin  = document.getElementById('spin');
+    const spin = document.getElementById('spin');
+    const btnDoanhSoNhanVien = document.getElementById('btnDoanhSoNhanVien');
 
-    function showToast(msg, ok=false){
+    function showToast(msg, ok = false){
       toast.textContent = msg;
       toast.className = 'toast ' + (ok ? 'ok' : 'err');
       toast.style.display = 'block';
     }
 
     function validateMonth(v){
-      // Cho phép input type=month, nhưng vẫn kiểm định dạng để chắc chắn
       return /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
+    }
+
+    function openPageWithToken(path){
+      const currentParams = new URLSearchParams(window.location.search);
+      const url = new URL(path, window.location.href);
+
+      // Mang toàn bộ query hiện tại sang trang mới
+      currentParams.forEach((value, key) => {
+        url.searchParams.set(key, value);
+      });
+
+      // Nếu token đang nằm trong localStorage/sessionStorage thì bổ sung vào URL
+      const token =
+        currentParams.get('token') ||
+        currentParams.get('access_token') ||
+        currentParams.get('t') ||
+        localStorage.getItem('token') ||
+        localStorage.getItem('access_token') ||
+        localStorage.getItem('cod_token') ||
+        sessionStorage.getItem('token') ||
+        sessionStorage.getItem('access_token') ||
+        sessionStorage.getItem('cod_token') ||
+        '';
+
+      if (token && !url.searchParams.get('token')) {
+        url.searchParams.set('token', token);
+      }
+
+      window.location.href = url.href;
     }
 
     async function callWebhook(month){
       const url = 'https://dhsybbqoe.datadex.vn/webhook/tinh_doanh_so';
+
       const resp = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ month })
       });
-      // Nếu backend trả JSON thì đọc, nếu không vẫn coi là ok khi status 2xx
+
       let detail = '';
-      try { detail = await resp.text(); } catch(e){}
+
+      try {
+        detail = await resp.text();
+      } catch(e) {}
+
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status} — ${detail || 'Gọi webhook thất bại'}`);
       }
+
       return detail;
     }
 
@@ -114,13 +282,15 @@
         return;
       }
 
-      // Khoá nút + hiện spinner
       btn.disabled = true;
       spin.style.display = 'inline-block';
 
       try {
         const resultText = await callWebhook(month);
-        showToast(`Đã gửi tính doanh số cho tháng ${month}. ${resultText ? 'Phản hồi: ' + resultText : ''}`, true);
+        showToast(
+          `Đã gửi tính doanh số cho tháng ${month}. ${resultText ? 'Phản hồi: ' + resultText : ''}`,
+          true
+        );
       } catch (err) {
         showToast(`Gọi webhook lỗi: ${err.message}`, false);
       } finally {
@@ -129,7 +299,12 @@
       }
     });
 
-    // Nhấn Enter để chạy
+    // Nút mở form doanh số nhân viên
+    btnDoanhSoNhanVien.addEventListener('click', () => {
+      openPageWithToken('doanh_so_nhan_vien.html');
+    });
+
+    // Nhấn Enter để chạy tính doanh số
     ymInp.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') btn.click();
     });
