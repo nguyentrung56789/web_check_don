@@ -4,6 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sheet hóa đơn</title>
+
+  <!-- Thư viện xuất Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <style>
     * { box-sizing: border-box; }
 
@@ -69,6 +73,14 @@
 
     .btn:hover { background: #15803d; }
     .btn:disabled { opacity: .6; cursor: not-allowed; }
+
+    .btn-excel {
+      background: #2563eb;
+    }
+
+    .btn-excel:hover {
+      background: #1d4ed8;
+    }
 
     .multi {
       position: relative;
@@ -307,6 +319,11 @@
     <div class="field">
       <label>&nbsp;</label>
       <button type="button" id="btnLoadAll" class="btn">Load all</button>
+    </div>
+
+    <div class="field">
+      <label>&nbsp;</label>
+      <button type="button" id="btnExportExcel" class="btn btn-excel">Xuất Excel</button>
     </div>
 
     <div id="status" class="status">Đang tải dữ liệu...</div>
@@ -671,14 +688,16 @@
 
     if (sortKey) {
       const col = columns.find(c => c.key === sortKey);
-      rows.sort((a, b) => {
-        const av = getSortValue(a, col);
-        const bv = getSortValue(b, col);
+      if (col) {
+        rows.sort((a, b) => {
+          const av = getSortValue(a, col);
+          const bv = getSortValue(b, col);
 
-        if (av < bv) return sortDir === 'asc' ? -1 : 1;
-        if (av > bv) return sortDir === 'asc' ? 1 : -1;
-        return 0;
-      });
+          if (av < bv) return sortDir === 'asc' ? -1 : 1;
+          if (av > bv) return sortDir === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
     }
 
     const total = rows.length;
@@ -776,6 +795,173 @@
     }
   }
 
+  function getExportRows() {
+    let rows = [...filteredRows];
+
+    if (sortKey) {
+      const col = columns.find(c => c.key === sortKey);
+
+      if (col) {
+        rows.sort((a, b) => {
+          const av = getSortValue(a, col);
+          const bv = getSortValue(b, col);
+
+          if (av < bv) return sortDir === 'asc' ? -1 : 1;
+          if (av > bv) return sortDir === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+    }
+
+    return rows;
+  }
+
+  function getFieldLabelByControlId(controlId) {
+    const el = document.getElementById(controlId);
+    if (!el) return controlId;
+
+    const field = el.closest('.field');
+    const label = field ? field.querySelector('label') : null;
+
+    return label ? String(label.textContent || '').trim() : controlId;
+  }
+
+  function getSelectedNhanVienText() {
+    if (selectedMaNv.size === 0) return 'Tất cả nhân viên';
+
+    return Array.from(selectedMaNv).map(maNv => {
+      const tenNv = mapMaNvTen.get(maNv) || '';
+      return tenNv ? `${maNv} - ${tenNv}` : maNv;
+    }).join(', ');
+  }
+
+  function getThuongHieuText() {
+    const select = document.getElementById('filterThuongHieu');
+    const option = select.options[select.selectedIndex];
+
+    return option ? String(option.textContent || '').trim() : 'Tất cả';
+  }
+
+  function getTongTienThu(rows) {
+    return rows.reduce((sum, row) => sum + Number(row.tien_thu || 0), 0);
+  }
+
+  function cleanFileName(value) {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .replace(/[^a-zA-Z0-9_-]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 80);
+  }
+
+  function getFilterTextForFileName() {
+    const nvText = cleanFileName(getSelectedNhanVienText());
+    const thuongHieu = cleanFileName(getThuongHieuText());
+
+    const from = String(document.getElementById('fromNgayThu').value || '')
+      .trim()
+      .replaceAll('/', '');
+
+    const to = String(document.getElementById('toNgayThu').value || '')
+      .trim()
+      .replaceAll('/', '');
+
+    let range = '';
+    if (from || to) {
+      range = `_${from || 'all'}_${to || 'all'}`;
+    }
+
+    return `${nvText || 'tat_ca_nv'}_${thuongHieu || 'tat_ca'}${range}`;
+  }
+
+  function exportExcel() {
+    try {
+      if (typeof XLSX === 'undefined') {
+        alert('Chưa tải được thư viện Excel. Kiểm tra mạng hoặc CDN xlsx.');
+        return;
+      }
+
+      const rows = getExportRows();
+
+      if (!rows.length) {
+        alert('Không có dữ liệu để xuất Excel.');
+        return;
+      }
+
+      const exportColumns = columns.filter(col => !col.hidden);
+
+      const nhanVienLabel = getFieldLabelByControlId('maNvBtn');
+      const thuongHieuLabel = getFieldLabelByControlId('filterThuongHieu');
+      const fromNgayThuLabel = getFieldLabelByControlId('fromNgayThu');
+      const toNgayThuLabel = getFieldLabelByControlId('toNgayThu');
+
+      const nhanVienText = getSelectedNhanVienText();
+      const thuongHieuText = getThuongHieuText();
+      const fromNgayThu = String(document.getElementById('fromNgayThu').value || '').trim() || 'Tất cả';
+      const toNgayThu = String(document.getElementById('toNgayThu').value || '').trim() || 'Tất cả';
+      const tongTienThu = getTongTienThu(rows);
+
+      const titleRows = [
+        ['Sheet hóa đơn'],
+        [nhanVienLabel, nhanVienText],
+        [thuongHieuLabel, thuongHieuText],
+        [fromNgayThuLabel, fromNgayThu],
+        [toNgayThuLabel, toNgayThu],
+        ['Tổng tiền thu', money(tongTienThu)],
+        []
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(titleRows);
+
+      const data = rows.map(row => {
+        const obj = {};
+
+        for (const col of exportColumns) {
+          obj[col.label] = formatValue(col.key, row[col.key]);
+        }
+
+        return obj;
+      });
+
+      XLSX.utils.sheet_add_json(ws, data, {
+        origin: 'A8',
+        skipHeader: false
+      });
+
+      ws['!merges'] = [
+        {
+          s: { r: 0, c: 0 },
+          e: { r: 0, c: exportColumns.length - 1 }
+        }
+      ];
+
+      ws['!cols'] = exportColumns.map(col => ({
+        wch: Math.max(10, Math.min(60, Math.round((col.width || 120) / 8)))
+      }));
+
+      ws['!cols'][0] = { wch: Math.max(ws['!cols'][0]?.wch || 10, 18) };
+      ws['!cols'][1] = { wch: Math.max(ws['!cols'][1]?.wch || 10, 35) };
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Hoa don');
+
+      const now = new Date();
+      const p = n => String(n).padStart(2, '0');
+
+      const fileName =
+        `hoa_don_${getFilterTextForFileName()}_${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}_${p(now.getHours())}${p(now.getMinutes())}.xlsx`;
+
+      XLSX.writeFile(wb, fileName);
+
+    } catch (err) {
+      console.error(err);
+      alert('Lỗi xuất Excel: ' + (err.message || err));
+    }
+  }
+
   document.getElementById('maNvBtn').addEventListener('click', function () {
     document.getElementById('maNvMulti').classList.toggle('open');
   });
@@ -834,6 +1020,7 @@
   });
 
   document.getElementById('btnLoadAll').addEventListener('click', loadAll);
+  document.getElementById('btnExportExcel').addEventListener('click', exportExcel);
 
   renderHeader();
   loadAll();
