@@ -16,14 +16,14 @@ async function onCapNhatDon(){
 
   try{
     const webhookUrl =
-      (typeof window.getConfig === 'function' && window.getConfig('webhook')) ||
       window.APP_CONFIG?.webhook ||
       window.APP_CONFIG?.webhookUrl ||
       window.APP_CONFIG?.webhook_url ||
+      (typeof window.getConfig === 'function' ? window.getConfig('webhook') : '') ||
       '';
 
     if (!webhookUrl) {
-      throw new Error('Thiếu webhook trong /api/getConfig');
+      throw new Error('Thiếu webhook trong config');
     }
 
     const res = await fetch(webhookUrl, {
@@ -50,7 +50,7 @@ async function onCapNhatDon(){
       btn.textContent = '✅ Cập nhật xong';
     }
 
-    if (typeof reload === 'function') {
+    if (typeof reload === 'function' && supa) {
       await reload();
     }
 
@@ -74,9 +74,7 @@ async function onCapNhatDon(){
     }
 
     setTimeout(() => {
-      if (btn) {
-        btn.textContent = oldText;
-      }
+      if (btn) btn.textContent = oldText;
       setState(true, 'sẵn sàng');
     }, 3000);
 
