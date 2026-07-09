@@ -376,3 +376,40 @@ td:first-child input[type="checkbox"] {
 }
 .slide-banner.ok{ background:#10b981; }
 .slide-banner.show{ top:0; }
+
+/* ===== NÚT CẬP NHẬT ĐƠN HÀNG: loading spinner ===== */
+#btnCapNhatDon{
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  min-width: 170px;
+}
+
+#btnCapNhatDon.is-loading{
+  opacity: .85;
+  cursor: wait;
+  pointer-events: none;
+}
+
+#btnCapNhatDon.is-loading::before{
+  content: "";
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(230,237,255,.35);
+  border-top-color: #e6edff;
+  border-radius: 50%;
+  animation: capnhat-spin .75s linear infinite;
+}
+
+@keyframes capnhat-spin{
+  to{ transform: rotate(360deg); }
+}
+
+#btnCapNhatDon.is-done{
+  background: #10b981;
+  color: #ffffff;
+  border-color: #059669;
+}
