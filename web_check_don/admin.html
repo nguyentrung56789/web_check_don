@@ -143,18 +143,6 @@
       color:#fecaca;
     }
 
-    .toast h1,
-    .toast h2,
-    .toast h3 {
-      margin:0 0 8px;
-      color:#86efac;
-    }
-
-    .toast p {
-      margin:6px 0;
-      color:inherit;
-    }
-
     .spinner {
       display:none;
       margin-left:8px;
@@ -248,20 +236,14 @@
     // =========================
     // UI HELPER
     // =========================
-    function showToast(msg, ok = false, isHtml = false) {
-      if (isHtml) {
-        toast.innerHTML = msg;
-      } else {
-        toast.textContent = msg;
-      }
-
+    function showToast(msg, ok = false) {
+      toast.textContent = msg;
       toast.className = 'toast ' + (ok ? 'ok' : 'err');
       toast.style.display = 'block';
     }
 
     function hideToast() {
       toast.style.display = 'none';
-      toast.innerHTML = '';
       toast.textContent = '';
     }
 
@@ -275,6 +257,28 @@
     // =========================
     function validateMonth(v) {
       return /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
+    }
+
+    // =========================
+    // LÀM SẠCH PHẢN HỒI N8N
+    // =========================
+    function cleanWebhookResponse(text) {
+      return String(text || '')
+        .trim()
+        .replace(/^=\s*/, '')
+        .replace(/<\/?div[^>]*>/gi, '')
+        .replace(/<\/?h[1-6][^>]*>/gi, '')
+        .replace(/<\/?p[^>]*>/gi, '')
+        .replace(/<\/?b[^>]*>/gi, '')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&lt;/gi, '<')
+        .replace(/&gt;/gi, '>')
+        .replace(/&amp;/gi, '&')
+        .replace(/\s+\n/g, '\n')
+        .replace(/\n\s+/g, '\n')
+        .replace(/[ \t]{2,}/g, ' ')
+        .trim();
     }
 
     // =========================
@@ -349,29 +353,28 @@
       const month = (ymInp.value || '').trim();
 
       if (!validateMonth(month)) {
-        showToast('Lỗi tháng! Vui lòng chọn đúng định dạng YYYY-MM.', false);
+        showToast('❌ Lỗi tháng! Vui lòng chọn đúng định dạng YYYY-MM.', false);
         ymInp.focus();
         return;
       }
 
       setLoading(true);
 
-      try {
-        const resultHtml = await callWebhook(month);
+      // Trạng thái đang chạy
+      showToast(`⏳ Đang tính doanh số tháng ${month}...`, true);
 
+      try {
+        const resultText = await callWebhook(month);
+        const cleanText = cleanWebhookResponse(resultText);
+
+        // Khi chạy xong: thay thế thông báo đang chạy bằng phản hồi cuối
         showToast(
-          resultHtml || `
-            <div>
-              <h3>✅ Đã tính doanh số xong</h3>
-              <p>Tháng đã xử lý: <b>${month}</b></p>
-              <p>Workflow n8n đã phản hồi thành công.</p>
-            </div>
-          `,
-          true,
+          cleanText || `✅ Đã tính doanh số xong tháng ${month}`,
           true
         );
+
       } catch (err) {
-        showToast(`Gọi webhook lỗi: ${err.message}`, false);
+        showToast(`❌ Gọi webhook lỗi: ${err.message}`, false);
       } finally {
         setLoading(false);
       }
