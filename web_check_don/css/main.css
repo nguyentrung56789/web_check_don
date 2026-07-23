@@ -1,12 +1,68 @@
-body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:#0b1220;color:#e6edff}
+body{
+  margin:0;
+  font-family:system-ui,Segoe UI,Roboto,Arial;
+  background:#0b1220;
+  color:#e6edff;
+}
+
 .top{
-  display:flex;justify-content:space-between;align-items:center;padding:12px 16px;
-  background:#0f1830;border-bottom:1px solid #233043
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:12px 16px;
+  background:#0f1830;
+  border-bottom:1px solid #233043;
 }
-.menu{display:flex;gap:16px;justify-content:center;align-items:center;padding:32px}
+
+.menu{
+  display:flex;
+  flex-wrap:wrap;
+  gap:16px;
+  justify-content:center;
+  align-items:center;
+  padding:32px;
+}
+
 button{
-  padding:14px 18px;border-radius:12px;border:0;cursor:pointer;font-weight:700
+  padding:14px 18px;
+  border-radius:12px;
+  border:0;
+  cursor:pointer;
+  font-weight:700;
+  font-size:16px;
+  transition:transform .15s ease, filter .15s ease;
 }
-#admin{background:#2dd4bf;color:#042023}
-#donghang{background:#60a5fa;color:#041a18}
-#checkdon{background:#fbbf24;color:#3d2d04}
+
+button:hover{
+  transform:translateY(-2px);
+  filter:brightness(1.08);
+}
+
+#admin{
+  background:#2dd4bf;
+  color:#042023;
+}
+
+#donghang{
+  background:#60a5fa;
+  color:#041a18;
+}
+
+#checkdon{
+  background:#fbbf24;
+  color:#3d2d04;
+}
+
+#mapview{
+  background:#a78bfa;
+  color:#1f1235;
+}
+
+#chamsockhachhang{
+  background:#fb7185;
+  color:#3b0713;
+}
+
+.hidden{
+  display:none !important;
+}
