@@ -10,16 +10,34 @@
 
   // 2) Đọc case
   let nv = {};
-  try { nv = JSON.parse(localStorage.getItem('nv') || '{}'); } catch { nv = {}; }
 
-  const $ = s => document.querySelector(s);
+  try {
+    nv = JSON.parse(localStorage.getItem('nv') || '{}');
+  } catch {
+    nv = {};
+  }
+
+  const $ = (s) => document.querySelector(s);
+
   const showIf = (sel, cond) => {
     const el = $(sel);
     if (!el) return;
+
     el.style.display = cond ? '' : 'none';
-    if (cond) el.classList.remove('hidden');
+
+    if (cond) {
+      el.classList.remove('hidden');
+    } else {
+      el.classList.add('hidden');
+    }
   };
-  const toBool = v => v === true || v === 'true' || v === 'TRUE' || v === 1 || v === '1';
+
+  const toBool = (v) =>
+    v === true ||
+    v === 'true' ||
+    v === 'TRUE' ||
+    v === 1 ||
+    v === '1';
 
   try {
     // 3) Không có case -> về login
@@ -38,39 +56,81 @@
     }
 
     // 5) Tên NV
-    $('#ten_nv') && ($('#ten_nv').textContent = nv.ten_nv || nv.ma_nv || '');
+    const tenNvEl = $('#ten_nv');
 
-    // 6) Quyền (4 nút)
-    showIf('#admin',    toBool(nv.admin));
+    if (tenNvEl) {
+      tenNvEl.textContent = nv.ten_nv || nv.ma_nv || '';
+    }
+
+    // 6) Quyền các nút
+    showIf('#admin', toBool(nv.admin));
     showIf('#donghang', toBool(nv.dong_hang));
     showIf('#checkdon', toBool(nv.check_don));
-    showIf('#mapview',  toBool(nv.map));
+    showIf('#mapview', toBool(nv.map));
+
+    // Quyền mới: chăm sóc khách hàng
+    showIf('#chamsockhachhang', toBool(nv.cham_soc_khach_hang));
 
     // 7) Điều hướng giữ token
     const go = (url) => {
       const tok = sessionStorage.getItem('APP_ACCESS');
-      const u = new URL(url, location.origin);
-      if (tok) u.searchParams.set('token', tok);
+      const u = new URL(url, location.href);
+
+      if (tok) {
+        u.searchParams.set('token', tok);
+      }
+
       location.href = u.toString();
     };
-    $('#admin')   ?.addEventListener('click', () => go('./admin.html'));
-    $('#donghang')?.addEventListener('click', () => go('./Quan_ly_cod.html'));
-    $('#checkdon')?.addEventListener('click', () => go('./check_don.html'));
-    $('#mapview') ?.addEventListener('click', () => go('./map_tuyen.html'));
+
+    $('#admin')?.addEventListener('click', () => {
+      go('./admin.html');
+    });
+
+    $('#donghang')?.addEventListener('click', () => {
+      go('./Quan_ly_cod.html');
+    });
+
+    $('#checkdon')?.addEventListener('click', () => {
+      go('./check_don.html');
+    });
+
+    $('#mapview')?.addEventListener('click', () => {
+      go('./map_tuyen.html');
+    });
+
+    // Nút mới
+    $('#chamsockhachhang')?.addEventListener('click', () => {
+      go('./chamsockhachhang.html');
+    });
 
     // 8) Logout
     $('#btnLogout')?.addEventListener('click', () => {
-      try { sessionStorage.removeItem('APP_ACCESS'); } catch {}
+      try {
+        sessionStorage.removeItem('APP_ACCESS');
+      } catch {}
+
       localStorage.removeItem('nv');
       location.replace('./login.html');
     });
 
     // 9) Không có quyền nào -> hiện note
-    const hasAny = toBool(nv.admin) || toBool(nv.dong_hang) || toBool(nv.check_don) || toBool(nv.map);
+    const hasAny =
+      toBool(nv.admin) ||
+      toBool(nv.dong_hang) ||
+      toBool(nv.check_don) ||
+      toBool(nv.map) ||
+      toBool(nv.cham_soc_khach_hang);
+
     if (!hasAny) {
       const note = document.createElement('div');
-      note.style.cssText = 'text-align:center;color:#9aa7c7;margin-top:16px';
-      note.textContent = 'Tài khoản chưa được cấp quyền chức năng nào. Liên hệ quản trị viên.';
+
+      note.style.cssText =
+        'text-align:center;color:#9aa7c7;margin-top:16px';
+
+      note.textContent =
+        'Tài khoản chưa được cấp quyền chức năng nào. Liên hệ quản trị viên.';
+
       document.querySelector('.menu')?.appendChild(note);
     }
   } catch (e) {
