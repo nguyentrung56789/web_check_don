@@ -27,14 +27,9 @@
       --danger:#f87171;
     }
 
-    *{
-      box-sizing:border-box;
-    }
+    *{box-sizing:border-box}
 
-    html,
-    body{
-      min-height:100%;
-    }
+    html,body{min-height:100%}
 
     body{
       margin:0;
@@ -49,15 +44,12 @@
       left:0;
       right:0;
       z-index:10;
-
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:14px;
-
       min-height:64px;
       padding:12px 18px;
-
       background:var(--card);
       border-bottom:1px solid var(--line);
       box-shadow:0 4px 14px rgba(0,0,0,.25);
@@ -77,9 +69,7 @@
       cursor:pointer;
     }
 
-    .back-btn:hover{
-      text-decoration:underline;
-    }
+    .back-btn:hover{text-decoration:underline}
 
     .wrap{
       width:min(560px,92vw);
@@ -114,26 +104,20 @@
     .menu-btn{
       width:100%;
       min-height:60px;
-
       display:flex;
       align-items:center;
       justify-content:center;
       gap:10px;
-
       border:0;
       border-radius:14px;
       padding:14px 18px;
-
       background:var(--primary);
       color:var(--primary-text);
-
       font-size:18px;
       font-weight:850;
       cursor:pointer;
-
-      transition:
-        transform .15s ease,
-        filter .15s ease;
+      text-decoration:none;
+      transition:transform .15s ease,filter .15s ease;
     }
 
     .menu-btn:hover{
@@ -141,9 +125,7 @@
       filter:brightness(1.06);
     }
 
-    .menu-btn:active{
-      transform:translateY(0);
-    }
+    .menu-btn:active{transform:translateY(0)}
 
     footer{
       text-align:center;
@@ -153,18 +135,9 @@
     }
 
     @media(max-width:520px){
-      .topbar{
-        padding:12px 14px;
-      }
-
-      .wrap{
-        margin-top:92px;
-      }
-
-      .card{
-        padding:20px;
-      }
-
+      .topbar{padding:12px 14px}
+      .wrap{margin-top:92px}
+      .card{padding:20px}
       .menu-btn{
         min-height:56px;
         font-size:17px;
@@ -191,13 +164,14 @@
       </p>
 
       <div class="menu">
-        <button
-          id="btnQuanLyNhanVien"
+        <!-- Dùng thẻ a để mở chắc chắn, không phụ thuộc sự kiện button -->
+        <a
+          id="linkQuanLyNhanVien"
           class="menu-btn"
-          type="button"
+          href="./qly_nhanvien.html"
         >
           👥 Quản lý nhân viên
-        </button>
+        </a>
       </div>
     </section>
   </main>
@@ -211,8 +185,7 @@
       new Date().getFullYear();
 
     function getTokenFromAnywhere() {
-      const params =
-        new URLSearchParams(window.location.search);
+      const params = new URLSearchParams(window.location.search);
 
       return (
         params.get('token') ||
@@ -228,48 +201,52 @@
       );
     }
 
-    function openPageWithCurrentParams(path) {
-      const targetUrl =
-        new URL(path, window.location.href);
+    function buildUrl(path) {
+      const url = new URL(path, window.location.origin);
+      const currentParams = new URLSearchParams(window.location.search);
 
-      const currentParams =
-        new URLSearchParams(window.location.search);
-
-      // Giữ toàn bộ tham số hiện tại
       currentParams.forEach((value, key) => {
-        targetUrl.searchParams.set(key, value);
+        url.searchParams.set(key, value);
       });
 
-      // Bổ sung token nếu chưa có
       const token = getTokenFromAnywhere();
 
-      if (
-        token &&
-        !targetUrl.searchParams.get('token')
-      ) {
-        targetUrl.searchParams.set('token', token);
+      if (token) {
+        url.searchParams.set('token', token);
       }
 
-      window.location.href = targetUrl.href;
+      // Chống trình duyệt giữ bản HTML cũ
+      url.searchParams.set('_v', Date.now().toString());
+
+      return url.href;
     }
 
-    document
-      .getElementById('btnQuanLyNhanVien')
-      .addEventListener('click', () => {
-        openPageWithCurrentParams(
-          './qly_nhanvien.html'
-        );
-      });
+    // Gắn sẵn URL đầy đủ cho nút Quản lý nhân viên
+    const linkQuanLyNhanVien =
+      document.getElementById('linkQuanLyNhanVien');
+
+    linkQuanLyNhanVien.href =
+      buildUrl('/qly_nhanvien.html');
+
+    // Bảo đảm khi bấm luôn đi đúng file
+    linkQuanLyNhanVien.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.location.assign(
+        buildUrl('/qly_nhanvien.html')
+      );
+    });
 
     document
       .getElementById('btnBack')
       .addEventListener('click', () => {
-        if (window.history.length > 1) {
+        if (document.referrer) {
           window.history.back();
           return;
         }
 
-        openPageWithCurrentParams('./index.html');
+        window.location.assign(
+          buildUrl('/index.html')
+        );
       });
   </script>
 </body>
