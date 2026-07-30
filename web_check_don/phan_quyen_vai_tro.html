@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Phân quyền vai trò</title>
+
+  <script src="./js/internal_key.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/cod_config.js"></script>
+  <script src="./js/auth_token.js"></script>
+
+  <style>
+    :root{
+      --bg:#eef1f5;
+      --card:#fff;
+      --text:#172033;
+      --muted:#657084;
+      --line:#dfe5ec;
+      --primary:#087af5;
+      --primary-soft:#eaf3ff;
+      --danger:#c92a2a;
+      --success:#0b7a47;
+      --shadow:0 20px 60px rgba(15,23,42,.18);
+    }
+
+    *{box-sizing:border-box}
+    html,body{min-height:100%}
+    body{
+      margin:0;
+      background:linear-gradient(135deg,#dde2e9,#cfd6df);
+      color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    }
+    button,input,select,textarea{font:inherit}
+
+    .overlay{
+      min-height:100vh;
+      padding:16px;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+    }
+
+    .modal{
+      width:min(1480px,100%);
+      min-height:calc(100vh - 32px);
+      background:var(--card);
+      border-radius:18px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .modal-head{
+      position:sticky;
+      top:0;
+      z-index:20;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:24px 28px;
+      border-bottom:1px solid var(--line);
+      background:#fff;
+    }
+    .modal-head h1{margin:0;font-size:27px}
+    .close{
+      width:44px;height:44px;border:0;border-radius:11px;
+      background:#f2f5f8;cursor:pointer;font-size:28px;color:#354155;
+    }
+
+    .top-form{
+      display:grid;
+      grid-template-columns:280px 1fr 260px;
+      gap:16px;
+      align-items:end;
+      padding:22px 28px 10px;
+    }
+    .field-group label{
+      display:block;margin-bottom:7px;font-size:14px;font-weight:700;color:#4d596c;
+    }
+    .field{
+      width:100%;min-height:46px;padding:10px 13px;
+      border:1px solid #cfd7e2;border-radius:10px;background:#fff;outline:none;
+    }
+    .field:focus{border-color:#7db7fb;box-shadow:0 0 0 3px rgba(8,122,245,.12)}
+    .hint{color:#425067;display:flex;gap:10px;align-items:center;min-height:46px}
+
+    .content{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 260px;
+      gap:20px;
+      padding:14px 28px 92px;
+    }
+
+    .permissions{min-width:0}
+    .group-section{scroll-margin-top:120px;margin-bottom:26px}
+    .group-title{margin:0 0 14px;font-size:25px}
+    .group-card{
+      border:1px solid #edf0f4;border-radius:15px;background:#fff;
+      box-shadow:0 8px 24px rgba(15,23,42,.05);overflow:hidden;
+    }
+
+    .permission-row{
+      border-bottom:1px solid var(--line);
+      padding:0;
+    }
+    .permission-row:last-child{border-bottom:0}
+    .row-head{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:18px 20px;background:#fbfcfd;cursor:pointer;
+    }
+    .row-head:hover{background:#f6f9fd}
+    .row-name{font-size:18px;font-weight:750}
+    .row-path{font-size:13px;color:var(--muted);margin-top:3px}
+    .chevron{font-size:20px;transition:.2s}
+    .permission-row.collapsed .chevron{transform:rotate(-90deg)}
+    .permission-row.collapsed .row-body{display:none}
+
+    .row-body{
+      padding:18px 20px 20px;
+      display:grid;
+      grid-template-columns:repeat(4,minmax(130px,1fr));
+      gap:16px 22px;
+    }
+    .perm-col-title{font-weight:800;margin-bottom:10px}
+    .perm-check{display:flex;align-items:center;gap:10px;min-height:32px;cursor:pointer}
+    .perm-check input{width:20px;height:20px;accent-color:var(--primary)}
+    .perm-check span{font-size:16px}
+
+    .sidebar{
+      position:sticky;top:106px;align-self:start;
+      border-left:1px solid #edf0f4;padding-left:18px;
+    }
+    .side-title{font-size:14px;color:#697586;margin-bottom:10px}
+    .side-nav{display:flex;flex-direction:column;gap:4px}
+    .side-link{
+      display:block;padding:11px 12px;border-radius:8px;text-decoration:none;
+      color:#243044;border-left:3px solid transparent;
+    }
+    .side-link:hover,.side-link.active{background:var(--primary-soft);color:var(--primary);border-left-color:var(--primary)}
+
+    .loading,.empty{
+      padding:44px;text-align:center;color:var(--muted);
+      border:1px dashed #cfd7e2;border-radius:14px;background:#fff;
+    }
+
+    .modal-foot{
+      position:fixed;
+      left:50%;bottom:16px;transform:translateX(-50%);
+      width:min(1480px,calc(100% - 32px));
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:16px 28px;background:#fff;border-top:1px solid var(--line);
+      border-radius:0 0 18px 18px;z-index:30;
+    }
+    .foot-right{display:flex;gap:10px}
+    .btn{
+      min-height:46px;padding:0 20px;border-radius:10px;border:1px solid #cfd7e2;
+      background:#fff;color:#253145;font-weight:750;cursor:pointer;
+    }
+    .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+    .btn-danger{color:var(--danger);border-color:transparent;background:transparent}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+
+    .toast{
+      position:fixed;right:22px;bottom:88px;z-index:100;
+      max-width:min(460px,calc(100vw - 44px));padding:14px 17px;
+      border-radius:12px;color:#fff;background:#172033;display:none;
+      box-shadow:0 12px 34px rgba(0,0,0,.25);
+    }
+    .toast.show{display:block}.toast.ok{background:var(--success)}.toast.err{background:#b42318}
+
+
+    .main-menu-list{padding:12px}
+    .main-menu-item{
+      display:grid;grid-template-columns:minmax(220px,1fr) 170px;
+      gap:18px;align-items:center;padding:15px 16px;
+      border:1px solid var(--line);border-radius:11px;background:#fbfcfd;
+      margin-bottom:10px;
+    }
+    .main-menu-item:last-child{margin-bottom:0}
+    .main-menu-name{font-size:17px;font-weight:750}
+    .main-menu-path{font-size:13px;color:var(--muted);margin-top:3px}
+    .main-menu-toggle{display:flex;align-items:center;justify-content:flex-end;gap:10px;font-weight:700}
+    .main-menu-toggle input{width:22px;height:22px;accent-color:var(--primary)}
+
+    @media(max-width:980px){
+      .top-form{grid-template-columns:1fr}
+      .content{grid-template-columns:1fr}
+      .sidebar{display:none}
+      .row-body{grid-template-columns:repeat(2,minmax(130px,1fr))}
+    }
+    @media(max-width:620px){
+      .overlay{padding:0}.modal{border-radius:0;min-height:100vh}
+      .modal-head,.top-form,.content{padding-left:14px;padding-right:14px}
+      .row-body{grid-template-columns:1fr}
+      .modal-foot{width:100%;bottom:0;border-radius:0;padding:12px 14px}
+      .modal-foot .btn{padding:0 13px}
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay">
+    <section class="modal">
+      <header class="modal-head">
+        <h1 id="pageTitle">Phân quyền vai trò</h1>
+        <button class="close" type="button" id="btnClose">×</button>
+      </header>
+
+      <section class="top-form">
+        <div class="field-group">
+          <label for="roleSelect">Vai trò</label>
+          <select class="field" id="roleSelect">
+            <option value="">Đang tải vai trò...</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label for="roleDescription">Mô tả</label>
+          <input class="field" id="roleDescription" readonly placeholder="Mô tả vai trò" />
+        </div>
+        <div class="hint">💡 Tích quyền cần cấp cho vai trò</div>
+      </section>
+
+      <main class="content">
+        <div class="permissions" id="permissionsRoot">
+          <div class="loading">Đang tải chức năng và quyền...</div>
+        </div>
+
+        <aside class="sidebar">
+          <div class="side-title">Danh mục quyền</div>
+          <nav class="side-nav" id="sideNav"></nav>
+        </aside>
+      </main>
+
+      <footer class="modal-foot">
+        <button class="btn btn-danger" type="button" id="btnClear">Bỏ toàn bộ quyền</button>
+        <div class="foot-right">
+          <button class="btn" type="button" id="btnCancel">Bỏ qua</button>
+          <button class="btn btn-primary" type="button" id="btnSave">Lưu quyền</button>
+        </div>
+      </footer>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const APP_VERSION='PHAN_QUYEN_V2_0_MAIN_GROUP';
+    const ROLE_TABLE='kv_vai_tro';
+    const FUNCTION_TABLE='kv_chucnang';
+    const PERMISSION_TABLE='kv_vai_tro_quyen';
+    const CFG_CACHE_KEY='cod_cfg_cache_v2';
+
+    let supabaseClient=null;
+    let roles=[];
+    let functions=[];
+    let currentPermissions=new Map();
+
+    const $=id=>document.getElementById(id);
+
+    function escapeHtml(value){
+      return String(value??'')
+        .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+        .replaceAll('"','&quot;').replaceAll("'",'&#039;');
+    }
+
+    function showToast(message,type='ok'){
+      const el=$('toast');
+      el.textContent=message;
+      el.className=`toast show ${type}`;
+      clearTimeout(showToast.timer);
+      showToast.timer=setTimeout(()=>el.className='toast',3200);
+    }
+
+    async function ensureInternalKeyLoaded(){
+      if(typeof window.getInternalKey==='function') return window.getInternalKey()||'';
+      await new Promise(resolve=>{
+        const script=document.createElement('script');
+        script.src='./js/internal_key.js';script.onload=resolve;script.onerror=resolve;
+        document.head.appendChild(script);
+      });
+      return typeof window.getInternalKey==='function' ? window.getInternalKey()||'' : '';
+    }
+
+    function normalizeSupabaseConfig(cfg){
+      if(!cfg||typeof cfg!=='object') return null;
+      const url=cfg.url||cfg.SUPABASE_URL||cfg.supabaseUrl||cfg.supabase_url||'';
+      const key=cfg.anon||cfg.key||cfg.SUPABASE_ANON||cfg.SUPABASE_ANON_KEY||cfg.supabaseAnon||cfg.supabaseKey||cfg.supabase_anon_key||'';
+      return url&&key ? {url:String(url).trim(),key:String(key).trim()} : null;
+    }
+
+    async function getSupabaseConfig(){
+      try{
+        const internalKey=await ensureInternalKeyLoaded();
+        const response=await fetch('/api/getConfig',{headers:{'x-internal-key':internalKey||''},cache:'no-store'});
+        if(response.ok){
+          const config=normalizeSupabaseConfig(await response.json());
+          if(config){localStorage.setItem(CFG_CACHE_KEY,JSON.stringify(config));return config;}
+        }
+      }catch(error){console.warn(error)}
+
+      try{
+        const raw=localStorage.getItem(CFG_CACHE_KEY);
+        const config=raw?normalizeSupabaseConfig(JSON.parse(raw)):null;
+        if(config) return config;
+      }catch(error){}
+
+      const candidates=[window.COD_CONFIG,window.codConfig,window.APP_CONFIG,window.CONFIG];
+      for(const item of candidates){const config=normalizeSupabaseConfig(item);if(config)return config;}
+      if(typeof window.getConfig==='function'){
+        const config=normalizeSupabaseConfig(await window.getConfig());
+        if(config)return config;
+      }
+      throw new Error('Không lấy được cấu hình Supabase.');
+    }
+
+    async function initSupabase(){
+      const config=await getSupabaseConfig();
+      supabaseClient=window.supabase.createClient(config.url,config.key);
+      console.log('Đang chạy bản:',APP_VERSION);
+    }
+
+    function getRoleIdFromUrl(){
+      const params=new URLSearchParams(location.search);
+      return params.get('vai_tro_id')||params.get('role_id')||'';
+    }
+
+    async function loadRoles(){
+      const {data,error}=await supabaseClient
+        .from(ROLE_TABLE)
+        .select('id,ten_vai_tro,mo_ta,trang_thai')
+        .order('ten_vai_tro',{ascending:true});
+      if(error) throw error;
+      roles=(data||[]).filter(item=>item.trang_thai!==false);
+      $('roleSelect').innerHTML='<option value="">Chọn vai trò</option>'+roles.map(role=>
+        `<option value="${escapeHtml(role.id)}">${escapeHtml(role.ten_vai_tro)}</option>`
+      ).join('');
+
+      const urlRoleId=getRoleIdFromUrl();
+      if(urlRoleId&&roles.some(r=>String(r.id)===String(urlRoleId))){
+        $('roleSelect').value=urlRoleId;
+      }else if(roles.length){
+        $('roleSelect').value=roles[0].id;
+      }
+      updateRoleInfo();
+    }
+
+    async function loadFunctions(){
+      const {data,error}=await supabaseClient
+        .from(FUNCTION_TABLE)
+        .select('id,ten_chucnang,duong_dan,nhom_chucnang,icon,thu_tu,trang_thai')
+        .eq('trang_thai',true)
+        .order('thu_tu',{ascending:true});
+      if(error) throw error;
+      functions=data||[];
+    }
+
+    function updateRoleInfo(){
+      const role=roles.find(item=>String(item.id)===String($('roleSelect').value));
+      $('roleDescription').value=role?.mo_ta||'';
+      $('pageTitle').textContent=role ? `Sửa vai trò: ${role.ten_vai_tro}` : 'Phân quyền vai trò';
+    }
+
+    async function loadPermissions(){
+      const roleId=$('roleSelect').value;
+      currentPermissions=new Map();
+      if(!roleId){renderPermissions();return;}
+
+      const {data,error}=await supabaseClient
+        .from(PERMISSION_TABLE)
+        .select('id,chucnang_id,duoc_xem,duoc_them,duoc_sua,duoc_xoa')
+        .eq('vai_tro_id',roleId);
+      if(error) throw error;
+
+      for(const row of (data||[])){
+        currentPermissions.set(String(row.chucnang_id),{
+          id:row.id,
+          duoc_xem:row.duoc_xem===true,
+          duoc_them:row.duoc_them===true,
+          duoc_sua:row.duoc_sua===true,
+          duoc_xoa:row.duoc_xoa===true
+        });
+      }
+      renderPermissions();
+    }
+
+    function slug(value){
+      return String(value||'khac').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'khac';
+    }
+
+    function groupFunctions(){
+      const map=new Map();
+      for(const fn of functions){
+        const group=(fn.nhom_chucnang||'Chức năng hệ thống').trim()||'Chức năng hệ thống';
+        if(!map.has(group)) map.set(group,[]);
+        map.get(group).push(fn);
+      }
+      return map;
+    }
+
+    function checkboxHtml(fn,key,label){
+      const state=currentPermissions.get(String(fn.id));
+      const checked=state?.[key]===true?'checked':'';
+      return `<label class="perm-check">
+        <input type="checkbox" data-function-id="${escapeHtml(fn.id)}" data-permission="${key}" ${checked} />
+        <span>${escapeHtml(label)}</span>
+      </label>`;
+    }
+
+    function isMainGroup(group){
+      return String(group||'').trim().toLowerCase()==='main';
+    }
+
+    function renderMainGroup(group,items){
+      const anchor=`group-${slug(group)}`;
+      return `<section class="group-section" id="${anchor}">
+        <h2 class="group-title">Menu chính</h2>
+        <div class="group-card">
+          <div class="main-menu-list">
+            ${items.map(fn=>{
+              const state=currentPermissions.get(String(fn.id));
+              const checked=state?.duoc_xem===true?'checked':'';
+              return `<div class="main-menu-item">
+                <div>
+                  <div class="main-menu-name">${escapeHtml(fn.icon||'')} ${escapeHtml(fn.ten_chucnang)}</div>
+                  <div class="main-menu-path">${escapeHtml(fn.duong_dan||'Không có đường dẫn')}</div>
+                </div>
+                <label class="main-menu-toggle">
+                  <input type="checkbox"
+                    data-function-id="${escapeHtml(fn.id)}"
+                    data-permission="duoc_xem"
+                    ${checked} />
+                  <span>Được xem</span>
+                </label>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </section>`;
+    }
+
+    function renderNormalGroup(group,items){
+      const anchor=`group-${slug(group)}`;
+      return `<section class="group-section" id="${anchor}">
+        <h2 class="group-title">${escapeHtml(group)}</h2>
+        <div class="group-card">
+          ${items.map(fn=>`
+            <article class="permission-row" data-function-row="${escapeHtml(fn.id)}">
+              <div class="row-head">
+                <div>
+                  <div class="row-name">${escapeHtml(fn.icon||'')} ${escapeHtml(fn.ten_chucnang)}</div>
+                  <div class="row-path">${escapeHtml(fn.duong_dan||'Không có đường dẫn')}</div>
+                </div>
+                <span class="chevron">⌄</span>
+              </div>
+              <div class="row-body">
+                <div><div class="perm-col-title">Xem</div>${checkboxHtml(fn,'duoc_xem','Cho phép xem')}</div>
+                <div><div class="perm-col-title">Tạo</div>${checkboxHtml(fn,'duoc_them','Cho phép tạo')}</div>
+                <div><div class="perm-col-title">Chỉnh sửa</div>${checkboxHtml(fn,'duoc_sua','Cho phép sửa')}</div>
+                <div><div class="perm-col-title">Xóa</div>${checkboxHtml(fn,'duoc_xoa','Cho phép xóa')}</div>
+              </div>
+            </article>`).join('')}
+        </div>
+      </section>`;
+    }
+
+    function renderPermissions(){
+      const groups=groupFunctions();
+      if(!functions.length){
+        $('permissionsRoot').innerHTML='<div class="empty">Bảng kv_chucnang chưa có dữ liệu.</div>';
+        $('sideNav').innerHTML='';return;
+      }
+
+      $('permissionsRoot').innerHTML=[...groups.entries()].map(([group,items])=>
+        isMainGroup(group) ? renderMainGroup(group,items) : renderNormalGroup(group,items)
+      ).join('');
+
+      $('sideNav').innerHTML=[...groups.keys()].map((group,index)=>
+        `<a class="side-link ${index===0?'active':''}" href="#group-${slug(group)}">${escapeHtml(isMainGroup(group)?'Menu chính':group)}</a>`
+      ).join('');
+
+      document.querySelectorAll('.row-head').forEach(head=>{
+        head.addEventListener('click',()=>head.closest('.permission-row').classList.toggle('collapsed'));
+      });
+      document.querySelectorAll('.side-link').forEach(link=>{
+        link.addEventListener('click',()=>{
+          document.querySelectorAll('.side-link').forEach(x=>x.classList.remove('active'));
+          link.classList.add('active');
+        });
+      });
+    }
+
+    function collectPermissions(){
+      const map=new Map();
+      for(const fn of functions){
+        map.set(String(fn.id),{
+          chucnang_id:fn.id,
+          duoc_xem:false,duoc_them:false,duoc_sua:false,duoc_xoa:false
+        });
+      }
+      document.querySelectorAll('[data-function-id][data-permission]').forEach(input=>{
+        const item=map.get(String(input.dataset.functionId));
+        if(item) item[input.dataset.permission]=input.checked===true;
+      });
+      return [...map.values()];
+    }
+
+    async function savePermissions(){
+      const roleId=$('roleSelect').value;
+      if(!roleId) return showToast('Vui lòng chọn vai trò.','err');
+
+      const rows=collectPermissions().map(item=>({
+        vai_tro_id:roleId,
+        chucnang_id:item.chucnang_id,
+        duoc_xem:item.duoc_xem,
+        duoc_them:item.duoc_them,
+        duoc_sua:item.duoc_sua,
+        duoc_xoa:item.duoc_xoa
+      }));
+
+      $('btnSave').disabled=true;$('btnSave').textContent='Đang lưu...';
+      try{
+        const {error}=await supabaseClient
+          .from(PERMISSION_TABLE)
+          .upsert(rows,{onConflict:'vai_tro_id,chucnang_id'});
+        if(error) throw error;
+        showToast('Đã lưu quyền cho vai trò.');
+        await loadPermissions();
+      }catch(error){
+        showToast(`Không lưu được quyền: ${error.message}`,'err');
+      }finally{
+        $('btnSave').disabled=false;$('btnSave').textContent='Lưu quyền';
+      }
+    }
+
+    function clearAllPermissions(){
+      document.querySelectorAll('[data-function-id][data-permission]').forEach(input=>input.checked=false);
+    }
+
+    async function start(){
+      try{
+        await initSupabase();
+        await Promise.all([loadRoles(),loadFunctions()]);
+        await loadPermissions();
+      }catch(error){
+        console.error(error);
+        $('permissionsRoot').innerHTML=`<div class="empty">Không tải được dữ liệu: ${escapeHtml(error.message)}</div>`;
+        showToast(error.message,'err');
+      }
+    }
+
+    $('roleSelect').addEventListener('change',async()=>{
+      updateRoleInfo();
+      $('permissionsRoot').innerHTML='<div class="loading">Đang tải quyền...</div>';
+      try{await loadPermissions()}catch(error){showToast(error.message,'err')}
+    });
+    $('btnSave').addEventListener('click',savePermissions);
+    $('btnClear').addEventListener('click',()=>{
+      if(confirm('Bỏ toàn bộ quyền đang tích của vai trò này?')) clearAllPermissions();
+    });
+    $('btnCancel').addEventListener('click',()=>history.back());
+    $('btnClose').addEventListener('click',()=>history.back());
+
+    start();
+  </script>
+</body>
+</html>
