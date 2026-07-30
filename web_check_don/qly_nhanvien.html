@@ -569,7 +569,8 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const TABLE_NAME = 'kv_nhanvien';
+    const TABLE_NAME = 'kv_nhan_vien';
+    const CFG_CACHE_KEY = 'cod_cfg_cache_v2';
     const PAGE_SIZE = 10;
 
     let supabaseClient = null;
@@ -601,60 +602,156 @@
       return row.ma_vai_tro || '—';
     }
 
+    async function ensureInternalKeyLoaded() {
+      if (typeof window.getInternalKey === 'function') {
+        return window.getInternalKey() || '';
+      }
+
+      await new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = './js/internal_key.js';
+        script.onload = resolve;
+        script.onerror = resolve;
+        document.head.appendChild(script);
+      });
+
+      return typeof window.getInternalKey === 'function'
+        ? window.getInternalKey() || ''
+        : '';
+    }
+
+    function normalizeSupabaseConfig(cfg) {
+      if (!cfg || typeof cfg !== 'object') return null;
+
+      const url =
+        cfg.url ||
+        cfg.SUPABASE_URL ||
+        cfg.supabaseUrl ||
+        cfg.supabase_url ||
+        '';
+
+      const key =
+        cfg.anon ||
+        cfg.key ||
+        cfg.SUPABASE_ANON ||
+        cfg.SUPABASE_ANON_KEY ||
+        cfg.supabaseAnon ||
+        cfg.supabaseKey ||
+        cfg.supabase_anon_key ||
+        '';
+
+      if (!url || !key) return null;
+
+      return {
+        url: String(url).trim(),
+        key: String(key).trim()
+      };
+    }
+
     async function getSupabaseConfig() {
+      // 1. Cách đang hoạt động ở form kiểm tra đơn:
+      // gọi /api/getConfig kèm x-internal-key và nhận { url, anon }.
+      try {
+        const internalKey = await ensureInternalKeyLoaded();
+        const response = await fetch('/api/getConfig', {
+          headers: {
+            'x-internal-key': internalKey || ''
+          },
+          cache: 'no-store'
+        });
+
+        if (response.ok) {
+          const config = normalizeSupabaseConfig(await response.json());
+
+          if (config) {
+            localStorage.setItem(CFG_CACHE_KEY, JSON.stringify(config));
+            return config;
+          }
+        } else {
+          console.warn('/api/getConfig HTTP:', response.status);
+        }
+      } catch (error) {
+        console.warn('Không lấy được cấu hình từ /api/getConfig:', error);
+      }
+
+      // 2. Dùng cache gần nhất nếu API tạm thời lỗi.
+      try {
+        const raw = localStorage.getItem(CFG_CACHE_KEY);
+        const cached = raw ? normalizeSupabaseConfig(JSON.parse(raw)) : null;
+        if (cached) return cached;
+      } catch (error) {
+        console.warn('Cache cấu hình không hợp lệ:', error);
+      }
+
+      // 3. Dùng các biến cấu hình đã nạp sẵn trên trang.
       const possibleConfigs = [
         window.COD_CONFIG,
         window.codConfig,
         window.APP_CONFIG,
         window.CONFIG
-      ].filter(Boolean);
+      ];
 
       for (const cfg of possibleConfigs) {
-        const url =
-          cfg.SUPABASE_URL ||
-          cfg.supabaseUrl ||
-          cfg.supabase_url;
-
-        const key =
-          cfg.SUPABASE_ANON ||
-          cfg.SUPABASE_ANON_KEY ||
-          cfg.supabaseAnon ||
-          cfg.supabaseKey ||
-          cfg.supabase_anon_key;
-
-        if (url && key) return { url, key };
+        const config = normalizeSupabaseConfig(cfg);
+        if (config) {
+          localStorage.setItem(CFG_CACHE_KEY, JSON.stringify(config));
+          return config;
+        }
       }
 
+      // 4. Dùng getConfig() nếu cod_config.js có cung cấp.
       if (typeof window.getConfig === 'function') {
-        const cfg = await window.getConfig();
-
-        if (cfg?.SUPABASE_URL && cfg?.SUPABASE_ANON) {
-          return {
-            url: cfg.SUPABASE_URL,
-            key: cfg.SUPABASE_ANON
-          };
+        try {
+          const config = normalizeSupabaseConfig(await window.getConfig());
+          if (config) {
+            localStorage.setItem(CFG_CACHE_KEY, JSON.stringify(config));
+            return config;
+          }
+        } catch (error) {
+          console.warn('getConfig() bị lỗi:', error);
         }
+      }
+
+      // 5. Fallback theo đúng cơ chế của form kiểm tra đơn.
+      try {
+        const configFromJs = await new Promise((resolve) => {
+          let finished = false;
+          const script = document.createElement('script');
+          script.src = './cod_config.js';
+          script.onload = () => {
+            finished = true;
+            resolve(normalizeSupabaseConfig(window.COD_CONFIG));
+          };
+          script.onerror = () => resolve(null);
+          setTimeout(() => {
+            if (!finished) resolve(normalizeSupabaseConfig(window.COD_CONFIG));
+          }, 500);
+          document.head.appendChild(script);
+        });
+
+        if (configFromJs) {
+          localStorage.setItem(CFG_CACHE_KEY, JSON.stringify(configFromJs));
+          return configFromJs;
+        }
+      } catch (error) {
+        console.warn('Không tải được cod_config.js dự phòng:', error);
       }
 
       try {
-        const response = await fetch('/api/getConfig', {
-          cache: 'no-store'
-        });
-
+        const response = await fetch('./cod_config.json', { cache: 'no-store' });
         if (response.ok) {
-          const cfg = await response.json();
-
-          if (cfg?.SUPABASE_URL && cfg?.SUPABASE_ANON) {
-            return {
-              url: cfg.SUPABASE_URL,
-              key: cfg.SUPABASE_ANON
-            };
+          const config = normalizeSupabaseConfig(await response.json());
+          if (config) {
+            localStorage.setItem(CFG_CACHE_KEY, JSON.stringify(config));
+            return config;
           }
         }
-      } catch (error) {}
+      } catch (error) {
+        console.warn('Không tải được cod_config.json:', error);
+      }
 
       throw new Error(
-        'Không tìm thấy SUPABASE_URL và SUPABASE_ANON trong cod_config.js hoặc /api/getConfig'
+        'Không lấy được cấu hình Supabase. Kiểm tra /api/getConfig và js/internal_key.js.'
       );
     }
 
