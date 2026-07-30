@@ -863,7 +863,7 @@
       let query=supabaseClient
         .from(USER_TABLE)
         .select(
-          'id,id_nv,ten_nv,dien_thoai,hoat_dong,vai_tro_id,ma_vai_tro,chuc_danh',
+          'id,id_nv,ten_nv,dien_thoai,hoat_dong,vai_tro_id,chuc_danh',
           {count:'exact'}
         );
 
