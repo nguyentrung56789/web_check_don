@@ -112,6 +112,11 @@
       padding:18px 20px;background:#fbfcfd;cursor:pointer;
     }
     .row-head:hover{background:#f6f9fd}
+    .row-head-actions{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+    .row-master-wrap{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#475569;cursor:pointer}
+    .row-master-wrap input{width:19px;height:19px;accent-color:var(--primary);cursor:pointer}
+    .row-head .chevron{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px}
+    .row-head .chevron:hover{background:#eaf2ff;color:var(--primary)}
     .row-name{font-size:18px;font-weight:750}
     .row-path{font-size:13px;color:var(--muted);margin-top:3px}
     .chevron{font-size:20px;transition:.2s}
@@ -302,7 +307,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION='PHAN_QUYEN_V2_2_CLEAN_ACCORDION_NAV';
+    const APP_VERSION='PHAN_QUYEN_V2_3_ROW_MASTER_ACCORDION';
     const ROLE_TABLE='kv_vai_tro';
     const FUNCTION_TABLE='kv_chucnang';
     const PERMISSION_TABLE='kv_vai_tro_quyen';
@@ -518,7 +523,13 @@
                     <div class="row-name">${escapeHtml(fn.icon||'')} ${escapeHtml(fn.ten_chucnang)}</div>
                     <div class="row-path">${escapeHtml(fn.duong_dan||'Không có đường dẫn')}</div>
                   </div>
-                  <span class="chevron">⌄</span>
+                  <div class="row-head-actions">
+                    <label class="row-master-wrap" title="Bật hoặc tắt toàn bộ quyền trong mục này">
+                      <input type="checkbox" class="row-master" data-master-function-id="${escapeHtml(fn.id)}" />
+                      <span>Tất cả</span>
+                    </label>
+                    <span class="chevron" role="button" aria-label="Mở hoặc thu gọn">⌄</span>
+                  </div>
                 </div>
                 <div class="row-body">
                   <div><div class="perm-col-title">Xem</div>${checkboxHtml(fn,'duoc_xem','Cho phép xem')}</div>
@@ -530,6 +541,22 @@
           </div>
         </div>
       </section>`;
+    }
+
+    function syncRowMaster(functionId){
+      const row=document.querySelector(`[data-function-row="${CSS.escape(String(functionId))}"]`);
+      const master=row?.querySelector('.row-master');
+      if(!row||!master) return;
+      const children=[...row.querySelectorAll('[data-function-id][data-permission]')];
+      const checkedCount=children.filter(input=>input.checked).length;
+      master.checked=children.length>0 && checkedCount===children.length;
+      master.indeterminate=checkedCount>0 && checkedCount<children.length;
+    }
+
+    function syncAllRowMasters(){
+      document.querySelectorAll('.row-master').forEach(master=>{
+        syncRowMaster(master.dataset.masterFunctionId);
+      });
     }
 
     function renderPermissions(){
@@ -559,8 +586,25 @@
         button.addEventListener('click',()=>button.closest('.group-card').classList.toggle('collapsed'));
       });
       document.querySelectorAll('.row-head').forEach(head=>{
-        head.addEventListener('click',()=>head.closest('.permission-row').classList.toggle('collapsed'));
+        head.addEventListener('click',event=>{
+          if(event.target.closest('.row-master-wrap')) return;
+          head.closest('.permission-row').classList.toggle('collapsed');
+        });
       });
+      document.querySelectorAll('.row-master').forEach(master=>{
+        master.addEventListener('click',event=>event.stopPropagation());
+        master.addEventListener('change',()=>{
+          const row=master.closest('.permission-row');
+          row?.querySelectorAll('[data-function-id][data-permission]').forEach(input=>{
+            input.checked=master.checked;
+          });
+          master.indeterminate=false;
+        });
+      });
+      document.querySelectorAll('.permission-row [data-function-id][data-permission]').forEach(input=>{
+        input.addEventListener('change',()=>syncRowMaster(input.dataset.functionId));
+      });
+      syncAllRowMasters();
       document.querySelectorAll('.nav-group-toggle').forEach(button=>{
         button.addEventListener('click',()=>button.closest('.nav-group').classList.toggle('collapsed'));
       });
