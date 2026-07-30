@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Quản lý nhân viên & vai trò - v2.1</title>
+  <title>Quản lý nhân viên & vai trò - v3.0</title>
 
   <script src="./js/internal_key.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -652,7 +652,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION = 'ROLE_LOAD_V2_1';
+    const APP_VERSION = 'ROLE_UUID_V3_0';
     console.log('Đang chạy bản:', APP_VERSION);
     const USER_TABLE = 'kv_nhan_vien';
     const ROLE_TABLE = 'kv_vai_tro';
@@ -814,11 +814,11 @@
       if(keyword){
         const clean=keyword.replace(/[%(),]/g,' ').trim();
         query=query.or(
-          `ten_nv.ilike.%${clean}%,dien_thoai.ilike.%${clean}%,ma_vai_tro.ilike.%${clean}%`
+          `ten_nv.ilike.%${clean}%,dien_thoai.ilike.%${clean}%,chuc_danh.ilike.%${clean}%`
         );
       }
 
-      if(role) query=query.eq('ma_vai_tro',role);
+      if(role) query=query.eq('vai_tro_id',role);
       if(status==='true') query=query.eq('hoat_dong',true);
       if(status==='false') query=query.eq('hoat_dong',false);
 
@@ -842,13 +842,13 @@
       $('roleFilter').innerHTML=
         '<option value="">Tất cả vai trò</option>'+
         activeRoles.map(role=>
-          `<option value="${escapeHtml(role.ten_vai_tro)}">${escapeHtml(role.ten_vai_tro)}</option>`
+          `<option value="${escapeHtml(role.id)}">${escapeHtml(role.ten_vai_tro)}</option>`
         ).join('');
 
       $('formMaVaiTro').innerHTML=
         '<option value="">Chưa gán vai trò</option>'+
         activeRoles.map(role=>
-          `<option value="${escapeHtml(role.ten_vai_tro)}">${escapeHtml(role.ten_vai_tro)}</option>`
+          `<option value="${escapeHtml(role.id)}">${escapeHtml(role.ten_vai_tro)}</option>`
         ).join('');
     }
 
@@ -863,7 +863,7 @@
       let query=supabaseClient
         .from(USER_TABLE)
         .select(
-          'id,id_nv,ten_nv,dien_thoai,hoat_dong,ma_vai_tro,chuc_danh',
+          'id,id_nv,ten_nv,dien_thoai,hoat_dong,vai_tro_id,chuc_danh',
           {count:'exact'}
         );
 
@@ -894,11 +894,11 @@
       updatePagination();
     }
 
-    function roleDisplayName(value){
+    function roleDisplayName(roleId){
       const role=allRoles.find(
-        item=>String(item.ten_vai_tro || '').trim()===String(value || '').trim()
+        item=>String(item.id || '')===String(roleId || '')
       );
-      return role?.ten_vai_tro || value || '—';
+      return role?.ten_vai_tro || '—';
     }
 
     function renderUsers(){
@@ -918,8 +918,8 @@
             <td>${escapeHtml(row.ten_nv || '—')}</td>
             <td>${escapeHtml(row.id_nv ?? row.id ?? '—')}</td>
             <td>${escapeHtml(formatPhone(row.dien_thoai))}</td>
-            <td class="${row.ma_vai_tro ? '' : 'role-empty'}">
-              ${escapeHtml(roleDisplayName(row.ma_vai_tro))}
+            <td class="${row.vai_tro_id ? '' : 'role-empty'}">
+              ${escapeHtml(roleDisplayName(row.vai_tro_id))}
             </td>
             <td class="${row.chuc_danh ? '' : 'role-empty'}">
               ${escapeHtml(row.chuc_danh || '—')}
@@ -1002,7 +1002,7 @@
       $('formTenNv').value=row.ten_nv ?? '';
       $('formIdNv').value=row.id_nv ?? '';
       $('formDienThoai').value=row.dien_thoai ?? '';
-      $('formMaVaiTro').value=row.ma_vai_tro ?? '';
+      $('formMaVaiTro').value=row.vai_tro_id ?? '';
       $('formChucDanh').value=row.chuc_danh ?? '';
       $('formMatKhau').value='';
       $('formHoatDong').checked=row.hoat_dong!==false;
@@ -1024,7 +1024,7 @@
         ten_nv:tenNv,
         id_nv:$('formIdNv').value ? Number($('formIdNv').value) : null,
         dien_thoai:$('formDienThoai').value.trim() || null,
-        ma_vai_tro:$('formMaVaiTro').value || null,
+        vai_tro_id:$('formMaVaiTro').value || null,
         chuc_danh:$('formChucDanh').value.trim() || null,
         hoat_dong:$('formHoatDong').checked
       };
@@ -1102,7 +1102,7 @@
 
       const usersResult=await supabaseClient
         .from(USER_TABLE)
-        .select('id,ten_nv,ma_vai_tro,hoat_dong')
+        .select('id,ten_nv,vai_tro_id,hoat_dong')
         .order('ten_nv',{ascending:true});
 
       if(usersResult.error){
@@ -1120,14 +1120,14 @@
       roleUsersMap=new Map();
 
       for(const user of (usersResult.data || [])){
-        const roleName=String(user.ma_vai_tro || '').trim();
-        if(!roleName) continue;
+        const roleId=String(user.vai_tro_id || '').trim();
+        if(!roleId) continue;
 
-        if(!roleUsersMap.has(roleName)){
-          roleUsersMap.set(roleName,[]);
+        if(!roleUsersMap.has(roleId)){
+          roleUsersMap.set(roleId,[]);
         }
 
-        roleUsersMap.get(roleName).push(user);
+        roleUsersMap.get(roleId).push(user);
       }
 
       console.log('Vai trò lấy được:',allRoles);
@@ -1140,13 +1140,13 @@
       $('roleFilter').innerHTML=
         '<option value="">Tất cả vai trò</option>'+
         activeRoles.map(role=>
-          `<option value="${escapeHtml(role.ten_vai_tro)}">${escapeHtml(role.ten_vai_tro)}</option>`
+          `<option value="${escapeHtml(role.id)}">${escapeHtml(role.ten_vai_tro)}</option>`
         ).join('');
 
       $('formMaVaiTro').innerHTML=
         '<option value="">Chưa gán vai trò</option>'+
         activeRoles.map(role=>
-          `<option value="${escapeHtml(role.ten_vai_tro)}">${escapeHtml(role.ten_vai_tro)}</option>`
+          `<option value="${escapeHtml(role.id)}">${escapeHtml(role.ten_vai_tro)}</option>`
         ).join('');
     }
 
@@ -1157,7 +1157,7 @@
       }
 
       $('rolesBody').innerHTML=allRoles.map(role=>{
-        const users=roleUsersMap.get(String(role.ten_vai_tro || '').trim()) || [];
+        const users=roleUsersMap.get(String(role.id || '')) || [];
         let accountHtml='Chưa có';
 
         if(users.length===1){
@@ -1165,7 +1165,7 @@
         }else if(users.length>1){
           accountHtml=`
             ${users.length} tài khoản.
-            <button class="account-link view-role-users" data-code="${escapeHtml(role.ten_vai_tro)}">Xem</button>
+            <button class="account-link view-role-users" data-role-id="${escapeHtml(role.id)}">Xem</button>
           `;
         }
 
@@ -1197,7 +1197,7 @@
         el.addEventListener('click',()=>deleteRole(el.dataset.id));
       });
       document.querySelectorAll('.view-role-users').forEach(el=>{
-        el.addEventListener('click',()=>showRoleUsers(el.dataset.code));
+        el.addEventListener('click',()=>showRoleUsers(el.dataset.roleId));
       });
     }
 
@@ -1281,7 +1281,7 @@
       const role=allRoles.find(item=>String(item.id)===String(id));
       if(!role) return;
 
-      const users=roleUsersMap.get(String(role.ten_vai_tro || '').trim()) || [];
+      const users=roleUsersMap.get(String(role.id || '')) || [];
       if(users.length){
         showToast(`Không thể xóa vì vai trò đang có ${users.length} tài khoản.`,'err');
         return;
@@ -1301,12 +1301,12 @@
       await loadRolesPage();
     }
 
-    function showRoleUsers(code){
-      const role=allRoles.find(item=>String(item.ten_vai_tro || '')===String(code));
-      const users=roleUsersMap.get(String(code)) || [];
+    function showRoleUsers(roleId){
+      const role=allRoles.find(item=>String(item.id || '')===String(roleId));
+      const users=roleUsersMap.get(String(roleId)) || [];
 
       $('accountsModalTitle').textContent=
-        `Tài khoản thuộc vai trò: ${role?.ten_vai_tro || code}`;
+        `Tài khoản thuộc vai trò: ${role?.ten_vai_tro || 'Không xác định'}`;
 
       $('accountsList').innerHTML=users.length
         ? users.map(user=>`
