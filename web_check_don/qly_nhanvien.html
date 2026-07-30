@@ -652,7 +652,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION = 'ROLE_UUID_V3_0';
+    const APP_VERSION = 'ROLE_UUID_V3_1_COMPLETE';
     console.log('Đang chạy bản:', APP_VERSION);
     const USER_TABLE = 'kv_nhan_vien';
     const ROLE_TABLE = 'kv_vai_tro';
@@ -863,7 +863,7 @@
       let query=supabaseClient
         .from(USER_TABLE)
         .select(
-          'id,id_nv,ten_nv,dien_thoai,hoat_dong,vai_tro_id,chuc_danh',
+          'id,id_nv,ten_nv,dien_thoai,hoat_dong,vai_tro_id,ma_vai_tro,chuc_danh',
           {count:'exact'}
         );
 
@@ -919,7 +919,7 @@
             <td>${escapeHtml(row.id_nv ?? row.id ?? '—')}</td>
             <td>${escapeHtml(formatPhone(row.dien_thoai))}</td>
             <td class="${row.vai_tro_id ? '' : 'role-empty'}">
-              ${escapeHtml(roleDisplayName(row.vai_tro_id))}
+              ${escapeHtml(roleDisplayName(row.vai_tro_id) !== '—' ? roleDisplayName(row.vai_tro_id) : (row.ma_vai_tro || '—'))}
             </td>
             <td class="${row.chuc_danh ? '' : 'role-empty'}">
               ${escapeHtml(row.chuc_danh || '—')}
@@ -1002,7 +1002,8 @@
       $('formTenNv').value=row.ten_nv ?? '';
       $('formIdNv').value=row.id_nv ?? '';
       $('formDienThoai').value=row.dien_thoai ?? '';
-      $('formMaVaiTro').value=row.vai_tro_id ?? '';
+      const legacyRole=allRoles.find(role=>String(role.ten_vai_tro || '').trim()===String(row.ma_vai_tro || '').trim());
+      $('formMaVaiTro').value=row.vai_tro_id || legacyRole?.id || '';
       $('formChucDanh').value=row.chuc_danh ?? '';
       $('formMatKhau').value='';
       $('formHoatDong').checked=row.hoat_dong!==false;
@@ -1020,11 +1021,18 @@
         return;
       }
 
+      const roleSelect=$('formMaVaiTro');
+      const selectedRoleId=roleSelect.value || null;
+      const selectedRoleName=selectedRoleId
+        ? (roleSelect.options[roleSelect.selectedIndex]?.textContent || '').trim() || null
+        : null;
+
       const payload={
         ten_nv:tenNv,
         id_nv:$('formIdNv').value ? Number($('formIdNv').value) : null,
         dien_thoai:$('formDienThoai').value.trim() || null,
-        vai_tro_id:$('formMaVaiTro').value || null,
+        vai_tro_id:selectedRoleId,
+        ma_vai_tro:selectedRoleName,
         chuc_danh:$('formChucDanh').value.trim() || null,
         hoat_dong:$('formHoatDong').checked
       };
@@ -1102,7 +1110,7 @@
 
       const usersResult=await supabaseClient
         .from(USER_TABLE)
-        .select('id,ten_nv,vai_tro_id,hoat_dong')
+        .select('id,ten_nv,vai_tro_id,ma_vai_tro,hoat_dong')
         .order('ten_nv',{ascending:true});
 
       if(usersResult.error){
@@ -1120,7 +1128,13 @@
       roleUsersMap=new Map();
 
       for(const user of (usersResult.data || [])){
-        const roleId=String(user.vai_tro_id || '').trim();
+        let roleId=String(user.vai_tro_id || '').trim();
+        if(!roleId && user.ma_vai_tro){
+          const legacyRole=allRoles.find(role=>
+            String(role.ten_vai_tro || '').trim()===String(user.ma_vai_tro || '').trim()
+          );
+          roleId=String(legacyRole?.id || '').trim();
+        }
         if(!roleId) continue;
 
         if(!roleUsersMap.has(roleId)){
