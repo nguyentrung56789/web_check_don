@@ -598,12 +598,7 @@
         <div class="modal-body">
           <input id="formRoleId" type="hidden" />
 
-          <div class="form-group">
-            <label for="formRoleCode">Mã vai trò *</label>
-            <input class="field" id="formRoleCode" placeholder="Ví dụ: THU_NGAN" required />
-          </div>
-
-          <div class="form-group">
+          <div class="form-group full">
             <label for="formRoleName">Tên vai trò *</label>
             <input class="field" id="formRoleName" placeholder="Ví dụ: Thu ngân" required />
           </div>
@@ -831,7 +826,7 @@
     async function loadRoleOptions(){
       const {data,error}=await supabaseClient
         .from(ROLE_TABLE)
-        .select('id,ma_vai_tro,ten_vai_tro,mo_ta,la_he_thong,trang_thai,created_at')
+        .select('id,ten_vai_tro,mo_ta,la_he_thong,trang_thai,created_at')
         .order('ten_vai_tro',{ascending:true});
 
       if(error) throw error;
@@ -842,13 +837,13 @@
       $('roleFilter').innerHTML=
         '<option value="">Tất cả vai trò</option>'+
         activeRoles.map(role=>
-          `<option value="${escapeHtml(role.ma_vai_tro)}">${escapeHtml(role.ten_vai_tro || role.ma_vai_tro)}</option>`
+          `<option value="${escapeHtml(role.ten_vai_tro)}">${escapeHtml(role.ten_vai_tro)}</option>`
         ).join('');
 
       $('formMaVaiTro').innerHTML=
         '<option value="">Chưa gán vai trò</option>'+
         activeRoles.map(role=>
-          `<option value="${escapeHtml(role.ma_vai_tro)}">${escapeHtml(role.ten_vai_tro || role.ma_vai_tro)}</option>`
+          `<option value="${escapeHtml(role.ten_vai_tro)}">${escapeHtml(role.ten_vai_tro)}</option>`
         ).join('');
     }
 
@@ -894,9 +889,11 @@
       updatePagination();
     }
 
-    function roleDisplayName(code){
-      const role=allRoles.find(item=>String(item.ma_vai_tro)===String(code));
-      return role?.ten_vai_tro || code || '—';
+    function roleDisplayName(value){
+      const role=allRoles.find(
+        item=>String(item.ten_vai_tro || '').trim()===String(value || '').trim()
+      );
+      return role?.ten_vai_tro || value || '—';
     }
 
     function renderUsers(){
@@ -1083,7 +1080,7 @@
       const [rolesResult,usersResult]=await Promise.all([
         supabaseClient
           .from(ROLE_TABLE)
-          .select('id,ma_vai_tro,ten_vai_tro,mo_ta,la_he_thong,trang_thai,created_at')
+          .select('id,ten_vai_tro,mo_ta,la_he_thong,trang_thai,created_at')
           .order('ten_vai_tro',{ascending:true}),
         supabaseClient
           .from(USER_TABLE)
@@ -1125,7 +1122,7 @@
       }
 
       $('rolesBody').innerHTML=allRoles.map(role=>{
-        const users=roleUsersMap.get(String(role.ma_vai_tro)) || [];
+        const users=roleUsersMap.get(String(role.ten_vai_tro || '').trim()) || [];
         let accountHtml='Chưa có';
 
         if(users.length===1){
@@ -1133,15 +1130,14 @@
         }else if(users.length>1){
           accountHtml=`
             ${users.length} tài khoản.
-            <button class="account-link view-role-users" data-code="${escapeHtml(role.ma_vai_tro)}">Xem</button>
+            <button class="account-link view-role-users" data-code="${escapeHtml(role.ten_vai_tro)}">Xem</button>
           `;
         }
 
         return `
           <tr>
             <td>
-              <div style="font-weight:650">${escapeHtml(role.ten_vai_tro || role.ma_vai_tro || '—')}</div>
-              <div class="muted" style="font-size:12px;margin-top:4px">${escapeHtml(role.ma_vai_tro || '')}</div>
+              <div style="font-weight:650">${escapeHtml(role.ten_vai_tro || '—')}</div>
             </td>
             <td>${escapeHtml(role.mo_ta || '')}</td>
             <td>${accountHtml}</td>
@@ -1177,7 +1173,7 @@
       $('formRoleStatus').checked=true;
       $('formRoleSystem').checked=false;
       openModal('roleModal');
-      $('formRoleCode').focus();
+      $('formRoleName').focus();
     }
 
     function openEditRole(id){
@@ -1186,7 +1182,6 @@
 
       $('roleModalTitle').textContent='Chỉnh sửa vai trò';
       $('formRoleId').value=role.id ?? '';
-      $('formRoleCode').value=role.ma_vai_tro ?? '';
       $('formRoleName').value=role.ten_vai_tro ?? '';
       $('formRoleDescription').value=role.mo_ta ?? '';
       $('formRoleSystem').checked=role.la_he_thong===true;
@@ -1201,7 +1196,6 @@
       $('roleModalTitle').textContent='Sao chép vai trò';
       $('roleForm').reset();
       $('formRoleId').value='';
-      $('formRoleCode').value=`${role.ma_vai_tro || 'VAI_TRO'}_COPY`;
       $('formRoleName').value=`${role.ten_vai_tro || 'Vai trò'} - bản sao`;
       $('formRoleDescription').value=role.mo_ta ?? '';
       $('formRoleSystem').checked=false;
@@ -1213,16 +1207,14 @@
       event.preventDefault();
 
       const id=$('formRoleId').value.trim();
-      const code=$('formRoleCode').value.trim().toUpperCase().replace(/\s+/g,'_');
       const name=$('formRoleName').value.trim();
 
-      if(!code || !name){
-        showToast('Vui lòng nhập mã và tên vai trò.','err');
+      if(!name){
+        showToast('Vui lòng nhập tên vai trò.','err');
         return;
       }
 
       const payload={
-        ma_vai_tro:code,
         ten_vai_tro:name,
         mo_ta:$('formRoleDescription').value.trim() || null,
         la_he_thong:$('formRoleSystem').checked,
@@ -1254,7 +1246,7 @@
       const role=allRoles.find(item=>String(item.id)===String(id));
       if(!role) return;
 
-      const users=roleUsersMap.get(String(role.ma_vai_tro)) || [];
+      const users=roleUsersMap.get(String(role.ten_vai_tro || '').trim()) || [];
       if(users.length){
         showToast(`Không thể xóa vì vai trò đang có ${users.length} tài khoản.`,'err');
         return;
@@ -1275,7 +1267,7 @@
     }
 
     function showRoleUsers(code){
-      const role=allRoles.find(item=>String(item.ma_vai_tro)===String(code));
+      const role=allRoles.find(item=>String(item.ten_vai_tro || '')===String(code));
       const users=roleUsersMap.get(String(code)) || [];
 
       $('accountsModalTitle').textContent=
