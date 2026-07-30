@@ -283,14 +283,24 @@
 
       <section class="top-form">
         <div class="field-group">
-          <label for="roleSelect">Vai trò</label>
-          <select class="field" id="roleSelect">
-            <option value="">Đang tải vai trò...</option>
-          </select>
+          <label for="roleName">Tên vai trò</label>
+          <input
+            class="field"
+            id="roleName"
+            type="text"
+            placeholder="Nhập tên vai trò"
+            autocomplete="off"
+          />
         </div>
         <div class="field-group">
           <label for="roleDescription">Mô tả</label>
-          <input class="field" id="roleDescription" readonly placeholder="Mô tả vai trò" />
+          <input
+            class="field"
+            id="roleDescription"
+            type="text"
+            placeholder="Mô tả vai trò"
+            autocomplete="off"
+          />
         </div>
         <div class="hint">💡 Tích quyền cần cấp cho vai trò</div>
       </section>
@@ -319,7 +329,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION='PHAN_QUYEN_V2_5_MAIN_MASTER_CHECKBOX';
+    const APP_VERSION='PHAN_QUYEN_V2_6_CREATE_ROLE_INPUT';
     const ROLE_TABLE='kv_vai_tro';
     const FUNCTION_TABLE='kv_chucnang';
     const PERMISSION_TABLE='kv_vai_tro_quyen';
@@ -399,24 +409,36 @@
       return params.get('vai_tro_id')||params.get('role_id')||'';
     }
 
+    function isCreateMode(){
+      return !getRoleIdFromUrl();
+    }
+
     async function loadRoles(){
       const {data,error}=await supabaseClient
         .from(ROLE_TABLE)
         .select('id,ten_vai_tro,mo_ta,trang_thai')
         .order('ten_vai_tro',{ascending:true});
       if(error) throw error;
-      roles=(data||[]).filter(item=>item.trang_thai!==false);
-      $('roleSelect').innerHTML='<option value="">Chọn vai trò</option>'+roles.map(role=>
-        `<option value="${escapeHtml(role.id)}">${escapeHtml(role.ten_vai_tro)}</option>`
-      ).join('');
 
-      const urlRoleId=getRoleIdFromUrl();
-      if(urlRoleId&&roles.some(r=>String(r.id)===String(urlRoleId))){
-        $('roleSelect').value=urlRoleId;
-      }else if(roles.length){
-        $('roleSelect').value=roles[0].id;
+      roles=(data||[]).filter(item=>item.trang_thai!==false);
+
+      if(isCreateMode()){
+        $('roleName').value='';
+        $('roleDescription').value='';
+        $('pageTitle').textContent='Tạo vai trò';
+        return;
       }
-      updateRoleInfo();
+
+      const roleId=getRoleIdFromUrl();
+      const role=roles.find(item=>String(item.id)===String(roleId));
+
+      if(!role){
+        throw new Error('Không tìm thấy vai trò cần sửa.');
+      }
+
+      $('roleName').value=role.ten_vai_tro||'';
+      $('roleDescription').value=role.mo_ta||'';
+      $('pageTitle').textContent=`Sửa vai trò: ${role.ten_vai_tro}`;
     }
 
     async function loadFunctions(){
@@ -430,13 +452,19 @@
     }
 
     function updateRoleInfo(){
-      const role=roles.find(item=>String(item.id)===String($('roleSelect').value));
+      if(isCreateMode()){
+        $('pageTitle').textContent='Tạo vai trò';
+        return;
+      }
+
+      const role=roles.find(item=>String(item.id)===String(getRoleIdFromUrl()));
+      $('roleName').value=role?.ten_vai_tro||'';
       $('roleDescription').value=role?.mo_ta||'';
-      $('pageTitle').textContent=role ? `Sửa vai trò: ${role.ten_vai_tro}` : 'Phân quyền vai trò';
+      $('pageTitle').textContent=role ? `Sửa vai trò: ${role.ten_vai_tro}` : 'Sửa vai trò';
     }
 
     async function loadPermissions(){
-      const roleId=$('roleSelect').value;
+      const roleId=getRoleIdFromUrl();
       currentPermissions=new Map();
       if(!roleId){renderPermissions();return;}
 
@@ -686,30 +714,88 @@
     }
 
     async function savePermissions(){
-      const roleId=$('roleSelect').value;
-      if(!roleId) return showToast('Vui lòng chọn vai trò.','err');
+      const tenVaiTro=String($('roleName').value||'').trim();
+      const moTa=String($('roleDescription').value||'').trim();
 
-      const rows=collectPermissions().map(item=>({
-        vai_tro_id:roleId,
-        chucnang_id:item.chucnang_id,
-        duoc_xem:item.duoc_xem,
-        duoc_them:item.duoc_them,
-        duoc_sua:item.duoc_sua,
-        duoc_xoa:item.duoc_xoa
-      }));
+      if(!tenVaiTro){
+        $('roleName').focus();
+        return showToast('Vui lòng nhập tên vai trò.','err');
+      }
 
-      $('btnSave').disabled=true;$('btnSave').textContent='Đang lưu...';
+      $('btnSave').disabled=true;
+      $('btnSave').textContent='Đang lưu...';
+
       try{
-        const {error}=await supabaseClient
+        let roleId=getRoleIdFromUrl();
+        const dangTaoMoi=!roleId;
+
+        if(dangTaoMoi){
+          const {data:duplicate,error:duplicateError}=await supabaseClient
+            .from(ROLE_TABLE)
+            .select('id')
+            .ilike('ten_vai_tro',tenVaiTro)
+            .limit(1);
+
+          if(duplicateError) throw duplicateError;
+          if((duplicate||[]).length){
+            throw new Error('Tên vai trò đã tồn tại.');
+          }
+
+          const {data:newRole,error:createError}=await supabaseClient
+            .from(ROLE_TABLE)
+            .insert({
+              ten_vai_tro:tenVaiTro,
+              mo_ta:moTa||null,
+              la_he_thong:false,
+              trang_thai:true
+            })
+            .select('id')
+            .single();
+
+          if(createError) throw createError;
+          roleId=newRole.id;
+        }else{
+          const {error:updateError}=await supabaseClient
+            .from(ROLE_TABLE)
+            .update({
+              ten_vai_tro:tenVaiTro,
+              mo_ta:moTa||null
+            })
+            .eq('id',roleId);
+
+          if(updateError) throw updateError;
+        }
+
+        const rows=collectPermissions().map(item=>({
+          vai_tro_id:roleId,
+          chucnang_id:item.chucnang_id,
+          duoc_xem:item.duoc_xem,
+          duoc_them:item.duoc_them,
+          duoc_sua:item.duoc_sua,
+          duoc_xoa:item.duoc_xoa
+        }));
+
+        const {error:permissionError}=await supabaseClient
           .from(PERMISSION_TABLE)
           .upsert(rows,{onConflict:'vai_tro_id,chucnang_id'});
-        if(error) throw error;
-        showToast('Đã lưu quyền cho vai trò.');
+
+        if(permissionError) throw permissionError;
+
+        showToast(dangTaoMoi?'Đã tạo vai trò và lưu quyền.':'Đã cập nhật vai trò và quyền.');
+
+        if(dangTaoMoi){
+          const target=new URL(location.href);
+          target.searchParams.set('vai_tro_id',roleId);
+          history.replaceState({},'',target);
+          await loadRoles();
+        }
+
         await loadPermissions();
       }catch(error){
-        showToast(`Không lưu được quyền: ${error.message}`,'err');
+        showToast(`Không lưu được: ${error.message}`,'err');
       }finally{
-        $('btnSave').disabled=false;$('btnSave').textContent='Lưu quyền';
+        $('btnSave').disabled=false;
+        $('btnSave').textContent='Lưu quyền';
       }
     }
 
@@ -729,11 +815,6 @@
       }
     }
 
-    $('roleSelect').addEventListener('change',async()=>{
-      updateRoleInfo();
-      $('permissionsRoot').innerHTML='<div class="loading">Đang tải quyền...</div>';
-      try{await loadPermissions()}catch(error){showToast(error.message,'err')}
-    });
     $('btnSave').addEventListener('click',savePermissions);
     $('btnClear').addEventListener('click',()=>{
       if(confirm('Bỏ toàn bộ quyền đang tích của vai trò này?')) clearAllPermissions();
