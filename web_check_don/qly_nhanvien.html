@@ -652,7 +652,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION = 'ROLE_UUID_V3_2_NO_MA_VAI_TRO';
+    const APP_VERSION = 'ROLE_UUID_V3_3_CREATE_ROLE_REDIRECT';
     console.log('Đang chạy bản:', APP_VERSION);
     const USER_TABLE = 'kv_nhan_vien';
     const ROLE_TABLE = 'kv_vai_tro';
@@ -1349,7 +1349,12 @@
     $('btnDeleteSelected').addEventListener('click',deleteSelected);
     $('userForm').addEventListener('submit',saveUser);
 
-    $('btnCreateRole').addEventListener('click',openCreateRole);
+    $('btnCreateRole').addEventListener('click',()=>{
+      const token=new URLSearchParams(location.search).get('token');
+      const url=new URL('phan_quyen_vai_tro.html',location.href);
+      if(token) url.searchParams.set('token',token);
+      location.href=url.href;
+    });
     $('btnReloadRoles').addEventListener('click',loadRolesPage);
     $('roleForm').addEventListener('submit',saveRole);
 
