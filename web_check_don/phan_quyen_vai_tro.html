@@ -115,6 +115,8 @@
     .row-head-actions{display:flex;align-items:center;gap:12px;flex:0 0 auto}
     .row-master-wrap{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#475569;cursor:pointer}
     .row-master-wrap input{width:19px;height:19px;accent-color:var(--primary);cursor:pointer}
+    .main-master-wrap{display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+    .main-master{width:22px;height:22px;accent-color:var(--primary);cursor:pointer}
     .row-head .chevron{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px}
     .row-head .chevron:hover{background:#eaf2ff;color:var(--primary)}
     .row-name{font-size:18px;font-weight:750}
@@ -317,7 +319,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION='PHAN_QUYEN_V2_4_MAIN_MENU_ACCORDION';
+    const APP_VERSION='PHAN_QUYEN_V2_5_MAIN_MASTER_CHECKBOX';
     const ROLE_TABLE='kv_vai_tro';
     const FUNCTION_TABLE='kv_chucnang';
     const PERMISSION_TABLE='kv_vai_tro_quyen';
@@ -490,7 +492,9 @@
         <div class="group-card">
           <button class="group-toggle main-group-toggle" type="button" aria-expanded="true">
             <span class="group-toggle-title">
-              <span class="group-toggle-icon">−</span>
+              <label class="main-master-wrap" title="Bật hoặc tắt toàn bộ quyền xem trong Menu chính">
+                <input type="checkbox" class="main-master" />
+              </label>
               <span>Danh sách Menu chính <span class="group-meta">${items.length} chức năng</span></span>
             </span>
             <span class="group-toggle-action">
@@ -569,6 +573,16 @@
       master.indeterminate=checkedCount>0 && checkedCount<children.length;
     }
 
+    function syncMainMaster(){
+      const master=document.querySelector('.main-master');
+      const card=master?.closest('.group-card');
+      if(!master||!card) return;
+      const children=[...card.querySelectorAll('.main-menu-item input[data-function-id][data-permission="duoc_xem"]')];
+      const checkedCount=children.filter(input=>input.checked).length;
+      master.checked=children.length>0 && checkedCount===children.length;
+      master.indeterminate=checkedCount>0 && checkedCount<children.length;
+    }
+
     function syncAllRowMasters(){
       document.querySelectorAll('.row-master').forEach(master=>{
         syncRowMaster(master.dataset.masterFunctionId);
@@ -605,6 +619,22 @@
           button.setAttribute('aria-expanded',String(!card.classList.contains('collapsed')));
         });
       });
+      const mainMaster=document.querySelector('.main-master');
+      if(mainMaster){
+        mainMaster.addEventListener('click',event=>event.stopPropagation());
+        mainMaster.addEventListener('change',()=>{
+          const card=mainMaster.closest('.group-card');
+          card?.querySelectorAll('.main-menu-item input[data-function-id][data-permission="duoc_xem"]').forEach(input=>{
+            input.checked=mainMaster.checked;
+          });
+          mainMaster.indeterminate=false;
+        });
+      }
+      document.querySelectorAll('.main-menu-item input[data-function-id][data-permission="duoc_xem"]').forEach(input=>{
+        input.addEventListener('change',syncMainMaster);
+      });
+      syncMainMaster();
+
       document.querySelectorAll('.row-head').forEach(head=>{
         head.addEventListener('click',event=>{
           if(event.target.closest('.row-master-wrap')) return;
