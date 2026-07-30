@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Quản lý nhân viên & vai trò</title>
+  <title>Quản lý nhân viên & vai trò - v2.1</title>
 
   <script src="./js/internal_key.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -652,6 +652,8 @@
   <div class="toast" id="toast"></div>
 
   <script>
+    const APP_VERSION = 'ROLE_LOAD_V2_1';
+    console.log('Đang chạy bản:', APP_VERSION);
     const USER_TABLE = 'kv_nhan_vien';
     const ROLE_TABLE = 'kv_vai_tro';
     const CFG_CACHE_KEY = 'cod_cfg_cache_v2';
@@ -829,10 +831,13 @@
         .select('id,ten_vai_tro,mo_ta,la_he_thong,trang_thai,created_at')
         .order('ten_vai_tro',{ascending:true});
 
-      if(error) throw error;
-      allRoles=data || [];
+      if(error){
+        console.error('loadRoleOptions:',error);
+        throw error;
+      }
 
-      const activeRoles=allRoles.filter(r=>r.trang_thai!==false);
+      allRoles=data || [];
+      const activeRoles=allRoles.filter(role=>role.trang_thai!==false);
 
       $('roleFilter').innerHTML=
         '<option value="">Tất cả vai trò</option>'+
@@ -1075,28 +1080,39 @@
     async function loadRolesPage(){
       if(!supabaseClient) return;
 
-      $('rolesBody').innerHTML='<tr><td colspan="4" class="loading">Đang tải dữ liệu...</td></tr>';
+      $('rolesBody').innerHTML=
+        '<tr><td colspan="4" class="loading">Đang tải dữ liệu vai trò...</td></tr>';
 
-      const [rolesResult,usersResult]=await Promise.all([
-        supabaseClient
-          .from(ROLE_TABLE)
-          .select('id,ten_vai_tro,mo_ta,la_he_thong,trang_thai,created_at')
-          .order('ten_vai_tro',{ascending:true}),
-        supabaseClient
-          .from(USER_TABLE)
-          .select('id,ten_nv,ma_vai_tro,hoat_dong')
-          .order('ten_nv',{ascending:true})
-      ]);
+      console.log('Tải bảng vai trò:',ROLE_TABLE,'phiên bản:',APP_VERSION);
+
+      const rolesResult=await supabaseClient
+        .from(ROLE_TABLE)
+        .select('id,ten_vai_tro,mo_ta,la_he_thong,trang_thai,created_at')
+        .order('ten_vai_tro',{ascending:true});
 
       if(rolesResult.error){
+        console.error('Lỗi tải kv_vai_tro:',rolesResult.error);
         $('rolesBody').innerHTML=
-          `<tr><td colspan="4" class="empty">Không tải được vai trò: ${escapeHtml(rolesResult.error.message)}</td></tr>`;
+          `<tr><td colspan="4" class="empty">
+            Không tải được vai trò: ${escapeHtml(rolesResult.error.message)}
+          </td></tr>`;
+        $('roleCountText').textContent='0 vai trò';
         return;
       }
 
+      const usersResult=await supabaseClient
+        .from(USER_TABLE)
+        .select('id,ten_nv,ma_vai_tro,hoat_dong')
+        .order('ten_nv',{ascending:true});
+
       if(usersResult.error){
+        console.error('Lỗi tải kv_nhan_vien:',usersResult.error);
         $('rolesBody').innerHTML=
-          `<tr><td colspan="4" class="empty">Không tải được tài khoản: ${escapeHtml(usersResult.error.message)}</td></tr>`;
+          `<tr><td colspan="4" class="empty">
+            Đã tải được vai trò nhưng không tải được tài khoản:
+            ${escapeHtml(usersResult.error.message)}
+          </td></tr>`;
+        $('roleCountText').textContent='0 vai trò';
         return;
       }
 
@@ -1104,15 +1120,34 @@
       roleUsersMap=new Map();
 
       for(const user of (usersResult.data || [])){
-        const code=String(user.ma_vai_tro || '').trim();
-        if(!code) continue;
-        if(!roleUsersMap.has(code)) roleUsersMap.set(code,[]);
-        roleUsersMap.get(code).push(user);
+        const roleName=String(user.ma_vai_tro || '').trim();
+        if(!roleName) continue;
+
+        if(!roleUsersMap.has(roleName)){
+          roleUsersMap.set(roleName,[]);
+        }
+
+        roleUsersMap.get(roleName).push(user);
       }
+
+      console.log('Vai trò lấy được:',allRoles);
 
       renderRoles();
       $('roleCountText').textContent=`${allRoles.length} vai trò`;
-      await loadRoleOptions();
+
+      const activeRoles=allRoles.filter(role=>role.trang_thai!==false);
+
+      $('roleFilter').innerHTML=
+        '<option value="">Tất cả vai trò</option>'+
+        activeRoles.map(role=>
+          `<option value="${escapeHtml(role.ten_vai_tro)}">${escapeHtml(role.ten_vai_tro)}</option>`
+        ).join('');
+
+      $('formMaVaiTro').innerHTML=
+        '<option value="">Chưa gán vai trò</option>'+
+        activeRoles.map(role=>
+          `<option value="${escapeHtml(role.ten_vai_tro)}">${escapeHtml(role.ten_vai_tro)}</option>`
+        ).join('');
     }
 
     function renderRoles(){
