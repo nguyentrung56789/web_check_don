@@ -3,7 +3,6 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-
   <title>Trang chính</title>
 
   <script src="./js/internal_key.js"></script>
@@ -26,10 +25,8 @@
       --btn5:#fb7185;
       --btn6:#34d399;
     }
-
     * { box-sizing:border-box; }
     html, body { min-height:100%; }
-
     body {
       visibility:hidden;
       margin:0;
@@ -37,13 +34,10 @@
       color:var(--txt);
       font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
     }
-
     .top {
       position:fixed;
       z-index:10;
-      left:0;
-      right:0;
-      top:0;
+      inset:0 0 auto 0;
       display:flex;
       align-items:center;
       justify-content:space-between;
@@ -52,9 +46,7 @@
       border-bottom:1px solid #233043;
       box-shadow:0 2px 10px rgba(0,0,0,.35);
     }
-
     .hello { font-weight:600; }
-
     #btnLogout {
       background:none;
       border:0;
@@ -63,16 +55,13 @@
       font-weight:700;
       font-size:15px;
     }
-
     #btnLogout:hover { text-decoration:underline; }
-
     .menu {
       width:min(520px,92vw);
       margin:120px auto 48px;
       display:grid;
       gap:18px;
     }
-
     .menu button {
       width:100%;
       padding:18px;
@@ -84,30 +73,21 @@
       color:#041a18;
       transition:transform .15s ease, filter .15s ease;
     }
-
-    .menu button:hover {
-      transform:scale(1.04);
-      filter:brightness(1.06);
-    }
-
+    .menu button:hover { transform:scale(1.04); filter:brightness(1.06); }
     .menu button:active { transform:scale(1.01); }
-
     #admin { background:var(--btn1); }
     #donghang { background:var(--btn2); }
     #checkdon { background:var(--btn3); color:#3a2a04; }
     #mapview { background:var(--btn4); }
     #chamsockhachhang { background:var(--btn5); color:#3b0713; }
     #tinhdoanhso { background:var(--btn6); color:#052e20; }
-
     footer {
       text-align:center;
       color:var(--muted);
       font-size:12px;
       margin:8px 0 24px;
     }
-
     .hidden { display:none !important; }
-
     @media (max-width:520px) {
       .top { padding:12px 14px; }
       .menu { margin-top:100px; gap:14px; }
@@ -115,7 +95,6 @@
     }
   </style>
 </head>
-
 <body>
   <noscript>
     <div style="padding:12px;background:#ffdbdb;color:#6b0000;text-align:center">
@@ -125,36 +104,16 @@
 
   <header class="top" role="banner" aria-label="Thanh tiêu đề">
     <div class="hello">Xin chào <span id="ten_nv">...</span> 👋</div>
-
-    <button id="btnLogout" type="button" title="Đăng xuất">
-      Đăng xuất
-    </button>
+    <button id="btnLogout" type="button" title="Đăng xuất">Đăng xuất</button>
   </header>
 
   <main class="menu" role="main" aria-label="Menu chính">
-    <button id="admin" type="button" class="hidden" data-phan-quyen>
-      👤 Admin
-    </button>
-
-    <button id="donghang" type="button" class="hidden" data-phan-quyen>
-      📦 Đóng hàng COD
-    </button>
-
-    <button id="checkdon" type="button" class="hidden" data-phan-quyen>
-      🧾 Check đơn
-    </button>
-
-    <button id="mapview" type="button" class="hidden" data-phan-quyen>
-      🗺️ Xem bản đồ
-    </button>
-
-    <button id="chamsockhachhang" type="button" class="hidden" data-phan-quyen>
-      💬 Chăm sóc khách hàng
-    </button>
-
-    <button id="tinhdoanhso" type="button" class="hidden" data-phan-quyen>
-      🧮 Tính doanh số nhân viên
-    </button>
+    <button id="admin" type="button" class="hidden" data-phan-quyen>👤 Admin</button>
+    <button id="donghang" type="button" class="hidden" data-phan-quyen>📦 Đóng hàng COD</button>
+    <button id="checkdon" type="button" class="hidden" data-phan-quyen>🧾 Check đơn</button>
+    <button id="mapview" type="button" class="hidden" data-phan-quyen>🗺️ Xem bản đồ</button>
+    <button id="chamsockhachhang" type="button" class="hidden" data-phan-quyen>💬 Chăm sóc khách hàng</button>
+    <button id="tinhdoanhso" type="button" class="hidden" data-phan-quyen>🧮 Tính doanh số nhân viên</button>
   </main>
 
   <footer>© <span id="year"></span> COD Internal</footer>
@@ -162,9 +121,10 @@
   <script type="module">
     import { taiPhanQuyenTrang } from './js/phan_quyen.js';
 
-    document.getElementById('year').textContent = new Date().getFullYear();
-
     const LOGIN_STORAGE_KEY = 'chatwoot_crm_user';
+    const LOGIN_PAGE = './login.html';
+
+    document.getElementById('year').textContent = new Date().getFullYear();
 
     function getCurrentUser() {
       try {
@@ -173,6 +133,10 @@
         console.error('Không đọc được thông tin đăng nhập:', error);
         return null;
       }
+    }
+
+    function goToLogin() {
+      window.location.replace(LOGIN_PAGE);
     }
 
     function openPageWithCurrentParams(path) {
@@ -212,8 +176,9 @@
     };
 
     for (const [buttonId, path] of Object.entries(routes)) {
-      const button = document.getElementById(buttonId);
-      button?.addEventListener('click', () => openPageWithCurrentParams(path));
+      document.getElementById(buttonId)?.addEventListener('click', () => {
+        openPageWithCurrentParams(path);
+      });
     }
 
     document.getElementById('btnLogout')?.addEventListener('click', () => {
@@ -221,37 +186,44 @@
       localStorage.removeItem('token');
       localStorage.removeItem('access_token');
       localStorage.removeItem('cod_token');
+
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('access_token');
       sessionStorage.removeItem('cod_token');
-      window.location.href = './index.html';
+
+      goToLogin();
     });
 
     async function init() {
       const user = getCurrentUser();
 
       if (!user) {
-        window.location.href = './index.html';
+        goToLogin();
         return;
       }
 
       const tenNhanVien = String(
-        user.ten_nv || user.tenNhanVien || user.name || user.ma_nv || 'Nhân viên'
+        user.ten_nv ||
+        user.tenNhanVien ||
+        user.name ||
+        user.ma_nv ||
+        'Nhân viên'
       ).trim();
 
       document.getElementById('ten_nv').textContent = tenNhanVien;
 
       const result = await taiPhanQuyenTrang();
-
       if (!result) {
         console.error('Không tải được quyền trang chính');
       }
     }
 
-    init().catch(error => {
+    try {
+      await init();
+    } catch (error) {
       console.error('Lỗi khởi tạo trang chính:', error);
       document.body.style.visibility = 'visible';
-    });
+    }
   </script>
 </body>
 </html>
