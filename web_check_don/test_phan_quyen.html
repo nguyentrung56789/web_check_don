@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Test phân quyền</title>
+
+  <script src="./js/internal_key.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/cod_config.js"></script>
+  <script src="./js/auth_token.js"></script>
+
+  <style>
+    *{box-sizing:border-box}
+    body{
+      margin:0;padding:20px;background:#0b1220;color:#e6edff;
+      font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
+    }
+    h1{margin:0 0 16px}
+    .box{
+      max-width:1100px;margin:0 auto 16px;padding:16px;
+      background:#111b33;border:1px solid #2a3957;border-radius:12px;
+    }
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .item{padding:12px;background:#0d172b;border-radius:9px}
+    .label{font-size:12px;color:#9aa7c7;margin-bottom:5px}
+    .value{word-break:break-word;font-weight:700}
+    button{
+      padding:11px 16px;border:0;border-radius:9px;background:#2dd4bf;
+      color:#06251f;font-weight:800;cursor:pointer;margin-right:8px
+    }
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:9px;border-bottom:1px solid #2a3957;text-align:left;font-size:13px}
+    th{color:#9fc5ff}
+    .ok{color:#4ade80}.bad{color:#fb7185}.warn{color:#fbbf24}
+    pre{
+      white-space:pre-wrap;word-break:break-word;background:#08101f;
+      padding:12px;border-radius:8px;max-height:320px;overflow:auto
+    }
+    @media(max-width:700px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Kiểm tra phân quyền</h1>
+    <button id="btnTest">Chạy kiểm tra</button>
+    <button id="btnMain">Mở main.html</button>
+  </div>
+
+  <div class="box">
+    <div class="grid">
+      <div class="item">
+        <div class="label">Trang hiện tại</div>
+        <div class="value" id="currentPage">...</div>
+      </div>
+      <div class="item">
+        <div class="label">chatwoot_crm_user</div>
+        <div class="value" id="userStatus">...</div>
+      </div>
+      <div class="item">
+        <div class="label">Mã nhân viên</div>
+        <div class="value" id="maNv">...</div>
+      </div>
+      <div class="item">
+        <div class="label">Tên nhân viên</div>
+        <div class="value" id="tenNv">...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>Kết quả quyền lấy từ SQL View</h3>
+    <div id="summary"></div>
+    <div style="overflow:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>duong_dan</th>
+            <th>id_chucnang</th>
+            <th>ten_chucnang</th>
+            <th>duoc_xem</th>
+            <th>Khớp nút main</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>Thông tin lỗi / dữ liệu thô</h3>
+    <pre id="log">Chưa chạy.</pre>
+  </div>
+
+  <script type="module">
+    const LOGIN_STORAGE_KEY = 'chatwoot_crm_user';
+    const MAIN_IDS = [
+      'admin',
+      'donghang',
+      'checkdon',
+      'mapview',
+      'chamsockhachhang',
+      'tinhdoanhso'
+    ];
+
+    const $ = id => document.getElementById(id);
+
+    function log(value) {
+      $('log').textContent =
+        typeof value === 'string'
+          ? value
+          : JSON.stringify(value, null, 2);
+    }
+
+    function readUser() {
+      try {
+        return JSON.parse(
+          localStorage.getItem(LOGIN_STORAGE_KEY) || 'null'
+        );
+      } catch (error) {
+        return { __error: error.message };
+      }
+    }
+
+    async function getConfig() {
+      const internalKey =
+        (typeof window.getInternalKey === 'function'
+          ? window.getInternalKey()
+          : '') ||
+        window.INTERNAL_KEY ||
+        window.COD_INTERNAL_KEY ||
+        '';
+
+      const response = await fetch('/api/getConfig', {
+        headers: {'x-internal-key': internalKey || ''},
+        cache: 'no-store'
+      });
+
+      if (!response.ok) {
+        throw new Error(`getConfig lỗi HTTP ${response.status}`);
+      }
+
+      const cfg = await response.json();
+
+      const url =
+        cfg.url ||
+        cfg.SUPABASE_URL ||
+        cfg.supabaseUrl ||
+        cfg.supabase_url;
+
+      const key =
+        cfg.anon ||
+        cfg.key ||
+        cfg.SUPABASE_ANON ||
+        cfg.SUPABASE_ANON_KEY ||
+        cfg.supabaseAnon ||
+        cfg.supabaseKey ||
+        cfg.supabase_anon_key;
+
+      if (!url || !key) {
+        throw new Error('Thiếu URL hoặc anon key Supabase');
+      }
+
+      return {url, key};
+    }
+
+    function updateUserInfo(user) {
+      $('currentPage').textContent =
+        location.pathname.split('/').pop() || '(trống)';
+
+      if (!user) {
+        $('userStatus').innerHTML =
+          '<span class="bad">Không có dữ liệu đăng nhập</span>';
+        $('maNv').textContent = '';
+        $('tenNv').textContent = '';
+        return;
+      }
+
+      if (user.__error) {
+        $('userStatus').innerHTML =
+          `<span class="bad">JSON lỗi: ${user.__error}</span>`;
+        return;
+      }
+
+      $('userStatus').innerHTML =
+        '<span class="ok">Đã tìm thấy</span>';
+
+      $('maNv').textContent =
+        user.ma_nv || user.id_nv || '(không có)';
+
+      $('tenNv').textContent =
+        user.ten_nv ||
+        user.tenNhanVien ||
+        user.name ||
+        '(không có)';
+    }
+
+    async function runTest() {
+      $('summary').innerHTML = 'Đang kiểm tra...';
+      $('rows').innerHTML = '';
+      log('Đang tải...');
+
+      const user = readUser();
+      updateUserInfo(user);
+
+      if (!user || user.__error) {
+        $('summary').innerHTML =
+          '<span class="bad">Không thể truy vấn vì chưa có thông tin nhân viên.</span>';
+        log({
+          localStorageKey: LOGIN_STORAGE_KEY,
+          raw: localStorage.getItem(LOGIN_STORAGE_KEY)
+        });
+        return;
+      }
+
+      try {
+        const {url, key} = await getConfig();
+        const client = window.supabase.createClient(url, key);
+
+        let query = client
+          .from('sql_phan_quyen_nhan_vien')
+          .select(`
+            ma_nv,
+            ten_nv,
+            ten_vai_tro,
+            duong_dan,
+            id_chucnang,
+            ten_chucnang,
+            duoc_xem,
+            duoc_them,
+            duoc_sua,
+            duoc_xoa
+          `)
+          .order('thu_tu', {ascending:true});
+
+        const maNv = String(user.ma_nv || user.id_nv || '').trim();
+        const tenNv = String(
+          user.ten_nv || user.tenNhanVien || user.name || ''
+        ).trim();
+
+        if (maNv) {
+          query = query.eq('ma_nv', maNv);
+        } else if (tenNv) {
+          query = query.eq('ten_nv', tenNv);
+        } else {
+          throw new Error('Thông tin đăng nhập không có ma_nv hoặc ten_nv');
+        }
+
+        const {data, error} = await query;
+        if (error) throw error;
+
+        const rows = data || [];
+        const mainRows = rows.filter(row =>
+          String(row.duong_dan || '').toLowerCase() === 'main.html'
+        );
+
+        $('summary').innerHTML = `
+          Tổng quyền: <b>${rows.length}</b> —
+          Quyền có duong_dan = main.html: <b>${mainRows.length}</b>
+        `;
+
+        $('rows').innerHTML = rows.map(row => {
+          const id = String(row.id_chucnang || '').trim();
+          const match = MAIN_IDS.includes(id);
+          return `
+            <tr>
+              <td>${row.duong_dan ?? ''}</td>
+              <td>${id || '<span class="bad">NULL</span>'}</td>
+              <td>${row.ten_chucnang ?? ''}</td>
+              <td class="${row.duoc_xem ? 'ok' : 'bad'}">${row.duoc_xem}</td>
+              <td class="${match ? 'ok' : 'warn'}">${match ? 'Có' : 'Không'}</td>
+            </tr>
+          `;
+        }).join('');
+
+        const problems = [];
+
+        if (!rows.length) {
+          problems.push('Không lấy được dòng quyền nào cho nhân viên.');
+        }
+
+        if (!mainRows.length) {
+          problems.push(
+            'Không có dòng nào có duong_dan = main.html. Đây là nguyên nhân các nút main bị ẩn.'
+          );
+        }
+
+        const nullIds = rows.filter(row => !row.id_chucnang);
+        if (nullIds.length) {
+          problems.push(`${nullIds.length} dòng đang NULL id_chucnang.`);
+        }
+
+        const visibleMain = mainRows.filter(row =>
+          row.duoc_xem === true && MAIN_IDS.includes(row.id_chucnang)
+        );
+
+        if (!visibleMain.length) {
+          problems.push(
+            'Không có nút main nào vừa đúng id_chucnang vừa có duoc_xem = true.'
+          );
+        }
+
+        log({
+          user,
+          queryFilter: maNv ? {ma_nv: maNv} : {ten_nv: tenNv},
+          totalRows: rows.length,
+          mainRows: mainRows.length,
+          visibleMain,
+          problems,
+          rawData: rows
+        });
+      } catch (error) {
+        $('summary').innerHTML =
+          `<span class="bad">Lỗi: ${error.message}</span>`;
+        log({
+          message: error.message,
+          stack: error.stack
+        });
+      }
+    }
+
+    $('btnTest').addEventListener('click', runTest);
+    $('btnMain').addEventListener('click', () => {
+      location.href = './main.html' + location.search;
+    });
+
+    runTest();
+  </script>
+</body>
+</html>
