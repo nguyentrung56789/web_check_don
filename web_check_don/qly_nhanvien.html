@@ -234,6 +234,26 @@
       .modal-foot{width:100%;bottom:0;border-radius:0;padding:12px 14px}
       .modal-foot .btn{padding:0 13px}
     }
+
+    /* Bản gọn, hiện đại */
+    .modal{width:min(1320px,100%);min-height:calc(100vh - 28px);border-radius:16px}
+    .modal-head{padding:18px 24px}.modal-head h1{font-size:23px}.close{width:40px;height:40px;font-size:24px}
+    .top-form{grid-template-columns:260px minmax(0,1fr) 220px;gap:14px;padding:18px 24px 8px}
+    .field{min-height:42px}.content{grid-template-columns:minmax(0,1fr) 220px;gap:16px;padding:10px 24px 82px}
+    .hint{font-size:14px}.group-section{margin-bottom:10px}.group-card{border-radius:10px;box-shadow:0 3px 12px rgba(15,23,42,.04)}
+    .group-toggle{min-height:46px;padding:10px 14px;font-size:16px;background:#f8fafc}.group-toggle .group-meta{font-size:12px}
+    .main-menu-list{padding:4px 10px}.main-menu-item{min-height:44px;padding:8px 6px;grid-template-columns:minmax(0,1fr) auto}
+    .main-menu-name{font-size:14px}.main-menu-path{font-size:11px}.main-menu-toggle{font-size:13px}
+    .main-menu-toggle span{min-width:68px}.main-menu-toggle input{width:18px;height:18px}
+    .permission-row .row-head{min-height:44px;padding:9px 12px}.row-name{font-size:14px}.row-body{padding:10px 12px;grid-template-columns:repeat(4,minmax(115px,1fr))}
+    .sidebar{top:92px;padding-left:14px}.side-title{font-size:12px;margin-bottom:8px}.side-nav{gap:6px}
+    .nav-group{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
+    .nav-group-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;border:0;background:#f8fafc;color:#253145;font-weight:750;cursor:pointer;text-align:left}
+    .nav-group-toggle:hover{background:#f1f5f9}.nav-group-arrow{transition:transform .18s ease}.nav-group.collapsed .nav-group-arrow{transform:rotate(-90deg)}
+    .nav-group.collapsed .nav-group-items{display:none}.nav-group-items{padding:5px}
+    .nav-child{display:block;padding:8px 9px;border-radius:7px;text-decoration:none;color:#4b5870;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .nav-child:hover,.nav-child.active{background:var(--primary-soft);color:var(--primary)}
+    .modal-foot{width:min(1320px,calc(100% - 32px));padding:12px 24px}.btn{min-height:42px;padding:0 16px}
   </style>
 </head>
 <body>
@@ -282,7 +302,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION='PHAN_QUYEN_V2_1_COMPACT_ACCORDION';
+    const APP_VERSION='PHAN_QUYEN_V2_2_CLEAN_ACCORDION_NAV';
     const ROLE_TABLE='kv_vai_tro';
     const FUNCTION_TABLE='kv_chucnang';
     const PERMISSION_TABLE='kv_vai_tro_quyen';
@@ -523,9 +543,17 @@
         isMainGroup(group) ? renderMainGroup(group,items) : renderNormalGroup(group,items)
       ).join('');
 
-      $('sideNav').innerHTML=[...groups.keys()].map((group,index)=>
-        `<a class="side-link ${index===0?'active':''}" href="#group-${slug(group)}">${escapeHtml(isMainGroup(group)?'Menu chính':group)}</a>`
-      ).join('');
+      $('sideNav').innerHTML=[...groups.entries()].map(([group,items],index)=>{
+        const title=isMainGroup(group)?'Menu chính':group;
+        return `<div class="nav-group ${index===0?'':'collapsed'}">
+          <button class="nav-group-toggle" type="button">
+            <span>${escapeHtml(title)}</span><span class="nav-group-arrow">⌄</span>
+          </button>
+          <div class="nav-group-items">
+            ${items.map((fn,i)=>`<a class="nav-child ${index===0&&i===0?'active':''}" href="#group-${slug(group)}" data-target-function="${escapeHtml(fn.id)}">${escapeHtml(fn.ten_chucnang)}</a>`).join('')}
+          </div>
+        </div>`;
+      }).join('');
 
       document.querySelectorAll('.group-toggle').forEach(button=>{
         button.addEventListener('click',()=>button.closest('.group-card').classList.toggle('collapsed'));
@@ -533,10 +561,17 @@
       document.querySelectorAll('.row-head').forEach(head=>{
         head.addEventListener('click',()=>head.closest('.permission-row').classList.toggle('collapsed'));
       });
-      document.querySelectorAll('.side-link').forEach(link=>{
-        link.addEventListener('click',()=>{
-          document.querySelectorAll('.side-link').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.nav-group-toggle').forEach(button=>{
+        button.addEventListener('click',()=>button.closest('.nav-group').classList.toggle('collapsed'));
+      });
+      document.querySelectorAll('.nav-child').forEach(link=>{
+        link.addEventListener('click',event=>{
+          event.preventDefault();
+          document.querySelectorAll('.nav-child').forEach(x=>x.classList.remove('active'));
           link.classList.add('active');
+          const target=document.getElementById(link.getAttribute('href').slice(1));
+          target?.querySelector('.group-card')?.classList.remove('collapsed');
+          target?.scrollIntoView({behavior:'smooth',block:'start'});
         });
       });
     }
