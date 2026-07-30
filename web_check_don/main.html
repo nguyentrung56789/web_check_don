@@ -1,330 +1,326 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Test phân quyền</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+
+  <title>Trang chính</title>
 
   <script src="./js/internal_key.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./js/cod_config.js"></script>
   <script src="./js/auth_token.js"></script>
 
+  <link rel="stylesheet" href="./css/main.css" />
+
   <style>
-    *{box-sizing:border-box}
-    body{
-      margin:0;padding:20px;background:#0b1220;color:#e6edff;
+    :root {
+      --bg:#0b1220;
+      --card:#0f1830;
+      --txt:#e6edff;
+      --muted:#9aa7c7;
+      --btn1:#2dd4bf;
+      --btn2:#60a5fa;
+      --btn3:#fbbf24;
+      --btn4:#a78bfa;
+      --btn5:#fb7185;
+      --btn6:#34d399;
+    }
+
+    * { box-sizing:border-box; }
+
+    html,
+    body {
+      min-height:100%;
+    }
+
+    body {
+      visibility:hidden;
+      margin:0;
+      background:var(--bg);
+      color:var(--txt);
       font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
     }
-    h1{margin:0 0 16px}
-    .box{
-      max-width:1100px;margin:0 auto 16px;padding:16px;
-      background:#111b33;border:1px solid #2a3957;border-radius:12px;
+
+    body.ready {
+      visibility:visible;
     }
-    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-    .item{padding:12px;background:#0d172b;border-radius:9px}
-    .label{font-size:12px;color:#9aa7c7;margin-bottom:5px}
-    .value{word-break:break-word;font-weight:700}
-    button{
-      padding:11px 16px;border:0;border-radius:9px;background:#2dd4bf;
-      color:#06251f;font-weight:800;cursor:pointer;margin-right:8px
+
+    .top {
+      position:fixed;
+      z-index:10;
+      inset:0 0 auto 0;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 18px;
+      background:var(--card);
+      border-bottom:1px solid #233043;
+      box-shadow:0 2px 10px rgba(0,0,0,.35);
     }
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{padding:9px;border-bottom:1px solid #2a3957;text-align:left;font-size:13px}
-    th{color:#9fc5ff}
-    .ok{color:#4ade80}.bad{color:#fb7185}.warn{color:#fbbf24}
-    pre{
-      white-space:pre-wrap;word-break:break-word;background:#08101f;
-      padding:12px;border-radius:8px;max-height:320px;overflow:auto
+
+    .hello {
+      font-weight:600;
     }
-    @media(max-width:700px){.grid{grid-template-columns:1fr}}
+
+    #btnLogout {
+      background:none;
+      border:0;
+      color:#f87171;
+      cursor:pointer;
+      font-weight:700;
+      font-size:15px;
+    }
+
+    #btnLogout:hover {
+      text-decoration:underline;
+    }
+
+    .menu {
+      width:min(520px,92vw);
+      margin:120px auto 48px;
+      display:grid;
+      gap:18px;
+    }
+
+    .menu button {
+      width:100%;
+      padding:18px;
+      border:0;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:800;
+      font-size:18px;
+      color:#041a18;
+      transition:transform .15s ease,filter .15s ease;
+    }
+
+    .menu button:hover {
+      transform:scale(1.04);
+      filter:brightness(1.06);
+    }
+
+    .menu button:active {
+      transform:scale(1.01);
+    }
+
+    #admin { background:var(--btn1); }
+    #donghang { background:var(--btn2); }
+    #checkdon { background:var(--btn3); color:#3a2a04; }
+    #mapview { background:var(--btn4); }
+    #chamsockhachhang { background:var(--btn5); color:#3b0713; }
+    #tinhdoanhso { background:var(--btn6); color:#052e20; }
+
+    footer {
+      text-align:center;
+      color:var(--muted);
+      font-size:12px;
+      margin:8px 0 24px;
+    }
+
+    .hidden {
+      display:none !important;
+    }
+
+    @media (max-width:520px) {
+      .top { padding:12px 14px; }
+      .menu { margin-top:100px; gap:14px; }
+      .menu button { padding:16px; font-size:17px; }
+    }
   </style>
 </head>
+
 <body>
-  <div class="box">
-    <h1>Kiểm tra phân quyền</h1>
-    <button id="btnTest">Chạy kiểm tra</button>
-    <button id="btnMain">Mở main.html</button>
-  </div>
-
-  <div class="box">
-    <div class="grid">
-      <div class="item">
-        <div class="label">Trang hiện tại</div>
-        <div class="value" id="currentPage">...</div>
-      </div>
-      <div class="item">
-        <div class="label">chatwoot_crm_user</div>
-        <div class="value" id="userStatus">...</div>
-      </div>
-      <div class="item">
-        <div class="label">Mã nhân viên</div>
-        <div class="value" id="maNv">...</div>
-      </div>
-      <div class="item">
-        <div class="label">Tên nhân viên</div>
-        <div class="value" id="tenNv">...</div>
-      </div>
+  <noscript>
+    <div style="padding:12px;background:#ffdbdb;color:#6b0000;text-align:center">
+      Trình duyệt đang tắt JavaScript. Vui lòng bật JavaScript để tiếp tục.
     </div>
-  </div>
+  </noscript>
 
-  <div class="box">
-    <h3>Kết quả quyền lấy từ SQL View</h3>
-    <div id="summary"></div>
-    <div style="overflow:auto">
-      <table>
-        <thead>
-          <tr>
-            <th>duong_dan</th>
-            <th>id_chucnang</th>
-            <th>ten_chucnang</th>
-            <th>duoc_xem</th>
-            <th>Khớp nút main</th>
-          </tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
+  <header class="top" role="banner" aria-label="Thanh tiêu đề">
+    <div class="hello">
+      Xin chào <span id="ten_nv">...</span> 👋
     </div>
-  </div>
 
-  <div class="box">
-    <h3>Thông tin lỗi / dữ liệu thô</h3>
-    <pre id="log">Chưa chạy.</pre>
-  </div>
+    <button id="btnLogout" type="button" title="Đăng xuất">
+      Đăng xuất
+    </button>
+  </header>
+
+  <main class="menu" role="main" aria-label="Menu chính">
+    <button id="admin" type="button" class="hidden" data-phan-quyen>
+      👤 Admin
+    </button>
+
+    <button id="donghang" type="button" class="hidden" data-phan-quyen>
+      📦 Đóng hàng COD
+    </button>
+
+    <button id="checkdon" type="button" class="hidden" data-phan-quyen>
+      🧾 Check đơn
+    </button>
+
+    <button id="mapview" type="button" class="hidden" data-phan-quyen>
+      🗺️ Xem bản đồ
+    </button>
+
+    <button id="chamsockhachhang" type="button" class="hidden" data-phan-quyen>
+      💬 Chăm sóc khách hàng
+    </button>
+
+    <button id="tinhdoanhso" type="button" class="hidden" data-phan-quyen>
+      🧮 Tính doanh số nhân viên
+    </button>
+  </main>
+
+  <footer>
+    © <span id="year"></span> COD Internal
+  </footer>
 
   <script type="module">
+    import { taiPhanQuyenTrang } from './js/phan_quyen.js';
+
     const LOGIN_STORAGE_KEY = 'chatwoot_crm_user';
-    const MAIN_IDS = [
-      'admin',
-      'donghang',
-      'checkdon',
-      'mapview',
-      'chamsockhachhang',
-      'tinhdoanhso'
-    ];
+    const LOGIN_PAGE = './login.html';
 
-    const $ = id => document.getElementById(id);
-
-    function log(value) {
-      $('log').textContent =
-        typeof value === 'string'
-          ? value
-          : JSON.stringify(value, null, 2);
+    if (!window.__MAIN_PAGE_STARTED__) {
+      window.__MAIN_PAGE_STARTED__ = true;
+      khoiTaoTrang();
     }
 
-    function readUser() {
+    function hienTrang() {
+      document.body.classList.add('ready');
+      document.body.style.visibility = 'visible';
+    }
+
+    function layNguoiDung() {
       try {
         return JSON.parse(
           localStorage.getItem(LOGIN_STORAGE_KEY) || 'null'
         );
       } catch (error) {
-        return { __error: error.message };
+        console.error('Không đọc được thông tin đăng nhập:', error);
+        return null;
       }
     }
 
-    async function getConfig() {
-      const internalKey =
-        (typeof window.getInternalKey === 'function'
-          ? window.getInternalKey()
-          : '') ||
-        window.INTERNAL_KEY ||
-        window.COD_INTERNAL_KEY ||
-        '';
+    async function choThongTinDangNhap(timeoutMs = 2500) {
+      const batDau = Date.now();
 
-      const response = await fetch('/api/getConfig', {
-        headers: {'x-internal-key': internalKey || ''},
-        cache: 'no-store'
+      while (Date.now() - batDau < timeoutMs) {
+        const user = layNguoiDung();
+        if (user) return user;
+        await new Promise(resolve => setTimeout(resolve, 120));
+      }
+
+      return null;
+    }
+
+    function moTrangGiuThamSo(path) {
+      const targetUrl = new URL(path, window.location.href);
+      const currentParams =
+        new URLSearchParams(window.location.search);
+
+      currentParams.forEach((value, key) => {
+        targetUrl.searchParams.set(key, value);
       });
 
-      if (!response.ok) {
-        throw new Error(`getConfig lỗi HTTP ${response.status}`);
+      const token =
+        currentParams.get('token') ||
+        currentParams.get('access_token') ||
+        currentParams.get('t') ||
+        localStorage.getItem('token') ||
+        localStorage.getItem('access_token') ||
+        localStorage.getItem('cod_token') ||
+        sessionStorage.getItem('token') ||
+        sessionStorage.getItem('access_token') ||
+        sessionStorage.getItem('cod_token') ||
+        '';
+
+      if (token && !targetUrl.searchParams.get('token')) {
+        targetUrl.searchParams.set('token', token);
       }
 
-      const cfg = await response.json();
-
-      const url =
-        cfg.url ||
-        cfg.SUPABASE_URL ||
-        cfg.supabaseUrl ||
-        cfg.supabase_url;
-
-      const key =
-        cfg.anon ||
-        cfg.key ||
-        cfg.SUPABASE_ANON ||
-        cfg.SUPABASE_ANON_KEY ||
-        cfg.supabaseAnon ||
-        cfg.supabaseKey ||
-        cfg.supabase_anon_key;
-
-      if (!url || !key) {
-        throw new Error('Thiếu URL hoặc anon key Supabase');
-      }
-
-      return {url, key};
+      window.location.assign(targetUrl.href);
     }
 
-    function updateUserInfo(user) {
-      $('currentPage').textContent =
-        location.pathname.split('/').pop() || '(trống)';
+    function ganSuKienNut() {
+      const routes = {
+        admin: './admin.html',
+        donghang: './donghangcod.html',
+        checkdon: './checkdon.html',
+        mapview: './xembando.html',
+        chamsockhachhang: './chamsockhachhang.html',
+        tinhdoanhso: './tinhdoanhsonhanvien.html'
+      };
 
-      if (!user) {
-        $('userStatus').innerHTML =
-          '<span class="bad">Không có dữ liệu đăng nhập</span>';
-        $('maNv').textContent = '';
-        $('tenNv').textContent = '';
-        return;
+      for (const [buttonId, path] of Object.entries(routes)) {
+        document
+          .getElementById(buttonId)
+          ?.addEventListener('click', () => {
+            moTrangGiuThamSo(path);
+          });
       }
 
-      if (user.__error) {
-        $('userStatus').innerHTML =
-          `<span class="bad">JSON lỗi: ${user.__error}</span>`;
-        return;
-      }
+      document
+        .getElementById('btnLogout')
+        ?.addEventListener('click', () => {
+          localStorage.removeItem(LOGIN_STORAGE_KEY);
+          localStorage.removeItem('token');
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('cod_token');
 
-      $('userStatus').innerHTML =
-        '<span class="ok">Đã tìm thấy</span>';
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('access_token');
+          sessionStorage.removeItem('cod_token');
 
-      $('maNv').textContent =
-        user.ma_nv || user.id_nv || '(không có)';
-
-      $('tenNv').textContent =
-        user.ten_nv ||
-        user.tenNhanVien ||
-        user.name ||
-        '(không có)';
-    }
-
-    async function runTest() {
-      $('summary').innerHTML = 'Đang kiểm tra...';
-      $('rows').innerHTML = '';
-      log('Đang tải...');
-
-      const user = readUser();
-      updateUserInfo(user);
-
-      if (!user || user.__error) {
-        $('summary').innerHTML =
-          '<span class="bad">Không thể truy vấn vì chưa có thông tin nhân viên.</span>';
-        log({
-          localStorageKey: LOGIN_STORAGE_KEY,
-          raw: localStorage.getItem(LOGIN_STORAGE_KEY)
+          window.location.replace(LOGIN_PAGE);
         });
-        return;
-      }
+    }
+
+    async function khoiTaoTrang() {
+      document.getElementById('year').textContent =
+        new Date().getFullYear();
+
+      ganSuKienNut();
 
       try {
-        const {url, key} = await getConfig();
-        const client = window.supabase.createClient(url, key);
+        /*
+         * auth_token.js có thể cần một khoảng ngắn để lưu thông tin nhân viên.
+         * main.html không tự chuyển về login trong lúc này để tránh vòng lặp nhấp nháy.
+         */
+        const user = await choThongTinDangNhap();
 
-        let query = client
-          .from('sql_phan_quyen_nhan_vien')
-          .select(`
-            ma_nv,
-            ten_nv,
-            ten_vai_tro,
-            duong_dan,
-            id_chucnang,
-            ten_chucnang,
-            duoc_xem,
-            duoc_them,
-            duoc_sua,
-            duoc_xoa
-          `)
-          .order('thu_tu', {ascending:true});
+        if (!user) {
+          console.warn(
+            'Chưa có chatwoot_crm_user. Để auth_token.js xử lý đăng nhập.'
+          );
+          hienTrang();
+          return;
+        }
 
-        const maNv = String(user.ma_nv || user.id_nv || '').trim();
-        const tenNv = String(
-          user.ten_nv || user.tenNhanVien || user.name || ''
+        const tenNhanVien = String(
+          user.ten_nv ||
+          user.tenNhanVien ||
+          user.name ||
+          user.ma_nv ||
+          'Nhân viên'
         ).trim();
 
-        if (maNv) {
-          query = query.eq('ma_nv', maNv);
-        } else if (tenNv) {
-          query = query.eq('ten_nv', tenNv);
-        } else {
-          throw new Error('Thông tin đăng nhập không có ma_nv hoặc ten_nv');
+        document.getElementById('ten_nv').textContent =
+          tenNhanVien;
+
+        const result = await taiPhanQuyenTrang();
+
+        if (!result) {
+          console.error('Không tải được quyền trang chính');
         }
-
-        const {data, error} = await query;
-        if (error) throw error;
-
-        const rows = data || [];
-        const mainRows = rows.filter(row =>
-          String(row.duong_dan || '').toLowerCase() === 'main.html'
-        );
-
-        $('summary').innerHTML = `
-          Tổng quyền: <b>${rows.length}</b> —
-          Quyền có duong_dan = main.html: <b>${mainRows.length}</b>
-        `;
-
-        $('rows').innerHTML = rows.map(row => {
-          const id = String(row.id_chucnang || '').trim();
-          const match = MAIN_IDS.includes(id);
-          return `
-            <tr>
-              <td>${row.duong_dan ?? ''}</td>
-              <td>${id || '<span class="bad">NULL</span>'}</td>
-              <td>${row.ten_chucnang ?? ''}</td>
-              <td class="${row.duoc_xem ? 'ok' : 'bad'}">${row.duoc_xem}</td>
-              <td class="${match ? 'ok' : 'warn'}">${match ? 'Có' : 'Không'}</td>
-            </tr>
-          `;
-        }).join('');
-
-        const problems = [];
-
-        if (!rows.length) {
-          problems.push('Không lấy được dòng quyền nào cho nhân viên.');
-        }
-
-        if (!mainRows.length) {
-          problems.push(
-            'Không có dòng nào có duong_dan = main.html. Đây là nguyên nhân các nút main bị ẩn.'
-          );
-        }
-
-        const nullIds = rows.filter(row => !row.id_chucnang);
-        if (nullIds.length) {
-          problems.push(`${nullIds.length} dòng đang NULL id_chucnang.`);
-        }
-
-        const visibleMain = mainRows.filter(row =>
-          row.duoc_xem === true && MAIN_IDS.includes(row.id_chucnang)
-        );
-
-        if (!visibleMain.length) {
-          problems.push(
-            'Không có nút main nào vừa đúng id_chucnang vừa có duoc_xem = true.'
-          );
-        }
-
-        log({
-          user,
-          queryFilter: maNv ? {ma_nv: maNv} : {ten_nv: tenNv},
-          totalRows: rows.length,
-          mainRows: mainRows.length,
-          visibleMain,
-          problems,
-          rawData: rows
-        });
       } catch (error) {
-        $('summary').innerHTML =
-          `<span class="bad">Lỗi: ${error.message}</span>`;
-        log({
-          message: error.message,
-          stack: error.stack
-        });
+        console.error('Lỗi khởi tạo trang chính:', error);
+      } finally {
+        hienTrang();
       }
     }
-
-    $('btnTest').addEventListener('click', runTest);
-    $('btnMain').addEventListener('click', () => {
-      location.href = './main.html' + location.search;
-    });
-
-    runTest();
   </script>
 </body>
 </html>
