@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Quản lý nhân viên</title>
+  <title>Quản lý nhân viên & vai trò</title>
 
   <script src="./js/internal_key.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -13,7 +13,7 @@
   <style>
     :root{
       --bg:#f4f6f8;
-      --card:#ffffff;
+      --card:#fff;
       --text:#172033;
       --muted:#687386;
       --line:#dde3ea;
@@ -21,22 +21,19 @@
       --primary:#087af5;
       --primary-soft:#e8f2ff;
       --danger:#dc3545;
-      --success:#087af5;
+      --success:#087443;
       --shadow:0 8px 28px rgba(15,23,42,.08);
     }
 
     *{box-sizing:border-box}
-
     html,body{min-height:100%}
-
     body{
       margin:0;
       background:var(--bg);
       color:var(--text);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
     }
-
-    button,input,select{font:inherit}
+    button,input,select,textarea{font:inherit}
 
     .page{
       width:min(1500px,calc(100% - 28px));
@@ -69,19 +66,20 @@
 
     .tab.active{
       color:var(--primary);
-      font-weight:650;
+      font-weight:700;
     }
 
     .tab.active::after{
       content:"";
       position:absolute;
-      left:0;
-      right:0;
-      bottom:-1px;
+      left:0;right:0;bottom:-1px;
       height:3px;
       background:var(--primary);
       border-radius:3px 3px 0 0;
     }
+
+    .tab-page{display:none}
+    .tab-page.active{display:block}
 
     .toolbar{
       display:flex;
@@ -91,8 +89,7 @@
       padding:18px 32px 20px;
     }
 
-    .toolbar-left,
-    .toolbar-right{
+    .toolbar-left,.toolbar-right{
       display:flex;
       align-items:center;
       gap:12px;
@@ -114,19 +111,16 @@
     }
 
     .btn:hover{background:#f8fafc}
-
-    .btn-primary{
-      color:#273244;
-      background:#fff;
-    }
-
-    .btn-danger{
-      color:var(--danger);
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+    .btn-danger{color:var(--danger)}
+    .btn-save{
+      border-color:var(--primary);
+      background:var(--primary);
+      color:#fff;
     }
 
     .icon{
-      width:22px;
-      height:22px;
+      width:22px;height:22px;
       display:inline-flex;
       align-items:center;
       justify-content:center;
@@ -140,7 +134,6 @@
       gap:12px;
       padding:0 32px 18px;
     }
-
     .filter-box.show{display:grid}
 
     .field{
@@ -152,6 +145,11 @@
       outline:none;
       color:var(--text);
       background:#fff;
+    }
+
+    textarea.field{
+      min-height:92px;
+      resize:vertical;
     }
 
     .field:focus{
@@ -174,20 +172,20 @@
       padding:16px 14px;
       text-align:left;
       border-bottom:1px solid var(--line);
-      white-space:nowrap;
+      vertical-align:middle;
     }
 
     thead th{
       background:var(--head);
       color:#182132;
       font-weight:750;
+      white-space:nowrap;
     }
 
     tbody tr:hover{background:#fafcff}
 
     .check{
-      width:20px;
-      height:20px;
+      width:20px;height:20px;
       cursor:pointer;
     }
 
@@ -197,32 +195,45 @@
       min-height:28px;
       padding:3px 8px;
       border-radius:6px;
-      font-size:15px;
+      font-size:14px;
       font-weight:650;
     }
 
-    .status.on{
-      color:#006bd6;
-      background:var(--primary-soft);
-    }
+    .status.on{color:#006bd6;background:var(--primary-soft)}
+    .status.off{color:#8a2430;background:#ffe9ec}
+    .role-empty,.muted{color:#9aa4b2}
 
-    .status.off{
-      color:#8a2430;
-      background:#ffe9ec;
+    .action-group{
+      display:flex;
+      align-items:center;
+      gap:4px;
     }
-
-    .role-empty{color:#9aa4b2}
 
     .action-btn{
+      width:36px;
+      height:36px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
       border:0;
+      border-radius:8px;
       background:none;
-      color:var(--primary);
+      color:#344054;
       cursor:pointer;
-      font-weight:650;
-      padding:5px 8px;
+      font-size:19px;
     }
 
-    .action-btn.delete{color:var(--danger)}
+    .action-btn:hover{background:#eef4ff;color:var(--primary)}
+    .action-btn.delete:hover{background:#fff0f1;color:var(--danger)}
+
+    .account-link{
+      border:0;
+      background:none;
+      padding:0;
+      color:var(--primary);
+      cursor:pointer;
+      font-size:inherit;
+    }
 
     .footer{
       display:flex;
@@ -239,8 +250,7 @@
     }
 
     .page-btn{
-      width:38px;
-      height:38px;
+      width:38px;height:38px;
       border:1px solid transparent;
       border-radius:9px;
       background:#fff;
@@ -253,14 +263,10 @@
       background:#f8fafc;
     }
 
-    .page-btn:disabled{
-      opacity:.4;
-      cursor:not-allowed;
-    }
+    .page-btn:disabled{opacity:.4;cursor:not-allowed}
 
     .page-current{
-      min-width:56px;
-      height:38px;
+      min-width:56px;height:38px;
       display:flex;
       align-items:center;
       justify-content:center;
@@ -269,13 +275,8 @@
       background:#fff;
     }
 
-    .count{
-      color:#354155;
-      font-weight:550;
-    }
-
-    .loading,
-    .empty{
+    .count{color:#354155;font-weight:550}
+    .loading,.empty{
       padding:34px;
       text-align:center;
       color:var(--muted);
@@ -285,41 +286,41 @@
       position:fixed;
       right:18px;
       bottom:18px;
-      z-index:1000;
+      z-index:1100;
       display:none;
-      max-width:min(420px,calc(100vw - 36px));
+      max-width:min(430px,calc(100vw - 36px));
       padding:13px 16px;
       border-radius:12px;
       color:#fff;
       background:#172033;
       box-shadow:0 10px 30px rgba(0,0,0,.22);
     }
-
     .toast.show{display:block}
     .toast.err{background:#b42318}
-    .toast.ok{background:#087443}
+    .toast.ok{background:var(--success)}
 
     .modal-backdrop{
       position:fixed;
       inset:0;
-      z-index:999;
+      z-index:1000;
       display:none;
       align-items:center;
       justify-content:center;
       padding:18px;
       background:rgba(15,23,42,.46);
     }
-
     .modal-backdrop.show{display:flex}
 
     .modal{
-      width:min(620px,100%);
+      width:min(650px,100%);
       max-height:92vh;
       overflow:auto;
       border-radius:16px;
       background:#fff;
       box-shadow:0 24px 70px rgba(0,0,0,.28);
     }
+
+    .modal.wide{width:min(760px,100%)}
 
     .modal-head{
       display:flex;
@@ -336,8 +337,7 @@
     }
 
     .close{
-      width:38px;
-      height:38px;
+      width:38px;height:38px;
       border:0;
       border-radius:9px;
       background:#f1f4f7;
@@ -376,44 +376,39 @@
       padding:16px 22px 22px;
     }
 
-    .btn-save{
-      border-color:var(--primary);
-      background:var(--primary);
-      color:#fff;
+    .account-list{
+      margin:0;
+      padding:0;
+      list-style:none;
+      border:1px solid var(--line);
+      border-radius:12px;
+      overflow:hidden;
     }
 
+    .account-list li{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 14px;
+      border-bottom:1px solid var(--line);
+    }
+    .account-list li:last-child{border-bottom:0}
+
     @media(max-width:760px){
-      .page{
-        width:100%;
-        margin:0;
-      }
-
+      .page{width:100%;margin:0}
       .panel{border-radius:0}
-
-      .tabs,
-      .toolbar,
-      .table-wrap,
-      .footer{
+      .tabs,.toolbar,.table-wrap,.footer{
         padding-left:14px;
         padding-right:14px;
       }
-
-      .toolbar{
-        align-items:stretch;
-        flex-direction:column;
-      }
-
-      .toolbar-left,
-      .toolbar-right{
-        justify-content:space-between;
-      }
-
+      .toolbar{align-items:stretch;flex-direction:column}
+      .toolbar-left,.toolbar-right{justify-content:space-between}
       .filter-box{
         grid-template-columns:1fr;
         padding-left:14px;
         padding-right:14px;
       }
-
       .modal-body{grid-template-columns:1fr}
       .form-group.full{grid-column:auto}
     }
@@ -424,99 +419,123 @@
   <main class="page">
     <section class="panel">
       <div class="tabs">
-        <button class="tab active" type="button">Tài khoản người dùng</button>
-        <button class="tab" type="button" id="btnRoleTab">Quản lý vai trò</button>
+        <button class="tab active" id="tabUsers" type="button">Tài khoản người dùng</button>
+        <button class="tab" id="tabRoles" type="button">Quản lý vai trò</button>
       </div>
 
-      <div class="toolbar">
-        <div class="toolbar-left">
-          <button class="btn" type="button" id="btnFilter">
-            <span class="icon">☰</span>
-            Lọc
-          </button>
+      <section class="tab-page active" id="usersPage">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <button class="btn" type="button" id="btnFilter">
+              <span class="icon">☰</span> Lọc
+            </button>
+            <button class="btn btn-danger" type="button" id="btnDeleteSelected" hidden>
+              Xóa đã chọn
+            </button>
+          </div>
 
-          <button class="btn btn-danger" type="button" id="btnDeleteSelected" hidden>
-            Xóa đã chọn
-          </button>
+          <div class="toolbar-right">
+            <button class="btn" type="button" id="btnCreateUser">
+              <span class="icon">＋</span> Tạo tài khoản
+            </button>
+            <button class="btn" type="button" id="btnReloadUsers" title="Tải lại">
+              <span class="icon">⟳</span>
+            </button>
+          </div>
         </div>
 
-        <div class="toolbar-right">
-          <button class="btn btn-primary" type="button" id="btnCreate">
-            <span class="icon">＋</span>
-            Tạo tài khoản
-          </button>
-
-          <button class="btn" type="button" id="btnReload" title="Tải lại dữ liệu">
-            <span class="icon">⟳</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="filter-box" id="filterBox">
-        <input class="field" id="searchInput" placeholder="Tìm tên, điện thoại, mã nhân viên..." />
-
-        <select class="field" id="roleFilter">
-          <option value="">Tất cả vai trò</option>
-        </select>
-
-        <select class="field" id="statusFilter">
-          <option value="">Tất cả trạng thái</option>
-          <option value="true">Đang hoạt động</option>
-          <option value="false">Ngừng hoạt động</option>
-        </select>
-
-        <button class="btn" type="button" id="btnClearFilter">Xóa lọc</button>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:48px">
-                <input class="check" id="checkAll" type="checkbox" />
-              </th>
-              <th>Tên hiển thị</th>
-              <th>Mã nhân viên</th>
-              <th>Điện thoại</th>
-              <th>Vai trò</th>
-              <th>Chức danh</th>
-              <th>Trạng thái</th>
-              <th style="width:150px">Thao tác</th>
-            </tr>
-          </thead>
-
-          <tbody id="tbody">
-            <tr>
-              <td colspan="8" class="loading">Đang tải dữ liệu...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="footer">
-        <div class="pagination">
-          <button class="page-btn" id="btnFirst" type="button">|‹</button>
-          <button class="page-btn" id="btnPrev" type="button">‹</button>
-          <div class="page-current" id="pageNumber">1</div>
-          <button class="page-btn" id="btnNext" type="button">›</button>
-          <button class="page-btn" id="btnLast" type="button">›|</button>
+        <div class="filter-box" id="filterBox">
+          <input class="field" id="searchInput" placeholder="Tìm tên, điện thoại, vai trò..." />
+          <select class="field" id="roleFilter">
+            <option value="">Tất cả vai trò</option>
+          </select>
+          <select class="field" id="statusFilter">
+            <option value="">Tất cả trạng thái</option>
+            <option value="true">Đang hoạt động</option>
+            <option value="false">Ngừng hoạt động</option>
+          </select>
+          <button class="btn" type="button" id="btnClearFilter">Xóa lọc</button>
         </div>
 
-        <div class="count" id="countText">0 người dùng</div>
-      </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:48px"><input class="check" id="checkAll" type="checkbox" /></th>
+                <th>Tên hiển thị</th>
+                <th>Mã nhân viên</th>
+                <th>Điện thoại</th>
+                <th>Vai trò</th>
+                <th>Chức danh</th>
+                <th>Trạng thái</th>
+                <th style="width:150px">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="usersBody">
+              <tr><td colspan="8" class="loading">Đang tải dữ liệu...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="footer">
+          <div class="pagination">
+            <button class="page-btn" id="btnFirst" type="button">|‹</button>
+            <button class="page-btn" id="btnPrev" type="button">‹</button>
+            <div class="page-current" id="pageNumber">1</div>
+            <button class="page-btn" id="btnNext" type="button">›</button>
+            <button class="page-btn" id="btnLast" type="button">›|</button>
+          </div>
+          <div class="count" id="countText">0 người dùng</div>
+        </div>
+      </section>
+
+      <section class="tab-page" id="rolesPage">
+        <div class="toolbar">
+          <div></div>
+          <div class="toolbar-right">
+            <button class="btn" type="button" id="btnCreateRole">
+              <span class="icon">＋</span> Tạo vai trò
+            </button>
+            <button class="btn" type="button" id="btnReloadRoles" title="Tải lại">
+              <span class="icon">⟳</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:240px">Vai trò</th>
+                <th>Mô tả</th>
+                <th style="width:260px">Tài khoản</th>
+                <th style="width:130px">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="rolesBody">
+              <tr><td colspan="4" class="loading">Đang tải dữ liệu...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="footer">
+          <div></div>
+          <div class="count" id="roleCountText">0 vai trò</div>
+        </div>
+      </section>
     </section>
   </main>
 
-  <div class="modal-backdrop" id="modalBackdrop">
+  <!-- Modal tài khoản -->
+  <div class="modal-backdrop" id="userModal">
     <section class="modal" role="dialog" aria-modal="true">
       <div class="modal-head">
-        <h2 id="modalTitle">Tạo tài khoản</h2>
-        <button class="close" id="btnCloseModal" type="button">×</button>
+        <h2 id="userModalTitle">Tạo tài khoản</h2>
+        <button class="close" data-close="userModal" type="button">×</button>
       </div>
 
       <form id="userForm">
         <div class="modal-body">
-          <input id="formId" type="hidden" />
+          <input id="formUserId" type="hidden" />
 
           <div class="form-group">
             <label for="formTenNv">Tên hiển thị *</label>
@@ -534,9 +553,10 @@
           </div>
 
           <div class="form-group">
-            <label for="formMaVaiTro">Mã vai trò</label>
-            <input class="field" id="formMaVaiTro" list="roleList" />
-            <datalist id="roleList"></datalist>
+            <label for="formMaVaiTro">Vai trò</label>
+            <select class="field" id="formMaVaiTro">
+              <option value="">Chưa gán vai trò</option>
+            </select>
           </div>
 
           <div class="form-group">
@@ -559,78 +579,153 @@
         </div>
 
         <div class="modal-foot">
-          <button class="btn" id="btnCancelModal" type="button">Hủy</button>
-          <button class="btn btn-save" id="btnSave" type="submit">Lưu tài khoản</button>
+          <button class="btn" data-close="userModal" type="button">Hủy</button>
+          <button class="btn btn-save" id="btnSaveUser" type="submit">Lưu tài khoản</button>
         </div>
       </form>
+    </section>
+  </div>
+
+  <!-- Modal vai trò -->
+  <div class="modal-backdrop" id="roleModal">
+    <section class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h2 id="roleModalTitle">Tạo vai trò</h2>
+        <button class="close" data-close="roleModal" type="button">×</button>
+      </div>
+
+      <form id="roleForm">
+        <div class="modal-body">
+          <input id="formRoleId" type="hidden" />
+
+          <div class="form-group">
+            <label for="formRoleCode">Mã vai trò *</label>
+            <input class="field" id="formRoleCode" placeholder="Ví dụ: THU_NGAN" required />
+          </div>
+
+          <div class="form-group">
+            <label for="formRoleName">Tên vai trò *</label>
+            <input class="field" id="formRoleName" placeholder="Ví dụ: Thu ngân" required />
+          </div>
+
+          <div class="form-group full">
+            <label for="formRoleDescription">Mô tả</label>
+            <textarea class="field" id="formRoleDescription"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Vai trò hệ thống</label>
+            <div class="switch-row">
+              <input class="check" id="formRoleSystem" type="checkbox" />
+              <span>Đánh dấu là vai trò hệ thống</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Trạng thái</label>
+            <div class="switch-row">
+              <input class="check" id="formRoleStatus" type="checkbox" checked />
+              <span>Đang sử dụng</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <button class="btn" data-close="roleModal" type="button">Hủy</button>
+          <button class="btn btn-save" id="btnSaveRole" type="submit">Lưu vai trò</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <!-- Modal danh sách tài khoản -->
+  <div class="modal-backdrop" id="accountsModal">
+    <section class="modal wide" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h2 id="accountsModalTitle">Tài khoản thuộc vai trò</h2>
+        <button class="close" data-close="accountsModal" type="button">×</button>
+      </div>
+      <div class="modal-body" style="display:block">
+        <ul class="account-list" id="accountsList"></ul>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" data-close="accountsModal" type="button">Đóng</button>
+      </div>
     </section>
   </div>
 
   <div class="toast" id="toast"></div>
 
   <script>
-    const TABLE_NAME = 'kv_nhan_vien';
+    const USER_TABLE = 'kv_nhan_vien';
+    const ROLE_TABLE = 'kv_vai_tro';
     const CFG_CACHE_KEY = 'cod_cfg_cache_v2';
     const PAGE_SIZE = 10;
 
     let supabaseClient = null;
     let currentPage = 1;
     let totalRows = 0;
-    let currentRows = [];
+    let currentUsers = [];
+    let allRoles = [];
+    let roleUsersMap = new Map();
     let selectedIds = new Set();
 
     const $ = (id) => document.getElementById(id);
 
-    function showToast(message, type = 'ok') {
-      const toast = $('toast');
-      toast.textContent = message;
-      toast.className = `toast show ${type}`;
+    function escapeHtml(value){
+      return String(value ?? '')
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
+    }
 
+    function showToast(message,type='ok'){
+      const toast=$('toast');
+      toast.textContent=message;
+      toast.className=`toast show ${type}`;
       clearTimeout(showToast.timer);
-      showToast.timer = setTimeout(() => {
-        toast.className = 'toast';
-      }, 3200);
+      showToast.timer=setTimeout(()=>toast.className='toast',3200);
     }
 
-    function formatPhone(phone) {
-      const value = String(phone ?? '').trim();
-      if (!value || value === '0') return '—';
-      return value;
+    function openModal(id){ $(id).classList.add('show'); }
+    function closeModal(id){ $(id).classList.remove('show'); }
+
+    function formatPhone(phone){
+      const value=String(phone ?? '').trim();
+      return (!value || value==='0') ? '—' : value;
     }
 
-    function roleName(row) {
-      return row.ma_vai_tro || '—';
-    }
-
-    async function ensureInternalKeyLoaded() {
-      if (typeof window.getInternalKey === 'function') {
+    async function ensureInternalKeyLoaded(){
+      if(typeof window.getInternalKey==='function'){
         return window.getInternalKey() || '';
       }
 
-      await new Promise((resolve) => {
-        const script = document.createElement('script');
-        script.src = './js/internal_key.js';
-        script.onload = resolve;
-        script.onerror = resolve;
+      await new Promise(resolve=>{
+        const script=document.createElement('script');
+        script.src='./js/internal_key.js';
+        script.onload=resolve;
+        script.onerror=resolve;
         document.head.appendChild(script);
       });
 
-      return typeof window.getInternalKey === 'function'
+      return typeof window.getInternalKey==='function'
         ? window.getInternalKey() || ''
         : '';
     }
 
-    function normalizeSupabaseConfig(cfg) {
-      if (!cfg || typeof cfg !== 'object') return null;
+    function normalizeSupabaseConfig(cfg){
+      if(!cfg || typeof cfg!=='object') return null;
 
-      const url =
+      const url=
         cfg.url ||
         cfg.SUPABASE_URL ||
         cfg.supabaseUrl ||
         cfg.supabase_url ||
         '';
 
-      const key =
+      const key=
         cfg.anon ||
         cfg.key ||
         cfg.SUPABASE_ANON ||
@@ -640,651 +735,652 @@
         cfg.supabase_anon_key ||
         '';
 
-      if (!url || !key) return null;
-
-      return {
-        url: String(url).trim(),
-        key: String(key).trim()
-      };
+      if(!url || !key) return null;
+      return {url:String(url).trim(),key:String(key).trim()};
     }
 
-    async function getSupabaseConfig() {
-      // 1. Cách đang hoạt động ở form kiểm tra đơn:
-      // gọi /api/getConfig kèm x-internal-key và nhận { url, anon }.
-      try {
-        const internalKey = await ensureInternalKeyLoaded();
-        const response = await fetch('/api/getConfig', {
-          headers: {
-            'x-internal-key': internalKey || ''
-          },
-          cache: 'no-store'
+    async function getSupabaseConfig(){
+      try{
+        const internalKey=await ensureInternalKeyLoaded();
+        const response=await fetch('/api/getConfig',{
+          headers:{'x-internal-key':internalKey || ''},
+          cache:'no-store'
         });
 
-        if (response.ok) {
-          const config = normalizeSupabaseConfig(await response.json());
-
-          if (config) {
-            localStorage.setItem(CFG_CACHE_KEY, JSON.stringify(config));
+        if(response.ok){
+          const config=normalizeSupabaseConfig(await response.json());
+          if(config){
+            localStorage.setItem(CFG_CACHE_KEY,JSON.stringify(config));
             return config;
           }
-        } else {
-          console.warn('/api/getConfig HTTP:', response.status);
         }
-      } catch (error) {
-        console.warn('Không lấy được cấu hình từ /api/getConfig:', error);
+      }catch(error){
+        console.warn('Không lấy được cấu hình API:',error);
       }
 
-      // 2. Dùng cache gần nhất nếu API tạm thời lỗi.
-      try {
-        const raw = localStorage.getItem(CFG_CACHE_KEY);
-        const cached = raw ? normalizeSupabaseConfig(JSON.parse(raw)) : null;
-        if (cached) return cached;
-      } catch (error) {
-        console.warn('Cache cấu hình không hợp lệ:', error);
-      }
+      try{
+        const raw=localStorage.getItem(CFG_CACHE_KEY);
+        const cached=raw ? normalizeSupabaseConfig(JSON.parse(raw)) : null;
+        if(cached) return cached;
+      }catch(error){}
 
-      // 3. Dùng các biến cấu hình đã nạp sẵn trên trang.
-      const possibleConfigs = [
+      const configs=[
         window.COD_CONFIG,
         window.codConfig,
         window.APP_CONFIG,
         window.CONFIG
       ];
 
-      for (const cfg of possibleConfigs) {
-        const config = normalizeSupabaseConfig(cfg);
-        if (config) {
-          localStorage.setItem(CFG_CACHE_KEY, JSON.stringify(config));
-          return config;
-        }
+      for(const cfg of configs){
+        const config=normalizeSupabaseConfig(cfg);
+        if(config) return config;
       }
 
-      // 4. Dùng getConfig() nếu cod_config.js có cung cấp.
-      if (typeof window.getConfig === 'function') {
-        try {
-          const config = normalizeSupabaseConfig(await window.getConfig());
-          if (config) {
-            localStorage.setItem(CFG_CACHE_KEY, JSON.stringify(config));
-            return config;
-          }
-        } catch (error) {
-          console.warn('getConfig() bị lỗi:', error);
-        }
+      if(typeof window.getConfig==='function'){
+        const config=normalizeSupabaseConfig(await window.getConfig());
+        if(config) return config;
       }
 
-      // 5. Fallback theo đúng cơ chế của form kiểm tra đơn.
-      try {
-        const configFromJs = await new Promise((resolve) => {
-          let finished = false;
-          const script = document.createElement('script');
-          script.src = './cod_config.js';
-          script.onload = () => {
-            finished = true;
-            resolve(normalizeSupabaseConfig(window.COD_CONFIG));
-          };
-          script.onerror = () => resolve(null);
-          setTimeout(() => {
-            if (!finished) resolve(normalizeSupabaseConfig(window.COD_CONFIG));
-          }, 500);
-          document.head.appendChild(script);
-        });
-
-        if (configFromJs) {
-          localStorage.setItem(CFG_CACHE_KEY, JSON.stringify(configFromJs));
-          return configFromJs;
-        }
-      } catch (error) {
-        console.warn('Không tải được cod_config.js dự phòng:', error);
-      }
-
-      try {
-        const response = await fetch('./cod_config.json', { cache: 'no-store' });
-        if (response.ok) {
-          const config = normalizeSupabaseConfig(await response.json());
-          if (config) {
-            localStorage.setItem(CFG_CACHE_KEY, JSON.stringify(config));
-            return config;
-          }
-        }
-      } catch (error) {
-        console.warn('Không tải được cod_config.json:', error);
-      }
-
-      throw new Error(
-        'Không lấy được cấu hình Supabase. Kiểm tra /api/getConfig và js/internal_key.js.'
-      );
+      throw new Error('Không lấy được cấu hình Supabase. Kiểm tra /api/getConfig và internal_key.js.');
     }
 
-    async function initSupabase() {
-      const config = await getSupabaseConfig();
-
-      supabaseClient = window.supabase.createClient(
-        config.url,
-        config.key
-      );
+    async function initSupabase(){
+      const config=await getSupabaseConfig();
+      supabaseClient=window.supabase.createClient(config.url,config.key);
     }
 
-    function getFilters() {
+    function switchTab(tab){
+      const users=tab==='users';
+      $('tabUsers').classList.toggle('active',users);
+      $('tabRoles').classList.toggle('active',!users);
+      $('usersPage').classList.toggle('active',users);
+      $('rolesPage').classList.toggle('active',!users);
+
+      if(users){
+        loadUsers();
+      }else{
+        loadRolesPage();
+      }
+    }
+
+    function getFilters(){
       return {
-        keyword: $('searchInput').value.trim(),
-        role: $('roleFilter').value.trim(),
-        status: $('statusFilter').value
+        keyword:$('searchInput').value.trim(),
+        role:$('roleFilter').value.trim(),
+        status:$('statusFilter').value
       };
     }
 
-    function applyFilters(query) {
-      const { keyword, role, status } = getFilters();
+    function applyUserFilters(query){
+      const {keyword,role,status}=getFilters();
 
-      if (keyword) {
-        const clean = keyword.replace(/[%(),]/g, ' ').trim();
-
-        query = query.or(
+      if(keyword){
+        const clean=keyword.replace(/[%(),]/g,' ').trim();
+        query=query.or(
           `ten_nv.ilike.%${clean}%,dien_thoai.ilike.%${clean}%,ma_vai_tro.ilike.%${clean}%`
         );
       }
 
-      if (role) {
-        query = query.eq('ma_vai_tro', role);
-      }
-
-      if (status === 'true') {
-        query = query.eq('hoat_dong', true);
-      }
-
-      if (status === 'false') {
-        query = query.eq('hoat_dong', false);
-      }
+      if(role) query=query.eq('ma_vai_tro',role);
+      if(status==='true') query=query.eq('hoat_dong',true);
+      if(status==='false') query=query.eq('hoat_dong',false);
 
       return query;
     }
 
-    async function loadRoles() {
-      const { data, error } = await supabaseClient
-        .from(TABLE_NAME)
-        .select('ma_vai_tro')
-        .not('ma_vai_tro', 'is', null);
+    async function loadRoleOptions(){
+      const {data,error}=await supabaseClient
+        .from(ROLE_TABLE)
+        .select('id,ma_vai_tro,ten_vai_tro,mo_ta,la_he_thong,trang_thai,created_at')
+        .order('ten_vai_tro',{ascending:true});
 
-      if (error) {
-        console.warn('Không tải được danh sách vai trò:', error);
-        return;
-      }
+      if(error) throw error;
+      allRoles=data || [];
 
-      const roles = [
-        ...new Set(
-          (data || [])
-            .map((item) => String(item.ma_vai_tro || '').trim())
-            .filter(Boolean)
-        )
-      ].sort((a, b) => a.localeCompare(b, 'vi'));
+      const activeRoles=allRoles.filter(r=>r.trang_thai!==false);
 
-      $('roleFilter').innerHTML =
-        '<option value="">Tất cả vai trò</option>' +
-        roles.map((role) =>
-          `<option value="${escapeHtml(role)}">${escapeHtml(role)}</option>`
+      $('roleFilter').innerHTML=
+        '<option value="">Tất cả vai trò</option>'+
+        activeRoles.map(role=>
+          `<option value="${escapeHtml(role.ma_vai_tro)}">${escapeHtml(role.ten_vai_tro || role.ma_vai_tro)}</option>`
         ).join('');
 
-      $('roleList').innerHTML =
-        roles.map((role) =>
-          `<option value="${escapeHtml(role)}"></option>`
+      $('formMaVaiTro').innerHTML=
+        '<option value="">Chưa gán vai trò</option>'+
+        activeRoles.map(role=>
+          `<option value="${escapeHtml(role.ma_vai_tro)}">${escapeHtml(role.ten_vai_tro || role.ma_vai_tro)}</option>`
         ).join('');
     }
 
-    async function loadUsers() {
-      if (!supabaseClient) return;
+    async function loadUsers(){
+      if(!supabaseClient) return;
 
-      $('tbody').innerHTML = `
-        <tr>
-          <td colspan="8" class="loading">Đang tải dữ liệu...</td>
-        </tr>
-      `;
+      $('usersBody').innerHTML='<tr><td colspan="8" class="loading">Đang tải dữ liệu...</td></tr>';
 
-      const from = (currentPage - 1) * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
+      const from=(currentPage-1)*PAGE_SIZE;
+      const to=from+PAGE_SIZE-1;
 
-      let query = supabaseClient
-        .from(TABLE_NAME)
+      let query=supabaseClient
+        .from(USER_TABLE)
         .select(
           'id,id_nv,ten_nv,dien_thoai,hoat_dong,ma_vai_tro,chuc_danh',
-          { count: 'exact' }
+          {count:'exact'}
         );
 
-      query = applyFilters(query);
+      query=applyUserFilters(query);
 
-      const { data, error, count } = await query
-        .order('ten_nv', { ascending: true })
-        .range(from, to);
+      const {data,error,count}=await query
+        .order('ten_nv',{ascending:true})
+        .range(from,to);
 
-      if (error) {
-        console.error(error);
-        $('tbody').innerHTML = `
-          <tr>
-            <td colspan="8" class="empty">
-              Không tải được dữ liệu: ${escapeHtml(error.message)}
-            </td>
-          </tr>
-        `;
+      if(error){
+        $('usersBody').innerHTML=
+          `<tr><td colspan="8" class="empty">Không tải được dữ liệu: ${escapeHtml(error.message)}</td></tr>`;
         return;
       }
 
-      currentRows = data || [];
-      totalRows = count || 0;
+      currentUsers=data || [];
+      totalRows=count || 0;
 
-      const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
-
-      if (currentPage > totalPages) {
-        currentPage = totalPages;
+      const totalPages=Math.max(1,Math.ceil(totalRows/PAGE_SIZE));
+      if(currentPage>totalPages){
+        currentPage=totalPages;
         return loadUsers();
       }
 
       selectedIds.clear();
+      renderUsers();
       updateSelectionUI();
-      renderRows();
       updatePagination();
     }
 
-    function renderRows() {
-      if (!currentRows.length) {
-        $('tbody').innerHTML = `
-          <tr>
-            <td colspan="8" class="empty">
-              Không có tài khoản phù hợp.
-            </td>
-          </tr>
-        `;
+    function roleDisplayName(code){
+      const role=allRoles.find(item=>String(item.ma_vai_tro)===String(code));
+      return role?.ten_vai_tro || code || '—';
+    }
+
+    function renderUsers(){
+      if(!currentUsers.length){
+        $('usersBody').innerHTML='<tr><td colspan="8" class="empty">Không có tài khoản phù hợp.</td></tr>';
         return;
       }
 
-      $('tbody').innerHTML = currentRows.map((row) => {
-        const active = row.hoat_dong !== false;
+      $('usersBody').innerHTML=currentUsers.map(row=>{
+        const active=row.hoat_dong!==false;
 
         return `
           <tr>
             <td>
-              <input
-                class="check row-check"
-                type="checkbox"
-                data-id="${escapeHtml(String(row.id))}"
-              />
+              <input class="check row-check" type="checkbox" data-id="${escapeHtml(row.id)}" />
             </td>
-
             <td>${escapeHtml(row.ten_nv || '—')}</td>
-
             <td>${escapeHtml(row.id_nv ?? row.id ?? '—')}</td>
-
             <td>${escapeHtml(formatPhone(row.dien_thoai))}</td>
-
             <td class="${row.ma_vai_tro ? '' : 'role-empty'}">
-              ${escapeHtml(roleName(row))}
+              ${escapeHtml(roleDisplayName(row.ma_vai_tro))}
             </td>
-
             <td class="${row.chuc_danh ? '' : 'role-empty'}">
               ${escapeHtml(row.chuc_danh || '—')}
             </td>
-
             <td>
               <span class="status ${active ? 'on' : 'off'}">
                 ${active ? 'Đang hoạt động' : 'Ngừng hoạt động'}
               </span>
             </td>
-
             <td>
-              <button
-                class="action-btn edit-btn"
-                type="button"
-                data-id="${escapeHtml(String(row.id))}"
-              >
-                Sửa
-              </button>
-
-              <button
-                class="action-btn delete delete-btn"
-                type="button"
-                data-id="${escapeHtml(String(row.id))}"
-              >
-                Xóa
-              </button>
+              <div class="action-group">
+                <button class="action-btn edit-user" data-id="${escapeHtml(row.id)}" title="Sửa">✎</button>
+                <button class="action-btn delete delete-user" data-id="${escapeHtml(row.id)}" title="Xóa">🗑</button>
+              </div>
             </td>
           </tr>
         `;
       }).join('');
 
-      document.querySelectorAll('.row-check').forEach((checkbox) => {
-        checkbox.addEventListener('change', handleRowCheck);
+      document.querySelectorAll('.row-check').forEach(el=>{
+        el.addEventListener('change',handleRowCheck);
       });
-
-      document.querySelectorAll('.edit-btn').forEach((button) => {
-        button.addEventListener('click', () => {
-          openEditModal(button.dataset.id);
-        });
+      document.querySelectorAll('.edit-user').forEach(el=>{
+        el.addEventListener('click',()=>openEditUser(el.dataset.id));
       });
-
-      document.querySelectorAll('.delete-btn').forEach((button) => {
-        button.addEventListener('click', () => {
-          deleteOne(button.dataset.id);
-        });
+      document.querySelectorAll('.delete-user').forEach(el=>{
+        el.addEventListener('click',()=>deleteUser(el.dataset.id));
       });
     }
 
-    function updatePagination() {
-      const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
-      const start = totalRows ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
-      const end = Math.min(currentPage * PAGE_SIZE, totalRows);
+    function updatePagination(){
+      const totalPages=Math.max(1,Math.ceil(totalRows/PAGE_SIZE));
+      const start=totalRows ? (currentPage-1)*PAGE_SIZE+1 : 0;
+      const end=Math.min(currentPage*PAGE_SIZE,totalRows);
 
-      $('pageNumber').textContent = currentPage;
-      $('countText').textContent =
-        totalRows > 0
-          ? `${start} - ${end} trong ${totalRows} người dùng`
-          : '0 người dùng';
+      $('pageNumber').textContent=currentPage;
+      $('countText').textContent=totalRows
+        ? `${start} - ${end} trong ${totalRows} người dùng`
+        : '0 người dùng';
 
-      $('btnFirst').disabled = currentPage <= 1;
-      $('btnPrev').disabled = currentPage <= 1;
-      $('btnNext').disabled = currentPage >= totalPages;
-      $('btnLast').disabled = currentPage >= totalPages;
+      $('btnFirst').disabled=currentPage<=1;
+      $('btnPrev').disabled=currentPage<=1;
+      $('btnNext').disabled=currentPage>=totalPages;
+      $('btnLast').disabled=currentPage>=totalPages;
     }
 
-    function handleRowCheck(event) {
-      const id = event.target.dataset.id;
-
-      if (event.target.checked) {
-        selectedIds.add(id);
-      } else {
-        selectedIds.delete(id);
-      }
-
+    function handleRowCheck(event){
+      const id=event.target.dataset.id;
+      event.target.checked ? selectedIds.add(id) : selectedIds.delete(id);
       updateSelectionUI();
     }
 
-    function updateSelectionUI() {
-      const checkAll = $('checkAll');
-      const visibleIds = currentRows.map((row) => String(row.id));
-      const checkedVisible = visibleIds.filter((id) => selectedIds.has(id));
+    function updateSelectionUI(){
+      const ids=currentUsers.map(row=>String(row.id));
+      const checked=ids.filter(id=>selectedIds.has(id));
 
-      checkAll.checked =
-        visibleIds.length > 0 &&
-        checkedVisible.length === visibleIds.length;
-
-      checkAll.indeterminate =
-        checkedVisible.length > 0 &&
-        checkedVisible.length < visibleIds.length;
-
-      $('btnDeleteSelected').hidden = selectedIds.size === 0;
-      $('btnDeleteSelected').textContent =
-        selectedIds.size
-          ? `Xóa đã chọn (${selectedIds.size})`
-          : 'Xóa đã chọn';
+      $('checkAll').checked=ids.length>0 && checked.length===ids.length;
+      $('checkAll').indeterminate=checked.length>0 && checked.length<ids.length;
+      $('btnDeleteSelected').hidden=selectedIds.size===0;
+      $('btnDeleteSelected').textContent=selectedIds.size
+        ? `Xóa đã chọn (${selectedIds.size})`
+        : 'Xóa đã chọn';
     }
 
-    function openCreateModal() {
-      $('modalTitle').textContent = 'Tạo tài khoản';
+    function openCreateUser(){
+      $('userModalTitle').textContent='Tạo tài khoản';
       $('userForm').reset();
-      $('formId').value = '';
-      $('formHoatDong').checked = true;
-      $('modalBackdrop').classList.add('show');
+      $('formUserId').value='';
+      $('formHoatDong').checked=true;
+      openModal('userModal');
       $('formTenNv').focus();
     }
 
-    function openEditModal(id) {
-      const row = currentRows.find(
-        (item) => String(item.id) === String(id)
-      );
+    function openEditUser(id){
+      const row=currentUsers.find(item=>String(item.id)===String(id));
+      if(!row) return showToast('Không tìm thấy nhân viên cần sửa.','err');
 
-      if (!row) {
-        showToast('Không tìm thấy nhân viên cần sửa.', 'err');
-        return;
-      }
-
-      $('modalTitle').textContent = 'Chỉnh sửa tài khoản';
-      $('formId').value = row.id ?? '';
-      $('formTenNv').value = row.ten_nv ?? '';
-      $('formIdNv').value = row.id_nv ?? '';
-      $('formDienThoai').value = row.dien_thoai ?? '';
-      $('formMaVaiTro').value = row.ma_vai_tro ?? '';
-      $('formChucDanh').value = row.chuc_danh ?? '';
-      $('formMatKhau').value = '';
-      $('formHoatDong').checked = row.hoat_dong !== false;
-
-      $('modalBackdrop').classList.add('show');
-      $('formTenNv').focus();
+      $('userModalTitle').textContent='Chỉnh sửa tài khoản';
+      $('formUserId').value=row.id ?? '';
+      $('formTenNv').value=row.ten_nv ?? '';
+      $('formIdNv').value=row.id_nv ?? '';
+      $('formDienThoai').value=row.dien_thoai ?? '';
+      $('formMaVaiTro').value=row.ma_vai_tro ?? '';
+      $('formChucDanh').value=row.chuc_danh ?? '';
+      $('formMatKhau').value='';
+      $('formHoatDong').checked=row.hoat_dong!==false;
+      openModal('userModal');
     }
 
-    function closeModal() {
-      $('modalBackdrop').classList.remove('show');
-    }
-
-    async function saveUser(event) {
+    async function saveUser(event){
       event.preventDefault();
 
-      const id = $('formId').value.trim();
-      const tenNv = $('formTenNv').value.trim();
+      const id=$('formUserId').value.trim();
+      const tenNv=$('formTenNv').value.trim();
 
-      if (!tenNv) {
-        showToast('Vui lòng nhập tên hiển thị.', 'err');
-        $('formTenNv').focus();
+      if(!tenNv){
+        showToast('Vui lòng nhập tên hiển thị.','err');
         return;
       }
 
-      const payload = {
-        ten_nv: tenNv,
-        id_nv: $('formIdNv').value
-          ? Number($('formIdNv').value)
-          : null,
-        dien_thoai: $('formDienThoai').value.trim() || null,
-        ma_vai_tro: $('formMaVaiTro').value.trim() || null,
-        chuc_danh: $('formChucDanh').value.trim() || null,
-        hoat_dong: $('formHoatDong').checked
+      const payload={
+        ten_nv:tenNv,
+        id_nv:$('formIdNv').value ? Number($('formIdNv').value) : null,
+        dien_thoai:$('formDienThoai').value.trim() || null,
+        ma_vai_tro:$('formMaVaiTro').value || null,
+        chuc_danh:$('formChucDanh').value.trim() || null,
+        hoat_dong:$('formHoatDong').checked
       };
 
-      const password = $('formMatKhau').value;
+      const password=$('formMatKhau').value;
+      if(password) payload.mat_khau=password;
 
-      if (password) {
-        payload.mat_khau = password;
-      }
+      $('btnSaveUser').disabled=true;
+      $('btnSaveUser').textContent='Đang lưu...';
 
-      $('btnSave').disabled = true;
-      $('btnSave').textContent = 'Đang lưu...';
+      try{
+        const result=id
+          ? await supabaseClient.from(USER_TABLE).update(payload).eq('id',id).select().single()
+          : await supabaseClient.from(USER_TABLE).insert(payload).select().single();
 
-      try {
-        let result;
+        if(result.error) throw result.error;
 
-        if (id) {
-          result = await supabaseClient
-            .from(TABLE_NAME)
-            .update(payload)
-            .eq('id', id)
-            .select()
-            .single();
-        } else {
-          result = await supabaseClient
-            .from(TABLE_NAME)
-            .insert(payload)
-            .select()
-            .single();
-        }
-
-        if (result.error) throw result.error;
-
-        closeModal();
+        closeModal('userModal');
         showToast(id ? 'Đã cập nhật tài khoản.' : 'Đã tạo tài khoản.');
-        await Promise.all([loadUsers(), loadRoles()]);
-      } catch (error) {
-        console.error(error);
-        showToast(`Không lưu được: ${error.message}`, 'err');
-      } finally {
-        $('btnSave').disabled = false;
-        $('btnSave').textContent = 'Lưu tài khoản';
+        await Promise.all([loadUsers(),loadRolesPage()]);
+      }catch(error){
+        showToast(`Không lưu được: ${error.message}`,'err');
+      }finally{
+        $('btnSaveUser').disabled=false;
+        $('btnSaveUser').textContent='Lưu tài khoản';
       }
     }
 
-    async function deleteOne(id) {
-      const row = currentRows.find(
-        (item) => String(item.id) === String(id)
-      );
+    async function deleteUser(id){
+      const row=currentUsers.find(item=>String(item.id)===String(id));
+      if(!confirm(`Bạn có chắc muốn xóa tài khoản "${row?.ten_nv || id}"?`)) return;
 
-      const name = row?.ten_nv || id;
-
-      if (!confirm(`Bạn có chắc muốn xóa tài khoản "${name}"?`)) {
-        return;
-      }
-
-      const { error } = await supabaseClient
-        .from(TABLE_NAME)
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        showToast(`Không xóa được: ${error.message}`, 'err');
-        return;
-      }
+      const {error}=await supabaseClient.from(USER_TABLE).delete().eq('id',id);
+      if(error) return showToast(`Không xóa được: ${error.message}`,'err');
 
       showToast('Đã xóa tài khoản.');
-      await Promise.all([loadUsers(), loadRoles()]);
+      await Promise.all([loadUsers(),loadRolesPage()]);
     }
 
-    async function deleteSelected() {
-      const ids = [...selectedIds];
+    async function deleteSelected(){
+      const ids=[...selectedIds];
+      if(!ids.length) return;
+      if(!confirm(`Bạn có chắc muốn xóa ${ids.length} tài khoản đã chọn?`)) return;
 
-      if (!ids.length) return;
+      const {error}=await supabaseClient.from(USER_TABLE).delete().in('id',ids);
+      if(error) return showToast(`Không xóa được: ${error.message}`,'err');
 
-      if (!confirm(`Bạn có chắc muốn xóa ${ids.length} tài khoản đã chọn?`)) {
-        return;
-      }
-
-      const { error } = await supabaseClient
-        .from(TABLE_NAME)
-        .delete()
-        .in('id', ids);
-
-      if (error) {
-        showToast(`Không xóa được: ${error.message}`, 'err');
-        return;
-      }
-
-      showToast(`Đã xóa ${ids.length} tài khoản.`);
       selectedIds.clear();
-      await Promise.all([loadUsers(), loadRoles()]);
+      showToast(`Đã xóa ${ids.length} tài khoản.`);
+      await Promise.all([loadUsers(),loadRolesPage()]);
     }
 
-    function escapeHtml(value) {
-      return String(value ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+    async function loadRolesPage(){
+      if(!supabaseClient) return;
+
+      $('rolesBody').innerHTML='<tr><td colspan="4" class="loading">Đang tải dữ liệu...</td></tr>';
+
+      const [rolesResult,usersResult]=await Promise.all([
+        supabaseClient
+          .from(ROLE_TABLE)
+          .select('id,ma_vai_tro,ten_vai_tro,mo_ta,la_he_thong,trang_thai,created_at')
+          .order('ten_vai_tro',{ascending:true}),
+        supabaseClient
+          .from(USER_TABLE)
+          .select('id,ten_nv,ma_vai_tro,hoat_dong')
+          .order('ten_nv',{ascending:true})
+      ]);
+
+      if(rolesResult.error){
+        $('rolesBody').innerHTML=
+          `<tr><td colspan="4" class="empty">Không tải được vai trò: ${escapeHtml(rolesResult.error.message)}</td></tr>`;
+        return;
+      }
+
+      if(usersResult.error){
+        $('rolesBody').innerHTML=
+          `<tr><td colspan="4" class="empty">Không tải được tài khoản: ${escapeHtml(usersResult.error.message)}</td></tr>`;
+        return;
+      }
+
+      allRoles=rolesResult.data || [];
+      roleUsersMap=new Map();
+
+      for(const user of (usersResult.data || [])){
+        const code=String(user.ma_vai_tro || '').trim();
+        if(!code) continue;
+        if(!roleUsersMap.has(code)) roleUsersMap.set(code,[]);
+        roleUsersMap.get(code).push(user);
+      }
+
+      renderRoles();
+      $('roleCountText').textContent=`${allRoles.length} vai trò`;
+      await loadRoleOptions();
     }
 
-    function debounce(fn, delay = 350) {
-      let timer;
+    function renderRoles(){
+      if(!allRoles.length){
+        $('rolesBody').innerHTML='<tr><td colspan="4" class="empty">Chưa có vai trò.</td></tr>';
+        return;
+      }
 
-      return (...args) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn(...args), delay);
-      };
-    }
+      $('rolesBody').innerHTML=allRoles.map(role=>{
+        const users=roleUsersMap.get(String(role.ma_vai_tro)) || [];
+        let accountHtml='Chưa có';
 
-    $('btnFilter').addEventListener('click', () => {
-      $('filterBox').classList.toggle('show');
-    });
-
-    $('btnCreate').addEventListener('click', openCreateModal);
-    $('btnReload').addEventListener('click', loadUsers);
-    $('btnCloseModal').addEventListener('click', closeModal);
-    $('btnCancelModal').addEventListener('click', closeModal);
-    $('userForm').addEventListener('submit', saveUser);
-    $('btnDeleteSelected').addEventListener('click', deleteSelected);
-
-    $('modalBackdrop').addEventListener('click', (event) => {
-      if (event.target === $('modalBackdrop')) closeModal();
-    });
-
-    $('checkAll').addEventListener('change', (event) => {
-      currentRows.forEach((row) => {
-        const id = String(row.id);
-
-        if (event.target.checked) {
-          selectedIds.add(id);
-        } else {
-          selectedIds.delete(id);
+        if(users.length===1){
+          accountHtml=escapeHtml(users[0].ten_nv || 'Không tên');
+        }else if(users.length>1){
+          accountHtml=`
+            ${users.length} tài khoản.
+            <button class="account-link view-role-users" data-code="${escapeHtml(role.ma_vai_tro)}">Xem</button>
+          `;
         }
-      });
 
-      document.querySelectorAll('.row-check').forEach((checkbox) => {
-        checkbox.checked = event.target.checked;
-      });
-
-      updateSelectionUI();
-    });
-
-    const reloadFromFilter = debounce(() => {
-      currentPage = 1;
-      loadUsers();
-    });
-
-    $('searchInput').addEventListener('input', reloadFromFilter);
-    $('roleFilter').addEventListener('change', reloadFromFilter);
-    $('statusFilter').addEventListener('change', reloadFromFilter);
-
-    $('btnClearFilter').addEventListener('click', () => {
-      $('searchInput').value = '';
-      $('roleFilter').value = '';
-      $('statusFilter').value = '';
-      currentPage = 1;
-      loadUsers();
-    });
-
-    $('btnFirst').addEventListener('click', () => {
-      currentPage = 1;
-      loadUsers();
-    });
-
-    $('btnPrev').addEventListener('click', () => {
-      if (currentPage > 1) {
-        currentPage--;
-        loadUsers();
-      }
-    });
-
-    $('btnNext').addEventListener('click', () => {
-      const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
-
-      if (currentPage < totalPages) {
-        currentPage++;
-        loadUsers();
-      }
-    });
-
-    $('btnLast').addEventListener('click', () => {
-      currentPage = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
-      loadUsers();
-    });
-
-    $('btnRoleTab').addEventListener('click', () => {
-      showToast(
-        'Tab Quản lý vai trò sẽ kết nối bảng vai trò ở bước tiếp theo.',
-        'err'
-      );
-    });
-
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') closeModal();
-    });
-
-    (async function start() {
-      try {
-        await initSupabase();
-        await Promise.all([loadUsers(), loadRoles()]);
-      } catch (error) {
-        console.error(error);
-
-        $('tbody').innerHTML = `
+        return `
           <tr>
-            <td colspan="8" class="empty">
-              ${escapeHtml(error.message)}
+            <td>
+              <div style="font-weight:650">${escapeHtml(role.ten_vai_tro || role.ma_vai_tro || '—')}</div>
+              <div class="muted" style="font-size:12px;margin-top:4px">${escapeHtml(role.ma_vai_tro || '')}</div>
+            </td>
+            <td>${escapeHtml(role.mo_ta || '')}</td>
+            <td>${accountHtml}</td>
+            <td>
+              <div class="action-group">
+                <button class="action-btn edit-role" data-id="${escapeHtml(role.id)}" title="Sửa">✎</button>
+                <button class="action-btn copy-role" data-id="${escapeHtml(role.id)}" title="Sao chép">⧉</button>
+                <button class="action-btn delete delete-role" data-id="${escapeHtml(role.id)}" title="Xóa">🗑</button>
+              </div>
             </td>
           </tr>
         `;
+      }).join('');
 
-        showToast(error.message, 'err');
+      document.querySelectorAll('.edit-role').forEach(el=>{
+        el.addEventListener('click',()=>openEditRole(el.dataset.id));
+      });
+      document.querySelectorAll('.copy-role').forEach(el=>{
+        el.addEventListener('click',()=>copyRole(el.dataset.id));
+      });
+      document.querySelectorAll('.delete-role').forEach(el=>{
+        el.addEventListener('click',()=>deleteRole(el.dataset.id));
+      });
+      document.querySelectorAll('.view-role-users').forEach(el=>{
+        el.addEventListener('click',()=>showRoleUsers(el.dataset.code));
+      });
+    }
+
+    function openCreateRole(){
+      $('roleModalTitle').textContent='Tạo vai trò';
+      $('roleForm').reset();
+      $('formRoleId').value='';
+      $('formRoleStatus').checked=true;
+      $('formRoleSystem').checked=false;
+      openModal('roleModal');
+      $('formRoleCode').focus();
+    }
+
+    function openEditRole(id){
+      const role=allRoles.find(item=>String(item.id)===String(id));
+      if(!role) return showToast('Không tìm thấy vai trò.','err');
+
+      $('roleModalTitle').textContent='Chỉnh sửa vai trò';
+      $('formRoleId').value=role.id ?? '';
+      $('formRoleCode').value=role.ma_vai_tro ?? '';
+      $('formRoleName').value=role.ten_vai_tro ?? '';
+      $('formRoleDescription').value=role.mo_ta ?? '';
+      $('formRoleSystem').checked=role.la_he_thong===true;
+      $('formRoleStatus').checked=role.trang_thai!==false;
+      openModal('roleModal');
+    }
+
+    function copyRole(id){
+      const role=allRoles.find(item=>String(item.id)===String(id));
+      if(!role) return;
+
+      $('roleModalTitle').textContent='Sao chép vai trò';
+      $('roleForm').reset();
+      $('formRoleId').value='';
+      $('formRoleCode').value=`${role.ma_vai_tro || 'VAI_TRO'}_COPY`;
+      $('formRoleName').value=`${role.ten_vai_tro || 'Vai trò'} - bản sao`;
+      $('formRoleDescription').value=role.mo_ta ?? '';
+      $('formRoleSystem').checked=false;
+      $('formRoleStatus').checked=role.trang_thai!==false;
+      openModal('roleModal');
+    }
+
+    async function saveRole(event){
+      event.preventDefault();
+
+      const id=$('formRoleId').value.trim();
+      const code=$('formRoleCode').value.trim().toUpperCase().replace(/\s+/g,'_');
+      const name=$('formRoleName').value.trim();
+
+      if(!code || !name){
+        showToast('Vui lòng nhập mã và tên vai trò.','err');
+        return;
+      }
+
+      const payload={
+        ma_vai_tro:code,
+        ten_vai_tro:name,
+        mo_ta:$('formRoleDescription').value.trim() || null,
+        la_he_thong:$('formRoleSystem').checked,
+        trang_thai:$('formRoleStatus').checked
+      };
+
+      $('btnSaveRole').disabled=true;
+      $('btnSaveRole').textContent='Đang lưu...';
+
+      try{
+        const result=id
+          ? await supabaseClient.from(ROLE_TABLE).update(payload).eq('id',id).select().single()
+          : await supabaseClient.from(ROLE_TABLE).insert(payload).select().single();
+
+        if(result.error) throw result.error;
+
+        closeModal('roleModal');
+        showToast(id ? 'Đã cập nhật vai trò.' : 'Đã tạo vai trò.');
+        await loadRolesPage();
+      }catch(error){
+        showToast(`Không lưu được vai trò: ${error.message}`,'err');
+      }finally{
+        $('btnSaveRole').disabled=false;
+        $('btnSaveRole').textContent='Lưu vai trò';
+      }
+    }
+
+    async function deleteRole(id){
+      const role=allRoles.find(item=>String(item.id)===String(id));
+      if(!role) return;
+
+      const users=roleUsersMap.get(String(role.ma_vai_tro)) || [];
+      if(users.length){
+        showToast(`Không thể xóa vì vai trò đang có ${users.length} tài khoản.`,'err');
+        return;
+      }
+
+      if(role.la_he_thong===true){
+        showToast('Không thể xóa vai trò hệ thống.','err');
+        return;
+      }
+
+      if(!confirm(`Bạn có chắc muốn xóa vai trò "${role.ten_vai_tro}"?`)) return;
+
+      const {error}=await supabaseClient.from(ROLE_TABLE).delete().eq('id',id);
+      if(error) return showToast(`Không xóa được vai trò: ${error.message}`,'err');
+
+      showToast('Đã xóa vai trò.');
+      await loadRolesPage();
+    }
+
+    function showRoleUsers(code){
+      const role=allRoles.find(item=>String(item.ma_vai_tro)===String(code));
+      const users=roleUsersMap.get(String(code)) || [];
+
+      $('accountsModalTitle').textContent=
+        `Tài khoản thuộc vai trò: ${role?.ten_vai_tro || code}`;
+
+      $('accountsList').innerHTML=users.length
+        ? users.map(user=>`
+            <li>
+              <span>${escapeHtml(user.ten_nv || 'Không tên')}</span>
+              <span class="status ${user.hoat_dong!==false ? 'on' : 'off'}">
+                ${user.hoat_dong!==false ? 'Đang hoạt động' : 'Ngừng hoạt động'}
+              </span>
+            </li>
+          `).join('')
+        : '<li>Chưa có tài khoản.</li>';
+
+      openModal('accountsModal');
+    }
+
+    function debounce(fn,delay=350){
+      let timer;
+      return (...args)=>{
+        clearTimeout(timer);
+        timer=setTimeout(()=>fn(...args),delay);
+      };
+    }
+
+    document.querySelectorAll('[data-close]').forEach(button=>{
+      button.addEventListener('click',()=>closeModal(button.dataset.close));
+    });
+
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop=>{
+      backdrop.addEventListener('click',event=>{
+        if(event.target===backdrop) closeModal(backdrop.id);
+      });
+    });
+
+    $('tabUsers').addEventListener('click',()=>switchTab('users'));
+    $('tabRoles').addEventListener('click',()=>switchTab('roles'));
+
+    $('btnFilter').addEventListener('click',()=>$('filterBox').classList.toggle('show'));
+    $('btnCreateUser').addEventListener('click',openCreateUser);
+    $('btnReloadUsers').addEventListener('click',loadUsers);
+    $('btnDeleteSelected').addEventListener('click',deleteSelected);
+    $('userForm').addEventListener('submit',saveUser);
+
+    $('btnCreateRole').addEventListener('click',openCreateRole);
+    $('btnReloadRoles').addEventListener('click',loadRolesPage);
+    $('roleForm').addEventListener('submit',saveRole);
+
+    $('checkAll').addEventListener('change',event=>{
+      currentUsers.forEach(row=>{
+        const id=String(row.id);
+        event.target.checked ? selectedIds.add(id) : selectedIds.delete(id);
+      });
+      document.querySelectorAll('.row-check').forEach(el=>el.checked=event.target.checked);
+      updateSelectionUI();
+    });
+
+    const reloadFromFilter=debounce(()=>{
+      currentPage=1;
+      loadUsers();
+    });
+
+    $('searchInput').addEventListener('input',reloadFromFilter);
+    $('roleFilter').addEventListener('change',reloadFromFilter);
+    $('statusFilter').addEventListener('change',reloadFromFilter);
+
+    $('btnClearFilter').addEventListener('click',()=>{
+      $('searchInput').value='';
+      $('roleFilter').value='';
+      $('statusFilter').value='';
+      currentPage=1;
+      loadUsers();
+    });
+
+    $('btnFirst').addEventListener('click',()=>{currentPage=1;loadUsers()});
+    $('btnPrev').addEventListener('click',()=>{
+      if(currentPage>1){currentPage--;loadUsers()}
+    });
+    $('btnNext').addEventListener('click',()=>{
+      const totalPages=Math.max(1,Math.ceil(totalRows/PAGE_SIZE));
+      if(currentPage<totalPages){currentPage++;loadUsers()}
+    });
+    $('btnLast').addEventListener('click',()=>{
+      currentPage=Math.max(1,Math.ceil(totalRows/PAGE_SIZE));
+      loadUsers();
+    });
+
+    document.addEventListener('keydown',event=>{
+      if(event.key==='Escape'){
+        document.querySelectorAll('.modal-backdrop.show').forEach(el=>closeModal(el.id));
+      }
+    });
+
+    (async function start(){
+      try{
+        await initSupabase();
+        await loadRoleOptions();
+        await loadUsers();
+      }catch(error){
+        console.error(error);
+        $('usersBody').innerHTML=
+          `<tr><td colspan="8" class="empty">${escapeHtml(error.message)}</td></tr>`;
+        showToast(error.message,'err');
       }
     })();
   </script>
