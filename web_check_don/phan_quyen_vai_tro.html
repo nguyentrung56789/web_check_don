@@ -112,6 +112,11 @@
       padding:18px 20px;background:#fbfcfd;cursor:pointer;
     }
     .row-head:hover{background:#f6f9fd}
+    .row-head-actions{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+    .row-master-wrap{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#475569;cursor:pointer}
+    .row-master-wrap input{width:19px;height:19px;accent-color:var(--primary);cursor:pointer}
+    .row-head .chevron{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px}
+    .row-head .chevron:hover{background:#eaf2ff;color:var(--primary)}
     .row-name{font-size:18px;font-weight:750}
     .row-path{font-size:13px;color:var(--muted);margin-top:3px}
     .chevron{font-size:20px;transition:.2s}
@@ -185,6 +190,42 @@
     .main-menu-toggle{display:flex;align-items:center;justify-content:flex-end;gap:10px;font-weight:700}
     .main-menu-toggle input{width:22px;height:22px;accent-color:var(--primary)}
 
+    /* Giao diện gọn + xổ lên/xuống theo nhóm */
+    .group-section{margin-bottom:14px}
+    .group-title{display:none}
+    .group-card{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+    .group-toggle{
+      width:100%;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:12px 16px;border:0;background:#f7f9fb;color:var(--text);font-weight:800;font-size:18px;cursor:pointer;
+    }
+    .group-toggle:hover{background:#f1f5f9}
+    .group-toggle .group-meta{font-size:13px;color:var(--muted);font-weight:600;margin-left:8px}
+    .group-toggle .group-chevron{font-size:22px;transition:transform .18s ease}
+    .group-card.collapsed .group-chevron{transform:rotate(-90deg)}
+    .group-card.collapsed .group-content{display:none}
+    .group-content{border-top:1px solid var(--line)}
+
+    .main-menu-list{padding:8px}
+    .main-menu-item{
+      min-height:48px;display:grid;grid-template-columns:minmax(180px,1fr) auto;
+      gap:12px;align-items:center;padding:9px 12px;border:0;border-bottom:1px solid #edf1f5;
+      border-radius:0;background:#fff;margin:0;
+    }
+    .main-menu-item:last-child{border-bottom:0}
+    .main-menu-name{font-size:15px;font-weight:700}
+    .main-menu-path{font-size:12px;margin-top:2px}
+    .main-menu-toggle{font-size:14px;gap:8px}
+    .main-menu-toggle input{width:19px;height:19px}
+
+    .permission-row{border-bottom:1px solid #edf1f5}
+    .permission-row:last-child{border-bottom:0}
+    .row-head{min-height:48px;padding:10px 14px;background:#fff}
+    .row-name{font-size:15px}
+    .row-path{font-size:12px}
+    .row-body{padding:12px 14px;gap:12px}
+    .perm-col-title{font-size:13px}
+    .perm-check{font-size:14px}
+
     @media(max-width:980px){
       .top-form{grid-template-columns:1fr}
       .content{grid-template-columns:1fr}
@@ -198,6 +239,36 @@
       .modal-foot{width:100%;bottom:0;border-radius:0;padding:12px 14px}
       .modal-foot .btn{padding:0 13px}
     }
+
+    /* Bản gọn, hiện đại */
+    .modal{width:min(1320px,100%);min-height:calc(100vh - 28px);border-radius:16px}
+    .modal-head{padding:18px 24px}.modal-head h1{font-size:23px}.close{width:40px;height:40px;font-size:24px}
+    .top-form{grid-template-columns:260px minmax(0,1fr) 220px;gap:14px;padding:18px 24px 8px}
+    .field{min-height:42px}.content{grid-template-columns:minmax(0,1fr) 220px;gap:16px;padding:10px 24px 82px}
+    .hint{font-size:14px}.group-section{margin-bottom:10px}.group-card{border-radius:10px;box-shadow:0 3px 12px rgba(15,23,42,.04)}
+    .group-toggle{min-height:46px;padding:10px 14px;font-size:16px;background:#f8fafc}.group-toggle .group-meta{font-size:12px}
+    .main-menu-list{padding:4px 10px}.main-menu-item{min-height:44px;padding:8px 6px;grid-template-columns:minmax(0,1fr) auto}
+    .main-menu-name{font-size:14px}.main-menu-path{font-size:11px}.main-menu-toggle{font-size:13px}
+    .main-menu-toggle span{min-width:68px}.main-menu-toggle input{width:18px;height:18px}
+    .permission-row .row-head{min-height:44px;padding:9px 12px}.row-name{font-size:14px}.row-body{padding:10px 12px;grid-template-columns:repeat(4,minmax(115px,1fr))}
+    .sidebar{top:92px;padding-left:14px}.side-title{font-size:12px;margin-bottom:8px}.side-nav{gap:6px}
+    .nav-group{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
+    .nav-group-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;border:0;background:#f8fafc;color:#253145;font-weight:750;cursor:pointer;text-align:left}
+    .nav-group-toggle:hover{background:#f1f5f9}.nav-group-arrow{transition:transform .18s ease}.nav-group.collapsed .nav-group-arrow{transform:rotate(-90deg)}
+    .nav-group.collapsed .nav-group-items{display:none}.nav-group-items{padding:5px}
+    .nav-child{display:block;padding:8px 9px;border-radius:7px;text-decoration:none;color:#4b5870;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .nav-child:hover,.nav-child.active{background:var(--primary-soft);color:var(--primary)}
+    .modal-foot{width:min(1320px,calc(100% - 32px));padding:12px 24px}.btn{min-height:42px;padding:0 16px}
+
+    .group-toggle-title,.group-toggle-action{display:flex;align-items:center;gap:9px}
+    .group-toggle-icon{width:22px;height:22px;border-radius:6px;background:var(--primary);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;line-height:1}
+    .group-toggle-text{font-size:12px;color:#64748b;font-weight:650}
+    .group-chevron{font-size:18px;transition:transform .18s ease}
+    .group-card.collapsed .group-toggle-icon::before{content:'+'}
+    .group-card.collapsed .group-toggle-icon{font-size:0}
+    .group-card.collapsed .group-toggle-text{font-size:0}
+    .group-card.collapsed .group-toggle-text::after{content:'Mở rộng';font-size:12px}
+    .group-card.collapsed .group-chevron{transform:rotate(180deg)}
   </style>
 </head>
 <body>
@@ -246,7 +317,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION='PHAN_QUYEN_V2_0_MAIN_GROUP';
+    const APP_VERSION='PHAN_QUYEN_V2_4_MAIN_MENU_ACCORDION';
     const ROLE_TABLE='kv_vai_tro';
     const FUNCTION_TABLE='kv_chucnang';
     const PERMISSION_TABLE='kv_vai_tro_quyen';
@@ -416,26 +487,37 @@
     function renderMainGroup(group,items){
       const anchor=`group-${slug(group)}`;
       return `<section class="group-section" id="${anchor}">
-        <h2 class="group-title">Menu chính</h2>
         <div class="group-card">
-          <div class="main-menu-list">
-            ${items.map(fn=>{
-              const state=currentPermissions.get(String(fn.id));
-              const checked=state?.duoc_xem===true?'checked':'';
-              return `<div class="main-menu-item">
-                <div>
-                  <div class="main-menu-name">${escapeHtml(fn.icon||'')} ${escapeHtml(fn.ten_chucnang)}</div>
-                  <div class="main-menu-path">${escapeHtml(fn.duong_dan||'Không có đường dẫn')}</div>
-                </div>
-                <label class="main-menu-toggle">
-                  <input type="checkbox"
-                    data-function-id="${escapeHtml(fn.id)}"
-                    data-permission="duoc_xem"
-                    ${checked} />
-                  <span>Được xem</span>
-                </label>
-              </div>`;
-            }).join('')}
+          <button class="group-toggle main-group-toggle" type="button" aria-expanded="true">
+            <span class="group-toggle-title">
+              <span class="group-toggle-icon">−</span>
+              <span>Danh sách Menu chính <span class="group-meta">${items.length} chức năng</span></span>
+            </span>
+            <span class="group-toggle-action">
+              <span class="group-toggle-text">Thu gọn</span>
+              <span class="group-chevron">⌃</span>
+            </span>
+          </button>
+          <div class="group-content">
+            <div class="main-menu-list">
+              ${items.map(fn=>{
+                const state=currentPermissions.get(String(fn.id));
+                const checked=state?.duoc_xem===true?'checked':'';
+                return `<div class="main-menu-item">
+                  <div>
+                    <div class="main-menu-name">${escapeHtml(fn.icon||'')} ${escapeHtml(fn.ten_chucnang)}</div>
+                    <div class="main-menu-path">${escapeHtml(fn.duong_dan||'Không có đường dẫn')}</div>
+                  </div>
+                  <label class="main-menu-toggle">
+                    <input type="checkbox"
+                      data-function-id="${escapeHtml(fn.id)}"
+                      data-permission="duoc_xem"
+                      ${checked} />
+                    <span>Được xem</span>
+                  </label>
+                </div>`;
+              }).join('')}
+            </div>
           </div>
         </div>
       </section>`;
@@ -444,26 +526,53 @@
     function renderNormalGroup(group,items){
       const anchor=`group-${slug(group)}`;
       return `<section class="group-section" id="${anchor}">
-        <h2 class="group-title">${escapeHtml(group)}</h2>
-        <div class="group-card">
-          ${items.map(fn=>`
-            <article class="permission-row" data-function-row="${escapeHtml(fn.id)}">
-              <div class="row-head">
-                <div>
-                  <div class="row-name">${escapeHtml(fn.icon||'')} ${escapeHtml(fn.ten_chucnang)}</div>
-                  <div class="row-path">${escapeHtml(fn.duong_dan||'Không có đường dẫn')}</div>
+        <div class="group-card collapsed">
+          <button class="group-toggle" type="button">
+            <span>${escapeHtml(group)} <span class="group-meta">${items.length} chức năng</span></span>
+            <span class="group-chevron">⌄</span>
+          </button>
+          <div class="group-content">
+            ${items.map(fn=>`
+              <article class="permission-row collapsed" data-function-row="${escapeHtml(fn.id)}">
+                <div class="row-head">
+                  <div>
+                    <div class="row-name">${escapeHtml(fn.icon||'')} ${escapeHtml(fn.ten_chucnang)}</div>
+                    <div class="row-path">${escapeHtml(fn.duong_dan||'Không có đường dẫn')}</div>
+                  </div>
+                  <div class="row-head-actions">
+                    <label class="row-master-wrap" title="Bật hoặc tắt toàn bộ quyền trong mục này">
+                      <input type="checkbox" class="row-master" data-master-function-id="${escapeHtml(fn.id)}" />
+                      <span>Tất cả</span>
+                    </label>
+                    <span class="chevron" role="button" aria-label="Mở hoặc thu gọn">⌄</span>
+                  </div>
                 </div>
-                <span class="chevron">⌄</span>
-              </div>
-              <div class="row-body">
-                <div><div class="perm-col-title">Xem</div>${checkboxHtml(fn,'duoc_xem','Cho phép xem')}</div>
-                <div><div class="perm-col-title">Tạo</div>${checkboxHtml(fn,'duoc_them','Cho phép tạo')}</div>
-                <div><div class="perm-col-title">Chỉnh sửa</div>${checkboxHtml(fn,'duoc_sua','Cho phép sửa')}</div>
-                <div><div class="perm-col-title">Xóa</div>${checkboxHtml(fn,'duoc_xoa','Cho phép xóa')}</div>
-              </div>
-            </article>`).join('')}
+                <div class="row-body">
+                  <div><div class="perm-col-title">Xem</div>${checkboxHtml(fn,'duoc_xem','Cho phép xem')}</div>
+                  <div><div class="perm-col-title">Tạo</div>${checkboxHtml(fn,'duoc_them','Cho phép tạo')}</div>
+                  <div><div class="perm-col-title">Chỉnh sửa</div>${checkboxHtml(fn,'duoc_sua','Cho phép sửa')}</div>
+                  <div><div class="perm-col-title">Xóa</div>${checkboxHtml(fn,'duoc_xoa','Cho phép xóa')}</div>
+                </div>
+              </article>`).join('')}
+          </div>
         </div>
       </section>`;
+    }
+
+    function syncRowMaster(functionId){
+      const row=document.querySelector(`[data-function-row="${CSS.escape(String(functionId))}"]`);
+      const master=row?.querySelector('.row-master');
+      if(!row||!master) return;
+      const children=[...row.querySelectorAll('[data-function-id][data-permission]')];
+      const checkedCount=children.filter(input=>input.checked).length;
+      master.checked=children.length>0 && checkedCount===children.length;
+      master.indeterminate=checkedCount>0 && checkedCount<children.length;
+    }
+
+    function syncAllRowMasters(){
+      document.querySelectorAll('.row-master').forEach(master=>{
+        syncRowMaster(master.dataset.masterFunctionId);
+      });
     }
 
     function renderPermissions(){
@@ -477,17 +586,56 @@
         isMainGroup(group) ? renderMainGroup(group,items) : renderNormalGroup(group,items)
       ).join('');
 
-      $('sideNav').innerHTML=[...groups.keys()].map((group,index)=>
-        `<a class="side-link ${index===0?'active':''}" href="#group-${slug(group)}">${escapeHtml(isMainGroup(group)?'Menu chính':group)}</a>`
-      ).join('');
+      $('sideNav').innerHTML=[...groups.entries()].map(([group,items],index)=>{
+        const title=isMainGroup(group)?'Menu chính':group;
+        return `<div class="nav-group ${index===0?'':'collapsed'}">
+          <button class="nav-group-toggle" type="button">
+            <span>${escapeHtml(title)}</span><span class="nav-group-arrow">⌄</span>
+          </button>
+          <div class="nav-group-items">
+            ${items.map((fn,i)=>`<a class="nav-child ${index===0&&i===0?'active':''}" href="#group-${slug(group)}" data-target-function="${escapeHtml(fn.id)}">${escapeHtml(fn.ten_chucnang)}</a>`).join('')}
+          </div>
+        </div>`;
+      }).join('');
 
-      document.querySelectorAll('.row-head').forEach(head=>{
-        head.addEventListener('click',()=>head.closest('.permission-row').classList.toggle('collapsed'));
+      document.querySelectorAll('.group-toggle').forEach(button=>{
+        button.addEventListener('click',()=>{
+          const card=button.closest('.group-card');
+          card.classList.toggle('collapsed');
+          button.setAttribute('aria-expanded',String(!card.classList.contains('collapsed')));
+        });
       });
-      document.querySelectorAll('.side-link').forEach(link=>{
-        link.addEventListener('click',()=>{
-          document.querySelectorAll('.side-link').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.row-head').forEach(head=>{
+        head.addEventListener('click',event=>{
+          if(event.target.closest('.row-master-wrap')) return;
+          head.closest('.permission-row').classList.toggle('collapsed');
+        });
+      });
+      document.querySelectorAll('.row-master').forEach(master=>{
+        master.addEventListener('click',event=>event.stopPropagation());
+        master.addEventListener('change',()=>{
+          const row=master.closest('.permission-row');
+          row?.querySelectorAll('[data-function-id][data-permission]').forEach(input=>{
+            input.checked=master.checked;
+          });
+          master.indeterminate=false;
+        });
+      });
+      document.querySelectorAll('.permission-row [data-function-id][data-permission]').forEach(input=>{
+        input.addEventListener('change',()=>syncRowMaster(input.dataset.functionId));
+      });
+      syncAllRowMasters();
+      document.querySelectorAll('.nav-group-toggle').forEach(button=>{
+        button.addEventListener('click',()=>button.closest('.nav-group').classList.toggle('collapsed'));
+      });
+      document.querySelectorAll('.nav-child').forEach(link=>{
+        link.addEventListener('click',event=>{
+          event.preventDefault();
+          document.querySelectorAll('.nav-child').forEach(x=>x.classList.remove('active'));
           link.classList.add('active');
+          const target=document.getElementById(link.getAttribute('href').slice(1));
+          target?.querySelector('.group-card')?.classList.remove('collapsed');
+          target?.scrollIntoView({behavior:'smooth',block:'start'});
         });
       });
     }
