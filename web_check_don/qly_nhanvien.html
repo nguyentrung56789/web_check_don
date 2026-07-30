@@ -493,7 +493,7 @@
         <div class="toolbar">
           <div></div>
           <div class="toolbar-right">
-            <button class="btn" type="button" id="btnCreateRole">
+            <button class="btn" type="button" id="btnCreateRole" onclick="openRolePermissionPage()">
               <span class="icon">＋</span> Tạo vai trò
             </button>
             <button class="btn" type="button" id="btnReloadRoles" title="Tải lại">
@@ -1349,12 +1349,12 @@
     $('btnDeleteSelected').addEventListener('click',deleteSelected);
     $('userForm').addEventListener('submit',saveUser);
 
-    $('btnCreateRole').addEventListener('click',()=>{
-      const token=new URLSearchParams(location.search).get('token');
-      const url=new URL('phan_quyen_vai_tro.html',location.href);
-      if(token) url.searchParams.set('token',token);
-      location.href=url.href;
-    });
+    function openRolePermissionPage(){
+      const token=new URLSearchParams(window.location.search).get('token');
+      let target='./phan_quyen_vai_tro.html';
+      if(token) target += `?token=${encodeURIComponent(token)}`;
+      window.location.assign(target);
+    }
     $('btnReloadRoles').addEventListener('click',loadRolesPage);
     $('roleForm').addEventListener('submit',saveRole);
 
