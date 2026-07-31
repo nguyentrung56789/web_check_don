@@ -329,7 +329,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION='PHAN_QUYEN_V2_7_EDIT_LOAD_FROM_VIEW';
+    const APP_VERSION='PHAN_QUYEN_V2_8_EDIT_LOAD_FROM_PERMISSION_TABLE';
     const ROLE_TABLE='kv_vai_tro';
     const FUNCTION_TABLE='kv_chucnang';
     const PERMISSION_TABLE='kv_vai_tro_quyen';
@@ -473,14 +473,16 @@
         return;
       }
 
+      /*
+       * Khi sửa hoặc nhân đôi vai trò, phải đọc trực tiếp từ bảng quyền gốc.
+       * Không dùng sql_phan_quyen_nhan_vien vì vai trò mới chưa gán nhân viên
+       * sẽ không xuất hiện đầy đủ trong View đó.
+       */
       const {data,error}=await supabaseClient
-        .from(PERMISSION_VIEW)
+        .from(PERMISSION_TABLE)
         .select(`
           vai_tro_id,
           chucnang_id,
-          id_chucnang,
-          ten_chucnang,
-          duong_dan,
           duoc_xem,
           duoc_them,
           duoc_sua,
@@ -490,10 +492,6 @@
 
       if(error) throw error;
 
-      /*
-       * View có thể trả lặp một chức năng khi vai trò có nhiều nhân viên.
-       * Map theo chucnang_id sẽ tự giữ một bản ghi duy nhất.
-       */
       for(const row of (data||[])){
         const functionId=String(row.chucnang_id||'').trim();
         if(!functionId) continue;
@@ -506,7 +504,7 @@
         });
       }
 
-      console.log('[SỬA VAI TRÒ] Quyền lấy từ sql_phan_quyen_nhan_vien:',data||[]);
+      console.log('[SỬA VAI TRÒ] Quyền lấy từ kv_vai_tro_quyen:',data||[]);
       renderPermissions();
     }
 
