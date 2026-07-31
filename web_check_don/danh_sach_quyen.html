@@ -1,0 +1,985 @@
+
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
+
+  <title>Danh sách quyền</title>
+
+  <script src="./js/internal_key.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/cod_config.js"></script>
+  <script src="./js/auth_token.js"></script>
+
+  <style>
+    :root {
+      --bg: #f3f6fa;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #6b7280;
+      --line: #dde3ea;
+      --head: #f8fafc;
+      --primary: #087af5;
+      --primary-soft: #e8f2ff;
+      --danger: #dc3545;
+      --success: #087443;
+      --shadow: 0 10px 32px rgba(15, 23, 42, 0.09);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 66px;
+      padding: 12px 22px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 3px 14px rgba(15, 23, 42, 0.06);
+    }
+
+    .topbar-title {
+      font-size: 21px;
+      font-weight: 800;
+    }
+
+    .back-btn {
+      border: 0;
+      background: transparent;
+      color: var(--danger);
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .page {
+      width: min(1500px, calc(100% - 28px));
+      margin: 20px auto 34px;
+    }
+
+    .panel {
+      overflow: hidden;
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 22px 26px 14px;
+    }
+
+    .panel-head h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .panel-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) minmax(220px, 320px) auto auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 26px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .field {
+      width: 100%;
+      min-height: 44px;
+      padding: 9px 12px;
+      border: 1px solid #cfd7e2;
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+    }
+
+    .field:focus {
+      border-color: #80b9fa;
+      box-shadow: 0 0 0 3px rgba(8, 122, 245, 0.12);
+    }
+
+    .btn {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 15px;
+      border: 1px solid #cfd7e2;
+      border-radius: 10px;
+      background: #fff;
+      color: #273244;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      background: #f8fafc;
+    }
+
+    .btn-primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #006ee6;
+    }
+
+    .table-wrap {
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 1120px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 15px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--head);
+      color: #111827;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    tbody tr:hover {
+      background: #fbfdff;
+    }
+
+    .code {
+      font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Consolas,
+        monospace;
+      font-size: 13px;
+    }
+
+    .path {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 8px;
+      border-radius: 7px;
+      background: var(--primary-soft);
+      color: #0767c9;
+      font-weight: 700;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 8px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .status.on {
+      background: #e6f7ef;
+      color: var(--success);
+    }
+
+    .status.off {
+      background: #ffe8eb;
+      color: #a51d2d;
+    }
+
+    .empty,
+    .loading {
+      padding: 36px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 26px 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 100;
+      display: none;
+      max-width: min(430px, calc(100vw - 36px));
+      padding: 13px 16px;
+      border-radius: 11px;
+      background: #172033;
+      color: #fff;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+    }
+
+    .toast.show {
+      display: block;
+    }
+
+    .toast.err {
+      background: #b42318;
+    }
+
+    @media (max-width: 860px) {
+      .page {
+        width: 100%;
+        margin: 0;
+      }
+
+      .panel {
+        border-radius: 0;
+      }
+
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .panel-head,
+      .toolbar,
+      .footer {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+
+      .topbar {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="topbar-title">🛡️ Danh sách quyền</div>
+
+    <button
+      id="btnBack"
+      class="back-btn"
+      type="button"
+    >
+      ← Quay lại
+    </button>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h1>Danh mục chức năng</h1>
+          <p>
+            Danh sách lấy từ bảng
+            <strong>kv_chucnang</strong>.
+          </p>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <input
+          id="searchInput"
+          class="field"
+          type="search"
+          placeholder="Tìm ID, tên chức năng, nhóm..."
+        />
+
+        <select
+          id="pathFilter"
+          class="field"
+        >
+          <option value="">Tất cả đường dẫn</option>
+        </select>
+
+        <button
+          id="btnClear"
+          class="btn"
+          type="button"
+        >
+          Xóa lọc
+        </button>
+
+        <button
+          id="btnReload"
+          class="btn btn-primary"
+          type="button"
+        >
+          ⟳ Tải lại
+        </button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:70px">STT</th>
+              <th>ID chức năng</th>
+              <th>Tên chức năng</th>
+              <th>Đường dẫn</th>
+              <th>Nhóm chức năng</th>
+              <th>Icon</th>
+              <th style="width:100px">Thứ tự</th>
+              <th style="width:140px">Trạng thái</th>
+            </tr>
+          </thead>
+
+          <tbody id="tableBody">
+            <tr>
+              <td
+                colspan="8"
+                class="loading"
+              >
+                Đang tải dữ liệu...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="footer">
+        <div id="filterText">Tất cả đường dẫn</div>
+        <div id="countText">0 chức năng</div>
+      </div>
+    </section>
+  </main>
+
+  <div
+    id="toast"
+    class="toast"
+  ></div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const TABLE_NAME = 'kv_chucnang';
+      const CFG_CACHE_KEY = 'cod_cfg_cache_v2';
+
+      let supabaseClient = null;
+      let allRows = [];
+
+      const $ = id =>
+        document.getElementById(id);
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;');
+      }
+
+      function showToast(message, type = '') {
+        const toast = $('toast');
+
+        toast.textContent = message;
+        toast.className =
+          `toast show ${type}`.trim();
+
+        clearTimeout(showToast.timer);
+
+        showToast.timer = setTimeout(() => {
+          toast.className = 'toast';
+        }, 3200);
+      }
+
+      async function ensureInternalKeyLoaded() {
+        if (
+          typeof window.getInternalKey ===
+          'function'
+        ) {
+          return window.getInternalKey() || '';
+        }
+
+        await new Promise(resolve => {
+          const script =
+            document.createElement('script');
+
+          script.src = './js/internal_key.js';
+          script.onload = resolve;
+          script.onerror = resolve;
+
+          document.head.appendChild(script);
+        });
+
+        return (
+          typeof window.getInternalKey ===
+          'function'
+            ? window.getInternalKey() || ''
+            : ''
+        );
+      }
+
+      function normalizeSupabaseConfig(cfg) {
+        if (
+          !cfg ||
+          typeof cfg !== 'object'
+        ) {
+          return null;
+        }
+
+        const url =
+          cfg.url ||
+          cfg.SUPABASE_URL ||
+          cfg.supabaseUrl ||
+          cfg.supabase_url ||
+          '';
+
+        const key =
+          cfg.anon ||
+          cfg.key ||
+          cfg.SUPABASE_ANON ||
+          cfg.SUPABASE_ANON_KEY ||
+          cfg.supabaseAnon ||
+          cfg.supabaseKey ||
+          cfg.supabase_anon_key ||
+          '';
+
+        if (!url || !key) {
+          return null;
+        }
+
+        return {
+          url: String(url).trim(),
+          key: String(key).trim()
+        };
+      }
+
+      async function getSupabaseConfig() {
+        try {
+          const internalKey =
+            await ensureInternalKeyLoaded();
+
+          const response = await fetch(
+            '/api/getConfig',
+            {
+              headers: {
+                'x-internal-key':
+                  internalKey || ''
+              },
+              cache: 'no-store'
+            }
+          );
+
+          if (response.ok) {
+            const config =
+              normalizeSupabaseConfig(
+                await response.json()
+              );
+
+            if (config) {
+              localStorage.setItem(
+                CFG_CACHE_KEY,
+                JSON.stringify(config)
+              );
+
+              return config;
+            }
+          }
+        } catch (error) {
+          console.warn(
+            'Không lấy được config API:',
+            error
+          );
+        }
+
+        try {
+          const raw =
+            localStorage.getItem(
+              CFG_CACHE_KEY
+            );
+
+          const cached = raw
+            ? normalizeSupabaseConfig(
+                JSON.parse(raw)
+              )
+            : null;
+
+          if (cached) {
+            return cached;
+          }
+        } catch (error) {}
+
+        const configs = [
+          window.COD_CONFIG,
+          window.codConfig,
+          window.APP_CONFIG,
+          window.CONFIG
+        ];
+
+        for (const cfg of configs) {
+          const config =
+            normalizeSupabaseConfig(cfg);
+
+          if (config) {
+            return config;
+          }
+        }
+
+        if (
+          typeof window.getConfig ===
+          'function'
+        ) {
+          const config =
+            normalizeSupabaseConfig(
+              await window.getConfig()
+            );
+
+          if (config) {
+            return config;
+          }
+        }
+
+        throw new Error(
+          'Không lấy được cấu hình Supabase.'
+        );
+      }
+
+      async function initSupabase() {
+        const config =
+          await getSupabaseConfig();
+
+        supabaseClient =
+          window.supabase.createClient(
+            config.url,
+            config.key
+          );
+      }
+
+      async function loadData() {
+        $('tableBody').innerHTML = `
+          <tr>
+            <td colspan="8" class="loading">
+              Đang tải dữ liệu...
+            </td>
+          </tr>
+        `;
+
+        const { data, error } =
+          await supabaseClient
+            .from(TABLE_NAME)
+            .select(`
+              id,
+              id_chucnang,
+              ten_chucnang,
+              duong_dan,
+              nhom_chucnang,
+              icon,
+              thu_tu,
+              trang_thai
+            `)
+            .order(
+              'duong_dan',
+              { ascending: true }
+            )
+            .order(
+              'thu_tu',
+              {
+                ascending: true,
+                nullsFirst: false
+              }
+            )
+            .order(
+              'ten_chucnang',
+              { ascending: true }
+            );
+
+        if (error) {
+          throw error;
+        }
+
+        allRows = data || [];
+
+        renderPathOptions();
+        renderTable();
+      }
+
+      function renderPathOptions() {
+        const currentValue =
+          $('pathFilter').value;
+
+        const paths = [
+          ...new Set(
+            allRows
+              .map(row =>
+                String(
+                  row.duong_dan || ''
+                ).trim()
+              )
+              .filter(Boolean)
+          )
+        ].sort((a, b) =>
+          a.localeCompare(b, 'vi')
+        );
+
+        $('pathFilter').innerHTML =
+          '<option value="">Tất cả đường dẫn</option>' +
+          paths
+            .map(path => `
+              <option value="${escapeHtml(path)}">
+                ${escapeHtml(path)}
+              </option>
+            `)
+            .join('');
+
+        if (paths.includes(currentValue)) {
+          $('pathFilter').value =
+            currentValue;
+        }
+      }
+
+      function getFilteredRows() {
+        const keyword =
+          $('searchInput')
+            .value
+            .trim()
+            .toLowerCase();
+
+        const selectedPath =
+          $('pathFilter').value.trim();
+
+        return allRows.filter(row => {
+          const matchesPath =
+            !selectedPath ||
+            String(
+              row.duong_dan || ''
+            ).trim() === selectedPath;
+
+          if (!matchesPath) {
+            return false;
+          }
+
+          if (!keyword) {
+            return true;
+          }
+
+          const content = [
+            row.id_chucnang,
+            row.ten_chucnang,
+            row.duong_dan,
+            row.nhom_chucnang,
+            row.icon
+          ]
+            .map(value =>
+              String(value || '')
+                .toLowerCase()
+            )
+            .join(' ');
+
+          return content.includes(keyword);
+        });
+      }
+
+      function renderTable() {
+        const rows = getFilteredRows();
+        const selectedPath =
+          $('pathFilter').value.trim();
+
+        $('filterText').textContent =
+          selectedPath
+            ? `Đường dẫn: ${selectedPath}`
+            : 'Tất cả đường dẫn';
+
+        $('countText').textContent =
+          `${rows.length} chức năng`;
+
+        if (!rows.length) {
+          $('tableBody').innerHTML = `
+            <tr>
+              <td colspan="8" class="empty">
+                Không có chức năng phù hợp.
+              </td>
+            </tr>
+          `;
+
+          return;
+        }
+
+        $('tableBody').innerHTML =
+          rows
+            .map((row, index) => {
+              const active =
+                row.trang_thai !== false;
+
+              return `
+                <tr>
+                  <td>${index + 1}</td>
+
+                  <td class="code">
+                    ${escapeHtml(
+                      row.id_chucnang || '—'
+                    )}
+                  </td>
+
+                  <td>
+                    ${escapeHtml(
+                      row.ten_chucnang || '—'
+                    )}
+                  </td>
+
+                  <td>
+                    <span class="path">
+                      ${escapeHtml(
+                        row.duong_dan || '—'
+                      )}
+                    </span>
+                  </td>
+
+                  <td>
+                    ${escapeHtml(
+                      row.nhom_chucnang || '—'
+                    )}
+                  </td>
+
+                  <td>
+                    ${escapeHtml(
+                      row.icon || '—'
+                    )}
+                  </td>
+
+                  <td>
+                    ${escapeHtml(
+                      row.thu_tu ?? '—'
+                    )}
+                  </td>
+
+                  <td>
+                    <span
+                      class="status ${
+                        active ? 'on' : 'off'
+                      }"
+                    >
+                      ${
+                        active
+                          ? 'Đang hoạt động'
+                          : 'Ngừng hoạt động'
+                      }
+                    </span>
+                  </td>
+                </tr>
+              `;
+            })
+            .join('');
+      }
+
+      function getTokenFromAnywhere() {
+        const params =
+          new URLSearchParams(
+            window.location.search
+          );
+
+        return (
+          params.get('token') ||
+          params.get('access_token') ||
+          params.get('t') ||
+          localStorage.getItem('token') ||
+          localStorage.getItem(
+            'access_token'
+          ) ||
+          localStorage.getItem(
+            'cod_token'
+          ) ||
+          sessionStorage.getItem(
+            'token'
+          ) ||
+          sessionStorage.getItem(
+            'access_token'
+          ) ||
+          sessionStorage.getItem(
+            'cod_token'
+          ) ||
+          ''
+        );
+      }
+
+      function buildUrl(fileName) {
+        const url =
+          new URL(
+            fileName,
+            window.location.href
+          );
+
+        const currentParams =
+          new URLSearchParams(
+            window.location.search
+          );
+
+        currentParams.forEach(
+          (value, key) => {
+            if (key !== '_v') {
+              url.searchParams.set(
+                key,
+                value
+              );
+            }
+          }
+        );
+
+        const token =
+          getTokenFromAnywhere();
+
+        if (token) {
+          url.searchParams.set(
+            'token',
+            token
+          );
+        }
+
+        url.searchParams.set(
+          '_v',
+          Date.now().toString()
+        );
+
+        return url.href;
+      }
+
+      $('searchInput').addEventListener(
+        'input',
+        renderTable
+      );
+
+      $('pathFilter').addEventListener(
+        'change',
+        renderTable
+      );
+
+      $('btnClear').addEventListener(
+        'click',
+        () => {
+          $('searchInput').value = '';
+          $('pathFilter').value = '';
+          renderTable();
+        }
+      );
+
+      $('btnReload').addEventListener(
+        'click',
+        async () => {
+          try {
+            await loadData();
+            showToast(
+              'Đã tải lại danh sách quyền.'
+            );
+          } catch (error) {
+            console.error(error);
+
+            showToast(
+              `Không tải được dữ liệu: ${
+                error.message
+              }`,
+              'err'
+            );
+          }
+        }
+      );
+
+      $('btnBack').addEventListener(
+        'click',
+        () => {
+          if (
+            document.referrer &&
+            window.history.length > 1
+          ) {
+            window.history.back();
+            return;
+          }
+
+          window.location.assign(
+            buildUrl('./admin.html')
+          );
+        }
+      );
+
+      (async function start() {
+        try {
+          await initSupabase();
+          await loadData();
+        } catch (error) {
+          console.error(error);
+
+          $('tableBody').innerHTML = `
+            <tr>
+              <td colspan="8" class="empty">
+                ${escapeHtml(
+                  error.message || error
+                )}
+              </td>
+            </tr>
+          `;
+
+          showToast(
+            `Lỗi: ${
+              error.message || error
+            }`,
+            'err'
+          );
+        }
+      })();
+    })();
+  </script>
+</body>
+</html>
