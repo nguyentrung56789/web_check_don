@@ -10,7 +10,6 @@
 
   <title>Trang quản trị</title>
 
-  <!-- Giữ nguyên hệ thống xác thực hiện tại -->
   <script src="./js/internal_key.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./js/cod_config.js"></script>
@@ -26,6 +25,8 @@
       --primary: #2dd4bf;
       --primary-hover: #5eead4;
       --primary-text: #042f2e;
+      --secondary: #60a5fa;
+      --secondary-hover: #93c5fd;
       --danger: #f87171;
     }
 
@@ -63,15 +64,12 @@
       right: 0;
       left: 0;
       z-index: 10;
-
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 14px;
-
       min-height: 64px;
       padding: 12px 18px;
-
       background: rgba(15, 24, 48, 0.98);
       border-bottom: 1px solid var(--line);
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
@@ -130,24 +128,19 @@
     .menu-btn {
       width: 100%;
       min-height: 60px;
-
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 10px;
-
       border: 0;
       border-radius: 14px;
       padding: 14px 18px;
-
       background: var(--primary);
       color: var(--primary-text);
-
       font-size: 18px;
       font-weight: 850;
       text-align: center;
       text-decoration: none;
-
       cursor: pointer;
       transition:
         transform 0.15s ease,
@@ -163,6 +156,15 @@
 
     .menu-btn:active {
       transform: translateY(0);
+    }
+
+    #linkDanhSachQuyen {
+      background: var(--secondary);
+      color: #071a34;
+    }
+
+    #linkDanhSachQuyen:hover {
+      background: var(--secondary-hover);
     }
 
     footer {
@@ -222,6 +224,14 @@
         >
           👥 Quản lý nhân viên
         </a>
+
+        <a
+          id="linkDanhSachQuyen"
+          class="menu-btn"
+          href="./themdanh_sachquyen.html"
+        >
+          🛡️ Danh sách quyền
+        </a>
       </div>
     </section>
   </main>
@@ -240,6 +250,9 @@
       const linkQuanLyNhanVien =
         document.getElementById('linkQuanLyNhanVien');
 
+      const linkDanhSachQuyen =
+        document.getElementById('linkDanhSachQuyen');
+
       const btnBack =
         document.getElementById('btnBack');
 
@@ -248,9 +261,6 @@
           new Date().getFullYear();
       }
 
-      /**
-       * Lấy token từ URL, localStorage hoặc sessionStorage.
-       */
       function getTokenFromAnywhere() {
         const params =
           new URLSearchParams(window.location.search);
@@ -269,10 +279,6 @@
         );
       }
 
-      /**
-       * Tạo URL tới file cùng thư mục với admin.html.
-       * Đồng thời giữ lại các tham số đang có trên URL.
-       */
       function buildUrl(fileName) {
         const url =
           new URL(fileName, window.location.href);
@@ -281,7 +287,6 @@
           new URLSearchParams(window.location.search);
 
         currentParams.forEach((value, key) => {
-          // Không sao chép mã chống cache cũ
           if (key !== '_v') {
             url.searchParams.set(key, value);
           }
@@ -293,7 +298,6 @@
           url.searchParams.set('token', token);
         }
 
-        // Chống trình duyệt giữ bản HTML cũ
         url.searchParams.set(
           '_v',
           Date.now().toString()
@@ -302,28 +306,30 @@
         return url.href;
       }
 
-      /**
-       * Mở trang quản lý nhân viên.
-       */
-      if (linkQuanLyNhanVien) {
-        linkQuanLyNhanVien.href =
-          buildUrl('./qly_nhanvien.html');
+      function bindLink(element, fileName) {
+        if (!element) return;
 
-        linkQuanLyNhanVien.addEventListener(
-          'click',
-          (event) => {
-            event.preventDefault();
+        element.href = buildUrl(fileName);
 
-            window.location.assign(
-              buildUrl('./qly_nhanvien.html')
-            );
-          }
-        );
+        element.addEventListener('click', event => {
+          event.preventDefault();
+
+          window.location.assign(
+            buildUrl(fileName)
+          );
+        });
       }
 
-      /**
-       * Nút quay lại.
-       */
+      bindLink(
+        linkQuanLyNhanVien,
+        './qly_nhanvien.html'
+      );
+
+      bindLink(
+        linkDanhSachQuyen,
+        './themdanh_sachquyen.html'
+      );
+
       if (btnBack) {
         btnBack.addEventListener('click', () => {
           if (
@@ -335,7 +341,7 @@
           }
 
           window.location.assign(
-            buildUrl('./index.html')
+            buildUrl('./main.html')
           );
         });
       }
