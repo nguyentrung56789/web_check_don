@@ -175,14 +175,13 @@
       const rows=data||[];
       applyPermissions(rows);
 
-      alert(
-        `ĐÃ LẤY QUYỀN THÀNH CÔNG\n\n`+
-        `Tên: ${tenNv}\nMã: ${maNv}\nTrang: ${page}\n`+
-        `Số dòng quyền: ${rows.length}\n\n`+
-        (rows.map(x=>`${x.id_chucnang}: ${x.duoc_xem}`).join('\n')||'Không có dòng quyền')
-      );
-
-      console.log('[INLINE DEBUG] Quyền:',rows);
+      console.log('[PHÂN QUYỀN] Đã tải thành công:', {
+        ten_nv: tenNv,
+        ma_nv: maNv,
+        trang: page,
+        so_dong_quyen: rows.length,
+        danh_sach_quyen: rows
+      });
     }catch(error){
       console.error('[INLINE DEBUG] Lỗi:',error);
 
