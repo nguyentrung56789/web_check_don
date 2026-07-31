@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="vi">
 <head>
@@ -120,7 +119,7 @@
 
     .toolbar {
       display: grid;
-      grid-template-columns: minmax(220px, 1fr) minmax(220px, 320px) auto auto;
+      grid-template-columns: minmax(220px, 1fr) minmax(220px, 320px) auto auto auto;
       gap: 12px;
       align-items: center;
       padding: 14px 26px 20px;
@@ -285,6 +284,114 @@
       background: #b42318;
     }
 
+
+    .action-btn {
+      width: 38px;
+      height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: #344054;
+      font-size: 19px;
+      cursor: pointer;
+    }
+
+    .action-btn:hover {
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(15, 23, 42, 0.48);
+    }
+
+    .modal-backdrop.show {
+      display: flex;
+    }
+
+    .modal {
+      width: min(680px, 100%);
+      max-height: 92vh;
+      overflow: auto;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-head h2 {
+      margin: 0;
+      font-size: 21px;
+    }
+
+    .close-btn {
+      width: 38px;
+      height: 38px;
+      border: 0;
+      border-radius: 9px;
+      background: #f1f4f7;
+      color: #344054;
+      font-size: 22px;
+      cursor: pointer;
+    }
+
+    .modal-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      padding: 22px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      color: #566174;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .form-group.full {
+      grid-column: 1 / -1;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+    }
+
+    .check-row input {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+
+    .modal-foot {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 0 22px 22px;
+    }
+
     @media (max-width: 860px) {
       .page {
         width: 100%;
@@ -363,8 +470,16 @@
         </button>
 
         <button
-          id="btnReload"
+          id="btnAdd"
           class="btn btn-primary"
+          type="button"
+        >
+          ＋ Thêm mới
+        </button>
+
+        <button
+          id="btnReload"
+          class="btn"
           type="button"
         >
           ⟳ Tải lại
@@ -383,13 +498,14 @@
               <th>Icon</th>
               <th style="width:100px">Thứ tự</th>
               <th style="width:140px">Trạng thái</th>
+              <th style="width:90px">Thao tác</th>
             </tr>
           </thead>
 
           <tbody id="tableBody">
             <tr>
               <td
-                colspan="8"
+                colspan="9"
                 class="loading"
               >
                 Đang tải dữ liệu...
@@ -405,6 +521,151 @@
       </div>
     </section>
   </main>
+
+
+  <div
+    id="functionModal"
+    class="modal-backdrop"
+  >
+    <section
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="modal-head">
+        <h2 id="modalTitle">Thêm chức năng</h2>
+
+        <button
+          id="btnCloseModal"
+          class="close-btn"
+          type="button"
+        >
+          ×
+        </button>
+      </div>
+
+      <form id="functionForm">
+        <div class="modal-body">
+          <input
+            id="formId"
+            type="hidden"
+          />
+
+          <div class="form-group">
+            <label for="formIdChucNang">
+              ID chức năng *
+            </label>
+
+            <input
+              id="formIdChucNang"
+              class="field"
+              placeholder="Ví dụ: quanlynhanvien"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="formTenChucNang">
+              Tên chức năng *
+            </label>
+
+            <input
+              id="formTenChucNang"
+              class="field"
+              placeholder="Ví dụ: Quản lý nhân viên"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="formDuongDan">
+              Đường dẫn *
+            </label>
+
+            <input
+              id="formDuongDan"
+              class="field"
+              list="pathSuggestions"
+              placeholder="Ví dụ: admin.html"
+              required
+            />
+
+            <datalist id="pathSuggestions"></datalist>
+          </div>
+
+          <div class="form-group">
+            <label for="formNhomChucNang">
+              Nhóm chức năng
+            </label>
+
+            <input
+              id="formNhomChucNang"
+              class="field"
+              placeholder="Ví dụ: admin"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="formIcon">
+              Icon
+            </label>
+
+            <input
+              id="formIcon"
+              class="field"
+              placeholder="Ví dụ: 👥"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="formThuTu">
+              Thứ tự
+            </label>
+
+            <input
+              id="formThuTu"
+              class="field"
+              type="number"
+              step="1"
+              min="0"
+            />
+          </div>
+
+          <div class="form-group full">
+            <label>Trạng thái</label>
+
+            <div class="check-row">
+              <input
+                id="formTrangThai"
+                type="checkbox"
+                checked
+              />
+
+              <span>Đang hoạt động</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <button
+            id="btnCancel"
+            class="btn"
+            type="button"
+          >
+            Hủy
+          </button>
+
+          <button
+            id="btnSave"
+            class="btn btn-primary"
+            type="submit"
+          >
+            Lưu
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
 
   <div
     id="toast"
@@ -613,7 +874,7 @@
       async function loadData() {
         $('tableBody').innerHTML = `
           <tr>
-            <td colspan="8" class="loading">
+            <td colspan="9" class="loading">
               Đang tải dữ liệu...
             </td>
           </tr>
@@ -750,7 +1011,7 @@
         if (!rows.length) {
           $('tableBody').innerHTML = `
             <tr>
-              <td colspan="8" class="empty">
+              <td colspan="9" class="empty">
                 Không có chức năng phù hợp.
               </td>
             </tr>
@@ -820,10 +1081,203 @@
                       }
                     </span>
                   </td>
+
+                  <td>
+                    <button
+                      class="action-btn edit-row"
+                      type="button"
+                      data-id="${escapeHtml(row.id)}"
+                      title="Sửa"
+                      aria-label="Sửa chức năng"
+                    >
+                      ✎
+                    </button>
+                  </td>
                 </tr>
               `;
             })
             .join('');
+
+        document
+          .querySelectorAll('.edit-row')
+          .forEach(button => {
+            button.addEventListener(
+              'click',
+              () => openEditModal(
+                button.dataset.id
+              )
+            );
+          });
+      }
+
+      function renderPathSuggestions() {
+        const paths = [
+          ...new Set(
+            allRows
+              .map(row =>
+                String(row.duong_dan || '').trim()
+              )
+              .filter(Boolean)
+          )
+        ].sort((a, b) =>
+          a.localeCompare(b, 'vi')
+        );
+
+        $('pathSuggestions').innerHTML =
+          paths
+            .map(path => `
+              <option value="${escapeHtml(path)}"></option>
+            `)
+            .join('');
+      }
+
+      function openModal() {
+        $('functionModal').classList.add('show');
+      }
+
+      function closeModal() {
+        $('functionModal').classList.remove('show');
+      }
+
+      function openAddModal() {
+        $('modalTitle').textContent =
+          'Thêm chức năng';
+
+        $('functionForm').reset();
+        $('formId').value = '';
+        $('formTrangThai').checked = true;
+
+        renderPathSuggestions();
+        openModal();
+        $('formIdChucNang').focus();
+      }
+
+      function openEditModal(id) {
+        const row = allRows.find(
+          item => String(item.id) === String(id)
+        );
+
+        if (!row) {
+          showToast(
+            'Không tìm thấy chức năng cần sửa.',
+            'err'
+          );
+          return;
+        }
+
+        $('modalTitle').textContent =
+          `Sửa chức năng: ${
+            row.ten_chucnang || row.id_chucnang
+          }`;
+
+        $('formId').value = row.id || '';
+        $('formIdChucNang').value =
+          row.id_chucnang || '';
+        $('formTenChucNang').value =
+          row.ten_chucnang || '';
+        $('formDuongDan').value =
+          row.duong_dan || '';
+        $('formNhomChucNang').value =
+          row.nhom_chucnang || '';
+        $('formIcon').value =
+          row.icon || '';
+        $('formThuTu').value =
+          row.thu_tu ?? '';
+        $('formTrangThai').checked =
+          row.trang_thai !== false;
+
+        renderPathSuggestions();
+        openModal();
+      }
+
+      async function saveFunction(event) {
+        event.preventDefault();
+
+        const id = $('formId').value.trim();
+        const idChucNang =
+          $('formIdChucNang').value.trim();
+        const tenChucNang =
+          $('formTenChucNang').value.trim();
+        const duongDan =
+          $('formDuongDan').value.trim();
+
+        if (
+          !idChucNang ||
+          !tenChucNang ||
+          !duongDan
+        ) {
+          showToast(
+            'Vui lòng nhập đủ ID, tên và đường dẫn.',
+            'err'
+          );
+          return;
+        }
+
+        const payload = {
+          id_chucnang: idChucNang,
+          ten_chucnang: tenChucNang,
+          duong_dan: duongDan,
+          nhom_chucnang:
+            $('formNhomChucNang').value.trim() ||
+            null,
+          icon:
+            $('formIcon').value.trim() ||
+            null,
+          thu_tu:
+            $('formThuTu').value === ''
+              ? 0
+              : Number($('formThuTu').value),
+          trang_thai:
+            $('formTrangThai').checked
+        };
+
+        $('btnSave').disabled = true;
+        $('btnSave').textContent =
+          id ? 'Đang cập nhật...' : 'Đang thêm...';
+
+        try {
+          const result = id
+            ? await supabaseClient
+                .from(TABLE_NAME)
+                .update(payload)
+                .eq('id', id)
+                .select()
+                .single()
+            : await supabaseClient
+                .from(TABLE_NAME)
+                .insert(payload)
+                .select()
+                .single();
+
+          if (result.error) {
+            throw result.error;
+          }
+
+          closeModal();
+
+          showToast(
+            id
+              ? 'Đã cập nhật chức năng.'
+              : 'Đã thêm chức năng.'
+          );
+
+          await loadData();
+        } catch (error) {
+          console.error(
+            'Lỗi lưu chức năng:',
+            error
+          );
+
+          showToast(
+            `Không lưu được: ${
+              error.message || error
+            }`,
+            'err'
+          );
+        } finally {
+          $('btnSave').disabled = false;
+          $('btnSave').textContent = 'Lưu';
+        }
       }
 
       function getTokenFromAnywhere() {
@@ -916,6 +1370,47 @@
         }
       );
 
+      $('btnAdd').addEventListener(
+        'click',
+        openAddModal
+      );
+
+      $('btnCloseModal').addEventListener(
+        'click',
+        closeModal
+      );
+
+      $('btnCancel').addEventListener(
+        'click',
+        closeModal
+      );
+
+      $('functionForm').addEventListener(
+        'submit',
+        saveFunction
+      );
+
+      $('functionModal').addEventListener(
+        'click',
+        event => {
+          if (
+            event.target ===
+            $('functionModal')
+          ) {
+            closeModal();
+          }
+        }
+      );
+
+      document.addEventListener(
+        'keydown',
+        event => {
+          if (event.key === 'Escape') {
+            closeModal();
+          }
+        }
+      );
+
       $('btnReload').addEventListener(
         'click',
         async () => {
@@ -963,7 +1458,7 @@
 
           $('tableBody').innerHTML = `
             <tr>
-              <td colspan="8" class="empty">
+              <td colspan="9" class="empty">
                 ${escapeHtml(
                   error.message || error
                 )}
