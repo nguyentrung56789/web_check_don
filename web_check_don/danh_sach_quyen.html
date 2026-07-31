@@ -304,6 +304,17 @@
       color: var(--primary);
     }
 
+    .action-btn.delete:hover {
+      background: #fff0f1;
+      color: var(--danger);
+    }
+
+    .action-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -1083,15 +1094,27 @@
                   </td>
 
                   <td>
-                    <button
-                      class="action-btn edit-row"
-                      type="button"
-                      data-id="${escapeHtml(row.id)}"
-                      title="Sửa"
-                      aria-label="Sửa chức năng"
-                    >
-                      ✎
-                    </button>
+                    <div class="action-group">
+                      <button
+                        class="action-btn edit-row"
+                        type="button"
+                        data-id="${escapeHtml(row.id)}"
+                        title="Sửa"
+                        aria-label="Sửa chức năng"
+                      >
+                        ✎
+                      </button>
+
+                      <button
+                        class="action-btn delete delete-row"
+                        type="button"
+                        data-id="${escapeHtml(row.id)}"
+                        title="Xóa"
+                        aria-label="Xóa chức năng"
+                      >
+                        🗑
+                      </button>
+                    </div>
                   </td>
                 </tr>
               `;
@@ -1104,6 +1127,17 @@
             button.addEventListener(
               'click',
               () => openEditModal(
+                button.dataset.id
+              )
+            );
+          });
+
+        document
+          .querySelectorAll('.delete-row')
+          .forEach(button => {
+            button.addEventListener(
+              'click',
+              () => deleteFunction(
                 button.dataset.id
               )
             );
@@ -1277,6 +1311,79 @@
         } finally {
           $('btnSave').disabled = false;
           $('btnSave').textContent = 'Lưu';
+        }
+      }
+
+      async function deleteFunction(id) {
+        const row = allRows.find(
+          item => String(item.id) === String(id)
+        );
+
+        if (!row) {
+          showToast(
+            'Không tìm thấy chức năng cần xóa.',
+            'err'
+          );
+          return;
+        }
+
+        const name =
+          row.ten_chucnang ||
+          row.id_chucnang ||
+          id;
+
+        const confirmed = window.confirm(
+          `Bạn có chắc muốn xóa chức năng "${name}"?\n\n` +
+          `Các quyền của chức năng này trong bảng kv_vai_tro_quyen cũng sẽ bị xóa.`
+        );
+
+        if (!confirmed) {
+          return;
+        }
+
+        try {
+          /*
+           * Xóa quyền liên quan trước để tránh lỗi khóa ngoại.
+           */
+          const {
+            error: permissionDeleteError
+          } = await supabaseClient
+            .from('kv_vai_tro_quyen')
+            .delete()
+            .eq('chucnang_id', row.id);
+
+          if (permissionDeleteError) {
+            throw permissionDeleteError;
+          }
+
+          const {
+            error: functionDeleteError
+          } = await supabaseClient
+            .from(TABLE_NAME)
+            .delete()
+            .eq('id', row.id);
+
+          if (functionDeleteError) {
+            throw functionDeleteError;
+          }
+
+          showToast(
+            `Đã xóa chức năng "${name}".`
+          );
+
+          await loadData();
+        } catch (error) {
+          console.error(
+            'Lỗi xóa chức năng:',
+            error
+          );
+
+          showToast(
+            `Không xóa được: ${
+              error.message || error
+            }`,
+            'err'
+          );
         }
       }
 
