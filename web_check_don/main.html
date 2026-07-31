@@ -278,6 +278,57 @@
         });
     }
 
+    function hienThongBaoDangNhapVaQuyen(user, result) {
+      const tenNhanVien = String(
+        user?.ten_nv ||
+        user?.tenNhanVien ||
+        user?.name ||
+        ''
+      ).trim();
+
+      const maNhanVien = String(
+        user?.ma_nv ||
+        ''
+      ).trim();
+
+      const danhSachQuyen =
+        Array.isArray(result?.danhSachQuyen)
+          ? result.danhSachQuyen
+          : [];
+
+      const noiDungQuyen = danhSachQuyen.length
+        ? danhSachQuyen.map(item => {
+            const tenChucNang =
+              item.ten_chucnang ||
+              item.id_chucnang ||
+              'Không rõ chức năng';
+
+            return (
+              `${tenChucNang}: ` +
+              `Xem=${item.duoc_xem === true ? 'true' : 'false'}, ` +
+              `Thêm=${item.duoc_them === true ? 'true' : 'false'}, ` +
+              `Sửa=${item.duoc_sua === true ? 'true' : 'false'}, ` +
+              `Xóa=${item.duoc_xoa === true ? 'true' : 'false'}`
+            );
+          }).join('\n')
+        : 'Không lấy được quyền nào cho trang hiện tại.';
+
+      alert(
+        `Thông tin đăng nhập\n\n` +
+        `Tên nhân viên: ${tenNhanVien || 'Không có'}\n` +
+        `Mã nhân viên: ${maNhanVien || 'Không có'}\n` +
+        `Trang hiện tại: ${result?.tenTrang || 'Không xác định'}\n\n` +
+        `Quyền:\n${noiDungQuyen}`
+      );
+
+      console.log('[ĐĂNG NHẬP]', {
+        ten_nv: tenNhanVien,
+        ma_nv: maNhanVien
+      });
+
+      console.log('[PHÂN QUYỀN]', result);
+    }
+
     async function khoiTaoTrang() {
       document.getElementById('year').textContent =
         new Date().getFullYear();
@@ -285,16 +336,15 @@
       ganSuKienNut();
 
       try {
-        /*
-         * auth_token.js có thể cần một khoảng ngắn để lưu thông tin nhân viên.
-         * main.html không tự chuyển về login trong lúc này để tránh vòng lặp nhấp nháy.
-         */
         const user = await choThongTinDangNhap();
 
         if (!user) {
+          alert('Không tìm thấy thông tin nhân viên đăng nhập.');
+
           console.warn(
             'Chưa có chatwoot_crm_user. Để auth_token.js xử lý đăng nhập.'
           );
+
           hienTrang();
           return;
         }
@@ -313,10 +363,23 @@
         const result = await taiPhanQuyenTrang();
 
         if (!result) {
+          alert(
+            `Tên nhân viên: ${tenNhanVien}\n` +
+            `Mã nhân viên: ${user.ma_nv || 'Không có'}\n\n` +
+            `Không tải được dữ liệu phân quyền.`
+          );
+
           console.error('Không tải được quyền trang chính');
+          return;
         }
+
+        hienThongBaoDangNhapVaQuyen(user, result);
       } catch (error) {
         console.error('Lỗi khởi tạo trang chính:', error);
+
+        alert(
+          `Lỗi khởi tạo trang:\n${error.message || error}`
+        );
       } finally {
         hienTrang();
       }
