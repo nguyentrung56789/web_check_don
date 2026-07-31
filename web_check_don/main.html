@@ -3,7 +3,6 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-
   <title>Trang chính</title>
 
   <script src="./js/internal_key.js"></script>
@@ -11,317 +10,192 @@
   <script src="./js/cod_config.js"></script>
   <script src="./js/auth_token.js"></script>
 
-  <link rel="stylesheet" href="./css/main.css" />
-
   <style>
     :root {
-      --bg:#0b1220;
-      --card:#0f1830;
-      --txt:#e6edff;
-      --muted:#9aa7c7;
-      --btn1:#2dd4bf;
-      --btn2:#60a5fa;
-      --btn3:#fbbf24;
-      --btn4:#a78bfa;
-      --btn5:#fb7185;
-      --btn6:#34d399;
+      --bg:#0b1220; --card:#0f1830; --txt:#e6edff; --muted:#9aa7c7;
+      --btn1:#2dd4bf; --btn2:#60a5fa; --btn3:#fbbf24;
+      --btn4:#a78bfa; --btn5:#fb7185; --btn6:#34d399;
     }
-
-    * { box-sizing:border-box; }
-
-    html,
-    body {
-      min-height:100%;
-    }
-
-    body {
-      visibility:hidden;
-      margin:0;
-      background:var(--bg);
-      color:var(--txt);
+    *{box-sizing:border-box}
+    html,body{min-height:100%}
+    body{
+      visibility:hidden;margin:0;background:var(--bg);color:var(--txt);
       font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
     }
-
-    body.ready {
-      visibility:visible;
+    body.ready{visibility:visible}
+    .top{
+      position:fixed;z-index:10;inset:0 0 auto 0;display:flex;
+      align-items:center;justify-content:space-between;padding:14px 18px;
+      background:var(--card);border-bottom:1px solid #233043;
+      box-shadow:0 2px 10px rgba(0,0,0,.35)
     }
-
-    .top {
-      position:fixed;
-      z-index:10;
-      inset:0 0 auto 0;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      padding:14px 18px;
-      background:var(--card);
-      border-bottom:1px solid #233043;
-      box-shadow:0 2px 10px rgba(0,0,0,.35);
+    .hello{font-weight:600}
+    #btnLogout{
+      background:none;border:0;color:#f87171;cursor:pointer;
+      font-weight:700;font-size:15px
     }
-
-    .hello {
-      font-weight:600;
+    .menu{
+      width:min(520px,92vw);margin:120px auto 48px;
+      display:grid;gap:18px
     }
-
-    #btnLogout {
-      background:none;
-      border:0;
-      color:#f87171;
-      cursor:pointer;
-      font-weight:700;
-      font-size:15px;
+    .menu button{
+      width:100%;padding:18px;border:0;border-radius:14px;
+      cursor:pointer;font-weight:800;font-size:18px;color:#041a18
     }
-
-    #btnLogout:hover {
-      text-decoration:underline;
-    }
-
-    .menu {
-      width:min(520px,92vw);
-      margin:120px auto 48px;
-      display:grid;
-      gap:18px;
-    }
-
-    .menu button {
-      width:100%;
-      padding:18px;
-      border:0;
-      border-radius:14px;
-      cursor:pointer;
-      font-weight:800;
-      font-size:18px;
-      color:#041a18;
-      transition:transform .15s ease,filter .15s ease;
-    }
-
-    .menu button:hover {
-      transform:scale(1.04);
-      filter:brightness(1.06);
-    }
-
-    .menu button:active {
-      transform:scale(1.01);
-    }
-
-    #admin { background:var(--btn1); }
-    #donghang { background:var(--btn2); }
-    #checkdon { background:var(--btn3); color:#3a2a04; }
-    #mapview { background:var(--btn4); }
-    #chamsockhachhang { background:var(--btn5); color:#3b0713; }
-    #tinhdoanhso { background:var(--btn6); color:#052e20; }
-
-    footer {
-      text-align:center;
-      color:var(--muted);
-      font-size:12px;
-      margin:8px 0 24px;
-    }
-
-    .hidden {
-      display:none !important;
-    }
-
-    @media (max-width:520px) {
-      .top { padding:12px 14px; }
-      .menu { margin-top:100px; gap:14px; }
-      .menu button { padding:16px; font-size:17px; }
-    }
+    #admin{background:var(--btn1)}
+    #donghang{background:var(--btn2)}
+    #checkdon{background:var(--btn3);color:#3a2a04}
+    #mapview{background:var(--btn4)}
+    #chamsockhachhang{background:var(--btn5);color:#3b0713}
+    #tinhdoanhso{background:var(--btn6);color:#052e20}
+    .hidden{display:none!important}
+    footer{text-align:center;color:var(--muted);font-size:12px;margin:8px 0 24px}
   </style>
 </head>
-
 <body>
-  <noscript>
-    <div style="padding:12px;background:#ffdbdb;color:#6b0000;text-align:center">
-      Trình duyệt đang tắt JavaScript. Vui lòng bật JavaScript để tiếp tục.
-    </div>
-  </noscript>
-
-  <header class="top" role="banner" aria-label="Thanh tiêu đề">
-    <div class="hello">
-      Xin chào <span id="ten_nv">...</span> 👋
-    </div>
-
-    <button id="btnLogout" type="button" title="Đăng xuất">
-      Đăng xuất
-    </button>
+  <header class="top">
+    <div class="hello">Xin chào <span id="ten_nv">...</span> 👋</div>
+    <button id="btnLogout" type="button">Đăng xuất</button>
   </header>
 
-  <main class="menu" role="main" aria-label="Menu chính">
-    <button id="admin" type="button" class="hidden" data-phan-quyen>
-      👤 Admin
-    </button>
-
-    <button id="donghang" type="button" class="hidden" data-phan-quyen>
-      📦 Đóng hàng COD
-    </button>
-
-    <button id="checkdon" type="button" class="hidden" data-phan-quyen>
-      🧾 Check đơn
-    </button>
-
-    <button id="mapview" type="button" class="hidden" data-phan-quyen>
-      🗺️ Xem bản đồ
-    </button>
-
-    <button id="chamsockhachhang" type="button" class="hidden" data-phan-quyen>
-      💬 Chăm sóc khách hàng
-    </button>
-
-    <button id="tinhdoanhso" type="button" class="hidden" data-phan-quyen>
-      🧮 Tính doanh số nhân viên
-    </button>
+  <main class="menu">
+    <button id="admin" class="hidden" data-phan-quyen>👤 Admin</button>
+    <button id="donghang" class="hidden" data-phan-quyen>📦 Đóng hàng COD</button>
+    <button id="checkdon" class="hidden" data-phan-quyen>🧾 Check đơn</button>
+    <button id="mapview" class="hidden" data-phan-quyen>🗺️ Xem bản đồ</button>
+    <button id="chamsockhachhang" class="hidden" data-phan-quyen>💬 Chăm sóc khách hàng</button>
+    <button id="tinhdoanhso" class="hidden" data-phan-quyen>🧮 Tính doanh số nhân viên</button>
   </main>
 
-  <footer>
-    © <span id="year"></span> COD Internal
-  </footer>
+  <footer>© <span id="year"></span> COD Internal</footer>
 
   <script type="module">
-    import { taiPhanQuyenTrang } from './js/phan_quyen.js';
-
+    const VIEW_NAME = 'sql_phan_quyen_nhan_vien';
     const LOGIN_STORAGE_KEY = 'nv';
-    const LOGIN_PAGE = './login.html';
-
-    document.getElementById('year').textContent =
-      new Date().getFullYear();
-
-    function layNguoiDung() {
-      try {
-        return JSON.parse(
-          localStorage.getItem(LOGIN_STORAGE_KEY) || 'null'
-        );
-      } catch (error) {
-        console.error('Không đọc được thông tin đăng nhập:', error);
-        return null;
-      }
-    }
-
-    function moTrangGiuThamSo(path) {
-      const targetUrl = new URL(path, window.location.href);
-      const currentParams =
-        new URLSearchParams(window.location.search);
-
-      currentParams.forEach((value, key) => {
-        targetUrl.searchParams.set(key, value);
-      });
-
-      const token =
-        currentParams.get('token') ||
-        currentParams.get('access_token') ||
-        currentParams.get('t') ||
-        localStorage.getItem('token') ||
-        localStorage.getItem('access_token') ||
-        localStorage.getItem('cod_token') ||
-        sessionStorage.getItem('token') ||
-        sessionStorage.getItem('access_token') ||
-        sessionStorage.getItem('cod_token') ||
-        '';
-
-      if (token && !targetUrl.searchParams.get('token')) {
-        targetUrl.searchParams.set('token', token);
-      }
-
-      window.location.assign(targetUrl.href);
-    }
 
     const routes = {
-      admin: './admin.html',
-      donghang: './donghangcod.html',
-      checkdon: './checkdon.html',
-      mapview: './xembando.html',
-      chamsockhachhang: './chamsockhachhang.html',
-      tinhdoanhso: './tinhdoanhsonhanvien.html'
+      admin:'./admin.html',
+      donghang:'./donghangcod.html',
+      checkdon:'./checkdon.html',
+      mapview:'./xembando.html',
+      chamsockhachhang:'./chamsockhachhang.html',
+      tinhdoanhso:'./tinhdoanhsonhanvien.html'
     };
 
-    for (const [buttonId, path] of Object.entries(routes)) {
-      document
-        .getElementById(buttonId)
-        ?.addEventListener('click', () => {
-          moTrangGiuThamSo(path);
-        });
+    function showPage(){
+      document.body.classList.add('ready');
+      document.body.style.visibility='visible';
     }
 
-    document
-      .getElementById('btnLogout')
-      ?.addEventListener('click', () => {
-        localStorage.removeItem(LOGIN_STORAGE_KEY);
-        localStorage.removeItem('last_ma_nv');
-        localStorage.removeItem('token');
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('cod_token');
+    function readUser(){
+      const raw=localStorage.getItem(LOGIN_STORAGE_KEY);
+      if(!raw) throw new Error('Không có localStorage key "nv"');
+      return JSON.parse(raw);
+    }
 
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('access_token');
-        sessionStorage.removeItem('cod_token');
+    function currentPage(){
+      return (location.pathname.split('/').pop()||'main.html').toLowerCase();
+    }
 
-        window.location.replace(LOGIN_PAGE);
+    async function createClient(){
+      const internalKey =
+        (typeof window.getInternalKey==='function' ? window.getInternalKey() : '') ||
+        window.INTERNAL_KEY ||
+        window.COD_INTERNAL_KEY ||
+        window.internalKey ||
+        '';
+
+      const res=await fetch('/api/getConfig',{
+        headers:{'x-internal-key':internalKey||''},
+        cache:'no-store'
       });
 
-    async function khoiTaoTrang() {
-      try {
-        const user = layNguoiDung();
-
-        if (!user) {
-          alert('Không tìm thấy dữ liệu nhân viên trong localStorage key "nv".');
-          document.body.classList.add('ready');
-          return;
-        }
-
-        const maNv = String(user.ma_nv || '').trim();
-        const tenNv = String(user.ten_nv || '').trim();
-
-        document.getElementById('ten_nv').textContent =
-          tenNv || maNv || 'Nhân viên';
-
-        const result = await taiPhanQuyenTrang();
-
-        if (!result) {
-          alert(
-            `Tên nhân viên: ${tenNv || 'Không có'}\n` +
-            `Mã nhân viên: ${maNv || 'Không có'}\n\n` +
-            `Không tải được dữ liệu phân quyền.`
-          );
-          return;
-        }
-
-        const danhSachQuyen =
-          Array.isArray(result.danhSachQuyen)
-            ? result.danhSachQuyen
-            : [];
-
-        const thongBaoQuyen = danhSachQuyen.length
-          ? danhSachQuyen.map(item => {
-              return (
-                `${item.ten_chucnang || item.id_chucnang || 'Không rõ'}: ` +
-                `${item.duoc_xem === true ? 'Được xem' : 'Không được xem'}`
-              );
-            }).join('\n')
-          : 'Không có quyền nào cho trang hiện tại.';
-
-        alert(
-          `THÔNG TIN ĐĂNG NHẬP\n\n` +
-          `Tên nhân viên: ${tenNv || 'Không có'}\n` +
-          `Mã nhân viên: ${maNv || 'Không có'}\n` +
-          `Trang hiện tại: ${result.tenTrang}\n\n` +
-          `QUYỀN\n${thongBaoQuyen}`
-        );
-
-        console.log('[MAIN] Nhân viên:', user);
-        console.log('[MAIN] Kết quả phân quyền:', result);
-      } catch (error) {
-        console.error('Lỗi khởi tạo trang chính:', error);
-
-        alert(
-          `Lỗi khởi tạo trang:\n${error.message || error}`
-        );
-      } finally {
-        document.body.classList.add('ready');
-        document.body.style.visibility = 'visible';
+      if(!res.ok){
+        throw new Error(`getConfig HTTP ${res.status}: ${await res.text()}`);
       }
+
+      const cfg=await res.json();
+      const url=cfg.url||cfg.SUPABASE_URL||cfg.supabaseUrl||cfg.supabase_url;
+      const key=cfg.anon||cfg.key||cfg.SUPABASE_ANON||cfg.SUPABASE_ANON_KEY||
+        cfg.supabaseAnon||cfg.supabaseKey||cfg.supabase_anon_key;
+
+      if(!url||!key) throw new Error('Thiếu URL hoặc anon key Supabase');
+      return window.supabase.createClient(url,key);
     }
 
-    await khoiTaoTrang();
+    function applyPermissions(rows){
+      const map=new Map(
+        (rows||[])
+          .filter(x=>x.id_chucnang)
+          .map(x=>[String(x.id_chucnang).trim(),x])
+      );
+
+      document.querySelectorAll('[data-phan-quyen]').forEach(el=>{
+        const q=map.get(el.id);
+        el.classList.toggle('hidden',q?.duoc_xem!==true);
+      });
+    }
+
+    function openWithParams(path){
+      const u=new URL(path,location.href);
+      new URLSearchParams(location.search).forEach((v,k)=>u.searchParams.set(k,v));
+      location.assign(u.href);
+    }
+
+    Object.entries(routes).forEach(([id,path])=>{
+      document.getElementById(id)?.addEventListener('click',()=>openWithParams(path));
+    });
+
+    document.getElementById('btnLogout')?.addEventListener('click',()=>{
+      localStorage.removeItem('nv');
+      localStorage.removeItem('last_ma_nv');
+      location.replace('./login.html');
+    });
+
+    document.getElementById('year').textContent=new Date().getFullYear();
+
+    try{
+      const user=readUser();
+      const maNv=String(user?.ma_nv||'').trim();
+      const tenNv=String(user?.ten_nv||'').trim();
+      const page=currentPage();
+
+      document.getElementById('ten_nv').textContent=tenNv||maNv||'Nhân viên';
+
+      const client=await createClient();
+
+      const {data,error}=await client
+        .from(VIEW_NAME)
+        .select('ma_nv,ten_nv,ten_vai_tro,duong_dan,id_chucnang,ten_chucnang,duoc_xem')
+        .eq('ma_nv',maNv)
+        .eq('duong_dan',page);
+
+      if(error) throw error;
+
+      const rows=data||[];
+      applyPermissions(rows);
+
+      alert(
+        `ĐÃ LẤY QUYỀN THÀNH CÔNG\n\n`+
+        `Tên: ${tenNv}\nMã: ${maNv}\nTrang: ${page}\n`+
+        `Số dòng quyền: ${rows.length}\n\n`+
+        (rows.map(x=>`${x.id_chucnang}: ${x.duoc_xem}`).join('\n')||'Không có dòng quyền')
+      );
+
+      console.log('[INLINE DEBUG] Quyền:',rows);
+    }catch(error){
+      console.error('[INLINE DEBUG] Lỗi:',error);
+
+      alert(
+        `LỖI LẤY QUYỀN\n\n`+
+        `message: ${error?.message||error}\n`+
+        `code: ${error?.code||'không có'}\n`+
+        `details: ${error?.details||'không có'}\n`+
+        `hint: ${error?.hint||'không có'}`
+      );
+    }finally{
+      showPage();
+    }
   </script>
 </body>
 </html>
