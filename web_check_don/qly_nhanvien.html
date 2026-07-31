@@ -652,7 +652,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION = 'ROLE_UUID_V3_3_CREATE_ROLE_REDIRECT';
+    const APP_VERSION = 'ROLE_UUID_V3_4_CREATE_EDIT_PERMISSION_PAGE';
     console.log('Đang chạy bản:', APP_VERSION);
     const USER_TABLE = 'kv_nhan_vien';
     const ROLE_TABLE = 'kv_vai_tro';
@@ -1215,13 +1215,27 @@
       const role=allRoles.find(item=>String(item.id)===String(id));
       if(!role) return showToast('Không tìm thấy vai trò.','err');
 
-      $('roleModalTitle').textContent='Chỉnh sửa vai trò';
-      $('formRoleId').value=role.id ?? '';
-      $('formRoleName').value=role.ten_vai_tro ?? '';
-      $('formRoleDescription').value=role.mo_ta ?? '';
-      $('formRoleSystem').checked=role.la_he_thong===true;
-      $('formRoleStatus').checked=role.trang_thai!==false;
-      openModal('roleModal');
+      const target=new URL('./phan_quyen_vai_tro.html',window.location.href);
+      target.searchParams.set('vai_tro_id',String(role.id));
+
+      const currentParams=new URLSearchParams(window.location.search);
+      const token=
+        currentParams.get('token') ||
+        currentParams.get('access_token') ||
+        currentParams.get('t') ||
+        localStorage.getItem('token') ||
+        localStorage.getItem('access_token') ||
+        localStorage.getItem('cod_token') ||
+        sessionStorage.getItem('token') ||
+        sessionStorage.getItem('access_token') ||
+        sessionStorage.getItem('cod_token') ||
+        '';
+
+      if(token){
+        target.searchParams.set('token',token);
+      }
+
+      window.location.assign(target.href);
     }
 
     function copyRole(id){
