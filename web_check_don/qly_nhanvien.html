@@ -652,7 +652,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION = 'ROLE_UUID_V3_4_CREATE_EDIT_PERMISSION_PAGE';
+    const APP_VERSION = 'ROLE_UUID_V3_5_DUPLICATE_ROLE_AND_PERMISSIONS';
     console.log('Đang chạy bản:', APP_VERSION);
     const USER_TABLE = 'kv_nhan_vien';
     const ROLE_TABLE = 'kv_vai_tro';
@@ -1238,18 +1238,117 @@
       window.location.assign(target.href);
     }
 
-    function copyRole(id){
+    async function copyRole(id){
       const role=allRoles.find(item=>String(item.id)===String(id));
-      if(!role) return;
 
-      $('roleModalTitle').textContent='Sao chép vai trò';
-      $('roleForm').reset();
-      $('formRoleId').value='';
-      $('formRoleName').value=`${role.ten_vai_tro || 'Vai trò'} - bản sao`;
-      $('formRoleDescription').value=role.mo_ta ?? '';
-      $('formRoleSystem').checked=false;
-      $('formRoleStatus').checked=role.trang_thai!==false;
-      openModal('roleModal');
+      if(!role){
+        showToast('Không tìm thấy vai trò cần nhân đôi.','err');
+        return;
+      }
+
+      if(!confirm(`Bạn có muốn nhân đôi vai trò "${role.ten_vai_tro}" không?`)){
+        return;
+      }
+
+      try{
+        /*
+         * Tạo tên bản sao không bị trùng.
+         * Ví dụ:
+         * Thu ngân -> Thu ngân - bản sao
+         * Nếu đã có -> Thu ngân - bản sao 2
+         */
+        const baseName=`${role.ten_vai_tro || 'Vai trò'} - bản sao`;
+        let newName=baseName;
+        let copyNumber=2;
+
+        const existingNames=new Set(
+          allRoles.map(item=>
+            String(item.ten_vai_tro || '').trim().toLowerCase()
+          )
+        );
+
+        while(existingNames.has(newName.toLowerCase())){
+          newName=`${baseName} ${copyNumber}`;
+          copyNumber++;
+        }
+
+        /*
+         * 1. Tạo vai trò mới.
+         * Không sao chép la_he_thong để tránh tạo thêm vai trò hệ thống.
+         */
+        const {data:newRole,error:roleError}=await supabaseClient
+          .from(ROLE_TABLE)
+          .insert({
+            ten_vai_tro:newName,
+            mo_ta:role.mo_ta || null,
+            la_he_thong:false,
+            trang_thai:role.trang_thai!==false
+          })
+          .select('id,ten_vai_tro')
+          .single();
+
+        if(roleError) throw roleError;
+
+        /*
+         * 2. Lấy toàn bộ quyền của vai trò gốc.
+         */
+        const {data:oldPermissions,error:permissionError}=await supabaseClient
+          .from('kv_vai_tro_quyen')
+          .select(`
+            chucnang_id,
+            duoc_xem,
+            duoc_them,
+            duoc_sua,
+            duoc_xoa
+          `)
+          .eq('vai_tro_id',role.id);
+
+        if(permissionError){
+          await supabaseClient
+            .from(ROLE_TABLE)
+            .delete()
+            .eq('id',newRole.id);
+
+          throw permissionError;
+        }
+
+        /*
+         * 3. Nhân đôi quyền sang vai trò mới.
+         */
+        if(oldPermissions?.length){
+          const newPermissions=oldPermissions.map(item=>({
+            vai_tro_id:newRole.id,
+            chucnang_id:item.chucnang_id,
+            duoc_xem:item.duoc_xem===true,
+            duoc_them:item.duoc_them===true,
+            duoc_sua:item.duoc_sua===true,
+            duoc_xoa:item.duoc_xoa===true
+          }));
+
+          const {error:insertPermissionError}=await supabaseClient
+            .from('kv_vai_tro_quyen')
+            .insert(newPermissions);
+
+          if(insertPermissionError){
+            await supabaseClient
+              .from(ROLE_TABLE)
+              .delete()
+              .eq('id',newRole.id);
+
+            throw insertPermissionError;
+          }
+        }
+
+        showToast(`Đã nhân đôi thành "${newRole.ten_vai_tro}".`);
+        await loadRolesPage();
+      }catch(error){
+        console.error('Lỗi nhân đôi vai trò:',error);
+
+        showToast(
+          `Không nhân đôi được vai trò: ${error.message}`,
+          'err'
+        );
+      }
     }
 
     async function saveRole(event){
