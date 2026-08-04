@@ -1,68 +1,684 @@
-body{
-  margin:0;
-  font-family:system-ui,Segoe UI,Roboto,Arial;
-  background:#0b1220;
-  color:#e6edff;
-}
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
 
-.top{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:12px 16px;
-  background:#0f1830;
-  border-bottom:1px solid #233043;
-}
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,viewport-fit=cover"
+  />
 
-.menu{
-  display:flex;
-  flex-wrap:wrap;
-  gap:16px;
-  justify-content:center;
-  align-items:center;
-  padding:32px;
-}
+  <title>Trang chính</title>
 
-button{
-  padding:14px 18px;
-  border-radius:12px;
-  border:0;
-  cursor:pointer;
-  font-weight:700;
-  font-size:16px;
-  transition:transform .15s ease, filter .15s ease;
-}
+  <!-- Giữ các file xác thực và cấu hình hiện tại -->
+  <script src="./js/internal_key.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/cod_config.js"></script>
+  <script src="./js/auth_token.js"></script>
 
-button:hover{
-  transform:translateY(-2px);
-  filter:brightness(1.08);
-}
+  <style>
+    :root {
+      --bg:#0b1220;
+      --card:#0f1830;
+      --txt:#e6edff;
+      --muted:#9aa7c7;
+      --line:#233043;
 
-#admin{
-  background:#2dd4bf;
-  color:#042023;
-}
+      --admin:#2dd4bf;
+      --kho:#60a5fa;
+      --checkdon:#fbbf24;
+      --map:#a78bfa;
+      --chamsoc:#fb7185;
+      --doanhso:#34d399;
 
-#donghang{
-  background:#60a5fa;
-  color:#041a18;
-}
+      --danger:#f87171;
+    }
 
-#checkdon{
-  background:#fbbf24;
-  color:#3d2d04;
-}
+    * {
+      box-sizing:border-box;
+    }
 
-#mapview{
-  background:#a78bfa;
-  color:#1f1235;
-}
+    html,
+    body {
+      min-height:100%;
+    }
 
-#chamsockhachhang{
-  background:#fb7185;
-  color:#3b0713;
-}
+    body {
+      visibility:hidden;
+      margin:0;
+      background:var(--bg);
+      color:var(--txt);
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
+    }
 
-.hidden{
-  display:none !important;
-}
+    body.ready {
+      visibility:visible;
+    }
+
+    button {
+      font:inherit;
+      -webkit-tap-highlight-color:transparent;
+    }
+
+    .top {
+      position:fixed;
+      z-index:20;
+      inset:0 0 auto 0;
+
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+
+      min-height:64px;
+      padding:14px 18px;
+
+      background:rgba(15,24,48,.98);
+      border-bottom:1px solid var(--line);
+      box-shadow:0 2px 12px rgba(0,0,0,.35);
+      backdrop-filter:blur(10px);
+    }
+
+    .hello-wrap {
+      min-width:0;
+    }
+
+    .hello {
+      font-weight:700;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .ma-nv {
+      margin-top:3px;
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    #btnLogout {
+      flex:0 0 auto;
+
+      padding:9px 12px;
+
+      background:transparent;
+      border:1px solid rgba(248,113,113,.35);
+      border-radius:10px;
+
+      color:var(--danger);
+      cursor:pointer;
+      font-weight:800;
+      font-size:14px;
+    }
+
+    #btnLogout:hover {
+      background:rgba(248,113,113,.1);
+    }
+
+    .menu {
+      width:min(520px,92vw);
+      margin:100px auto 48px;
+
+      display:grid;
+      gap:18px;
+    }
+
+    .heading {
+      margin-bottom:2px;
+      text-align:center;
+    }
+
+    .heading h1 {
+      margin:0 0 6px;
+      font-size:26px;
+    }
+
+    .heading p {
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.5;
+    }
+
+    .menu-btn {
+      width:100%;
+      min-height:62px;
+
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+
+      padding:16px 18px;
+
+      border:0;
+      border-radius:14px;
+
+      cursor:pointer;
+      color:#041a18;
+      font-weight:850;
+      font-size:18px;
+
+      box-shadow:0 8px 24px rgba(0,0,0,.2);
+
+      transition:
+        transform .15s ease,
+        filter .15s ease,
+        box-shadow .15s ease;
+    }
+
+    .menu-btn:hover {
+      transform:translateY(-2px);
+      filter:brightness(1.06);
+      box-shadow:0 12px 28px rgba(0,0,0,.27);
+    }
+
+    .menu-btn:active {
+      transform:translateY(0);
+    }
+
+    #admin {
+      background:var(--admin);
+    }
+
+    #kho {
+      background:var(--kho);
+    }
+
+    #checkdon {
+      background:var(--checkdon);
+      color:#3a2a04;
+    }
+
+    #mapview {
+      background:var(--map);
+      color:#1f1235;
+    }
+
+    #chamsockhachhang {
+      background:var(--chamsoc);
+      color:#3b0713;
+    }
+
+    #tinhdoanhso {
+      background:var(--doanhso);
+      color:#052e20;
+    }
+
+    .hidden {
+      display:none !important;
+    }
+
+    .notice {
+      display:none;
+
+      padding:15px;
+
+      border:1px solid var(--line);
+      border-radius:12px;
+
+      background:var(--card);
+      color:var(--muted);
+
+      font-size:14px;
+      line-height:1.6;
+      text-align:center;
+    }
+
+    .notice.show {
+      display:block;
+    }
+
+    footer {
+      margin:8px 0 24px;
+      color:var(--muted);
+      font-size:12px;
+      text-align:center;
+    }
+
+    @media (max-width:520px) {
+      .top {
+        padding:12px 14px;
+      }
+
+      .menu {
+        margin-top:88px;
+      }
+
+      .heading h1 {
+        font-size:23px;
+      }
+
+      .menu-btn {
+        min-height:58px;
+        font-size:17px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="top">
+    <div class="hello-wrap">
+      <div class="hello">
+        Xin chào
+        <span id="ten_nv">...</span>
+        👋
+      </div>
+
+      <div id="ma_nv" class="ma-nv"></div>
+    </div>
+
+    <button id="btnLogout" type="button">
+      Đăng xuất
+    </button>
+  </header>
+
+  <main class="menu">
+    <div class="heading">
+      <h1>Chọn chức năng</h1>
+
+      <p>
+        Chỉ những chức năng đã được cấp quyền mới hiển thị.
+      </p>
+    </div>
+
+    <button
+      id="admin"
+      class="menu-btn hidden"
+      type="button"
+      data-phan-quyen
+    >
+      👤 Admin
+    </button>
+
+    <button
+      id="kho"
+      class="menu-btn hidden"
+      type="button"
+      data-phan-quyen
+    >
+      📦 Kho
+    </button>
+
+    <button
+      id="checkdon"
+      class="menu-btn hidden"
+      type="button"
+      data-phan-quyen
+    >
+      🧾 Check đơn
+    </button>
+
+    <button
+      id="mapview"
+      class="menu-btn hidden"
+      type="button"
+      data-phan-quyen
+    >
+      🗺️ Xem bản đồ
+    </button>
+
+    <button
+      id="chamsockhachhang"
+      class="menu-btn hidden"
+      type="button"
+      data-phan-quyen
+    >
+      💬 Chăm sóc khách hàng
+    </button>
+
+    <button
+      id="tinhdoanhso"
+      class="menu-btn hidden"
+      type="button"
+      data-phan-quyen
+    >
+      🧮 Tính doanh số nhân viên
+    </button>
+
+    <div id="permissionNotice" class="notice">
+      Tài khoản chưa được cấp quyền chức năng nào.
+      Vui lòng liên hệ quản trị viên.
+    </div>
+  </main>
+
+  <footer>
+    © <span id="year"></span> COD Internal
+  </footer>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const LOGIN_STORAGE_KEY = 'nv';
+
+      const routes = {
+        admin:'./admin.html',
+        kho:'./kho.html',
+        checkdon:'./check_don.html',
+        mapview:'./map_tuyen.html',
+        chamsockhachhang:'./chamsockhachhang.html',
+        tinhdoanhso:'./tinhdoanhsonhanvien.html'
+      };
+
+      const $ = selector =>
+        document.querySelector(selector);
+
+      function showPage() {
+        document.body.classList.add('ready');
+        document.body.style.visibility = 'visible';
+      }
+
+      function toBool(value) {
+        return (
+          value === true ||
+          value === 1 ||
+          value === '1' ||
+          String(value ?? '')
+            .trim()
+            .toLowerCase() === 'true'
+        );
+      }
+
+      function readUser() {
+        try {
+          return JSON.parse(
+            localStorage.getItem(LOGIN_STORAGE_KEY) ||
+            'null'
+          );
+        } catch {
+          return null;
+        }
+      }
+
+      function showIf(selector, condition) {
+        const element = $(selector);
+
+        if (!element) return;
+
+        element.classList.toggle(
+          'hidden',
+          !condition
+        );
+
+        element.style.display =
+          condition ? '' : 'none';
+
+        element.dataset.duocXem =
+          String(condition);
+      }
+
+      function getToken() {
+        const params =
+          new URLSearchParams(location.search);
+
+        return (
+          params.get('token') ||
+          params.get('access_token') ||
+          params.get('auth_token') ||
+          params.get('t') ||
+          sessionStorage.getItem('APP_ACCESS') ||
+          sessionStorage.getItem('access_token') ||
+          sessionStorage.getItem('token') ||
+          localStorage.getItem('APP_ACCESS') ||
+          localStorage.getItem('access_token') ||
+          localStorage.getItem('token') ||
+          ''
+        );
+      }
+
+      function saveTokenFromUrl() {
+        const params =
+          new URLSearchParams(location.search);
+
+        const token =
+          params.get('token') ||
+          params.get('access_token') ||
+          params.get('auth_token') ||
+          params.get('t') ||
+          '';
+
+        if (token) {
+          sessionStorage.setItem(
+            'APP_ACCESS',
+            token
+          );
+        }
+
+        return token;
+      }
+
+      function go(path) {
+        const url =
+          new URL(path, location.href);
+
+        /*
+         * Giữ lại các tham số URL hiện tại.
+         */
+        new URLSearchParams(
+          location.search
+        ).forEach((value, key) => {
+          url.searchParams.set(
+            key,
+            value
+          );
+        });
+
+        const token = getToken();
+
+        if (token) {
+          url.searchParams.set(
+            'token',
+            token
+          );
+        }
+
+        location.assign(url.href);
+      }
+
+      function logout() {
+        try {
+          sessionStorage.removeItem('APP_ACCESS');
+          sessionStorage.removeItem('access_token');
+          sessionStorage.removeItem('token');
+        } catch {}
+
+        localStorage.removeItem('nv');
+        localStorage.removeItem('last_ma_nv');
+
+        location.replace('./login.html');
+      }
+
+      function bindRoutes() {
+        Object.entries(routes).forEach(
+          ([buttonId, path]) => {
+            document
+              .getElementById(buttonId)
+              ?.addEventListener(
+                'click',
+                () => go(path)
+              );
+          }
+        );
+      }
+
+      function init() {
+        /*
+         * Đồng bộ token nếu auth_token.js có hàm checkAccess.
+         */
+        if (
+          typeof window.checkAccess === 'function'
+        ) {
+          const allowed =
+            window.checkAccess();
+
+          if (!allowed) {
+            showPage();
+            return;
+          }
+        } else {
+          saveTokenFromUrl();
+        }
+
+        const nv = readUser();
+
+        if (!nv || !nv.ma_nv) {
+          alert(
+            'Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.'
+          );
+
+          location.replace('./login.html');
+          return;
+        }
+
+        /*
+         * Chỉ chặn nếu trường hoat_dong thực sự tồn tại
+         * và có giá trị false.
+         *
+         * Nếu dữ liệu cũ chưa có hoat_dong thì vẫn cho vào.
+         */
+        if (
+          nv.hoat_dong !== undefined &&
+          nv.hoat_dong !== null &&
+          !toBool(nv.hoat_dong)
+        ) {
+          alert(
+            'Tài khoản đã bị dừng hoạt động.'
+          );
+
+          localStorage.removeItem('nv');
+          location.replace('./login.html');
+          return;
+        }
+
+        const tenNv =
+          nv.ten_nv ||
+          nv.tenNhanVien ||
+          nv.name ||
+          nv.ma_nv ||
+          'Nhân viên';
+
+        $('#ten_nv').textContent = tenNv;
+        $('#ma_nv').textContent =
+          nv.ma_nv
+            ? `Mã nhân viên: ${nv.ma_nv}`
+            : '';
+
+        /*
+         * Phân quyền từ dữ liệu localStorage "nv".
+         *
+         * Kho hỗ trợ:
+         * - nv.kho
+         * - nv.dong_hang
+         *
+         * Điều này giúp dữ liệu quyền cũ vẫn hoạt động.
+         */
+        const permissions = {
+          admin:toBool(nv.admin),
+
+          kho:
+            toBool(nv.kho) ||
+            toBool(nv.dong_hang),
+
+          checkdon:
+            toBool(nv.checkdon) ||
+            toBool(nv.check_don),
+
+          mapview:
+            toBool(nv.mapview) ||
+            toBool(nv.map),
+
+          chamsockhachhang:
+            toBool(nv.chamsockhachhang) ||
+            toBool(nv.cham_soc_khach_hang),
+
+          tinhdoanhso:
+            toBool(nv.tinhdoanhso) ||
+            toBool(nv.tinh_doanh_so)
+        };
+
+        showIf(
+          '#admin',
+          permissions.admin
+        );
+
+        showIf(
+          '#kho',
+          permissions.kho
+        );
+
+        showIf(
+          '#checkdon',
+          permissions.checkdon
+        );
+
+        showIf(
+          '#mapview',
+          permissions.mapview
+        );
+
+        showIf(
+          '#chamsockhachhang',
+          permissions.chamsockhachhang
+        );
+
+        showIf(
+          '#tinhdoanhso',
+          permissions.tinhdoanhso
+        );
+
+        const hasAnyPermission =
+          Object.values(permissions).some(Boolean);
+
+        $('#permissionNotice')
+          ?.classList.toggle(
+            'show',
+            !hasAnyPermission
+          );
+
+        console.log(
+          '[QUYỀN TRANG CHÍNH]',
+          {
+            nhan_vien:nv,
+            quyen:permissions
+          }
+        );
+
+        bindRoutes();
+
+        $('#btnLogout')
+          ?.addEventListener(
+            'click',
+            logout
+          );
+      }
+
+      $('#year').textContent =
+        new Date().getFullYear();
+
+      try {
+        init();
+      } catch (error) {
+        console.error(
+          'INDEX_INIT_ERROR:',
+          error
+        );
+
+        alert(
+          'Có lỗi khi khởi tạo trang. Xem Console để biết chi tiết.'
+        );
+      } finally {
+        showPage();
+      }
+    })();
+  </script>
+</body>
+</html>
