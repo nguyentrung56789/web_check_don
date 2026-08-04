@@ -25,7 +25,7 @@
 
       --admin:#2dd4bf;
       --kho:#60a5fa;
-      --kiemsoat:#fbbf24;
+      --kiemsoatdon:#fbbf24;
       --kinhdoanh:#a78bfa;
       --giaovan:#fb7185;
 
@@ -46,6 +46,7 @@
       margin:0;
       background:var(--bg);
       color:var(--txt);
+
       font-family:
         system-ui,
         -apple-system,
@@ -69,13 +70,13 @@
       z-index:20;
       inset:0 0 auto 0;
 
+      min-height:64px;
+      padding:13px 18px;
+
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:14px;
-
-      min-height:64px;
-      padding:13px 18px;
 
       background:rgba(15,24,48,.97);
       border-bottom:1px solid var(--line);
@@ -150,6 +151,7 @@
 
     .role {
       position:relative;
+
       width:100%;
       min-height:82px;
 
@@ -191,6 +193,7 @@
 
     .role-icon {
       flex:0 0 auto;
+
       width:48px;
       height:48px;
 
@@ -217,6 +220,7 @@
     .role small {
       display:block;
       margin-top:5px;
+
       font-size:13px;
       line-height:1.4;
       opacity:.8;
@@ -238,7 +242,7 @@
     }
 
     #kiemsoatdon {
-      background:var(--kiemsoat);
+      background:var(--kiemsoatdon);
     }
 
     #kinhdoanh {
@@ -255,13 +259,14 @@
 
     .message {
       display:none;
-      padding:16px;
 
+      padding:16px;
       border:1px solid var(--line);
       border-radius:14px;
-      background:var(--card);
 
+      background:var(--card);
       color:var(--muted);
+
       font-size:14px;
       line-height:1.6;
       text-align:center;
@@ -329,7 +334,7 @@
         👋
       </div>
 
-      <div class="role-name" id="ten_vai_tro">
+      <div id="ten_vai_tro" class="role-name">
         Đang tải quyền...
       </div>
     </div>
@@ -439,10 +444,15 @@
     © <span id="year"></span> COD Internal
   </footer>
 
-  <script>
+  <script type="module">
     const VIEW_NAME = 'sql_phan_quyen_nhan_vien';
     const LOGIN_STORAGE_KEY = 'nv';
 
+    /*
+     * ID trong routes phải trùng:
+     * 1. ID nút HTML
+     * 2. id_chucnang trong view Supabase
+     */
     const routes = {
       admin:'./admin.html',
       kho:'./kho.html',
@@ -491,43 +501,45 @@
     ========================================================= */
 
     function readUser() {
-      const raw = localStorage.getItem(LOGIN_STORAGE_KEY);
+      const raw = localStorage.getItem(
+        LOGIN_STORAGE_KEY
+      );
 
       if (!raw) {
         throw new Error(
-          'Không có dữ liệu đăng nhập trong localStorage key "nv".'
+          'Không có localStorage key "nv"'
         );
       }
 
-      try {
-        const user = JSON.parse(raw);
-
-        if (!user || typeof user !== 'object') {
-          throw new Error('Dữ liệu đăng nhập không hợp lệ.');
-        }
-
-        return user;
-      } catch {
-        localStorage.removeItem(LOGIN_STORAGE_KEY);
-
-        throw new Error(
-          'Dữ liệu đăng nhập trong localStorage bị lỗi.'
-        );
-      }
+      return JSON.parse(raw);
     }
 
 
     /* =========================================================
-       TOKEN
+       LẤY TÊN FILE HIỆN TẠI
+    ========================================================= */
+
+    function currentPage() {
+      return (
+        location.pathname.split('/').pop() ||
+        'main.html'
+      ).toLowerCase();
+    }
+
+
+    /* =========================================================
+       TOKEN VÀ THAM SỐ URL
     ========================================================= */
 
     function getToken() {
-      const query = new URLSearchParams(location.search);
+      const params = new URLSearchParams(
+        location.search
+      );
 
       return (
-        query.get('token') ||
-        query.get('access_token') ||
-        query.get('auth_token') ||
+        params.get('token') ||
+        params.get('access_token') ||
+        params.get('auth_token') ||
         sessionStorage.getItem('access_token') ||
         localStorage.getItem('access_token') ||
         ''
@@ -538,81 +550,50 @@
       const token = getToken();
 
       if (token) {
-        sessionStorage.setItem('access_token', token);
+        sessionStorage.setItem(
+          'access_token',
+          token
+        );
       }
 
       return token;
     }
 
-    function openWithToken(path) {
-      const url = new URL(path, location.href);
-
-      /*
-       * Giữ lại toàn bộ tham số đang có trên URL.
-       */
-      new URLSearchParams(location.search).forEach(
-        (value, key) => {
-          url.searchParams.set(key, value);
-        }
+    function openWithParams(path) {
+      const url = new URL(
+        path,
+        location.href
       );
 
       /*
-       * Nếu token nằm trong sessionStorage hoặc localStorage
-       * thì gắn token vào URL trang con.
+       * Giữ toàn bộ tham số hiện có trên URL.
+       */
+      new URLSearchParams(
+        location.search
+      ).forEach((value, key) => {
+        url.searchParams.set(
+          key,
+          value
+        );
+      });
+
+      /*
+       * Nếu token chỉ có trong bộ nhớ,
+       * thêm token vào URL trang con.
        */
       const token = getToken();
 
-      if (token && !url.searchParams.has('token')) {
-        url.searchParams.set('token', token);
+      if (
+        token &&
+        !url.searchParams.has('token')
+      ) {
+        url.searchParams.set(
+          'token',
+          token
+        );
       }
 
       location.assign(url.href);
-    }
-
-
-    /* =========================================================
-       TÊN TRANG HIỆN TẠI
-    ========================================================= */
-
-    function currentPage() {
-      return (
-        location.pathname.split('/').pop() ||
-        'main.html'
-      )
-        .trim()
-        .toLowerCase();
-    }
-
-
-    /* =========================================================
-       CHUẨN HÓA TÊN CHỨC NĂNG
-    ========================================================= */
-
-    function normalizeFunctionName(value) {
-      return String(value ?? '')
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/đ/g, 'd')
-        .replace(/[\s_-]+/g, '')
-        .replace(/[^a-z0-9]/g, '');
-    }
-
-
-    /* =========================================================
-       KIỂM TRA GIÁ TRỊ BOOLEAN
-    ========================================================= */
-
-    function isTrue(value) {
-      return (
-        value === true ||
-        value === 1 ||
-        value === '1' ||
-        String(value ?? '')
-          .trim()
-          .toLowerCase() === 'true'
-      );
     }
 
 
@@ -621,12 +602,6 @@
     ========================================================= */
 
     async function createClient() {
-      if (!window.supabase) {
-        throw new Error(
-          'Không tải được thư viện Supabase.'
-        );
-      }
-
       const internalKey =
         (
           typeof window.getInternalKey === 'function'
@@ -638,21 +613,21 @@
         window.internalKey ||
         '';
 
-      const response = await fetch('/api/getConfig', {
-        method:'GET',
+      const response = await fetch(
+        '/api/getConfig',
+        {
+          headers:{
+            'x-internal-key':internalKey || ''
+          },
 
-        headers:{
-          'x-internal-key':internalKey || ''
-        },
-
-        cache:'no-store'
-      });
+          cache:'no-store'
+        }
+      );
 
       if (!response.ok) {
-        const text = await response.text();
-
         throw new Error(
-          `getConfig HTTP ${response.status}: ${text}`
+          `getConfig HTTP ${response.status}: ` +
+          `${await response.text()}`
         );
       }
 
@@ -664,7 +639,7 @@
         config.supabaseUrl ||
         config.supabase_url;
 
-      const supabaseAnonKey =
+      const supabaseKey =
         config.anon ||
         config.key ||
         config.SUPABASE_ANON ||
@@ -673,72 +648,62 @@
         config.supabaseKey ||
         config.supabase_anon_key;
 
-      if (!supabaseUrl || !supabaseAnonKey) {
+      if (!supabaseUrl || !supabaseKey) {
         throw new Error(
-          'Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY.'
+          'Thiếu URL hoặc anon key Supabase'
         );
       }
 
       return window.supabase.createClient(
         supabaseUrl,
-        supabaseAnonKey
+        supabaseKey
       );
     }
 
 
     /* =========================================================
        ÁP DỤNG PHÂN QUYỀN
+       GIỮ ĐÚNG CƠ CHẾ CODE CŨ
     ========================================================= */
 
     function applyPermissions(rows) {
-      const permissionMap = new Map();
-
       /*
-       * Dùng ten_chucnang.
-       * Không dùng id_chucnang vì id_chucnang là UUID.
+       * Lấy id_chucnang làm key.
+       *
+       * Ví dụ:
+       * id_chucnang = kho
+       * id_chucnang = admin
+       * id_chucnang = kiemsoatdon
        */
-      (rows || []).forEach(row => {
-        const key = normalizeFunctionName(
-          row?.ten_chucnang
-        );
-
-        if (!key) return;
-
-        const oldRow = permissionMap.get(key);
-
-        /*
-         * Nếu một chức năng có nhiều dòng,
-         * chỉ cần một dòng duoc_xem = true.
-         */
-        if (!oldRow) {
-          permissionMap.set(key, row);
-          return;
-        }
-
-        if (
-          isTrue(row?.duoc_xem) &&
-          !isTrue(oldRow?.duoc_xem)
-        ) {
-          permissionMap.set(key, row);
-        }
-      });
+      const permissionMap = new Map(
+        (rows || [])
+          .filter(row => row.id_chucnang)
+          .map(row => [
+            String(
+              row.id_chucnang
+            ).trim(),
+            row
+          ])
+      );
 
       let visibleCount = 0;
 
       document
         .querySelectorAll('[data-phan-quyen]')
         .forEach(button => {
-          const buttonKey = normalizeFunctionName(
+          /*
+           * button.id phải trùng id_chucnang.
+           */
+          const permission = permissionMap.get(
             button.id
           );
 
-          const permission = permissionMap.get(
-            buttonKey
-          );
-
-          const allowed = isTrue(
-            permission?.duoc_xem
-          );
+          /*
+           * Giữ đúng code cũ:
+           * chỉ hiện khi duoc_xem === true.
+           */
+          const allowed =
+            permission?.duoc_xem === true;
 
           button.classList.toggle(
             'hidden',
@@ -749,64 +714,31 @@
             visibleCount++;
           }
 
-          console.log('[KIỂM TRA QUYỀN]', {
-            id_nut:button.id,
-            ten_nut_chuan_hoa:buttonKey,
-            tim_thay_quyen:Boolean(permission),
-            ten_chucnang:permission?.ten_chucnang,
-            duoc_xem:permission?.duoc_xem,
-            hien_thi:allowed
-          });
+          console.log(
+            '[KIỂM TRA PHÂN QUYỀN]',
+            {
+              id_nut:button.id,
+              id_chucnang:
+                permission?.id_chucnang,
+              ten_chucnang:
+                permission?.ten_chucnang,
+              duoc_xem:
+                permission?.duoc_xem,
+              hien_thi:allowed
+            }
+          );
         });
 
-      showEmptyMessage(visibleCount === 0);
+      showEmptyMessage(
+        visibleCount === 0
+      );
 
-      console.log('[MAP QUYỀN]', {
-        danh_sach:Object.fromEntries(permissionMap),
-        so_nut_hien:visibleCount
-      });
-
-      return visibleCount;
-    }
-
-
-    /* =========================================================
-       LẤY QUYỀN TỪ VIEW
-    ========================================================= */
-
-    async function loadPermissions(
-      client,
-      maNv,
-      page
-    ) {
-      const result = await client
-        .from(VIEW_NAME)
-        .select(`
-          ma_nv,
-          ten_nv,
-          ten_vai_tro,
-          duong_dan,
-          id_chucnang,
-          ten_chucnang,
-          duoc_xem
-        `)
-        .eq('ma_nv', maNv)
-        .eq('duong_dan', page);
-
-      if (result.error) {
-        throw result.error;
-      }
-
-      const rows = result.data || [];
-
-      console.log('[DỮ LIỆU QUYỀN SUPABASE]', {
-        ma_nv:maNv,
-        duong_dan:page,
-        so_dong:rows.length,
-        danh_sach:rows
-      });
-
-      return rows;
+      console.log(
+        '[MAP PHÂN QUYỀN]',
+        Object.fromEntries(
+          permissionMap
+        )
+      );
     }
 
 
@@ -815,29 +747,33 @@
     ========================================================= */
 
     Object.entries(routes).forEach(
-      ([buttonId, path]) => {
-        const button = document.getElementById(
-          buttonId
-        );
+      ([id, path]) => {
+        const button =
+          document.getElementById(id);
 
         if (!button) {
           console.error(
-            '[ROUTE] Không tìm thấy nút:',
-            buttonId
+            'Không tìm thấy nút:',
+            id
           );
 
           return;
         }
 
-        button.addEventListener('click', () => {
-          console.log('[MỞ TRANG]', {
-            id_nut:buttonId,
-            duong_dan:path,
-            co_token:Boolean(getToken())
-          });
+        button.addEventListener(
+          'click',
+          () => {
+            console.log(
+              '[MỞ TRANG]',
+              {
+                id_nut:id,
+                duong_dan:path
+              }
+            );
 
-          openWithToken(path);
-        });
+            openWithParams(path);
+          }
+        );
       }
     );
 
@@ -850,20 +786,31 @@
       .getElementById('btnLogout')
       ?.addEventListener('click', () => {
         localStorage.removeItem('nv');
-        localStorage.removeItem('last_ma_nv');
-        localStorage.removeItem('access_token');
+        localStorage.removeItem(
+          'last_ma_nv'
+        );
 
-        sessionStorage.removeItem('access_token');
+        localStorage.removeItem(
+          'access_token'
+        );
 
-        location.replace('./login.html');
+        sessionStorage.removeItem(
+          'access_token'
+        );
+
+        location.replace(
+          './login.html'
+        );
       });
 
 
     /* =========================================================
-       NĂM FOOTER
+       NĂM HIỆN TẠI
     ========================================================= */
 
-    document.getElementById('year').textContent =
+    document.getElementById(
+      'year'
+    ).textContent =
       new Date().getFullYear();
 
 
@@ -879,21 +826,21 @@
         const user = readUser();
 
         const maNv = String(
-          user?.ma_nv ?? ''
+          user?.ma_nv || ''
         ).trim();
 
         const tenNv = String(
-          user?.ten_nv ?? ''
+          user?.ten_nv || ''
         ).trim();
-
-        if (!maNv) {
-          throw new Error(
-            'Dữ liệu đăng nhập không có ma_nv.'
-          );
-        }
 
         const page = currentPage();
         const token = saveToken();
+
+        if (!maNv) {
+          throw new Error(
+            'Dữ liệu đăng nhập không có ma_nv'
+          );
+        }
 
         document.getElementById(
           'ten_nv'
@@ -902,28 +849,47 @@
           maNv ||
           'Nhân viên';
 
-        console.log('[KHỞI TẠO MAIN]', {
-          ma_nv:maNv,
-          ten_nv:tenNv,
-          trang:page,
-          co_token:Boolean(token),
-          url:location.href
-        });
+        const client =
+          await createClient();
 
-        const client = await createClient();
+        /*
+         * Giữ nguyên cách truy vấn code cũ:
+         *
+         * ma_nv = nhân viên đăng nhập
+         * duong_dan = main.html
+         */
+        const {
+          data,
+          error
+        } = await client
+          .from(VIEW_NAME)
+          .select(
+            'ma_nv,' +
+            'ten_nv,' +
+            'ten_vai_tro,' +
+            'duong_dan,' +
+            'id_chucnang,' +
+            'ten_chucnang,' +
+            'duoc_xem'
+          )
+          .eq('ma_nv', maNv)
+          .eq('duong_dan', page);
 
-        const rows = await loadPermissions(
-          client,
-          maNv,
-          page
-        );
+        if (error) {
+          throw error;
+        }
 
+        const rows = data || [];
+
+        /*
+         * Hiển thị tên vai trò.
+         */
         const roleNames = [
           ...new Set(
             rows
               .map(row =>
                 String(
-                  row?.ten_vai_tro ?? ''
+                  row?.ten_vai_tro || ''
                 ).trim()
               )
               .filter(Boolean)
@@ -937,10 +903,24 @@
             ? `Vai trò: ${roleNames.join(', ')}`
             : `Mã nhân viên: ${maNv}`;
 
+        console.log(
+          '[PHÂN QUYỀN] Dữ liệu nhận được:',
+          {
+            ten_nv:tenNv,
+            ma_nv:maNv,
+            trang:page,
+            co_token:Boolean(token),
+            so_dong_quyen:rows.length,
+            danh_sach_quyen:rows
+          }
+        );
+
+        console.table(rows);
+
         applyPermissions(rows);
       } catch (error) {
         console.error(
-          '[LỖI MAIN]',
+          '[INLINE DEBUG] Lỗi:',
           error
         );
 
