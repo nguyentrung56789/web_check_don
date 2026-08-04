@@ -87,7 +87,7 @@
       go('./admin.html');
     });
 
-    $('#donghang')?.addEventListener('click', () => {
+    $('#kho')?.addEventListener('click', () => {
       go('./Quan_ly_cod.html');
     });
 
