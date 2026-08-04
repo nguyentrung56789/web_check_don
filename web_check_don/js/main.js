@@ -64,7 +64,7 @@
 
     // 6) Quyền các nút
     showIf('#admin', toBool(nv.admin));
-    showIf('#kho', toBool(nv.dong_hang));
+    showIf('#kho', toBool(nv.kho));
     showIf('#checkdon', toBool(nv.check_don));
     showIf('#mapview', toBool(nv.map));
 
