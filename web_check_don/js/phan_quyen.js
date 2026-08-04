@@ -3,9 +3,6 @@
 const EMPLOYEE_TABLE = 'kv_nhan_vien';
 const PERMISSION_VIEW = 'sql_phan_quyen_nhan_vien';
 
-/*
- * Hỗ trợ cả key đang dùng và key cũ.
- */
 const LOGIN_STORAGE_KEYS = [
   'nv',
   'chatwoot_crm_user'
@@ -15,56 +12,49 @@ let supabaseClientCache = null;
 let employeeContextCache = null;
 const pagePermissionCache = new Map();
 
+function logDebug(message, data) {
+  console.log(message, data ?? '');
 
-/* =========================================================
-   HÀM CHUNG
-========================================================= */
+  if (typeof window.debugLog === 'function') {
+    window.debugLog(message, data);
+  }
+}
 
-function chuyenBoolean(value) {
+function toBool(value) {
   return (
     value === true ||
     value === 1 ||
     value === '1' ||
-    String(value ?? '')
-      .trim()
-      .toLowerCase() === 'true'
+    String(value ?? '').trim().toLowerCase() === 'true'
   );
 }
 
-function chuanHoaChuoi(value) {
+function clean(value) {
   return String(value ?? '').trim();
 }
 
-function chuanHoaIdChucNang(value) {
-  return chuanHoaChuoi(value).toLowerCase();
+function normalizeFunctionId(value) {
+  return clean(value).toLowerCase();
 }
 
-function chuanHoaDuongDan(value) {
-  let path = chuanHoaChuoi(value)
+function normalizePage(value) {
+  let path = clean(value)
     .replace(/\\/g, '/')
     .split('?')[0]
     .split('#')[0];
 
   path = path.split('/').pop() || 'main.html';
-
   return path.toLowerCase();
 }
 
 export function layTenFileHienTai() {
-  return chuanHoaDuongDan(
-    window.location.pathname
-  );
+  return normalizePage(window.location.pathname);
 }
 
-
-/* =========================================================
-   ĐỌC NHÂN VIÊN ĐĂNG NHẬP
-========================================================= */
-
 export function layNhanVienDangNhap() {
-  for (const storageKey of LOGIN_STORAGE_KEYS) {
+  for (const key of LOGIN_STORAGE_KEYS) {
     try {
-      const raw = localStorage.getItem(storageKey);
+      const raw = localStorage.getItem(key);
 
       if (!raw) continue;
 
@@ -73,42 +63,36 @@ export function layNhanVienDangNhap() {
       if (data && typeof data === 'object') {
         return {
           ...data,
-          __storageKey: storageKey
+          __storageKey: key
         };
       }
     } catch (error) {
-      console.warn(
-        `[PHÂN QUYỀN] Không đọc được localStorage "${storageKey}":`,
-        error
-      );
+      logDebug(`[PHÂN QUYỀN] Không đọc được localStorage "${key}"`, {
+        message: error?.message || String(error)
+      });
     }
   }
 
   return null;
 }
 
-function layMaNhanVien(data) {
-  return chuanHoaChuoi(
-    data?.ma_nv ||
-    data?.id_nv ||
-    data?.maNhanVien ||
+function getEmployeeCode(user) {
+  return clean(
+    user?.ma_nv ||
+    user?.id_nv ||
+    user?.maNhanVien ||
     ''
   );
 }
 
-function layTenNhanVien(data) {
-  return chuanHoaChuoi(
-    data?.ten_nv ||
-    data?.tenNhanVien ||
-    data?.name ||
+function getEmployeeName(user) {
+  return clean(
+    user?.ten_nv ||
+    user?.tenNhanVien ||
+    user?.name ||
     ''
   );
 }
-
-
-/* =========================================================
-   TẠO SUPABASE CLIENT
-========================================================= */
 
 export async function taoSupabaseClient() {
   if (supabaseClientCache) {
@@ -116,9 +100,7 @@ export async function taoSupabaseClient() {
   }
 
   if (!window.supabase) {
-    throw new Error(
-      'Không tải được thư viện Supabase'
-    );
+    throw new Error('Không tải được thư viện Supabase');
   }
 
   const internalKey =
@@ -138,6 +120,8 @@ export async function taoSupabaseClient() {
     headers['x-internal-key'] = internalKey;
   }
 
+  logDebug('[PHÂN QUYỀN] Đang gọi /api/getConfig');
+
   const response = await fetch('/api/getConfig', {
     method: 'GET',
     headers,
@@ -145,22 +129,22 @@ export async function taoSupabaseClient() {
   });
 
   if (!response.ok) {
-    const responseText = await response.text();
+    const text = await response.text();
 
     throw new Error(
-      `Không tải được cấu hình: HTTP ${response.status} - ${responseText}`
+      `Không tải được cấu hình: HTTP ${response.status} - ${text}`
     );
   }
 
   const config = await response.json();
 
-  const supabaseUrl =
+  const url =
     config.url ||
     config.SUPABASE_URL ||
     config.supabaseUrl ||
     config.supabase_url;
 
-  const supabaseKey =
+  const key =
     config.anon ||
     config.key ||
     config.SUPABASE_ANON ||
@@ -169,33 +153,23 @@ export async function taoSupabaseClient() {
     config.supabaseKey ||
     config.supabase_anon_key;
 
-  if (!supabaseUrl || !supabaseKey) {
+  if (!url || !key) {
     throw new Error(
-      'Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY'
+      'API getConfig không trả SUPABASE_URL hoặc SUPABASE_ANON_KEY'
     );
   }
 
-  supabaseClientCache =
-    window.supabase.createClient(
-      supabaseUrl,
-      supabaseKey
-    );
+  supabaseClientCache = window.supabase.createClient(url, key);
+
+  logDebug('[PHÂN QUYỀN] Tạo Supabase client thành công');
 
   return supabaseClientCache;
 }
 
-
-/* =========================================================
-   LẤY MA_NV VÀ VAI_TRO_ID TỪ KV_NHAN_VIEN
-========================================================= */
-
 export async function layThongTinNhanVienVaVaiTro(
   batBuocTaiLai = false
 ) {
-  if (
-    employeeContextCache &&
-    !batBuocTaiLai
-  ) {
+  if (employeeContextCache && !batBuocTaiLai) {
     return employeeContextCache;
   }
 
@@ -203,16 +177,16 @@ export async function layThongTinNhanVienVaVaiTro(
 
   if (!loginUser) {
     throw new Error(
-      'Không tìm thấy dữ liệu nhân viên đăng nhập'
+      'Không tìm thấy localStorage "nv" hoặc "chatwoot_crm_user"'
     );
   }
 
-  const maNv = layMaNhanVien(loginUser);
-  const tenNv = layTenNhanVien(loginUser);
+  const maNv = getEmployeeCode(loginUser);
+  const tenNv = getEmployeeName(loginUser);
 
   if (!maNv && !tenNv) {
     throw new Error(
-      'Dữ liệu đăng nhập không có ma_nv hoặc ten_nv'
+      'Dữ liệu đăng nhập không có ma_nv, id_nv hoặc ten_nv'
     );
   }
 
@@ -234,102 +208,77 @@ export async function layThongTinNhanVienVaVaiTro(
     query = query.eq('ten_nv', tenNv);
   }
 
-  const {
-    data,
-    error
-  } = await query;
+  logDebug('[PHÂN QUYỀN] Đang tìm nhân viên trong kv_nhan_vien', {
+    ma_nv: maNv || null,
+    ten_nv: tenNv || null
+  });
+
+  const { data, error } = await query;
 
   if (error) {
-    console.error(
-      '[PHÂN QUYỀN] Lỗi lấy nhân viên:',
-      error
-    );
-
     throw error;
   }
 
-  const nhanVien = Array.isArray(data)
-    ? data[0]
-    : null;
+  const employee = Array.isArray(data) ? data[0] : null;
 
-  if (!nhanVien) {
+  if (!employee) {
     throw new Error(
       `Không tìm thấy nhân viên trong ${EMPLOYEE_TABLE}`
     );
   }
 
-  const employeeCode =
-    chuanHoaChuoi(nhanVien.ma_nv);
-
-  const roleId =
-    chuanHoaChuoi(nhanVien.vai_tro_id);
+  const employeeCode = clean(employee.ma_nv);
+  const roleId = clean(employee.vai_tro_id);
 
   if (!employeeCode) {
-    throw new Error(
-      'Bản ghi kv_nhan_vien không có ma_nv'
-    );
+    throw new Error('Bản ghi kv_nhan_vien không có ma_nv');
   }
 
   if (!roleId) {
     throw new Error(
-      'Nhân viên chưa được gán vai_tro_id'
+      `Nhân viên ${employeeCode} chưa được gán vai_tro_id`
     );
   }
 
   if (
-    nhanVien.hoat_dong !== undefined &&
-    nhanVien.hoat_dong !== null &&
-    !chuyenBoolean(nhanVien.hoat_dong)
+    employee.hoat_dong !== undefined &&
+    employee.hoat_dong !== null &&
+    !toBool(employee.hoat_dong)
   ) {
     throw new Error(
-      'Tài khoản nhân viên đã bị dừng hoạt động'
+      `Tài khoản nhân viên ${employeeCode} đã bị dừng hoạt động`
     );
   }
 
   employeeContextCache = {
     ma_nv: employeeCode,
-    ten_nv:
-      chuanHoaChuoi(nhanVien.ten_nv) ||
-      tenNv ||
-      employeeCode,
+    ten_nv: clean(employee.ten_nv) || tenNv || employeeCode,
     vai_tro_id: roleId,
-    hoat_dong: nhanVien.hoat_dong,
+    hoat_dong: employee.hoat_dong,
     loginUser,
-    nhanVien
+    employee
   };
 
-  console.log(
-    '[PHÂN QUYỀN] Nhân viên và vai trò:',
-    employeeContextCache
-  );
+  logDebug('[PHÂN QUYỀN] Đã lấy được nhân viên và vai trò', {
+    ma_nv: employeeContextCache.ma_nv,
+    ten_nv: employeeContextCache.ten_nv,
+    vai_tro_id: employeeContextCache.vai_tro_id
+  });
 
   return employeeContextCache;
 }
-
-
-/* =========================================================
-   LẤY TOÀN BỘ QUYỀN CỦA MỘT TRANG
-
-   Lọc theo:
-   - ma_nv
-   - vai_tro_id
-   - duong_dan
-========================================================= */
 
 export async function layDanhSachQuyenTrang(
   duongDan = layTenFileHienTai(),
   batBuocTaiLai = false
 ) {
-  const tenTrang =
-    chuanHoaDuongDan(duongDan);
+  const page = normalizePage(duongDan);
 
   if (
-    pagePermissionCache.has(tenTrang) &&
+    pagePermissionCache.has(page) &&
     !batBuocTaiLai
   ) {
-    return pagePermissionCache.get(
-      tenTrang
-    );
+    return pagePermissionCache.get(page);
   }
 
   const {
@@ -341,10 +290,13 @@ export async function layDanhSachQuyenTrang(
 
   const client = await taoSupabaseClient();
 
-  const {
-    data,
-    error
-  } = await client
+  logDebug('[PHÂN QUYỀN] Đang lọc quyền trang', {
+    ma_nv,
+    vai_tro_id,
+    duong_dan: page
+  });
+
+  const { data, error } = await client
     .from(PERMISSION_VIEW)
     .select(`
       ma_nv,
@@ -361,136 +313,76 @@ export async function layDanhSachQuyenTrang(
     `)
     .eq('ma_nv', ma_nv)
     .eq('vai_tro_id', vai_tro_id)
-    .eq('duong_dan', tenTrang);
+    .eq('duong_dan', page);
 
   if (error) {
-    console.error(
-      '[PHÂN QUYỀN] Lỗi lấy danh sách quyền:',
-      {
-        ma_nv,
-        vai_tro_id,
-        duong_dan: tenTrang,
-        error
-      }
-    );
-
     throw error;
   }
 
-  const danhSachQuyen =
-    Array.isArray(data) ? data : [];
+  const permissions = Array.isArray(data) ? data : [];
 
-  pagePermissionCache.set(
-    tenTrang,
-    danhSachQuyen
-  );
+  pagePermissionCache.set(page, permissions);
 
-  console.log(
-    '[PHÂN QUYỀN] Danh sách quyền trang:',
-    {
-      ma_nv,
-      vai_tro_id,
-      duong_dan: tenTrang,
-      so_quyen: danhSachQuyen.length,
-      danh_sach: danhSachQuyen
-    }
-  );
+  logDebug('[PHÂN QUYỀN] Danh sách quyền nhận được', {
+    so_dong: permissions.length,
+    danh_sach: permissions
+  });
 
-  return danhSachQuyen;
+  return permissions;
 }
-
-
-/* =========================================================
-   HÀM QUYENCHUCNANG()
-
-   Trả về Promise<boolean>.
-
-   Ví dụ:
-   await quyenChucNang('main.html', 'kho')
-========================================================= */
 
 export async function quyenChucNang(
   duongDan,
   idChucNang,
   loaiQuyen = 'duoc_xem'
 ) {
-  const tenTrang =
-    chuanHoaDuongDan(
-      duongDan || layTenFileHienTai()
-    );
-
-  const functionId =
-    chuanHoaIdChucNang(idChucNang);
-
-  if (!functionId) {
-    return false;
-  }
-
-  const cacLoaiQuyenHopLe = [
+  const validTypes = [
     'duoc_xem',
     'duoc_them',
     'duoc_sua',
     'duoc_xoa'
   ];
 
-  if (
-    !cacLoaiQuyenHopLe.includes(loaiQuyen)
-  ) {
+  if (!validTypes.includes(loaiQuyen)) {
     throw new Error(
       `Loại quyền không hợp lệ: ${loaiQuyen}`
     );
   }
 
-  const danhSachQuyen =
-    await layDanhSachQuyenTrang(
-      tenTrang
-    );
+  const page = normalizePage(
+    duongDan || layTenFileHienTai()
+  );
 
-  /*
-   * Dùng some() để tránh trường hợp có nhiều dòng
-   * cùng id_chucnang và dòng FALSE ghi đè dòng TRUE.
-   */
-  return danhSachQuyen.some(quyen => {
-    const permissionFunctionId =
-      chuanHoaIdChucNang(
-        quyen?.id_chucnang
-      );
+  const functionId = normalizeFunctionId(
+    idChucNang
+  );
 
-    return (
-      permissionFunctionId === functionId &&
-      chuyenBoolean(quyen?.[loaiQuyen])
-    );
-  });
+  if (!functionId) {
+    return false;
+  }
+
+  const permissions = await layDanhSachQuyenTrang(page);
+
+  return permissions.some(item =>
+    normalizeFunctionId(item?.id_chucnang) === functionId &&
+    toBool(item?.[loaiQuyen])
+  );
 }
-
-
-/* =========================================================
-   KIỂM TRA QUYỀN TỪ DANH SÁCH ĐÃ TẢI
-========================================================= */
 
 export function coQuyen(
   danhSachQuyen,
   idChucNang,
   loaiQuyen = 'duoc_xem'
 ) {
-  const functionId =
-    chuanHoaIdChucNang(idChucNang);
+  const functionId = normalizeFunctionId(
+    idChucNang
+  );
 
-  return (danhSachQuyen || []).some(
-    quyen =>
-      chuanHoaIdChucNang(
-        quyen?.id_chucnang
-      ) === functionId &&
-      chuyenBoolean(
-        quyen?.[loaiQuyen]
-      )
+  return (danhSachQuyen || []).some(item =>
+    normalizeFunctionId(item?.id_chucnang) === functionId &&
+    toBool(item?.[loaiQuyen])
   );
 }
-
-
-/* =========================================================
-   ẨN TOÀN BỘ PHẦN TỬ PHÂN QUYỀN
-========================================================= */
 
 export function anTatCaPhanTuPhanQuyen(
   root = document
@@ -508,144 +400,90 @@ export function anTatCaPhanTuPhanQuyen(
     });
 }
 
-
-/* =========================================================
-   ÁP DỤNG QUYỀN CHO TẤT CẢ PHẦN TỬ TRONG TRANG
-
-   Phần tử HTML:
-   <button
-     id="kho"
-     class="hidden"
-     data-phan-quyen
-   >
-     Kho
-   </button>
-
-   id="kho" phải trùng:
-   id_chucnang = kho
-========================================================= */
-
 export async function apDungPhanQuyenTrang(
   duongDan = layTenFileHienTai(),
   root = document
 ) {
-  const tenTrang =
-    chuanHoaDuongDan(duongDan);
+  const page = normalizePage(duongDan);
 
   anTatCaPhanTuPhanQuyen(root);
 
-  const danhSachQuyen =
-    await layDanhSachQuyenTrang(
-      tenTrang
-    );
+  const permissions = await layDanhSachQuyenTrang(page);
 
   const elements = [
-    ...root.querySelectorAll(
-      '[data-phan-quyen]'
-    )
+    ...root.querySelectorAll('[data-phan-quyen]')
   ];
 
-  let soPhanTuDuocHien = 0;
+  let visibleCount = 0;
 
   for (const element of elements) {
-    const idChucNang =
-      chuanHoaIdChucNang(element.id);
+    const functionId = normalizeFunctionId(
+      element.id
+    );
 
-    if (!idChucNang) {
-      console.warn(
-        '[PHÂN QUYỀN] Phần tử data-phan-quyen không có id:',
-        element
+    if (!functionId) {
+      logDebug(
+        '[PHÂN QUYỀN] Phần tử data-phan-quyen không có id',
+        {
+          tag: element.tagName
+        }
       );
 
       continue;
     }
 
-    const quyen = danhSachQuyen.find(item =>
-      chuanHoaIdChucNang(
-        item?.id_chucnang
-      ) === idChucNang
+    const canView = coQuyen(
+      permissions,
+      functionId,
+      'duoc_xem'
     );
 
-    /*
-     * Chỉ cần có một dòng TRUE là được xem.
-     */
-    const duocXem = danhSachQuyen.some(item =>
-      chuanHoaIdChucNang(
-        item?.id_chucnang
-      ) === idChucNang &&
-      chuyenBoolean(item?.duoc_xem)
+    const canAdd = coQuyen(
+      permissions,
+      functionId,
+      'duoc_them'
     );
 
-    const duocThem = danhSachQuyen.some(item =>
-      chuanHoaIdChucNang(
-        item?.id_chucnang
-      ) === idChucNang &&
-      chuyenBoolean(item?.duoc_them)
+    const canEdit = coQuyen(
+      permissions,
+      functionId,
+      'duoc_sua'
     );
 
-    const duocSua = danhSachQuyen.some(item =>
-      chuanHoaIdChucNang(
-        item?.id_chucnang
-      ) === idChucNang &&
-      chuyenBoolean(item?.duoc_sua)
+    const canDelete = coQuyen(
+      permissions,
+      functionId,
+      'duoc_xoa'
     );
 
-    const duocXoa = danhSachQuyen.some(item =>
-      chuanHoaIdChucNang(
-        item?.id_chucnang
-      ) === idChucNang &&
-      chuyenBoolean(item?.duoc_xoa)
-    );
+    element.classList.toggle('hidden', !canView);
+    element.style.display = canView ? '' : 'none';
 
-    element.classList.toggle(
-      'hidden',
-      !duocXem
-    );
+    element.dataset.duocXem = String(canView);
+    element.dataset.duocThem = String(canAdd);
+    element.dataset.duocSua = String(canEdit);
+    element.dataset.duocXoa = String(canDelete);
 
-    element.style.display =
-      duocXem ? '' : 'none';
-
-    element.dataset.duocXem =
-      String(duocXem);
-
-    element.dataset.duocThem =
-      String(duocThem);
-
-    element.dataset.duocSua =
-      String(duocSua);
-
-    element.dataset.duocXoa =
-      String(duocXoa);
-
-    if (duocXem) {
-      soPhanTuDuocHien++;
+    if (canView) {
+      visibleCount++;
     }
 
-    console.log(
-      '[PHÂN QUYỀN] Phần tử:',
-      {
-        id_chucnang: idChucNang,
-        duoc_xem: duocXem,
-        duoc_them: duocThem,
-        duoc_sua: duocSua,
-        duoc_xoa: duocXoa,
-        du_lieu: quyen || null
-      }
-    );
+    logDebug('[PHÂN QUYỀN] Kết quả phần tử', {
+      id_chucnang: functionId,
+      duoc_xem: canView,
+      duoc_them: canAdd,
+      duoc_sua: canEdit,
+      duoc_xoa: canDelete
+    });
   }
 
   return {
-    tenTrang,
-    danhSachQuyen,
+    tenTrang: page,
+    danhSachQuyen: permissions,
     soPhanTu: elements.length,
-    soPhanTuDuocHien
+    soPhanTuDuocHien: visibleCount
   };
 }
-
-
-/* =========================================================
-   HÀM KHỞI TẠO DÙNG CHO MỌI TRANG
-========================================================= */
 
 export async function taiPhanQuyenTrang(
   options = {}
@@ -665,57 +503,46 @@ export async function taiPhanQuyenTrang(
       pagePermissionCache.clear();
     }
 
-    const nhanVien =
+    const employee =
       await layThongTinNhanVienVaVaiTro(
         batBuocTaiLai
       );
 
-    const ketQua =
+    const result =
       await apDungPhanQuyenTrang(
         duongDan,
         root
       );
 
     return {
-      ...ketQua,
-      nhanVien
+      ...result,
+      nhanVien: employee
     };
   } catch (error) {
-    console.error(
-      '[PHÂN QUYỀN] Lỗi:',
-      error
-    );
+    logDebug('[PHÂN QUYỀN] Lỗi', {
+      message: error?.message || String(error),
+      code: error?.code || null,
+      details: error?.details || null,
+      hint: error?.hint || null
+    });
 
     return {
       error,
-      tenTrang:
-        chuanHoaDuongDan(duongDan),
+      tenTrang: normalizePage(duongDan),
       nhanVien: null,
       danhSachQuyen: [],
-      soPhanTu: 0,
+      soPhanTu: root.querySelectorAll(
+        '[data-phan-quyen]'
+      ).length,
       soPhanTuDuocHien: 0
     };
   } finally {
     if (hienThiBody && document.body) {
-      document.body.style.visibility =
-        'visible';
-
-      document.body.classList.add(
-        'ready'
-      );
+      document.body.style.visibility = 'visible';
+      document.body.classList.add('ready');
     }
   }
 }
-
-
-/* =========================================================
-   CHẶN TRUY CẬP TRANG
-
-   Dùng khi cả trang phải có quyền.
-
-   Ví dụ trong kho.html:
-   await baoVeTrang('kho', './main.html');
-========================================================= */
 
 export async function baoVeTrang(
   idChucNang,
@@ -732,25 +559,9 @@ export async function baoVeTrang(
     return true;
   }
 
-  console.warn(
-    '[PHÂN QUYỀN] Không có quyền truy cập:',
-    {
-      duong_dan: duongDan,
-      id_chucnang: idChucNang
-    }
-  );
-
-  window.location.replace(
-    trangChuyenVe
-  );
-
+  window.location.replace(trangChuyenVe);
   return false;
 }
-
-
-/* =========================================================
-   XÓA CACHE KHI THAY ĐỔI QUYỀN
-========================================================= */
 
 export function xoaCachePhanQuyen() {
   employeeContextCache = null;
