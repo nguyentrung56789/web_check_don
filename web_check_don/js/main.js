@@ -88,7 +88,7 @@
     });
 
     $('#kho')?.addEventListener('click', () => {
-      go('./Quan_ly_cod.html');
+      go('./kho.html');
     });
 
     $('#checkdon')?.addEventListener('click', () => {
