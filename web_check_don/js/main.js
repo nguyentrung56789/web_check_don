@@ -64,7 +64,7 @@
 
     // 6) Quyền các nút
     showIf('#admin', toBool(nv.admin));
-    showIf('#kho', toBool(nv.kho));
+    showIf('#donghang', toBool(nv.dong_hang));
     showIf('#checkdon', toBool(nv.check_don));
     showIf('#mapview', toBool(nv.map));
 
@@ -87,8 +87,8 @@
       go('./admin.html');
     });
 
-    $('#kho')?.addEventListener('click', () => {
-      go('./kho.html');
+    $('#donghang')?.addEventListener('click', () => {
+      go('./Quan_ly_cod.html');
     });
 
     $('#checkdon')?.addEventListener('click', () => {
@@ -117,7 +117,7 @@
     // 9) Không có quyền nào -> hiện note
     const hasAny =
       toBool(nv.admin) ||
-      toBool(nv.kho) ||
+      toBool(nv.dong_hang) ||
       toBool(nv.check_don) ||
       toBool(nv.map) ||
       toBool(nv.cham_soc_khach_hang);
