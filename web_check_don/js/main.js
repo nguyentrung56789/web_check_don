@@ -117,7 +117,7 @@
     // 9) Không có quyền nào -> hiện note
     const hasAny =
       toBool(nv.admin) ||
-      toBool(nv.dong_hang) ||
+      toBool(nv.kho) ||
       toBool(nv.check_don) ||
       toBool(nv.map) ||
       toBool(nv.cham_soc_khach_hang);
