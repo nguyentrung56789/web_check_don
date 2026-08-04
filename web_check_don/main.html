@@ -2,11 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <meta
-    name="viewport"
-    content="width=device-width,initial-scale=1,viewport-fit=cover"
-  />
-
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Trang chính</title>
 
   <script src="./js/internal_key.js"></script>
@@ -16,437 +12,187 @@
 
   <style>
     :root {
-      --bg:#0b1220;
-      --card:#0f1830;
-      --txt:#e6edff;
-      --muted:#9aa7c7;
-
-      --btn1:#2dd4bf;
-      --btn2:#60a5fa;
-      --btn3:#fbbf24;
-      --btn4:#a78bfa;
-      --btn5:#fb7185;
+      --bg:#0b1220; --card:#0f1830; --txt:#e6edff; --muted:#9aa7c7;
+      --btn1:#2dd4bf; --btn2:#60a5fa; --btn3:#fbbf24;
+      --btn4:#a78bfa; --btn5:#fb7185; --btn6:#34d399;
     }
-
-    * {
-      box-sizing:border-box;
-    }
-
-    html,
-    body {
-      min-height:100%;
-    }
-
-    body {
-      visibility:hidden;
-      margin:0;
-      background:var(--bg);
-      color:var(--txt);
+    *{box-sizing:border-box}
+    html,body{min-height:100%}
+    body{
+      visibility:hidden;margin:0;background:var(--bg);color:var(--txt);
       font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
     }
-
-    body.ready {
-      visibility:visible;
+    body.ready{visibility:visible}
+    .top{
+      position:fixed;z-index:10;inset:0 0 auto 0;display:flex;
+      align-items:center;justify-content:space-between;padding:14px 18px;
+      background:var(--card);border-bottom:1px solid #233043;
+      box-shadow:0 2px 10px rgba(0,0,0,.35)
     }
-
-    .top {
-      position:fixed;
-      z-index:10;
-      inset:0 0 auto 0;
-
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-
-      padding:14px 18px;
-
-      background:var(--card);
-      border-bottom:1px solid #233043;
-      box-shadow:0 2px 10px rgba(0,0,0,.35);
+    .hello{font-weight:600}
+    #btnLogout{
+      background:none;border:0;color:#f87171;cursor:pointer;
+      font-weight:700;font-size:15px
     }
-
-    .hello {
-      font-weight:600;
+    .menu{
+      width:min(520px,92vw);margin:120px auto 48px;
+      display:grid;gap:18px
     }
-
-    #btnLogout {
-      background:none;
-      border:0;
-      color:#f87171;
-      cursor:pointer;
-      font-weight:700;
-      font-size:15px;
+    .menu button{
+      width:100%;padding:18px;border:0;border-radius:14px;
+      cursor:pointer;font-weight:800;font-size:18px;color:#041a18
     }
-
-    .menu {
-      width:min(520px,92vw);
-      margin:120px auto 48px;
-
-      display:grid;
-      gap:18px;
-    }
-
-    .menu button {
-      width:100%;
-      padding:18px;
-
-      border:0;
-      border-radius:14px;
-
-      cursor:pointer;
-      font-weight:800;
-      font-size:18px;
-      color:#041a18;
-    }
-
-    #admin {
-      background:var(--btn1);
-    }
-
-    #kho {
-      background:var(--btn2);
-    }
-
-    #kiemsoatdon {
-      background:var(--btn3);
-      color:#3a2a04;
-    }
-
-    #kinhdoanh {
-      background:var(--btn4);
-    }
-
-    #giaovan {
-      background:var(--btn5);
-      color:#3b0713;
-    }
-
-    .hidden {
-      display:none !important;
-    }
-
-    footer {
-      text-align:center;
-      color:var(--muted);
-      font-size:12px;
-      margin:8px 0 24px;
-    }
+    #admin{background:var(--btn1)}
+    #donghang{background:var(--btn2)}
+    #checkdon{background:var(--btn3);color:#3a2a04}
+    #mapview{background:var(--btn4)}
+    #chamsockhachhang{background:var(--btn5);color:#3b0713}
+    #tinhdoanhso{background:var(--btn6);color:#052e20}
+    .hidden{display:none!important}
+    footer{text-align:center;color:var(--muted);font-size:12px;margin:8px 0 24px}
   </style>
 </head>
-
 <body>
   <header class="top">
-    <div class="hello">
-      Xin chào
-      <span id="ten_nv">...</span>
-      👋
-    </div>
-
-    <button
-      id="btnLogout"
-      type="button"
-    >
-      Đăng xuất
-    </button>
+    <div class="hello">Xin chào <span id="ten_nv">...</span> 👋</div>
+    <button id="btnLogout" type="button">Đăng xuất</button>
   </header>
 
   <main class="menu">
-    <button
-      id="admin"
-      class="hidden"
-      data-phan-quyen
-      type="button"
-    >
-      👤 Admin
-    </button>
-
-    <button
-      id="kho"
-      class="hidden"
-      data-phan-quyen
-      type="button"
-    >
-      📦 Kho
-    </button>
-
-    <button
-      id="kiemsoatdon"
-      class="hidden"
-      data-phan-quyen
-      type="button"
-    >
-      ✅ Kiểm soát đơn
-    </button>
-
-    <button
-      id="kinhdoanh"
-      class="hidden"
-      data-phan-quyen
-      type="button"
-    >
-      📈 Kinh doanh
-    </button>
-
-    <button
-      id="giaovan"
-      class="hidden"
-      data-phan-quyen
-      type="button"
-    >
-      🚚 Giao vận
-    </button>
+    <button id="admin" class="hidden" data-phan-quyen>👤 Admin</button>
+    <button id="donghang" class="hidden" data-phan-quyen>📦 Đóng hàng COD</button>
+    <button id="checkdon" class="hidden" data-phan-quyen>🧾 Check đơn</button>
+    <button id="mapview" class="hidden" data-phan-quyen>🗺️ Xem bản đồ</button>
+    <button id="chamsockhachhang" class="hidden" data-phan-quyen>💬 Chăm sóc khách hàng</button>
+    <button id="tinhdoanhso" class="hidden" data-phan-quyen>🧮 Tính doanh số nhân viên</button>
   </main>
 
-  <footer>
-    © <span id="year"></span> COD Internal
-  </footer>
+  <footer>© <span id="year"></span> COD Internal</footer>
 
   <script type="module">
     const VIEW_NAME = 'sql_phan_quyen_nhan_vien';
     const LOGIN_STORAGE_KEY = 'nv';
 
-    /*
-     * Chỉ thay tên nút và đường dẫn.
-     * Các key phải trùng với id của nút HTML.
-     */
     const routes = {
       admin:'./admin.html',
-      kho:'./kho.html',
-      kiemsoatdon:'./kiem_soat_don.html',
-      kinhdoanh:'./kinh_doanh.html',
-      giaovan:'./giao_van.html'
+      donghang:'./Quan_ly_cod.html',
+      checkdon:'./check_don.html',
+      mapview:'./map_tuyen.html',
+      chamsockhachhang:'./chamsockhachhang.html',
+      tinhdoanhso:'./tinhdoanhsonhanvien.html'
     };
 
-    function showPage() {
+    function showPage(){
       document.body.classList.add('ready');
-      document.body.style.visibility = 'visible';
+      document.body.style.visibility='visible';
     }
 
-    function readUser() {
-      const raw = localStorage.getItem(LOGIN_STORAGE_KEY);
-
-      if (!raw) {
-        throw new Error(
-          'Không có localStorage key "nv"'
-        );
-      }
-
+    function readUser(){
+      const raw=localStorage.getItem(LOGIN_STORAGE_KEY);
+      if(!raw) throw new Error('Không có localStorage key "nv"');
       return JSON.parse(raw);
     }
 
-    function currentPage() {
-      return (
-        location.pathname
-          .split('/')
-          .pop() ||
-        'main.html'
-      ).toLowerCase();
+    function currentPage(){
+      return (location.pathname.split('/').pop()||'main.html').toLowerCase();
     }
 
-    async function createClient() {
+    async function createClient(){
       const internalKey =
-        (
-          typeof window.getInternalKey === 'function'
-            ? window.getInternalKey()
-            : ''
-        ) ||
+        (typeof window.getInternalKey==='function' ? window.getInternalKey() : '') ||
         window.INTERNAL_KEY ||
         window.COD_INTERNAL_KEY ||
         window.internalKey ||
         '';
 
-      const res = await fetch('/api/getConfig', {
-        headers:{
-          'x-internal-key':internalKey || ''
-        },
+      const res=await fetch('/api/getConfig',{
+        headers:{'x-internal-key':internalKey||''},
         cache:'no-store'
       });
 
-      if (!res.ok) {
-        throw new Error(
-          `getConfig HTTP ${res.status}: ${await res.text()}`
-        );
+      if(!res.ok){
+        throw new Error(`getConfig HTTP ${res.status}: ${await res.text()}`);
       }
 
-      const cfg = await res.json();
+      const cfg=await res.json();
+      const url=cfg.url||cfg.SUPABASE_URL||cfg.supabaseUrl||cfg.supabase_url;
+      const key=cfg.anon||cfg.key||cfg.SUPABASE_ANON||cfg.SUPABASE_ANON_KEY||
+        cfg.supabaseAnon||cfg.supabaseKey||cfg.supabase_anon_key;
 
-      const url =
-        cfg.url ||
-        cfg.SUPABASE_URL ||
-        cfg.supabaseUrl ||
-        cfg.supabase_url;
-
-      const key =
-        cfg.anon ||
-        cfg.key ||
-        cfg.SUPABASE_ANON ||
-        cfg.SUPABASE_ANON_KEY ||
-        cfg.supabaseAnon ||
-        cfg.supabaseKey ||
-        cfg.supabase_anon_key;
-
-      if (!url || !key) {
-        throw new Error(
-          'Thiếu URL hoặc anon key Supabase'
-        );
-      }
-
-      return window.supabase.createClient(
-        url,
-        key
-      );
+      if(!url||!key) throw new Error('Thiếu URL hoặc anon key Supabase');
+      return window.supabase.createClient(url,key);
     }
 
-    /*
-     * Giữ nguyên cách lọc phân quyền của code cũ.
-     *
-     * id_chucnang trong view
-     * phải trùng với id nút HTML.
-     */
-    function applyPermissions(rows) {
-      const map = new Map(
-        (rows || [])
-          .filter(x => x.id_chucnang)
-          .map(x => [
-            String(x.id_chucnang).trim(),
-            x
-          ])
+    function applyPermissions(rows){
+      const map=new Map(
+        (rows||[])
+          .filter(x=>x.id_chucnang)
+          .map(x=>[String(x.id_chucnang).trim(),x])
       );
 
-      document
-        .querySelectorAll('[data-phan-quyen]')
-        .forEach(el => {
-          const q = map.get(el.id);
-
-          el.classList.toggle(
-            'hidden',
-            q?.duoc_xem !== true
-          );
-        });
-    }
-
-    function openWithParams(path) {
-      const u = new URL(
-        path,
-        location.href
-      );
-
-      new URLSearchParams(
-        location.search
-      ).forEach((value, key) => {
-        u.searchParams.set(
-          key,
-          value
-        );
+      document.querySelectorAll('[data-phan-quyen]').forEach(el=>{
+        const q=map.get(el.id);
+        el.classList.toggle('hidden',q?.duoc_xem!==true);
       });
+    }
 
+    function openWithParams(path){
+      const u=new URL(path,location.href);
+      new URLSearchParams(location.search).forEach((v,k)=>u.searchParams.set(k,v));
       location.assign(u.href);
     }
 
-    Object.entries(routes).forEach(
-      ([id, path]) => {
-        document
-          .getElementById(id)
-          ?.addEventListener(
-            'click',
-            () => openWithParams(path)
-          );
-      }
-    );
+    Object.entries(routes).forEach(([id,path])=>{
+      document.getElementById(id)?.addEventListener('click',()=>openWithParams(path));
+    });
 
-    document
-      .getElementById('btnLogout')
-      ?.addEventListener('click', () => {
-        localStorage.removeItem('nv');
-        localStorage.removeItem('last_ma_nv');
+    document.getElementById('btnLogout')?.addEventListener('click',()=>{
+      localStorage.removeItem('nv');
+      localStorage.removeItem('last_ma_nv');
+      location.replace('./login.html');
+    });
 
-        location.replace('./login.html');
-      });
+    document.getElementById('year').textContent=new Date().getFullYear();
 
-    document.getElementById(
-      'year'
-    ).textContent =
-      new Date().getFullYear();
+    try{
+      const user=readUser();
+      const maNv=String(user?.ma_nv||'').trim();
+      const tenNv=String(user?.ten_nv||'').trim();
+      const page=currentPage();
 
-    try {
-      const user = readUser();
+      document.getElementById('ten_nv').textContent=tenNv||maNv||'Nhân viên';
 
-      const maNv = String(
-        user?.ma_nv || ''
-      ).trim();
+      const client=await createClient();
 
-      const tenNv = String(
-        user?.ten_nv || ''
-      ).trim();
-
-      const page = currentPage();
-
-      document.getElementById(
-        'ten_nv'
-      ).textContent =
-        tenNv ||
-        maNv ||
-        'Nhân viên';
-
-      const client = await createClient();
-
-      /*
-       * Giữ nguyên truy vấn phân quyền cũ:
-       *
-       * 1. Lọc ma_nv
-       * 2. Lọc duong_dan
-       */
-      const {
-        data,
-        error
-      } = await client
+      const {data,error}=await client
         .from(VIEW_NAME)
-        .select(
-          'ma_nv,' +
-          'ten_nv,' +
-          'ten_vai_tro,' +
-          'duong_dan,' +
-          'id_chucnang,' +
-          'ten_chucnang,' +
-          'duoc_xem'
-        )
-        .eq('ma_nv', maNv)
-        .eq('duong_dan', page);
+        .select('ma_nv,ten_nv,ten_vai_tro,duong_dan,id_chucnang,ten_chucnang,duoc_xem')
+        .eq('ma_nv',maNv)
+        .eq('duong_dan',page);
 
-      if (error) {
-        throw error;
-      }
+      if(error) throw error;
 
-      const rows = data || [];
-
+      const rows=data||[];
       applyPermissions(rows);
 
-      console.log(
-        '[PHÂN QUYỀN] Đã tải thành công:',
-        {
-          ten_nv:tenNv,
-          ma_nv:maNv,
-          trang:page,
-          so_dong_quyen:rows.length,
-          danh_sach_quyen:rows
-        }
-      );
-
-      console.table(rows);
-    } catch (error) {
-      console.error(
-        '[INLINE DEBUG] Lỗi:',
-        error
-      );
+      console.log('[PHÂN QUYỀN] Đã tải thành công:', {
+        ten_nv: tenNv,
+        ma_nv: maNv,
+        trang: page,
+        so_dong_quyen: rows.length,
+        danh_sach_quyen: rows
+      });
+    }catch(error){
+      console.error('[INLINE DEBUG] Lỗi:',error);
 
       alert(
-        `LỖI LẤY QUYỀN\n\n` +
-        `message: ${error?.message || error}\n` +
-        `code: ${error?.code || 'không có'}\n` +
-        `details: ${error?.details || 'không có'}\n` +
-        `hint: ${error?.hint || 'không có'}`
+        `LỖI LẤY QUYỀN\n\n`+
+        `message: ${error?.message||error}\n`+
+        `code: ${error?.code||'không có'}\n`+
+        `details: ${error?.details||'không có'}\n`+
+        `hint: ${error?.hint||'không có'}`
       );
-    } finally {
+    }finally{
       showPage();
     }
   </script>
