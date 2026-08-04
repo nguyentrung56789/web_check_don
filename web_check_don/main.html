@@ -1,87 +1,200 @@
-from pathlib import Path
-import shutil
-import zipfile
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Trang chính</title>
 
-source = Path("/mnt/data/bo_main_phanquyen_debug")
-target = Path("/mnt/data/bo_main_phan_quyen_debug")
+  <script src="./js/internal_key.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/cod_config.js"></script>
+  <script src="./js/auth_token.js"></script>
 
-if target.exists():
-    shutil.rmtree(target)
+  <style>
+    :root {
+      --bg:#0b1220; --card:#0f1830; --txt:#e6edff; --muted:#9aa7c7;
+      --btn1:#2dd4bf; --btn2:#60a5fa; --btn3:#fbbf24;
+      --btn4:#a78bfa; --btn5:#fb7185; --btn6:#34d399;
+    }
+    *{box-sizing:border-box}
+    html,body{min-height:100%}
+    body{
+      visibility:hidden;margin:0;background:var(--bg);color:var(--txt);
+      font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
+    }
+    body.ready{visibility:visible}
+    .top{
+      position:fixed;z-index:10;inset:0 0 auto 0;display:flex;
+      align-items:center;justify-content:space-between;padding:14px 18px;
+      background:var(--card);border-bottom:1px solid #233043;
+      box-shadow:0 2px 10px rgba(0,0,0,.35)
+    }
+    .hello{font-weight:600}
+    #btnLogout{
+      background:none;border:0;color:#f87171;cursor:pointer;
+      font-weight:700;font-size:15px
+    }
+    .menu{
+      width:min(520px,92vw);margin:120px auto 48px;
+      display:grid;gap:18px
+    }
+    .menu button{
+      width:100%;padding:18px;border:0;border-radius:14px;
+      cursor:pointer;font-weight:800;font-size:18px;color:#041a18
+    }
+    #admin{background:var(--btn1)}
+    #donghang{background:var(--btn2)}
+    #checkdon{background:var(--btn3);color:#3a2a04}
+    #mapview{background:var(--btn4)}
+    #chamsockhachhang{background:var(--btn5);color:#3b0713}
+    #tinhdoanhso{background:var(--btn6);color:#052e20}
+    .hidden{display:none!important}
+    footer{text-align:center;color:var(--muted);font-size:12px;margin:8px 0 24px}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="hello">Xin chào <span id="ten_nv">...</span> 👋</div>
+    <button id="btnLogout" type="button">Đăng xuất</button>
+  </header>
 
-shutil.copytree(source, target)
+  <main class="menu">
+    <button id="admin" class="hidden" data-phan-quyen>👤 Admin</button>
+    <button id="donghang" class="hidden" data-phan-quyen>📦 Đóng hàng COD</button>
+    <button id="checkdon" class="hidden" data-phan-quyen>🧾 Check đơn</button>
+    <button id="mapview" class="hidden" data-phan-quyen>🗺️ Xem bản đồ</button>
+    <button id="chamsockhachhang" class="hidden" data-phan-quyen>💬 Chăm sóc khách hàng</button>
+    <button id="tinhdoanhso" class="hidden" data-phan-quyen>🧮 Tính doanh số nhân viên</button>
+  </main>
 
-# Đổi đúng tên file JS theo hệ thống của người dùng.
-old_js = target / "js" / "phanquyen.js"
-new_js = target / "js" / "phan_quyen.js"
+  <footer>© <span id="year"></span> COD Internal</footer>
 
-if old_js.exists():
-    old_js.rename(new_js)
+  <script type="module">
+    const VIEW_NAME = 'sql_phan_quyen_nhan_vien';
+    const LOGIN_STORAGE_KEY = 'nv';
 
-# Sửa toàn bộ đường dẫn và nội dung debug trong main.html.
-main_path = target / "main.html"
-main_html = main_path.read_text(encoding="utf-8")
-main_html = main_html.replace("phanquyen.js", "phan_quyen.js")
-main_path.write_text(main_html, encoding="utf-8")
+    const routes = {
+      admin:'./admin.html',
+      donghang:'./Quan_ly_cod.html',
+      checkdon:'./check_don.html',
+      mapview:'./map_tuyen.html',
+      chamsockhachhang:'./chamsockhachhang.html',
+      tinhdoanhso:'./tinhdoanhsonhanvien.html'
+    };
 
-# Sửa tiêu đề chú thích trong file JS.
-js_text = new_js.read_text(encoding="utf-8")
-js_text = js_text.replace(
-    "// ==================== js/phanquyen.js ====================",
-    "// ==================== js/phan_quyen.js ===================="
-)
-new_js.write_text(js_text, encoding="utf-8")
+    function showPage(){
+      document.body.classList.add('ready');
+      document.body.style.visibility='visible';
+    }
 
-# Cập nhật README.
-readme = """BỘ MAIN + PHÂN QUYỀN + DEBUG
+    function readUser(){
+      const raw=localStorage.getItem(LOGIN_STORAGE_KEY);
+      if(!raw) throw new Error('Không có localStorage key "nv"');
+      return JSON.parse(raw);
+    }
 
-Các file cần dùng:
-- main.html
-- js/phan_quyen.js
+    function currentPage(){
+      return (location.pathname.split('/').pop()||'main.html').toLowerCase();
+    }
 
-Giữ nguyên các file hệ thống hiện tại:
-- js/internal_key.js
-- js/cod_config.js
-- js/auth_token.js
+    async function createClient(){
+      const internalKey =
+        (typeof window.getInternalKey==='function' ? window.getInternalKey() : '') ||
+        window.INTERNAL_KEY ||
+        window.COD_INTERNAL_KEY ||
+        window.internalKey ||
+        '';
 
-Đường dẫn import đúng trong main.html:
-./js/phan_quyen.js
+      const res=await fetch('/api/getConfig',{
+        headers:{'x-internal-key':internalKey||''},
+        cache:'no-store'
+      });
 
-Quy trình phân quyền:
-1. Đọc ma_nv từ localStorage "nv" hoặc "chatwoot_crm_user".
-2. Query kv_nhan_vien theo ma_nv để lấy vai_tro_id.
-3. Query sql_phan_quyen_nhan_vien theo:
-   - ma_nv
-   - vai_tro_id
-   - duong_dan = main.html
-4. So id_chucnang với id nút HTML.
-5. duoc_xem = true thì hiện.
+      if(!res.ok){
+        throw new Error(`getConfig HTTP ${res.status}: ${await res.text()}`);
+      }
 
-ID chức năng của trang main:
-- admin
-- kho
-- kinhdoanh
-- giaovan
+      const cfg=await res.json();
+      const url=cfg.url||cfg.SUPABASE_URL||cfg.supabaseUrl||cfg.supabase_url;
+      const key=cfg.anon||cfg.key||cfg.SUPABASE_ANON||cfg.SUPABASE_ANON_KEY||
+        cfg.supabaseAnon||cfg.supabaseKey||cfg.supabase_anon_key;
 
-Kiểm tra sau khi deploy:
-https://web-check-don.vercel.app/js/phan_quyen.js
+      if(!url||!key) throw new Error('Thiếu URL hoặc anon key Supabase');
+      return window.supabase.createClient(url,key);
+    }
 
-Nếu URL trên mở được nội dung JavaScript thì đường dẫn đã đúng.
-"""
-(target / "README.txt").write_text(readme, encoding="utf-8")
+    function applyPermissions(rows){
+      const map=new Map(
+        (rows||[])
+          .filter(x=>x.id_chucnang)
+          .map(x=>[String(x.id_chucnang).trim(),x])
+      );
 
-zip_path = Path("/mnt/data/bo_main_phan_quyen_debug.zip")
-if zip_path.exists():
-    zip_path.unlink()
+      document.querySelectorAll('[data-phan-quyen]').forEach(el=>{
+        const q=map.get(el.id);
+        el.classList.toggle('hidden',q?.duoc_xem!==true);
+      });
+    }
 
-with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
-    for file_path in target.rglob("*"):
-        if file_path.is_file():
-            archive.write(
-                file_path,
-                file_path.relative_to(target.parent)
-            )
+    function openWithParams(path){
+      const u=new URL(path,location.href);
+      new URLSearchParams(location.search).forEach((v,k)=>u.searchParams.set(k,v));
+      location.assign(u.href);
+    }
 
-print(f"Đã tạo: {zip_path}")
-print("Cấu trúc:")
-for item in sorted(target.rglob("*")):
-    print(item.relative_to(target.parent))
+    Object.entries(routes).forEach(([id,path])=>{
+      document.getElementById(id)?.addEventListener('click',()=>openWithParams(path));
+    });
+
+    document.getElementById('btnLogout')?.addEventListener('click',()=>{
+      localStorage.removeItem('nv');
+      localStorage.removeItem('last_ma_nv');
+      location.replace('./login.html');
+    });
+
+    document.getElementById('year').textContent=new Date().getFullYear();
+
+    try{
+      const user=readUser();
+      const maNv=String(user?.ma_nv||'').trim();
+      const tenNv=String(user?.ten_nv||'').trim();
+      const page=currentPage();
+
+      document.getElementById('ten_nv').textContent=tenNv||maNv||'Nhân viên';
+
+      const client=await createClient();
+
+      const {data,error}=await client
+        .from(VIEW_NAME)
+        .select('ma_nv,ten_nv,ten_vai_tro,duong_dan,id_chucnang,ten_chucnang,duoc_xem')
+        .eq('ma_nv',maNv)
+        .eq('duong_dan',page);
+
+      if(error) throw error;
+
+      const rows=data||[];
+      applyPermissions(rows);
+
+      console.log('[PHÂN QUYỀN] Đã tải thành công:', {
+        ten_nv: tenNv,
+        ma_nv: maNv,
+        trang: page,
+        so_dong_quyen: rows.length,
+        danh_sach_quyen: rows
+      });
+    }catch(error){
+      console.error('[INLINE DEBUG] Lỗi:',error);
+
+      alert(
+        `LỖI LẤY QUYỀN\n\n`+
+        `message: ${error?.message||error}\n`+
+        `code: ${error?.code||'không có'}\n`+
+        `details: ${error?.details||'không có'}\n`+
+        `hint: ${error?.hint||'không có'}`
+      );
+    }finally{
+      showPage();
+    }
+  </script>
+</body>
+</html>
