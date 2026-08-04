@@ -10,11 +10,8 @@
 
   <title>Trang chính</title>
 
-  <!-- Các file cấu hình hiện tại của bạn -->
   <script src="./js/internal_key.js"></script>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <script src="./js/cod_config.js"></script>
   <script src="./js/auth_token.js"></script>
 
@@ -22,14 +19,13 @@
     :root {
       --bg:#0b1220;
       --card:#0f1830;
-      --card-hover:#17233d;
       --txt:#e6edff;
       --muted:#9aa7c7;
       --line:#233043;
 
       --admin:#2dd4bf;
       --kho:#60a5fa;
-      --kiem:#fbbf24;
+      --kiemsoat:#fbbf24;
       --kinhdoanh:#a78bfa;
       --giaovan:#fb7185;
 
@@ -64,10 +60,7 @@
       visibility:visible;
     }
 
-    button,
-    input,
-    select,
-    textarea {
+    button {
       font:inherit;
     }
 
@@ -186,6 +179,7 @@
     .role:hover {
       transform:translateY(-2px);
       filter:brightness(1.035);
+
       box-shadow:
         0 12px 32px rgba(0,0,0,.28),
         inset 0 1px 0 rgba(255,255,255,.2);
@@ -223,7 +217,6 @@
     .role small {
       display:block;
       margin-top:5px;
-
       font-size:13px;
       line-height:1.4;
       opacity:.8;
@@ -245,7 +238,7 @@
     }
 
     #kiemsoatdon {
-      background:var(--kiem);
+      background:var(--kiemsoat);
     }
 
     #kinhdoanh {
@@ -351,7 +344,7 @@
       <h1>Chọn nhóm chức năng</h1>
 
       <p>
-        Chỉ những nhóm bạn được cấp quyền xem mới hiển thị.
+        Chỉ những nhóm đã được cấp quyền xem mới hiển thị.
       </p>
     </div>
 
@@ -447,29 +440,21 @@
   </footer>
 
   <script>
-    /*
-     * ==========================================================
-     * CẤU HÌNH
-     * ==========================================================
-     */
-
     const VIEW_NAME = 'sql_phan_quyen_nhan_vien';
     const LOGIN_STORAGE_KEY = 'nv';
 
     const routes = {
-      admin: './admin.html',
-      kho: './kho.html',
-      kiemsoatdon: './kiem_soat_don.html',
-      kinhdoanh: './kinh_doanh.html',
-      giaovan: './giao_van.html'
+      admin:'./admin.html',
+      kho:'./kho.html',
+      kiemsoatdon:'./kiem_soat_don.html',
+      kinhdoanh:'./kinh_doanh.html',
+      giaovan:'./giao_van.html'
     };
 
 
-    /*
-     * ==========================================================
-     * HÀM HỖ TRỢ GIAO DIỆN
-     * ==========================================================
-     */
+    /* =========================================================
+       HIỂN THỊ TRANG
+    ========================================================= */
 
     function showPage() {
       document.body.classList.add('ready');
@@ -501,18 +486,16 @@
     }
 
 
-    /*
-     * ==========================================================
-     * ĐĂNG NHẬP
-     * ==========================================================
-     */
+    /* =========================================================
+       ĐỌC NHÂN VIÊN ĐANG ĐĂNG NHẬP
+    ========================================================= */
 
     function readUser() {
       const raw = localStorage.getItem(LOGIN_STORAGE_KEY);
 
       if (!raw) {
         throw new Error(
-          'Không tìm thấy dữ liệu đăng nhập trong localStorage key "nv".'
+          'Không có dữ liệu đăng nhập trong localStorage key "nv".'
         );
       }
 
@@ -524,21 +507,19 @@
         }
 
         return user;
-      } catch (error) {
+      } catch {
         localStorage.removeItem(LOGIN_STORAGE_KEY);
 
         throw new Error(
-          'Dữ liệu đăng nhập trong localStorage bị lỗi JSON.'
+          'Dữ liệu đăng nhập trong localStorage bị lỗi.'
         );
       }
     }
 
 
-    /*
-     * ==========================================================
-     * TOKEN
-     * ==========================================================
-     */
+    /* =========================================================
+       TOKEN
+    ========================================================= */
 
     function getToken() {
       const query = new URLSearchParams(location.search);
@@ -567,15 +548,17 @@
       const url = new URL(path, location.href);
 
       /*
-       * Giữ lại toàn bộ query hiện tại.
+       * Giữ lại toàn bộ tham số đang có trên URL.
        */
-      new URLSearchParams(location.search).forEach((value, key) => {
-        url.searchParams.set(key, value);
-      });
+      new URLSearchParams(location.search).forEach(
+        (value, key) => {
+          url.searchParams.set(key, value);
+        }
+      );
 
       /*
-       * Nếu token chỉ đang nằm trong sessionStorage hoặc localStorage
-       * thì gắn lại vào URL trang tiếp theo.
+       * Nếu token nằm trong sessionStorage hoặc localStorage
+       * thì gắn token vào URL trang con.
        */
       const token = getToken();
 
@@ -587,78 +570,55 @@
     }
 
 
-    /*
-     * ==========================================================
-     * TRANG HIỆN TẠI
-     * ==========================================================
-     */
+    /* =========================================================
+       TÊN TRANG HIỆN TẠI
+    ========================================================= */
 
     function currentPage() {
-      const fileName =
+      return (
         location.pathname.split('/').pop() ||
-        'main.html';
-
-      return fileName
+        'main.html'
+      )
         .trim()
         .toLowerCase();
     }
 
 
-    /*
-     * ==========================================================
-     * CHUẨN HÓA TÊN CHỨC NĂNG
-     * ==========================================================
-     */
+    /* =========================================================
+       CHUẨN HÓA TÊN CHỨC NĂNG
+    ========================================================= */
 
     function normalizeFunctionName(value) {
       return String(value ?? '')
         .trim()
         .toLowerCase()
-
-        /*
-         * Bỏ dấu tiếng Việt.
-         */
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
-
-        /*
-         * Đổi chữ đ thành d.
-         */
         .replace(/đ/g, 'd')
-
-        /*
-         * Bỏ khoảng trắng, gạch dưới và gạch ngang.
-         */
         .replace(/[\s_-]+/g, '')
-
-        /*
-         * Chỉ giữ chữ và số.
-         */
         .replace(/[^a-z0-9]/g, '');
     }
 
 
-    /*
-     * ==========================================================
-     * KIỂM TRA BOOLEAN
-     * ==========================================================
-     */
+    /* =========================================================
+       KIỂM TRA GIÁ TRỊ BOOLEAN
+    ========================================================= */
 
     function isTrue(value) {
       return (
         value === true ||
         value === 1 ||
         value === '1' ||
-        String(value).trim().toLowerCase() === 'true'
+        String(value ?? '')
+          .trim()
+          .toLowerCase() === 'true'
       );
     }
 
 
-    /*
-     * ==========================================================
-     * TẠO SUPABASE CLIENT
-     * ==========================================================
-     */
+    /* =========================================================
+       TẠO SUPABASE CLIENT
+    ========================================================= */
 
     async function createClient() {
       if (!window.supabase) {
@@ -679,20 +639,20 @@
         '';
 
       const response = await fetch('/api/getConfig', {
-        method: 'GET',
+        method:'GET',
 
-        headers: {
-          'x-internal-key': internalKey || ''
+        headers:{
+          'x-internal-key':internalKey || ''
         },
 
-        cache: 'no-store'
+        cache:'no-store'
       });
 
       if (!response.ok) {
-        const responseText = await response.text();
+        const text = await response.text();
 
         throw new Error(
-          `getConfig HTTP ${response.status}: ${responseText}`
+          `getConfig HTTP ${response.status}: ${text}`
         );
       }
 
@@ -715,7 +675,7 @@
 
       if (!supabaseUrl || !supabaseAnonKey) {
         throw new Error(
-          'API getConfig không trả về SUPABASE_URL hoặc SUPABASE_ANON_KEY.'
+          'Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY.'
         );
       }
 
@@ -726,48 +686,40 @@
     }
 
 
-    /*
-     * ==========================================================
-     * ÁP DỤNG PHÂN QUYỀN
-     * ==========================================================
-     */
+    /* =========================================================
+       ÁP DỤNG PHÂN QUYỀN
+    ========================================================= */
 
     function applyPermissions(rows) {
       const permissionMap = new Map();
 
       /*
-       * Không dùng id_chucnang vì đây có thể là UUID.
-       *
-       * Dùng ten_chucnang để so với ID nút:
-       * kho
-       * admin
-       * kinh_doanh
-       * giao_van
-       * kiem_soat_don
+       * Dùng ten_chucnang.
+       * Không dùng id_chucnang vì id_chucnang là UUID.
        */
       (rows || []).forEach(row => {
-        const functionName = normalizeFunctionName(
+        const key = normalizeFunctionName(
           row?.ten_chucnang
         );
 
-        if (!functionName) return;
+        if (!key) return;
+
+        const oldRow = permissionMap.get(key);
 
         /*
-         * Nếu cùng chức năng có nhiều dòng,
-         * chỉ cần một dòng duoc_xem = true là được xem.
+         * Nếu một chức năng có nhiều dòng,
+         * chỉ cần một dòng duoc_xem = true.
          */
-        const oldPermission = permissionMap.get(functionName);
-
-        if (!oldPermission) {
-          permissionMap.set(functionName, row);
+        if (!oldRow) {
+          permissionMap.set(key, row);
           return;
         }
 
         if (
           isTrue(row?.duoc_xem) &&
-          !isTrue(oldPermission?.duoc_xem)
+          !isTrue(oldRow?.duoc_xem)
         ) {
-          permissionMap.set(functionName, row);
+          permissionMap.set(key, row);
         }
       });
 
@@ -776,49 +728,58 @@
       document
         .querySelectorAll('[data-phan-quyen]')
         .forEach(button => {
-          const buttonName = normalizeFunctionName(button.id);
-          const permission = permissionMap.get(buttonName);
+          const buttonKey = normalizeFunctionName(
+            button.id
+          );
 
-          const allowed = isTrue(permission?.duoc_xem);
+          const permission = permissionMap.get(
+            buttonKey
+          );
 
-          button.classList.toggle('hidden', !allowed);
+          const allowed = isTrue(
+            permission?.duoc_xem
+          );
+
+          button.classList.toggle(
+            'hidden',
+            !allowed
+          );
 
           if (allowed) {
-            visibleCount += 1;
+            visibleCount++;
           }
 
-          console.log('[KIỂM TRA NÚT]', {
-            button_id: button.id,
-            button_chuan_hoa: buttonName,
-            tim_thay_quyen: Boolean(permission),
-            ten_chucnang: permission?.ten_chucnang,
-            duoc_xem: permission?.duoc_xem,
-            hien_thi: allowed
+          console.log('[KIỂM TRA QUYỀN]', {
+            id_nut:button.id,
+            ten_nut_chuan_hoa:buttonKey,
+            tim_thay_quyen:Boolean(permission),
+            ten_chucnang:permission?.ten_chucnang,
+            duoc_xem:permission?.duoc_xem,
+            hien_thi:allowed
           });
         });
 
       showEmptyMessage(visibleCount === 0);
 
-      console.log('[MAP PHÂN QUYỀN]', {
-        map: Object.fromEntries(permissionMap),
-        so_nut_duoc_hien: visibleCount
+      console.log('[MAP QUYỀN]', {
+        danh_sach:Object.fromEntries(permissionMap),
+        so_nut_hien:visibleCount
       });
 
       return visibleCount;
     }
 
 
-    /*
-     * ==========================================================
-     * LẤY QUYỀN
-     * ==========================================================
-     */
+    /* =========================================================
+       LẤY QUYỀN TỪ VIEW
+    ========================================================= */
 
-    async function loadPermissions(client, maNv, page) {
-      /*
-       * Truy vấn chính xác theo nhân viên và trang.
-       */
-      const firstQuery = await client
+    async function loadPermissions(
+      client,
+      maNv,
+      page
+    ) {
+      const result = await client
         .from(VIEW_NAME)
         .select(`
           ma_nv,
@@ -832,133 +793,83 @@
         .eq('ma_nv', maNv)
         .eq('duong_dan', page);
 
-      if (firstQuery.error) {
-        throw firstQuery.error;
+      if (result.error) {
+        throw result.error;
       }
 
-      let rows = firstQuery.data || [];
+      const rows = result.data || [];
 
-      console.log('[TRUY VẤN THEO TRANG]', {
-        ma_nv: maNv,
-        duong_dan: page,
-        so_dong: rows.length,
-        du_lieu: rows
+      console.log('[DỮ LIỆU QUYỀN SUPABASE]', {
+        ma_nv:maNv,
+        duong_dan:page,
+        so_dong:rows.length,
+        danh_sach:rows
       });
-
-      /*
-       * Nếu không có dòng nào, thử lấy toàn bộ quyền của nhân viên.
-       * Mục đích để phát hiện duong_dan trong Supabase bị sai.
-       */
-      if (rows.length === 0) {
-        const fallbackQuery = await client
-          .from(VIEW_NAME)
-          .select(`
-            ma_nv,
-            ten_nv,
-            ten_vai_tro,
-            duong_dan,
-            id_chucnang,
-            ten_chucnang,
-            duoc_xem
-          `)
-          .eq('ma_nv', maNv);
-
-        if (fallbackQuery.error) {
-          throw fallbackQuery.error;
-        }
-
-        const fallbackRows = fallbackQuery.data || [];
-
-        console.warn(
-          '[CẢNH BÁO] Không có quyền đúng duong_dan hiện tại.',
-          {
-            trang_hien_tai: page,
-            tat_ca_quyen_cua_nhan_vien: fallbackRows
-          }
-        );
-
-        /*
-         * Chỉ lấy những dòng có đường dẫn gần giống main.html.
-         */
-        const normalizedCurrentPage =
-          String(page).trim().toLowerCase();
-
-        const similarRows = fallbackRows.filter(row => {
-          const rowPath = String(
-            row?.duong_dan ?? ''
-          )
-            .trim()
-            .toLowerCase()
-            .replace(/^\.\//, '')
-            .replace(/^\//, '');
-
-          return (
-            rowPath === normalizedCurrentPage ||
-            rowPath.endsWith('/' + normalizedCurrentPage)
-          );
-        });
-
-        /*
-         * Nếu vẫn không có đường dẫn tương tự,
-         * trả về rỗng để không cấp quyền sai.
-         */
-        rows = similarRows;
-      }
 
       return rows;
     }
 
 
-    /*
-     * ==========================================================
-     * SỰ KIỆN
-     * ==========================================================
-     */
+    /* =========================================================
+       GẮN SỰ KIỆN MỞ TRANG
+    ========================================================= */
 
-    Object.entries(routes).forEach(([buttonId, path]) => {
-      const button = document.getElementById(buttonId);
-
-      if (!button) {
-        console.error(
-          '[ROUTE] Không tìm thấy nút:',
+    Object.entries(routes).forEach(
+      ([buttonId, path]) => {
+        const button = document.getElementById(
           buttonId
         );
 
-        return;
-      }
+        if (!button) {
+          console.error(
+            '[ROUTE] Không tìm thấy nút:',
+            buttonId
+          );
 
-      button.addEventListener('click', () => {
-        console.log('[MỞ TRANG]', {
-          button_id: buttonId,
-          duong_dan: path,
-          token: Boolean(getToken())
+          return;
+        }
+
+        button.addEventListener('click', () => {
+          console.log('[MỞ TRANG]', {
+            id_nut:buttonId,
+            duong_dan:path,
+            co_token:Boolean(getToken())
+          });
+
+          openWithToken(path);
         });
+      }
+    );
 
-        openWithToken(path);
-      });
-    });
+
+    /* =========================================================
+       ĐĂNG XUẤT
+    ========================================================= */
 
     document
       .getElementById('btnLogout')
       ?.addEventListener('click', () => {
         localStorage.removeItem('nv');
         localStorage.removeItem('last_ma_nv');
+        localStorage.removeItem('access_token');
 
         sessionStorage.removeItem('access_token');
-        localStorage.removeItem('access_token');
 
         location.replace('./login.html');
       });
+
+
+    /* =========================================================
+       NĂM FOOTER
+    ========================================================= */
 
     document.getElementById('year').textContent =
       new Date().getFullYear();
 
 
-    /*
-     * ==========================================================
-     * KHỞI CHẠY
-     * ==========================================================
-     */
+    /* =========================================================
+       KHỞI CHẠY
+    ========================================================= */
 
     async function init() {
       hideError();
@@ -984,17 +895,19 @@
         const page = currentPage();
         const token = saveToken();
 
-        document.getElementById('ten_nv').textContent =
+        document.getElementById(
+          'ten_nv'
+        ).textContent =
           tenNv ||
           maNv ||
           'Nhân viên';
 
         console.log('[KHỞI TẠO MAIN]', {
-          ma_nv: maNv,
-          ten_nv: tenNv,
-          trang: page,
-          co_token: Boolean(token),
-          url: location.href
+          ma_nv:maNv,
+          ten_nv:tenNv,
+          trang:page,
+          co_token:Boolean(token),
+          url:location.href
         });
 
         const client = await createClient();
@@ -1005,34 +918,31 @@
           page
         );
 
-        /*
-         * Hiển thị tên vai trò.
-         */
         const roleNames = [
           ...new Set(
             rows
               .map(row =>
-                String(row?.ten_vai_tro ?? '').trim()
+                String(
+                  row?.ten_vai_tro ?? ''
+                ).trim()
               )
               .filter(Boolean)
           )
         ];
 
-        document.getElementById('ten_vai_tro').textContent =
-          roleNames.length > 0
+        document.getElementById(
+          'ten_vai_tro'
+        ).textContent =
+          roleNames.length
             ? `Vai trò: ${roleNames.join(', ')}`
             : `Mã nhân viên: ${maNv}`;
 
         applyPermissions(rows);
-
-        console.log('[PHÂN QUYỀN ĐÃ TẢI]', {
-          ma_nv: maNv,
-          trang: page,
-          so_dong: rows.length,
-          danh_sach: rows
-        });
       } catch (error) {
-        console.error('[LỖI MAIN]', error);
+        console.error(
+          '[LỖI MAIN]',
+          error
+        );
 
         const message =
           error?.message ||
