@@ -11,66 +11,445 @@
   <script src="./js/auth_token.js"></script>
 
   <style>
-    :root{--bg:#07111f;--text:#f8fafc;--muted:#9aa7c7;--admin:#2dd4bf;--kho:#60a5fa;--kinhdoanh:#fbbf24;--giaovan:#fb7185}
+    :root{
+      --bg:#07111f;
+      --text:#f8fafc;
+      --muted:#9aa7c7;
+      --admin:#2dd4bf;
+      --kho:#60a5fa;
+      --kinhdoanh:#fbbf24;
+      --giaovan:#fb7185;
+    }
+
     *{box-sizing:border-box}
-    html,body{min-height:100%;margin:0}
-    body{visibility:hidden;background:radial-gradient(circle at 50% 30%,rgba(30,64,175,.12),transparent 38%),linear-gradient(135deg,#07111f,#0b1527 55%,#07111f);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
-    body.ready{visibility:visible}
-    .page{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:42px 20px 26px}
-    .title{margin:0 0 54px;font-size:clamp(28px,4vw,42px);font-weight:900;letter-spacing:.5px;text-align:center}
-    .menu{width:min(670px,92vw);display:grid;gap:28px}
-    .role-card{width:100%;min-height:128px;display:flex;align-items:center;gap:26px;padding:24px 54px;border:0;border-radius:18px;cursor:pointer;text-align:left;color:#020617;box-shadow:0 12px 34px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.18);transition:transform .16s ease,filter .16s ease,box-shadow .16s ease}
-    .role-card:hover{transform:translateY(-3px);filter:brightness(1.035);box-shadow:0 18px 42px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.2)}
-    .role-card:active{transform:translateY(0)}
-    .role-icon{width:78px;flex:0 0 78px;display:grid;place-items:center;font-size:52px;line-height:1}
-    .role-content{min-width:0;flex:1}
-    .role-name{display:block;font-size:clamp(26px,3vw,36px);font-weight:900;line-height:1.15}
-    .role-desc{display:block;margin-top:8px;font-size:clamp(16px,2vw,22px);font-weight:500;line-height:1.35}
+
+    html,body{
+      min-height:100%;
+      margin:0;
+    }
+
+    body{
+      margin:0;
+      visibility:visible;
+      background:
+        radial-gradient(circle at 50% 30%,rgba(30,64,175,.12),transparent 38%),
+        linear-gradient(135deg,#07111f,#0b1527 55%,#07111f);
+      color:var(--text);
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    }
+
+    .page{
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      padding:42px 20px 26px;
+    }
+
+    .title{
+      margin:0 0 54px;
+      font-size:clamp(28px,4vw,42px);
+      font-weight:900;
+      letter-spacing:.5px;
+      text-align:center;
+    }
+
+    .menu{
+      width:min(670px,92vw);
+      display:grid;
+      gap:28px;
+    }
+
+    .role-card{
+      width:100%;
+      min-height:128px;
+      display:flex;
+      align-items:center;
+      gap:26px;
+      padding:24px 54px;
+      border:0;
+      border-radius:18px;
+      cursor:pointer;
+      text-align:left;
+      color:#020617;
+      box-shadow:
+        0 12px 34px rgba(0,0,0,.32),
+        inset 0 1px 0 rgba(255,255,255,.18);
+      transition:transform .16s ease,filter .16s ease,box-shadow .16s ease;
+    }
+
+    .role-card:hover{
+      transform:translateY(-3px);
+      filter:brightness(1.035);
+      box-shadow:
+        0 18px 42px rgba(0,0,0,.38),
+        inset 0 1px 0 rgba(255,255,255,.2);
+    }
+
+    .role-icon{
+      width:78px;
+      flex:0 0 78px;
+      display:grid;
+      place-items:center;
+      font-size:52px;
+      line-height:1;
+    }
+
+    .role-content{
+      min-width:0;
+      flex:1;
+    }
+
+    .role-name{
+      display:block;
+      font-size:clamp(26px,3vw,36px);
+      font-weight:900;
+      line-height:1.15;
+    }
+
+    .role-desc{
+      display:block;
+      margin-top:8px;
+      font-size:clamp(16px,2vw,22px);
+      font-weight:500;
+      line-height:1.35;
+    }
+
     #admin{background:linear-gradient(135deg,#2dd4bf,#35d3c1)}
     #kho{background:linear-gradient(135deg,#60a5fa,#4c91f2)}
     #kinhdoanh{background:linear-gradient(135deg,#fbbf24,#ffc329)}
     #giaovan{background:linear-gradient(135deg,#fb7185,#ff6079)}
+
     .hidden{display:none!important}
-    .notice{display:none;width:min(670px,92vw);margin-top:22px;padding:16px;border:1px solid rgba(148,163,184,.25);border-radius:14px;background:rgba(15,23,42,.65);color:var(--muted);text-align:center;line-height:1.5}
+
+    .notice{
+      display:none;
+      width:min(670px,92vw);
+      margin-top:22px;
+      padding:16px;
+      border:1px solid rgba(148,163,184,.25);
+      border-radius:14px;
+      background:rgba(15,23,42,.65);
+      color:var(--muted);
+      text-align:center;
+      line-height:1.5;
+    }
+
     .notice.show{display:block}
-    footer{margin-top:58px;color:var(--muted);font-size:14px;text-align:center}
-    @media(max-width:640px){.page{justify-content:flex-start;padding-top:52px}.title{margin-bottom:34px;font-size:30px}.menu{gap:18px}.role-card{min-height:100px;padding:18px 22px;gap:18px;border-radius:16px}.role-icon{width:56px;flex-basis:56px;font-size:40px}.role-name{font-size:23px}.role-desc{font-size:15px}footer{margin-top:36px}}
+
+    footer{
+      margin-top:58px;
+      color:var(--muted);
+      font-size:14px;
+      text-align:center;
+    }
+
+    #debugBox{
+      position:fixed;
+      z-index:99999;
+      top:12px;
+      left:12px;
+      right:12px;
+      max-height:82vh;
+      overflow:auto;
+      padding:14px;
+      border:2px solid #f59e0b;
+      border-radius:12px;
+      background:rgba(17,24,39,.97);
+      color:#fff;
+      font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;
+      white-space:pre-wrap;
+      box-shadow:0 14px 40px rgba(0,0,0,.45);
+    }
+
+    #debugBox.ok{
+      border-color:#22c55e;
+    }
+
+    #debugBox.hidden-debug{
+      display:none;
+    }
+
+    @media(max-width:640px){
+      .page{
+        justify-content:flex-start;
+        padding-top:52px;
+      }
+
+      .title{
+        margin-bottom:34px;
+        font-size:30px;
+      }
+
+      .menu{
+        gap:18px;
+      }
+
+      .role-card{
+        min-height:100px;
+        padding:18px 22px;
+        gap:18px;
+        border-radius:16px;
+      }
+
+      .role-icon{
+        width:56px;
+        flex-basis:56px;
+        font-size:40px;
+      }
+
+      .role-name{font-size:23px}
+      .role-desc{font-size:15px}
+      footer{margin-top:36px}
+    }
   </style>
 </head>
+
 <body>
+  <div id="debugBox">Đang khởi tạo trang...</div>
+
   <main class="page">
     <h1 class="title">CHỌN NHÓM QUYỀN</h1>
+
     <section class="menu">
-      <button id="admin" class="role-card hidden" type="button" data-phan-quyen><span class="role-icon">👤</span><span class="role-content"><span class="role-name">ADMIN</span><span class="role-desc">Quản trị hệ thống, phân quyền</span></span></button>
-      <button id="kho" class="role-card hidden" type="button" data-phan-quyen><span class="role-icon">📦</span><span class="role-content"><span class="role-name">KHO</span><span class="role-desc">Quản lý nhập - xuất - tồn kho</span></span></button>
-      <button id="kinhdoanh" class="role-card hidden" type="button" data-phan-quyen><span class="role-icon">📈</span><span class="role-content"><span class="role-name">KINH DOANH</span><span class="role-desc">Quản lý đơn hàng, khách hàng</span></span></button>
-      <button id="giaovan" class="role-card hidden" type="button" data-phan-quyen><span class="role-icon">🚚</span><span class="role-content"><span class="role-name">GIAO VẬN</span><span class="role-desc">Giao hàng, vận chuyển, đối soát</span></span></button>
+      <button id="admin" class="role-card hidden" type="button" data-phan-quyen>
+        <span class="role-icon">👤</span>
+        <span class="role-content">
+          <span class="role-name">ADMIN</span>
+          <span class="role-desc">Quản trị hệ thống, phân quyền</span>
+        </span>
+      </button>
+
+      <button id="kho" class="role-card hidden" type="button" data-phan-quyen>
+        <span class="role-icon">📦</span>
+        <span class="role-content">
+          <span class="role-name">KHO</span>
+          <span class="role-desc">Quản lý nhập - xuất - tồn kho</span>
+        </span>
+      </button>
+
+      <button id="kinhdoanh" class="role-card hidden" type="button" data-phan-quyen>
+        <span class="role-icon">📈</span>
+        <span class="role-content">
+          <span class="role-name">KINH DOANH</span>
+          <span class="role-desc">Quản lý đơn hàng, khách hàng</span>
+        </span>
+      </button>
+
+      <button id="giaovan" class="role-card hidden" type="button" data-phan-quyen>
+        <span class="role-icon">🚚</span>
+        <span class="role-content">
+          <span class="role-name">GIAO VẬN</span>
+          <span class="role-desc">Giao hàng, vận chuyển, đối soát</span>
+        </span>
+      </button>
     </section>
-    <div id="permissionNotice" class="notice">Tài khoản chưa được cấp quyền xem nhóm chức năng nào.</div>
-    <footer>© <span id="year"></span> COD Internal</footer>
+
+    <div id="permissionNotice" class="notice">
+      Tài khoản chưa được cấp quyền xem nhóm chức năng nào.
+    </div>
+
+    <footer>
+      © <span id="year"></span> COD Internal
+    </footer>
   </main>
 
+  <script>
+    (() => {
+      const debugBox = document.getElementById('debugBox');
+
+      window.debugLog = function(message,data){
+        const time = new Date().toLocaleTimeString();
+        let content = `[${time}] ${message}`;
+
+        if(data !== undefined){
+          try{
+            content += '\n' + JSON.stringify(data,null,2);
+          }catch{
+            content += '\n' + String(data);
+          }
+        }
+
+        console.log(message,data);
+
+        if(debugBox){
+          debugBox.textContent += '\n\n' + content;
+        }
+      };
+
+      window.addEventListener('error',event=>{
+        window.debugLog('LỖI JAVASCRIPT TOÀN CỤC',{
+          message:event.message,
+          file:event.filename,
+          line:event.lineno,
+          column:event.colno,
+          stack:event.error?.stack || null
+        });
+      });
+
+      window.addEventListener('unhandledrejection',event=>{
+        window.debugLog('LỖI PROMISE CHƯA XỬ LÝ',{
+          reason:
+            event.reason?.stack ||
+            event.reason?.message ||
+            String(event.reason)
+        });
+      });
+
+      setTimeout(()=>{
+        if(!window.__MAIN_INIT_DONE__){
+          window.debugLog(
+            'CẢNH BÁO: Sau 8 giây trang vẫn chưa hoàn tất. Kiểm tra phanquyen.js, Supabase hoặc /api/getConfig.'
+          );
+        }
+      },8000);
+    })();
+  </script>
+
   <script type="module">
-    import { taiPhanQuyenTrang } from './js/phanquyen.js';
+    window.debugLog('BƯỚC 1: Script module bắt đầu chạy');
 
-    const routes={admin:'./admin.html',kho:'./kho.html',kinhdoanh:'./kinh_doanh.html',giaovan:'./giao_van.html'};
+    const routes = {
+      admin:'./admin.html',
+      kho:'./kho.html',
+      kinhdoanh:'./kinh_doanh.html',
+      giaovan:'./giao_van.html'
+    };
 
-    function getToken(){const p=new URLSearchParams(location.search);return p.get('token')||p.get('access_token')||p.get('auth_token')||p.get('t')||sessionStorage.getItem('APP_ACCESS')||sessionStorage.getItem('access_token')||localStorage.getItem('access_token')||''}
-    function openWithToken(path){const url=new URL(path,location.href);new URLSearchParams(location.search).forEach((v,k)=>url.searchParams.set(k,v));const token=getToken();if(token&&!url.searchParams.has('token'))url.searchParams.set('token',token);location.assign(url.href)}
+    function getToken(){
+      const params = new URLSearchParams(location.search);
 
-    Object.entries(routes).forEach(([id,path])=>document.getElementById(id)?.addEventListener('click',()=>openWithToken(path)));
-    document.getElementById('year').textContent=new Date().getFullYear();
+      return (
+        params.get('token') ||
+        params.get('access_token') ||
+        params.get('auth_token') ||
+        params.get('t') ||
+        sessionStorage.getItem('APP_ACCESS') ||
+        sessionStorage.getItem('access_token') ||
+        localStorage.getItem('access_token') ||
+        ''
+      );
+    }
+
+    function openWithToken(path){
+      const url = new URL(path,location.href);
+
+      new URLSearchParams(location.search).forEach((value,key)=>{
+        url.searchParams.set(key,value);
+      });
+
+      const token = getToken();
+
+      if(token && !url.searchParams.has('token')){
+        url.searchParams.set('token',token);
+      }
+
+      location.assign(url.href);
+    }
+
+    Object.entries(routes).forEach(([id,path])=>{
+      document
+        .getElementById(id)
+        ?.addEventListener('click',()=>openWithToken(path));
+    });
+
+    document.getElementById('year').textContent =
+      new Date().getFullYear();
+
+    let taiPhanQuyenTrang;
 
     try{
-      const ketQua=await taiPhanQuyenTrang({duongDan:'main.html',hienThiBody:false});
-      const soNutHien=ketQua?.soPhanTuDuocHien||0;
-      document.getElementById('permissionNotice')?.classList.toggle('show',soNutHien===0);
-      console.log('[MAIN] Kết quả phân quyền:',ketQua);
+      window.debugLog(
+        'BƯỚC 2: Đang import ./js/phanquyen.js'
+      );
+
+      const modulePhanQuyen = await import(
+        './js/phanquyen.js'
+      );
+
+      window.debugLog(
+        'BƯỚC 3: Import phanquyen.js thành công',
+        Object.keys(modulePhanQuyen)
+      );
+
+      taiPhanQuyenTrang =
+        modulePhanQuyen.taiPhanQuyenTrang;
+
+      if(typeof taiPhanQuyenTrang !== 'function'){
+        throw new Error(
+          'phanquyen.js không export hàm taiPhanQuyenTrang'
+        );
+      }
+
+      window.debugLog('BƯỚC 4: Kiểm tra localStorage',{
+        nv:localStorage.getItem('nv'),
+        chatwoot_crm_user:
+          localStorage.getItem('chatwoot_crm_user')
+      });
+
+      window.debugLog(
+        'BƯỚC 5: Gọi taiPhanQuyenTrang()'
+      );
+
+      const result = await taiPhanQuyenTrang({
+        duongDan:'main.html',
+        hienThiBody:false,
+        batBuocTaiLai:true
+      });
+
+      window.debugLog(
+        'BƯỚC 6: Kết quả phân quyền',
+        result
+      );
+
+      if(result?.error){
+        throw result.error;
+      }
+
+      const visibleCount =
+        result?.soPhanTuDuocHien || 0;
+
+      document
+        .getElementById('permissionNotice')
+        ?.classList.toggle(
+          'show',
+          visibleCount === 0
+        );
+
+      if(visibleCount > 0){
+        const debugBox =
+          document.getElementById('debugBox');
+
+        debugBox?.classList.add('ok');
+
+        setTimeout(()=>{
+          debugBox?.classList.add(
+            'hidden-debug'
+          );
+        },1800);
+      }
+
+      window.debugLog(
+        `HOÀN THÀNH: Có ${visibleCount} nút được hiển thị`
+      );
     }catch(error){
-      console.error('[MAIN] Lỗi phân quyền:',error);
-      document.getElementById('permissionNotice')?.classList.add('show');
+      window.debugLog(
+        'LỖI KHỞI TẠO / PHÂN QUYỀN',
+        {
+          message:error?.message || String(error),
+          code:error?.code || null,
+          details:error?.details || null,
+          hint:error?.hint || null,
+          stack:error?.stack || null
+        }
+      );
+
+      document
+        .getElementById('permissionNotice')
+        ?.classList.add('show');
     }finally{
-      document.body.classList.add('ready');
+      window.__MAIN_INIT_DONE__ = true;
       document.body.style.visibility='visible';
     }
   </script>
