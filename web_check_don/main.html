@@ -2,7 +2,6 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-
   <meta
     name="viewport"
     content="width=device-width,initial-scale=1,viewport-fit=cover"
@@ -21,15 +20,12 @@
       --card:#0f1830;
       --txt:#e6edff;
       --muted:#9aa7c7;
-      --line:#233043;
 
-      --admin:#2dd4bf;
-      --kho:#60a5fa;
-      --kiemsoatdon:#fbbf24;
-      --kinhdoanh:#a78bfa;
-      --giaovan:#fb7185;
-
-      --danger:#f87171;
+      --btn1:#2dd4bf;
+      --btn2:#60a5fa;
+      --btn3:#fbbf24;
+      --btn4:#a78bfa;
+      --btn5:#fb7185;
     }
 
     * {
@@ -46,398 +42,159 @@
       margin:0;
       background:var(--bg);
       color:var(--txt);
-
-      font-family:
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Roboto,
-        Arial,
-        sans-serif;
+      font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
     }
 
     body.ready {
       visibility:visible;
     }
 
-    button {
-      font:inherit;
-    }
-
     .top {
       position:fixed;
-      z-index:20;
+      z-index:10;
       inset:0 0 auto 0;
-
-      min-height:64px;
-      padding:13px 18px;
 
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:14px;
 
-      background:rgba(15,24,48,.97);
-      border-bottom:1px solid var(--line);
-      box-shadow:0 2px 12px rgba(0,0,0,.35);
-      backdrop-filter:blur(10px);
-    }
+      padding:14px 18px;
 
-    .hello-wrap {
-      min-width:0;
+      background:var(--card);
+      border-bottom:1px solid #233043;
+      box-shadow:0 2px 10px rgba(0,0,0,.35);
     }
 
     .hello {
-      font-size:15px;
-      font-weight:800;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-
-    .role-name {
-      margin-top:3px;
-      color:var(--muted);
-      font-size:12px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      font-weight:600;
     }
 
     #btnLogout {
-      flex:0 0 auto;
-      padding:9px 12px;
-
-      background:transparent;
-      border:1px solid rgba(248,113,113,.35);
-      border-radius:10px;
-
-      color:var(--danger);
+      background:none;
+      border:0;
+      color:#f87171;
       cursor:pointer;
-      font-weight:800;
-      font-size:14px;
-    }
-
-    #btnLogout:hover {
-      background:rgba(248,113,113,.1);
+      font-weight:700;
+      font-size:15px;
     }
 
     .menu {
-      width:min(620px,92vw);
-      margin:96px auto 48px;
+      width:min(520px,92vw);
+      margin:120px auto 48px;
 
       display:grid;
-      gap:16px;
+      gap:18px;
     }
 
-    .heading {
-      padding:10px 4px 6px;
-      text-align:center;
-    }
-
-    .heading h1 {
-      margin:0 0 7px;
-      font-size:28px;
-      line-height:1.25;
-    }
-
-    .heading p {
-      margin:0;
-      color:var(--muted);
-      font-size:14px;
-      line-height:1.5;
-    }
-
-    .role {
-      position:relative;
-
+    .menu button {
       width:100%;
-      min-height:82px;
-
-      display:flex;
-      align-items:center;
-      gap:15px;
-
-      padding:17px 18px;
+      padding:18px;
 
       border:0;
-      border-radius:16px;
-
-      color:#07111f;
-      cursor:pointer;
-      text-align:left;
-
-      box-shadow:
-        0 8px 26px rgba(0,0,0,.22),
-        inset 0 1px 0 rgba(255,255,255,.15);
-
-      transition:
-        transform .15s ease,
-        box-shadow .15s ease,
-        filter .15s ease;
-    }
-
-    .role:hover {
-      transform:translateY(-2px);
-      filter:brightness(1.035);
-
-      box-shadow:
-        0 12px 32px rgba(0,0,0,.28),
-        inset 0 1px 0 rgba(255,255,255,.2);
-    }
-
-    .role:active {
-      transform:translateY(0);
-    }
-
-    .role-icon {
-      flex:0 0 auto;
-
-      width:48px;
-      height:48px;
-
-      display:grid;
-      place-items:center;
-
       border-radius:14px;
-      background:rgba(255,255,255,.22);
 
-      font-size:25px;
-    }
-
-    .role-text {
-      min-width:0;
-      flex:1;
-    }
-
-    .role strong {
-      display:block;
-      font-size:19px;
-      line-height:1.2;
-    }
-
-    .role small {
-      display:block;
-      margin-top:5px;
-
-      font-size:13px;
-      line-height:1.4;
-      opacity:.8;
-    }
-
-    .role-arrow {
-      flex:0 0 auto;
-      font-size:22px;
-      font-weight:900;
-      opacity:.65;
+      cursor:pointer;
+      font-weight:800;
+      font-size:18px;
+      color:#041a18;
     }
 
     #admin {
-      background:var(--admin);
+      background:var(--btn1);
     }
 
     #kho {
-      background:var(--kho);
+      background:var(--btn2);
     }
 
     #kiemsoatdon {
-      background:var(--kiemsoatdon);
+      background:var(--btn3);
+      color:#3a2a04;
     }
 
     #kinhdoanh {
-      background:var(--kinhdoanh);
+      background:var(--btn4);
     }
 
     #giaovan {
-      background:var(--giaovan);
+      background:var(--btn5);
+      color:#3b0713;
     }
 
     .hidden {
       display:none !important;
     }
 
-    .message {
-      display:none;
-
-      padding:16px;
-      border:1px solid var(--line);
-      border-radius:14px;
-
-      background:var(--card);
-      color:var(--muted);
-
-      font-size:14px;
-      line-height:1.6;
-      text-align:center;
-    }
-
-    .message.show {
-      display:block;
-    }
-
-    .message.error {
-      color:#fecaca;
-      border-color:rgba(248,113,113,.4);
-      background:rgba(127,29,29,.22);
-    }
-
     footer {
-      margin:8px 0 24px;
+      text-align:center;
       color:var(--muted);
       font-size:12px;
-      text-align:center;
-    }
-
-    @media (max-width:600px) {
-      .top {
-        min-height:60px;
-        padding:11px 13px;
-      }
-
-      .menu {
-        margin-top:84px;
-      }
-
-      .heading h1 {
-        font-size:24px;
-      }
-
-      .role {
-        min-height:76px;
-        padding:15px;
-      }
-
-      .role-icon {
-        width:44px;
-        height:44px;
-        font-size:23px;
-      }
-
-      .role strong {
-        font-size:17px;
-      }
-
-      .role small {
-        font-size:12px;
-      }
+      margin:8px 0 24px;
     }
   </style>
 </head>
 
 <body>
   <header class="top">
-    <div class="hello-wrap">
-      <div class="hello">
-        Xin chào
-        <span id="ten_nv">...</span>
-        👋
-      </div>
-
-      <div id="ten_vai_tro" class="role-name">
-        Đang tải quyền...
-      </div>
+    <div class="hello">
+      Xin chào
+      <span id="ten_nv">...</span>
+      👋
     </div>
 
-    <button id="btnLogout" type="button">
+    <button
+      id="btnLogout"
+      type="button"
+    >
       Đăng xuất
     </button>
   </header>
 
   <main class="menu">
-    <div class="heading">
-      <h1>Chọn nhóm chức năng</h1>
-
-      <p>
-        Chỉ những nhóm đã được cấp quyền xem mới hiển thị.
-      </p>
-    </div>
-
     <button
       id="admin"
-      class="role hidden"
-      type="button"
+      class="hidden"
       data-phan-quyen
+      type="button"
     >
-      <span class="role-icon">👤</span>
-
-      <span class="role-text">
-        <strong>ADMIN</strong>
-        <small>Quản trị hệ thống và phân quyền</small>
-      </span>
-
-      <span class="role-arrow">›</span>
+      👤 Admin
     </button>
 
     <button
       id="kho"
-      class="role hidden"
-      type="button"
+      class="hidden"
       data-phan-quyen
+      type="button"
     >
-      <span class="role-icon">📦</span>
-
-      <span class="role-text">
-        <strong>KHO</strong>
-        <small>Nhập, xuất, tồn kho và chuẩn bị hàng</small>
-      </span>
-
-      <span class="role-arrow">›</span>
+      📦 Kho
     </button>
 
     <button
       id="kiemsoatdon"
-      class="role hidden"
-      type="button"
+      class="hidden"
       data-phan-quyen
+      type="button"
     >
-      <span class="role-icon">✅</span>
-
-      <span class="role-text">
-        <strong>KIỂM SOÁT ĐƠN</strong>
-        <small>Kiểm hàng và xác nhận đóng gói</small>
-      </span>
-
-      <span class="role-arrow">›</span>
+      ✅ Kiểm soát đơn
     </button>
 
     <button
       id="kinhdoanh"
-      class="role hidden"
-      type="button"
+      class="hidden"
       data-phan-quyen
+      type="button"
     >
-      <span class="role-icon">📈</span>
-
-      <span class="role-text">
-        <strong>KINH DOANH</strong>
-        <small>Khách hàng, đơn bán và doanh số</small>
-      </span>
-
-      <span class="role-arrow">›</span>
+      📈 Kinh doanh
     </button>
 
     <button
       id="giaovan"
-      class="role hidden"
-      type="button"
+      class="hidden"
       data-phan-quyen
+      type="button"
     >
-      <span class="role-icon">🚚</span>
-
-      <span class="role-text">
-        <strong>GIAO VẬN</strong>
-        <small>Giao hàng, COD và đối soát</small>
-      </span>
-
-      <span class="role-arrow">›</span>
+      🚚 Giao vận
     </button>
-
-    <div id="emptyMessage" class="message">
-      Tài khoản này chưa được cấp quyền xem nhóm chức năng nào.
-    </div>
-
-    <div id="errorMessage" class="message error"></div>
   </main>
 
   <footer>
@@ -449,9 +206,8 @@
     const LOGIN_STORAGE_KEY = 'nv';
 
     /*
-     * ID trong routes phải trùng:
-     * 1. ID nút HTML
-     * 2. id_chucnang trong view Supabase
+     * Chỉ thay tên nút và đường dẫn.
+     * Các key phải trùng với id của nút HTML.
      */
     const routes = {
       admin:'./admin.html',
@@ -461,49 +217,13 @@
       giaovan:'./giao_van.html'
     };
 
-
-    /* =========================================================
-       HIỂN THỊ TRANG
-    ========================================================= */
-
     function showPage() {
       document.body.classList.add('ready');
       document.body.style.visibility = 'visible';
     }
 
-    function showError(message) {
-      const box = document.getElementById('errorMessage');
-
-      if (!box) return;
-
-      box.textContent = message || 'Có lỗi xảy ra.';
-      box.classList.add('show');
-    }
-
-    function hideError() {
-      const box = document.getElementById('errorMessage');
-
-      if (!box) return;
-
-      box.textContent = '';
-      box.classList.remove('show');
-    }
-
-    function showEmptyMessage(show) {
-      document
-        .getElementById('emptyMessage')
-        ?.classList.toggle('show', Boolean(show));
-    }
-
-
-    /* =========================================================
-       ĐỌC NHÂN VIÊN ĐANG ĐĂNG NHẬP
-    ========================================================= */
-
     function readUser() {
-      const raw = localStorage.getItem(
-        LOGIN_STORAGE_KEY
-      );
+      const raw = localStorage.getItem(LOGIN_STORAGE_KEY);
 
       if (!raw) {
         throw new Error(
@@ -514,92 +234,14 @@
       return JSON.parse(raw);
     }
 
-
-    /* =========================================================
-       LẤY TÊN FILE HIỆN TẠI
-    ========================================================= */
-
     function currentPage() {
       return (
-        location.pathname.split('/').pop() ||
+        location.pathname
+          .split('/')
+          .pop() ||
         'main.html'
       ).toLowerCase();
     }
-
-
-    /* =========================================================
-       TOKEN VÀ THAM SỐ URL
-    ========================================================= */
-
-    function getToken() {
-      const params = new URLSearchParams(
-        location.search
-      );
-
-      return (
-        params.get('token') ||
-        params.get('access_token') ||
-        params.get('auth_token') ||
-        sessionStorage.getItem('access_token') ||
-        localStorage.getItem('access_token') ||
-        ''
-      );
-    }
-
-    function saveToken() {
-      const token = getToken();
-
-      if (token) {
-        sessionStorage.setItem(
-          'access_token',
-          token
-        );
-      }
-
-      return token;
-    }
-
-    function openWithParams(path) {
-      const url = new URL(
-        path,
-        location.href
-      );
-
-      /*
-       * Giữ toàn bộ tham số hiện có trên URL.
-       */
-      new URLSearchParams(
-        location.search
-      ).forEach((value, key) => {
-        url.searchParams.set(
-          key,
-          value
-        );
-      });
-
-      /*
-       * Nếu token chỉ có trong bộ nhớ,
-       * thêm token vào URL trang con.
-       */
-      const token = getToken();
-
-      if (
-        token &&
-        !url.searchParams.has('token')
-      ) {
-        url.searchParams.set(
-          'token',
-          token
-        );
-      }
-
-      location.assign(url.href);
-    }
-
-
-    /* =========================================================
-       TẠO SUPABASE CLIENT
-    ========================================================= */
 
     async function createClient() {
       const internalKey =
@@ -613,338 +255,200 @@
         window.internalKey ||
         '';
 
-      const response = await fetch(
-        '/api/getConfig',
-        {
-          headers:{
-            'x-internal-key':internalKey || ''
-          },
+      const res = await fetch('/api/getConfig', {
+        headers:{
+          'x-internal-key':internalKey || ''
+        },
+        cache:'no-store'
+      });
 
-          cache:'no-store'
-        }
-      );
-
-      if (!response.ok) {
+      if (!res.ok) {
         throw new Error(
-          `getConfig HTTP ${response.status}: ` +
-          `${await response.text()}`
+          `getConfig HTTP ${res.status}: ${await res.text()}`
         );
       }
 
-      const config = await response.json();
+      const cfg = await res.json();
 
-      const supabaseUrl =
-        config.url ||
-        config.SUPABASE_URL ||
-        config.supabaseUrl ||
-        config.supabase_url;
+      const url =
+        cfg.url ||
+        cfg.SUPABASE_URL ||
+        cfg.supabaseUrl ||
+        cfg.supabase_url;
 
-      const supabaseKey =
-        config.anon ||
-        config.key ||
-        config.SUPABASE_ANON ||
-        config.SUPABASE_ANON_KEY ||
-        config.supabaseAnon ||
-        config.supabaseKey ||
-        config.supabase_anon_key;
+      const key =
+        cfg.anon ||
+        cfg.key ||
+        cfg.SUPABASE_ANON ||
+        cfg.SUPABASE_ANON_KEY ||
+        cfg.supabaseAnon ||
+        cfg.supabaseKey ||
+        cfg.supabase_anon_key;
 
-      if (!supabaseUrl || !supabaseKey) {
+      if (!url || !key) {
         throw new Error(
           'Thiếu URL hoặc anon key Supabase'
         );
       }
 
       return window.supabase.createClient(
-        supabaseUrl,
-        supabaseKey
+        url,
+        key
       );
     }
 
-
-    /* =========================================================
-       ÁP DỤNG PHÂN QUYỀN
-       GIỮ ĐÚNG CƠ CHẾ CODE CŨ
-    ========================================================= */
-
+    /*
+     * Giữ nguyên cách lọc phân quyền của code cũ.
+     *
+     * id_chucnang trong view
+     * phải trùng với id nút HTML.
+     */
     function applyPermissions(rows) {
-      /*
-       * Lấy id_chucnang làm key.
-       *
-       * Ví dụ:
-       * id_chucnang = kho
-       * id_chucnang = admin
-       * id_chucnang = kiemsoatdon
-       */
-      const permissionMap = new Map(
+      const map = new Map(
         (rows || [])
-          .filter(row => row.id_chucnang)
-          .map(row => [
-            String(
-              row.id_chucnang
-            ).trim(),
-            row
+          .filter(x => x.id_chucnang)
+          .map(x => [
+            String(x.id_chucnang).trim(),
+            x
           ])
       );
 
-      let visibleCount = 0;
-
       document
         .querySelectorAll('[data-phan-quyen]')
-        .forEach(button => {
-          /*
-           * button.id phải trùng id_chucnang.
-           */
-          const permission = permissionMap.get(
-            button.id
-          );
+        .forEach(el => {
+          const q = map.get(el.id);
 
-          /*
-           * Giữ đúng code cũ:
-           * chỉ hiện khi duoc_xem === true.
-           */
-          const allowed =
-            permission?.duoc_xem === true;
-
-          button.classList.toggle(
+          el.classList.toggle(
             'hidden',
-            !allowed
-          );
-
-          if (allowed) {
-            visibleCount++;
-          }
-
-          console.log(
-            '[KIỂM TRA PHÂN QUYỀN]',
-            {
-              id_nut:button.id,
-              id_chucnang:
-                permission?.id_chucnang,
-              ten_chucnang:
-                permission?.ten_chucnang,
-              duoc_xem:
-                permission?.duoc_xem,
-              hien_thi:allowed
-            }
+            q?.duoc_xem !== true
           );
         });
-
-      showEmptyMessage(
-        visibleCount === 0
-      );
-
-      console.log(
-        '[MAP PHÂN QUYỀN]',
-        Object.fromEntries(
-          permissionMap
-        )
-      );
     }
 
+    function openWithParams(path) {
+      const u = new URL(
+        path,
+        location.href
+      );
 
-    /* =========================================================
-       GẮN SỰ KIỆN MỞ TRANG
-    ========================================================= */
+      new URLSearchParams(
+        location.search
+      ).forEach((value, key) => {
+        u.searchParams.set(
+          key,
+          value
+        );
+      });
+
+      location.assign(u.href);
+    }
 
     Object.entries(routes).forEach(
       ([id, path]) => {
-        const button =
-          document.getElementById(id);
-
-        if (!button) {
-          console.error(
-            'Không tìm thấy nút:',
-            id
+        document
+          .getElementById(id)
+          ?.addEventListener(
+            'click',
+            () => openWithParams(path)
           );
-
-          return;
-        }
-
-        button.addEventListener(
-          'click',
-          () => {
-            console.log(
-              '[MỞ TRANG]',
-              {
-                id_nut:id,
-                duong_dan:path
-              }
-            );
-
-            openWithParams(path);
-          }
-        );
       }
     );
-
-
-    /* =========================================================
-       ĐĂNG XUẤT
-    ========================================================= */
 
     document
       .getElementById('btnLogout')
       ?.addEventListener('click', () => {
         localStorage.removeItem('nv');
-        localStorage.removeItem(
-          'last_ma_nv'
-        );
+        localStorage.removeItem('last_ma_nv');
 
-        localStorage.removeItem(
-          'access_token'
-        );
-
-        sessionStorage.removeItem(
-          'access_token'
-        );
-
-        location.replace(
-          './login.html'
-        );
+        location.replace('./login.html');
       });
-
-
-    /* =========================================================
-       NĂM HIỆN TẠI
-    ========================================================= */
 
     document.getElementById(
       'year'
     ).textContent =
       new Date().getFullYear();
 
+    try {
+      const user = readUser();
 
-    /* =========================================================
-       KHỞI CHẠY
-    ========================================================= */
+      const maNv = String(
+        user?.ma_nv || ''
+      ).trim();
 
-    async function init() {
-      hideError();
-      showEmptyMessage(false);
+      const tenNv = String(
+        user?.ten_nv || ''
+      ).trim();
 
-      try {
-        const user = readUser();
+      const page = currentPage();
 
-        const maNv = String(
-          user?.ma_nv || ''
-        ).trim();
+      document.getElementById(
+        'ten_nv'
+      ).textContent =
+        tenNv ||
+        maNv ||
+        'Nhân viên';
 
-        const tenNv = String(
-          user?.ten_nv || ''
-        ).trim();
+      const client = await createClient();
 
-        const page = currentPage();
-        const token = saveToken();
+      /*
+       * Giữ nguyên truy vấn phân quyền cũ:
+       *
+       * 1. Lọc ma_nv
+       * 2. Lọc duong_dan
+       */
+      const {
+        data,
+        error
+      } = await client
+        .from(VIEW_NAME)
+        .select(
+          'ma_nv,' +
+          'ten_nv,' +
+          'ten_vai_tro,' +
+          'duong_dan,' +
+          'id_chucnang,' +
+          'ten_chucnang,' +
+          'duoc_xem'
+        )
+        .eq('ma_nv', maNv)
+        .eq('duong_dan', page);
 
-        if (!maNv) {
-          throw new Error(
-            'Dữ liệu đăng nhập không có ma_nv'
-          );
-        }
-
-        document.getElementById(
-          'ten_nv'
-        ).textContent =
-          tenNv ||
-          maNv ||
-          'Nhân viên';
-
-        const client =
-          await createClient();
-
-        /*
-         * Giữ nguyên cách truy vấn code cũ:
-         *
-         * ma_nv = nhân viên đăng nhập
-         * duong_dan = main.html
-         */
-        const {
-          data,
-          error
-        } = await client
-          .from(VIEW_NAME)
-          .select(
-            'ma_nv,' +
-            'ten_nv,' +
-            'ten_vai_tro,' +
-            'duong_dan,' +
-            'id_chucnang,' +
-            'ten_chucnang,' +
-            'duoc_xem'
-          )
-          .eq('ma_nv', maNv)
-          .eq('duong_dan', page);
-
-        if (error) {
-          throw error;
-        }
-
-        const rows = data || [];
-
-        /*
-         * Hiển thị tên vai trò.
-         */
-        const roleNames = [
-          ...new Set(
-            rows
-              .map(row =>
-                String(
-                  row?.ten_vai_tro || ''
-                ).trim()
-              )
-              .filter(Boolean)
-          )
-        ];
-
-        document.getElementById(
-          'ten_vai_tro'
-        ).textContent =
-          roleNames.length
-            ? `Vai trò: ${roleNames.join(', ')}`
-            : `Mã nhân viên: ${maNv}`;
-
-        console.log(
-          '[PHÂN QUYỀN] Dữ liệu nhận được:',
-          {
-            ten_nv:tenNv,
-            ma_nv:maNv,
-            trang:page,
-            co_token:Boolean(token),
-            so_dong_quyen:rows.length,
-            danh_sach_quyen:rows
-          }
-        );
-
-        console.table(rows);
-
-        applyPermissions(rows);
-      } catch (error) {
-        console.error(
-          '[INLINE DEBUG] Lỗi:',
-          error
-        );
-
-        const message =
-          error?.message ||
-          String(error);
-
-        showError(
-          `Không tải được phân quyền: ${message}`
-        );
-
-        alert(
-          `LỖI LẤY QUYỀN\n\n` +
-          `message: ${message}\n` +
-          `code: ${error?.code || 'không có'}\n` +
-          `details: ${error?.details || 'không có'}\n` +
-          `hint: ${error?.hint || 'không có'}`
-        );
-      } finally {
-        showPage();
+      if (error) {
+        throw error;
       }
-    }
 
-    init();
+      const rows = data || [];
+
+      applyPermissions(rows);
+
+      console.log(
+        '[PHÂN QUYỀN] Đã tải thành công:',
+        {
+          ten_nv:tenNv,
+          ma_nv:maNv,
+          trang:page,
+          so_dong_quyen:rows.length,
+          danh_sach_quyen:rows
+        }
+      );
+
+      console.table(rows);
+    } catch (error) {
+      console.error(
+        '[INLINE DEBUG] Lỗi:',
+        error
+      );
+
+      alert(
+        `LỖI LẤY QUYỀN\n\n` +
+        `message: ${error?.message || error}\n` +
+        `code: ${error?.code || 'không có'}\n` +
+        `details: ${error?.details || 'không có'}\n` +
+        `hint: ${error?.hint || 'không có'}`
+      );
+    } finally {
+      showPage();
+    }
   </script>
 </body>
 </html>
