@@ -274,16 +274,40 @@ export async function quyen_duocxem(
   } = options;
 
   try {
+    const loginUser = layNhanVienDangNhap();
+
+    const maNvDangNhap = clean(
+      loginUser?.ma_nv ||
+      loginUser?.id_nv ||
+      loginUser?.maNhanVien ||
+      loginUser?.ma_nhan_vien
+    );
+
     const page = normalizePage(duongDan);
     const functionId = normalizeFunctionId(id_chucnang);
 
-    const row = await layDongPhanQuyen(
-      functionId,
-      page,
-      batBuocTaiLai
-    );
+    if (!maNvDangNhap) {
+      throw new Error('Không lấy được ma_nv từ tài khoản đăng nhập');
+    }
 
-    const maNv = clean(row?.ma_nv);
+    const client = await taoSupabaseClient();
+
+    const { data, error } = await client
+      .from('sql_phan_quyen_nhan_vien')
+      .select('*')
+      .eq('ma_nv', maNvDangNhap)
+      .eq('duong_dan', page)
+      .eq('id_chucnang', functionId)
+      .limit(1);
+
+    if (error) {
+      throw error;
+    }
+
+    const row =
+      Array.isArray(data) && data.length
+        ? data[0]
+        : null;
 
     const vaiTroId = clean(
       row?.vai_tro_id ??
@@ -291,71 +315,53 @@ export async function quyen_duocxem(
       row?.id_vai_tro
     );
 
-    const idChucNang = clean(
-      row?.id_chucnang
-    );
-
-    const duocXem = toBool(
-      row?.duoc_xem
-    );
+    const duocXem = toBool(row?.duoc_xem);
 
     const ketQua = {
-      ma_nv: maNv || null,
+      ma_nv: maNvDangNhap,
       vai_tro_id: vaiTroId || null,
-      id_vaitro: vaiTroId || null,
+      id_chucnang: functionId,
       duong_dan: page,
-      id_chucnang: idChucNang || functionId,
       tim_thay: Boolean(row),
       duoc_xem: duocXem,
       du_lieu_sql: row
     };
 
-    console.group(
-      '========== QUYỀN ĐƯỢC XEM =========='
-    );
-
-    console.log('ma_nv:', ketQua.ma_nv);
-    console.log('vai_tro_id:', ketQua.vai_tro_id);
-    console.log(
-      'id_chucnang:',
-      ketQua.id_chucnang
-    );
-    console.log(
-      'duong_dan:',
-      ketQua.duong_dan
-    );
-    console.log(
-      'tìm thấy dòng quyền:',
-      ketQua.tim_thay
-    );
-    console.log(
-      'duoc_xem:',
-      ketQua.duoc_xem
-    );
-    console.log(
-      'dữ liệu SQL:',
-      ketQua.du_lieu_sql
-    );
-
-    console.groupEnd();
+    console.log('[KẾT QUẢ PHÂN QUYỀN]', ketQua);
 
     if (thongBao) {
       alert(
         [
           'KẾT QUẢ PHÂN QUYỀN',
           '',
-          `ma_nv: ${ketQua.ma_nv || 'KHÔNG CÓ'}`,
-          `vai_tro_id: ${ketQua.vai_tro_id || 'KHÔNG CÓ'}`,
-          `id_chucnang: ${ketQua.id_chucnang || 'KHÔNG CÓ'}`,
-          `duong_dan: ${ketQua.duong_dan}`,
-          `tìm thấy: ${ketQua.tim_thay}`,
-          `duoc_xem: ${ketQua.duoc_xem}`
+          `ma_nv đăng nhập: ${maNvDangNhap}`,
+          `vai_tro_id: ${vaiTroId || 'KHÔNG CÓ'}`,
+          `id_chucnang: ${functionId}`,
+          `duong_dan: ${page}`,
+          `tìm thấy quyền: ${Boolean(row)}`,
+          `duoc_xem: ${duocXem}`
         ].join('\n')
       );
     }
 
     return duocXem;
   } catch (error) {
+    console.error('[PHÂN QUYỀN] Lỗi:', error);
+
+    if (options?.thongBao) {
+      alert(
+        [
+          'LỖI KIỂM TRA PHÂN QUYỀN',
+          '',
+          `id_chucnang: ${id_chucnang}`,
+          `message: ${error?.message || String(error)}`
+        ].join('\n')
+      );
+    }
+
+    return false;
+  }
+} catch (error) {
     console.error(
       '[QUYỀN ĐƯỢC XEM] Lỗi:',
       {
