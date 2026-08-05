@@ -1,1 +1,988 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
 
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+
+  <title>Chọn nhóm quyền</title>
+
+  <!-- Token và cấu hình hệ thống -->
+  <script src="./js/internal_key.js"></script>
+  <script src="./js/cod_config.js"></script>
+  <script src="./js/auth_token.js"></script>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --bg: #07101f;
+      --bg-card: #0d172a;
+      --text: #ffffff;
+      --muted: #94a3b8;
+      --border: rgba(148, 163, 184, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+    }
+
+    body {
+      visibility: hidden;
+      min-height: 100vh;
+      padding:
+        max(22px, env(safe-area-inset-top))
+        18px
+        max(22px, env(safe-area-inset-bottom));
+      font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Arial,
+        sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(
+          circle at 50% 22%,
+          rgba(30, 64, 175, 0.14),
+          transparent 38%
+        ),
+        linear-gradient(
+          145deg,
+          #081221 0%,
+          #040b16 100%
+        );
+    }
+
+    body.ready {
+      visibility: visible;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .page {
+      width: min(100%, 760px);
+      min-height: calc(100vh - 44px);
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      min-height: 44px;
+      margin-bottom: 18px;
+    }
+
+    .user-wrap {
+      position: relative;
+    }
+
+    .user-btn {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 42px;
+      padding: 8px 13px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.85);
+      color: #e2e8f0;
+      cursor: pointer;
+    }
+
+    .user-btn:hover {
+      background: rgba(30, 41, 59, 0.95);
+    }
+
+    .user-name {
+      max-width: 180px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      font-weight: 700;
+    }
+
+    .user-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      z-index: 20;
+      display: none;
+      width: 150px;
+      padding: 7px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #111c30;
+      box-shadow: 0 14px 35px rgba(0, 0, 0, 0.35);
+    }
+
+    .user-menu.open {
+      display: block;
+    }
+
+    .logout-btn {
+      width: 100%;
+      min-height: 39px;
+      border: 0;
+      border-radius: 9px;
+      background: #b91c1c;
+      color: #fff;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 0 34px;
+    }
+
+    .title {
+      margin: 0 0 42px;
+      text-align: center;
+      font-size: clamp(27px, 5vw, 39px);
+      font-weight: 900;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+
+    .permission-menu {
+      width: min(100%, 670px);
+      margin: 0 auto;
+      display: grid;
+      gap: 28px;
+    }
+
+    .permission-btn {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+      min-height: 126px;
+      padding: 22px 34px;
+      border: 0;
+      border-radius: 21px;
+      color: #050b14;
+      text-align: left;
+      cursor: pointer;
+      overflow: hidden;
+      box-shadow:
+        0 18px 36px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      transition:
+        transform 0.18s ease,
+        filter 0.18s ease,
+        box-shadow 0.18s ease;
+    }
+
+    .permission-btn::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(
+          115deg,
+          rgba(255, 255, 255, 0.18),
+          transparent 40%
+        );
+    }
+
+    .permission-btn:hover {
+      transform: translateY(-3px);
+      filter: brightness(1.04);
+      box-shadow:
+        0 22px 42px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    }
+
+    .permission-btn:active {
+      transform: translateY(0);
+    }
+
+    .permission-btn:focus-visible {
+      outline: 4px solid rgba(255, 255, 255, 0.5);
+      outline-offset: 4px;
+    }
+
+    .permission-icon {
+      position: relative;
+      z-index: 1;
+      flex: 0 0 92px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 54px;
+      line-height: 1;
+    }
+
+    .permission-name {
+      position: relative;
+      z-index: 1;
+      font-size: clamp(26px, 5vw, 37px);
+      font-weight: 950;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .btn-admin {
+      background:
+        linear-gradient(
+          135deg,
+          #30d3b5,
+          #31d4c2
+        );
+    }
+
+    .btn-kho {
+      background:
+        linear-gradient(
+          135deg,
+          #438df3,
+          #4a9bff
+        );
+    }
+
+    .btn-kinhdoanh {
+      background:
+        linear-gradient(
+          135deg,
+          #ffc12c,
+          #ffcb31
+        );
+    }
+
+    .btn-giaovan {
+      background:
+        linear-gradient(
+          135deg,
+          #ff5570,
+          #ff617d
+        );
+    }
+
+
+    .btn-chamsockhachhang {
+      background:
+        linear-gradient(
+          135deg,
+          #a855f7,
+          #c084fc
+        );
+    }
+
+    .btn-tinhdoanhso {
+      background:
+        linear-gradient(
+          135deg,
+          #fb7185,
+          #fda4af
+        );
+    }
+
+    .empty-note {
+      display: none;
+      width: min(100%, 670px);
+      margin: 0 auto;
+      padding: 20px;
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      border-radius: 15px;
+      background: rgba(120, 53, 15, 0.45);
+      color: #fef3c7;
+      text-align: center;
+      line-height: 1.6;
+      font-weight: 650;
+    }
+
+    .error-note {
+      display: none;
+      width: min(100%, 670px);
+      margin: 18px auto 0;
+      padding: 15px;
+      border: 1px solid rgba(239, 68, 68, 0.6);
+      border-radius: 13px;
+      background: rgba(127, 29, 29, 0.55);
+      color: #fee2e2;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .footer {
+      padding: 22px 0 8px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 14px;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+
+      .topbar {
+        margin-bottom: 8px;
+      }
+
+      .main-content {
+        justify-content: flex-start;
+        padding-top: 24px;
+      }
+
+      .title {
+        margin-bottom: 30px;
+        font-size: 27px;
+      }
+
+      .permission-menu {
+        gap: 18px;
+      }
+
+      .permission-btn {
+        min-height: 100px;
+        padding: 18px 22px;
+        border-radius: 17px;
+      }
+
+      .permission-icon {
+        flex-basis: 70px;
+        justify-content: flex-start;
+        font-size: 43px;
+      }
+
+      .permission-name {
+        font-size: 26px;
+      }
+    }
+
+    @media (max-width: 370px) {
+      .permission-btn {
+        min-height: 88px;
+        padding: 15px 17px;
+      }
+
+      .permission-icon {
+        flex-basis: 60px;
+        font-size: 38px;
+      }
+
+      .permission-name {
+        font-size: 22px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="user-wrap">
+        <button
+          id="userBtn"
+          class="user-btn"
+          type="button"
+          aria-expanded="false"
+        >
+          <span>👤</span>
+          <span id="ten_nv" class="user-name">
+            Nhân viên
+          </span>
+          <span>▾</span>
+        </button>
+
+        <div id="userMenu" class="user-menu">
+          <button
+            id="btnLogout"
+            class="logout-btn"
+            type="button"
+          >
+            Đăng xuất
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <h1 class="title">
+        Chọn nhóm quyền
+      </h1>
+
+      <section
+        id="permissionMenu"
+        class="permission-menu"
+        aria-label="Danh sách chức năng"
+      >
+        <!-- ADMIN -->
+        <button
+          id="admin"
+          class="permission-btn btn-admin hidden"
+          type="button"
+          data-phan-quyen
+          data-id-chucnang="admin"
+          data-url="./admin.html"
+        >
+          <span class="permission-icon">
+            👤
+          </span>
+
+          <span class="permission-name">
+            Admin
+          </span>
+        </button>
+
+        <!-- KHO -->
+        <button
+          id="kho"
+          class="permission-btn btn-kho hidden"
+          type="button"
+          data-phan-quyen
+          data-id-chucnang="kho"
+          data-url="./kho.html"
+        >
+          <span class="permission-icon">
+            📦
+          </span>
+
+          <span class="permission-name">
+            Kho
+          </span>
+        </button>
+
+        <!-- KINH DOANH -->
+        <button
+          id="kinhdoanh"
+          class="permission-btn btn-kinhdoanh hidden"
+          type="button"
+          data-phan-quyen
+          data-id-chucnang="kinhdoanh"
+          data-url="./kinh_doanh.htm"
+        >
+          <span class="permission-icon">
+            📈
+          </span>
+
+          <span class="permission-name">
+            Kinh doanh
+          </span>
+        </button>
+
+        <!-- GIAO VẬN -->
+        <button
+          id="giaovan"
+          class="permission-btn btn-giaovan hidden"
+          type="button"
+          data-phan-quyen
+          data-id-chucnang="giaovan"
+          data-url="./giao_van.html"
+        >
+          <span class="permission-icon">
+            🚚
+          </span>
+
+          <span class="permission-name">
+            Giao vận
+          </span>
+        </button>
+
+
+        <!-- CHĂM SÓC KHÁCH HÀNG -->
+        <button
+          id="chamsockhachhang"
+          class="permission-btn btn-chamsockhachhang hidden"
+          type="button"
+          data-phan-quyen
+          data-id-chucnang="chamsockhachhang"
+          data-url="./chamsockhachhang.html"
+        >
+          <span class="permission-icon">
+            💬
+          </span>
+
+          <span class="permission-name">
+            Chăm sóc khách hàng
+          </span>
+        </button>
+
+        <!-- TÍNH DOANH SỐ NHÂN VIÊN -->
+        <button
+          id="tinhdoanhso"
+          class="permission-btn btn-tinhdoanhso hidden"
+          type="button"
+          data-phan-quyen
+          data-id-chucnang="tinhdoanhso"
+          data-url="./tinhdoanhsonhanvien.html"
+        >
+          <span class="permission-icon">
+            🧮
+          </span>
+
+          <span class="permission-name">
+            Tính doanh số nhân viên
+          </span>
+        </button>
+      </section>
+
+      <div id="emptyNote" class="empty-note">
+        Tài khoản chưa được cấp quyền sử dụng chức năng nào.
+        Vui lòng liên hệ quản trị viên.
+      </div>
+
+      <div id="errorNote" class="error-note"></div>
+    </main>
+
+    <footer class="footer">
+      © 2026 COD Internal
+    </footer>
+  </div>
+
+  <script type="module">
+    import {
+      quyen_duocxem
+    } from './js/phan_quyen.js';
+
+    const $ = selector =>
+      document.querySelector(selector);
+
+    const permissionButtons = [
+      ...document.querySelectorAll(
+        '[data-phan-quyen]'
+      )
+    ];
+
+    const emptyNote = $('#emptyNote');
+    const errorNote = $('#errorNote');
+
+    function readLoginUser() {
+      const storageKeys = [
+        'nv',
+        'chatwoot_crm_user'
+      ];
+
+      for (const key of storageKeys) {
+        try {
+          const raw =
+            localStorage.getItem(key);
+
+          if (!raw) {
+            continue;
+          }
+
+          const data = JSON.parse(raw);
+
+          if (
+            data &&
+            typeof data === 'object'
+          ) {
+            return data;
+          }
+        } catch (error) {
+          console.warn(
+            `Không đọc được localStorage ${key}`,
+            error
+          );
+        }
+      }
+
+      return null;
+    }
+
+    function getToken() {
+      return (
+        sessionStorage.getItem(
+          'APP_ACCESS'
+        ) ||
+        new URLSearchParams(
+          location.search
+        ).get('token') ||
+        ''
+      );
+    }
+
+    function goWithToken(url) {
+      const target =
+        new URL(url, location.href);
+
+      const token = getToken();
+
+      if (token) {
+        target.searchParams.set(
+          'token',
+          token
+        );
+      }
+
+      location.href =
+        target.toString();
+    }
+
+    function anTatCaNut() {
+      for (
+        const button
+        of permissionButtons
+      ) {
+        button.classList.add(
+          'hidden'
+        );
+
+        button.style.display =
+          'none';
+
+        button.dataset.duocXem =
+          'false';
+      }
+    }
+
+    async function apDungQuyen() {
+      anTatCaNut();
+
+      const results = [];
+
+      for (
+        const button
+        of permissionButtons
+      ) {
+        const idChucNang =
+          String(
+            button.dataset.idChucnang ||
+            button.id ||
+            ''
+          )
+            .trim()
+            .toLowerCase();
+
+        if (!idChucNang) {
+          console.warn(
+            'Nút không có id_chucnang:',
+            button
+          );
+
+          continue;
+        }
+
+        try {
+          /*
+           * Hàm phan_quyen.js sẽ lọc:
+           *
+           * ma_nv
+           * vai_tro_id
+           * duong_dan = main.html
+           * id_chucnang
+           */
+          const duocXem =
+            await quyen_duocxem(
+              idChucNang,
+              'main.html',
+              {
+                thongBao: false,
+                batBuocTaiLai: false
+              }
+            );
+
+          button.dataset.duocXem =
+            String(duocXem);
+
+          if (duocXem) {
+            button.classList.remove(
+              'hidden'
+            );
+
+            button.style.display =
+              '';
+          }
+
+          results.push({
+            id_chucnang:
+              idChucNang,
+            duoc_xem:
+              duocXem
+          });
+        } catch (error) {
+          console.error(
+            `Lỗi kiểm tra quyền ${idChucNang}:`,
+            error
+          );
+
+          results.push({
+            id_chucnang:
+              idChucNang,
+            duoc_xem:
+              false,
+            error
+          });
+        }
+      }
+
+      const soNutDuocHien =
+        results.filter(
+          item =>
+            item.duoc_xem === true
+        ).length;
+
+      emptyNote.style.display =
+        soNutDuocHien === 0
+          ? 'block'
+          : 'none';
+
+      console.table(results);
+
+      return results;
+    }
+
+    function ganSuKienNut() {
+      for (
+        const button
+        of permissionButtons
+      ) {
+        button.addEventListener(
+          'click',
+          async () => {
+            const idChucNang =
+              String(
+                button.dataset.idChucnang ||
+                button.id ||
+                ''
+              )
+                .trim()
+                .toLowerCase();
+
+            const url =
+              button.dataset.url;
+
+            /*
+             * Kiểm tra lại quyền
+             * ngay trước khi chuyển trang.
+             */
+            const duocXem =
+              await quyen_duocxem(
+                idChucNang,
+                'main.html',
+                {
+                  thongBao: false,
+                  batBuocTaiLai: true
+                }
+              );
+
+            if (!duocXem) {
+              button.classList.add(
+                'hidden'
+              );
+
+              button.style.display =
+                'none';
+
+              alert(
+                'Bạn không có quyền sử dụng chức năng này.'
+              );
+
+              return;
+            }
+
+            if (!url) {
+              alert(
+                `Chưa đặt đường dẫn cho chức năng ${idChucNang}.`
+              );
+
+              return;
+            }
+
+            goWithToken(url);
+          }
+        );
+      }
+    }
+
+    function khoiTaoTaiKhoan() {
+      const loginUser =
+        readLoginUser();
+
+      if (!loginUser) {
+        alert(
+          'Không tìm thấy tài khoản đăng nhập.'
+        );
+
+        location.replace(
+          './login.html'
+        );
+
+        return false;
+      }
+
+      const maNv =
+        String(
+          loginUser.ma_nv ||
+          loginUser.id_nv ||
+          ''
+        ).trim();
+
+      if (!maNv) {
+        alert(
+          'Tài khoản đăng nhập không có ma_nv.'
+        );
+
+        location.replace(
+          './login.html'
+        );
+
+        return false;
+      }
+
+      $('#ten_nv').textContent =
+        loginUser.ten_nv ||
+        loginUser.name ||
+        maNv;
+
+      return true;
+    }
+
+    function khoiTaoMenuTaiKhoan() {
+      const userBtn =
+        $('#userBtn');
+
+      const userMenu =
+        $('#userMenu');
+
+      userBtn.addEventListener(
+        'click',
+        event => {
+          event.stopPropagation();
+
+          const isOpen =
+            userMenu.classList.toggle(
+              'open'
+            );
+
+          userBtn.setAttribute(
+            'aria-expanded',
+            String(isOpen)
+          );
+        }
+      );
+
+      document.addEventListener(
+        'click',
+        event => {
+          if (
+            !userBtn.contains(
+              event.target
+            ) &&
+            !userMenu.contains(
+              event.target
+            )
+          ) {
+            userMenu.classList.remove(
+              'open'
+            );
+
+            userBtn.setAttribute(
+              'aria-expanded',
+              'false'
+            );
+          }
+        }
+      );
+
+      $('#btnLogout')
+        .addEventListener(
+          'click',
+          () => {
+            try {
+              sessionStorage.removeItem(
+                'APP_ACCESS'
+              );
+            } catch {}
+
+            try {
+              localStorage.removeItem(
+                'nv'
+              );
+
+              localStorage.removeItem(
+                'chatwoot_crm_user'
+              );
+            } catch {}
+
+            location.replace(
+              './login.html'
+            );
+          }
+        );
+    }
+
+    document.addEventListener(
+      'DOMContentLoaded',
+      async () => {
+        try {
+          if (
+            typeof window.checkAccess ===
+            'function'
+          ) {
+            const accessOk =
+              window.checkAccess();
+
+            if (!accessOk) {
+              return;
+            }
+          }
+
+          if (!khoiTaoTaiKhoan()) {
+            return;
+          }
+
+          khoiTaoMenuTaiKhoan();
+          ganSuKienNut();
+
+          await apDungQuyen();
+        } catch (error) {
+          console.error(
+            'MAIN_INIT_ERROR:',
+            error
+          );
+
+          errorNote.style.display =
+            'block';
+
+          errorNote.textContent =
+            [
+              'Không thể tải phân quyền.',
+              '',
+              error?.message ||
+                String(error),
+              '',
+              'Mở F12 → Console để xem chi tiết.'
+            ].join('\n');
+        } finally {
+          document.body.style.visibility =
+            'visible';
+
+          document.body.classList.add(
+            'ready'
+          );
+        }
+      }
+    );
+  </script>
+</body>
+</html>
