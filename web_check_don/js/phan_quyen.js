@@ -1,4 +1,6 @@
-// ==================== js/phan_quyen.js ====================
+from pathlib import Path
+
+code = r"""// ==================== js/phan_quyen.js ====================
 
 const LOGIN_STORAGE_KEYS = [
   'nv',
@@ -6,6 +8,12 @@ const LOGIN_STORAGE_KEYS = [
 ];
 
 let supabaseClientCache = null;
+
+/*
+ * Cache chi tiết quyền theo:
+ * duong_dan | id_chucnang
+ */
+const chiTietQuyenCache = new Map();
 
 function clean(value) {
   return String(value ?? '').trim();
@@ -173,10 +181,13 @@ export async function taoSupabaseClient() {
 }
 
 /**
- * Hàm duy nhất kiểm tra quyền.
+ * Hàm kiểm tra quyền.
  *
  * Chỉ truyền id_chucnang.
  * Tên trang sẽ tự lấy từ URL.
+ *
+ * Hàm này vẫn trả về true/false
+ * để không làm hỏng các trang cũ.
  */
 export async function quyen_duocxem(
   id_chucnang
@@ -257,6 +268,9 @@ export async function quyen_duocxem(
     /*
      * Bước 2:
      * Lọc quyền theo đúng 4 điều kiện.
+     *
+     * Không lọc theo ten_chucnang.
+     * ten_chucnang chỉ lấy ra để hiển thị trên nút.
      */
     const {
       data,
@@ -270,6 +284,7 @@ export async function quyen_duocxem(
         vai_tro_id,
         duong_dan,
         id_chucnang,
+        ten_chucnang,
         duoc_xem
       `)
       .eq('ma_nv', maNv)
@@ -300,45 +315,79 @@ export async function quyen_duocxem(
     const duocXem =
       toBool(row?.duoc_xem);
 
+    const chiTietQuyen = {
+      ma_nv: maNv,
+      vai_tro_id: vaiTroId,
+      duong_dan: duongDan,
+      id_chucnang: idChucNang,
+      ten_chucnang:
+        clean(row?.ten_chucnang),
+      tim_thay:
+        Boolean(row),
+      duoc_xem:
+        duocXem
+    };
+
+    const cacheKey = [
+      duongDan,
+      idChucNang
+    ].join('|');
+
+    chiTietQuyenCache.set(
+      cacheKey,
+      chiTietQuyen
+    );
+
     console.log(
       '[KẾT QUẢ PHÂN QUYỀN]',
-      {
-        ma_nv: maNv,
-        vai_tro_id: vaiTroId,
-        duong_dan: duongDan,
-        id_chucnang:
-          idChucNang,
-        tim_thay:
-          Boolean(row),
-        duoc_xem:
-          duocXem,
-        du_lieu:
-          row
-      }
+      chiTietQuyen
     );
 
     return duocXem;
   } catch (error) {
+    const chiTietLoi = {
+      ma_nv:
+        layMaNhanVienDangNhap() ||
+        null,
+      vai_tro_id:
+        null,
+      duong_dan:
+        duongDan,
+      id_chucnang:
+        idChucNang,
+      ten_chucnang:
+        '',
+      tim_thay:
+        false,
+      duoc_xem:
+        false,
+      message:
+        error?.message ||
+        String(error),
+      code:
+        error?.code ||
+        null,
+      details:
+        error?.details ||
+        null,
+      hint:
+        error?.hint ||
+        null
+    };
+
+    const cacheKey = [
+      duongDan,
+      idChucNang
+    ].join('|');
+
+    chiTietQuyenCache.set(
+      cacheKey,
+      chiTietLoi
+    );
+
     console.error(
       '[PHÂN QUYỀN] Lỗi',
-      {
-        duong_dan:
-          duongDan,
-        id_chucnang:
-          idChucNang,
-        message:
-          error?.message ||
-          String(error),
-        code:
-          error?.code ||
-          null,
-        details:
-          error?.details ||
-          null,
-        hint:
-          error?.hint ||
-          null
-      }
+      chiTietLoi
     );
 
     return false;
@@ -346,16 +395,84 @@ export async function quyen_duocxem(
 }
 
 /**
+ * Lấy chi tiết quyền sau khi đã lọc theo id_chucnang.
+ *
+ * Dùng hàm này để lấy:
+ * - ten_chucnang
+ * - duoc_xem
+ * - tim_thay
+ * - duong_dan
+ */
+export async function layChiTietQuyen(
+  id_chucnang
+) {
+  const idChucNang = clean(
+    id_chucnang
+  ).toLowerCase();
+
+  const duongDan =
+    layTenTrangHienTai();
+
+  const cacheKey = [
+    duongDan,
+    idChucNang
+  ].join('|');
+
+  if (
+    !chiTietQuyenCache.has(cacheKey)
+  ) {
+    await quyen_duocxem(
+      idChucNang
+    );
+  }
+
+  return (
+    chiTietQuyenCache.get(cacheKey) || {
+      ma_nv:
+        layMaNhanVienDangNhap() ||
+        null,
+      vai_tro_id:
+        null,
+      duong_dan:
+        duongDan,
+      id_chucnang:
+        idChucNang,
+      ten_chucnang:
+        '',
+      tim_thay:
+        false,
+      duoc_xem:
+        false
+    }
+  );
+}
+
+/**
+ * Xóa cache chi tiết quyền.
+ * Dùng khi vừa thay đổi quyền trong Supabase.
+ */
+export function xoaCachePhanQuyen() {
+  chiTietQuyenCache.clear();
+}
+
+/**
  * Test trực tiếp trong F12 Console:
  *
  * layTenTrangHienTai()
  * await testQuyenDuocXem('admin')
+ * await testChiTietQuyen('admin')
  */
 window.layTenTrangHienTai =
   layTenTrangHienTai;
 
 window.testQuyenDuocXem =
   quyen_duocxem;
+
+window.testChiTietQuyen =
+  layChiTietQuyen;
+
+window.xoaCachePhanQuyen =
+  xoaCachePhanQuyen;
 
 console.log(
   '[PHÂN QUYỀN] Đã tải phan_quyen.js',
@@ -364,3 +481,9 @@ console.log(
       layTenTrangHienTai()
   }
 );
+"""
+
+path = Path("/mnt/data/phan_quyen.js")
+path.write_text(code, encoding="utf-8")
+
+print(path)
