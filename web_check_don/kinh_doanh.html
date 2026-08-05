@@ -1,6 +1,4 @@
-from pathlib import Path
-
-html = r"""<!doctype html>
+<!doctype html>
 <html lang="vi">
 <head>
   <meta charset="utf-8">
@@ -8,7 +6,7 @@ html = r"""<!doctype html>
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   >
-  <title>Kiểm tra phân quyền</title>
+  <title>Kinh doanh</title>
 
   <script src="./js/internal_key.js"></script>
   <script src="./js/cod_config.js"></script>
@@ -20,124 +18,141 @@ html = r"""<!doctype html>
       box-sizing: border-box;
     }
 
+    html,
     body {
       margin: 0;
+      min-height: 100%;
+    }
+
+    body {
       min-height: 100vh;
       padding: 24px;
-      font-family: Arial, sans-serif;
-      background: #07101f;
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Arial,
+        sans-serif;
       color: #fff;
+      background:
+        radial-gradient(
+          circle at 50% 20%,
+          rgba(59, 130, 246, 0.12),
+          transparent 38%
+        ),
+        #07101f;
     }
 
     .page {
-      width: min(100%, 980px);
+      width: min(100%, 760px);
       margin: 0 auto;
     }
 
-    h1 {
-      margin: 0 0 22px;
-      text-align: center;
-      font-size: 30px;
-    }
-
-    .toolbar {
+    .topbar {
       display: flex;
-      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
       gap: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 34px;
     }
 
-    button {
-      min-height: 44px;
-      padding: 10px 18px;
-      border: 0;
-      border-radius: 10px;
-      font-weight: 700;
+    .back-btn {
+      min-height: 42px;
+      padding: 9px 15px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 11px;
+      background: #0f172a;
+      color: #fff;
+      font-weight: 750;
       cursor: pointer;
     }
 
-    #btnKiemTra {
-      background: #22c55e;
-      color: #052e16;
+    .page-title {
+      margin: 0 0 32px;
+      text-align: center;
+      font-size: clamp(28px, 6vw, 40px);
+      font-weight: 900;
+      text-transform: uppercase;
     }
 
-    #btnXoa {
-      background: #475569;
-      color: #fff;
-    }
-
-    .card {
-      margin-bottom: 18px;
-      padding: 18px;
-      border: 1px solid rgba(148, 163, 184, 0.22);
-      border-radius: 14px;
-      background: #0f172a;
-    }
-
-    .card h2 {
-      margin: 0 0 14px;
-      font-size: 20px;
-    }
-
-    .grid {
+    .menu {
       display: grid;
-      grid-template-columns: 220px 1fr;
-      gap: 10px;
+      gap: 22px;
     }
 
-    .label {
-      color: #94a3b8;
-      font-weight: 700;
+    .hidden {
+      display: none !important;
     }
 
-    .value {
+    .permission-btn {
+      width: 100%;
+      min-height: 116px;
+      padding: 22px 28px;
+      border: 0;
+      border-radius: 19px;
+      color: #07101f;
+      text-align: left;
+      font-size: clamp(22px, 5vw, 31px);
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.26);
+      transition:
+        transform 0.18s ease,
+        filter 0.18s ease;
+    }
+
+    .permission-btn:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+    }
+
+    .btn-chamsockhachhang {
+      background: linear-gradient(135deg, #a855f7, #c084fc);
+    }
+
+    .btn-tinhdoanhso {
+      background: linear-gradient(135deg, #fb7185, #fda4af);
+    }
+
+    .empty-note,
+    .error-note,
+    .debug-note {
+      display: none;
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: 13px;
+      line-height: 1.55;
+      white-space: pre-wrap;
       overflow-wrap: anywhere;
     }
 
-    .ok {
-      color: #4ade80;
-      font-weight: 800;
+    .empty-note {
+      background: rgba(120, 53, 15, 0.58);
+      color: #fef3c7;
     }
 
-    .fail {
-      color: #f87171;
-      font-weight: 800;
+    .error-note {
+      background: rgba(127, 29, 29, 0.65);
+      color: #fee2e2;
     }
 
-    .warn {
-      color: #facc15;
-      font-weight: 800;
+    .debug-note {
+      background: #0f172a;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: #cbd5e1;
+      font-family: Consolas, monospace;
+      font-size: 13px;
     }
 
-    pre {
-      margin: 0;
-      padding: 14px;
-      overflow: auto;
-      border-radius: 10px;
-      background: #020617;
-      color: #dbeafe;
-      line-height: 1.5;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
+    @media (max-width: 600px) {
+      body {
+        padding: 16px;
+      }
 
-    .permission-row {
-      display: grid;
-      grid-template-columns: 180px 110px 110px 1fr;
-      gap: 10px;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.15);
-    }
-
-    .permission-row:last-child {
-      border-bottom: 0;
-    }
-
-    @media (max-width: 700px) {
-      .grid,
-      .permission-row {
-        grid-template-columns: 1fr;
+      .permission-btn {
+        min-height: 94px;
+        padding: 18px 20px;
       }
     }
   </style>
@@ -145,312 +160,264 @@ html = r"""<!doctype html>
 
 <body>
   <main class="page">
-    <h1>Kiểm tra phân quyền</h1>
-
-    <div class="toolbar">
-      <button id="btnKiemTra" type="button">
-        Kiểm tra lại
+    <div class="topbar">
+      <button id="btnBack" class="back-btn" type="button">
+        ← Quay lại
       </button>
 
-      <button id="btnXoa" type="button">
-        Xóa kết quả
-      </button>
+      <strong id="tenNhanVien">Nhân viên</strong>
     </div>
 
-    <section class="card">
-      <h2>Tài khoản đăng nhập</h2>
+    <h1 class="page-title">Kinh doanh</h1>
 
-      <div class="grid">
-        <div class="label">ma_nv</div>
-        <div id="maNv" class="value">Đang kiểm tra...</div>
+    <section class="menu">
+      <button
+        id="chamsockhachhang"
+        class="permission-btn btn-chamsockhachhang hidden"
+        type="button"
+        data-phan-quyen
+        data-url="./chamsockhachhang.html"
+      >
+        💬 Chăm sóc khách hàng
+      </button>
 
-        <div class="label">ten_nv</div>
-        <div id="tenNv" class="value">Đang kiểm tra...</div>
-
-        <div class="label">vai_tro_id</div>
-        <div id="vaiTroId" class="value">Đang kiểm tra...</div>
-
-        <div class="label">duong_dan kiểm tra</div>
-        <div class="value">main.html</div>
-      </div>
+      <button
+        id="tinhdoanhso"
+        class="permission-btn btn-tinhdoanhso hidden"
+        type="button"
+        data-phan-quyen
+        data-url="./tinhdoanhsonhanvien.html"
+      >
+        🧮 Tính doanh số nhân viên
+      </button>
     </section>
 
-    <section class="card">
-      <h2>Kết quả 2 chức năng</h2>
+    <div id="emptyNote" class="empty-note">
+      Tài khoản chưa được cấp quyền sử dụng hai chức năng này.
+    </div>
 
-      <div class="permission-row">
-        <strong>id_chucnang</strong>
-        <strong>Tìm thấy</strong>
-        <strong>Được xem</strong>
-        <strong>Ghi chú</strong>
-      </div>
-
-      <div class="permission-row">
-        <div>chamsockhachhang</div>
-        <div id="cskhTimThay">...</div>
-        <div id="cskhDuocXem">...</div>
-        <div id="cskhGhiChu">...</div>
-      </div>
-
-      <div class="permission-row">
-        <div>tinhdoanhso</div>
-        <div id="doanhSoTimThay">...</div>
-        <div id="doanhSoDuocXem">...</div>
-        <div id="doanhSoGhiChu">...</div>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>Dữ liệu trả về từ SQL</h2>
-      <pre id="rawData">Chưa có dữ liệu.</pre>
-    </section>
-
-    <section class="card">
-      <h2>Lỗi</h2>
-      <pre id="errorData">Không có lỗi.</pre>
-    </section>
+    <div id="errorNote" class="error-note"></div>
+    <div id="debugNote" class="debug-note"></div>
   </main>
 
   <script type="module">
     import {
-      taoSupabaseClient,
-      layNhanVienVaVaiTro,
       quyen_duocxem,
-      xoaCachePhanQuyen
+      layTenTrangHienTai,
+      layMaNhanVienDangNhap
     } from './js/phan_quyen.js';
 
-    const PAGE = 'main.html';
-
-    const FUNCTION_IDS = [
-      'chamsockhachhang',
-      'tinhdoanhso'
+    const buttons = [
+      ...document.querySelectorAll('[data-phan-quyen]')
     ];
 
-    const $ = selector =>
-      document.querySelector(selector);
+    const emptyNote =
+      document.querySelector('#emptyNote');
 
-    function setStatus(element, value, type) {
-      element.textContent = value;
-      element.className = type || '';
-    }
+    const errorNote =
+      document.querySelector('#errorNote');
 
-    function resetView() {
-      $('#maNv').textContent = 'Đang kiểm tra...';
-      $('#tenNv').textContent = 'Đang kiểm tra...';
-      $('#vaiTroId').textContent = 'Đang kiểm tra...';
+    const debugNote =
+      document.querySelector('#debugNote');
 
-      setStatus($('#cskhTimThay'), '...', '');
-      setStatus($('#cskhDuocXem'), '...', '');
-      $('#cskhGhiChu').textContent = '...';
-
-      setStatus($('#doanhSoTimThay'), '...', '');
-      setStatus($('#doanhSoDuocXem'), '...', '');
-      $('#doanhSoGhiChu').textContent = '...';
-
-      $('#rawData').textContent = 'Đang tải...';
-      $('#errorData').textContent = 'Không có lỗi.';
-    }
-
-    function boolText(value) {
-      return value === true ? 'TRUE' : 'FALSE';
-    }
-
-    function boolClass(value) {
-      return value === true ? 'ok' : 'fail';
-    }
-
-    function getRowById(rows, id) {
-      return rows.find(
-        row =>
-          String(row?.id_chucnang || '')
-            .trim()
-            .toLowerCase() === id
-      ) || null;
-    }
-
-    function showPermission(prefix, row, functionResult) {
-      const timThay = Boolean(row);
-
-      setStatus(
-        $(`#${prefix}TimThay`),
-        boolText(timThay),
-        boolClass(timThay)
+    function getToken() {
+      return (
+        new URLSearchParams(
+          window.location.search
+        ).get('token') ||
+        sessionStorage.getItem('APP_ACCESS') ||
+        ''
       );
+    }
 
-      const duocXem = Boolean(functionResult);
+    function openWithToken(url) {
+      const target =
+        new URL(url, window.location.href);
 
-      setStatus(
-        $(`#${prefix}DuocXem`),
-        boolText(duocXem),
-        boolClass(duocXem)
-      );
+      const token = getToken();
 
-      let ghiChu = '';
-
-      if (!row) {
-        ghiChu =
-          'Không có dòng khớp đủ ma_nv + vai_tro_id + main.html + id_chucnang.';
-      } else if (!duocXem) {
-        ghiChu =
-          `Đã tìm thấy dòng nhưng duoc_xem = ${String(row.duoc_xem)}.`;
-      } else {
-        ghiChu = 'Quyền hợp lệ.';
+      if (token) {
+        target.searchParams.set(
+          'token',
+          token
+        );
       }
 
-      $(`#${prefix}GhiChu`).textContent = ghiChu;
+      window.location.assign(
+        target.toString()
+      );
     }
 
-    async function runCheck() {
-      resetView();
+    function readLoginUser() {
+      const keys = [
+        'nv',
+        'chatwoot_crm_user'
+      ];
 
-      try {
-        xoaCachePhanQuyen();
+      for (const key of keys) {
+        try {
+          const raw =
+            localStorage.getItem(key);
 
-        const employee =
-          await layNhanVienVaVaiTro(true);
+          if (!raw) {
+            continue;
+          }
 
-        $('#maNv').textContent =
-          employee.ma_nv || 'KHÔNG CÓ';
+          const user = JSON.parse(raw);
 
-        $('#tenNv').textContent =
-          employee.ten_nv || 'KHÔNG CÓ';
+          if (
+            user &&
+            typeof user === 'object'
+          ) {
+            return user;
+          }
+        } catch (error) {
+          console.warn(error);
+        }
+      }
 
-        $('#vaiTroId').textContent =
-          employee.vai_tro_id || 'KHÔNG CÓ';
+      return null;
+    }
 
-        const client =
-          await taoSupabaseClient();
+    async function applyPermissions() {
+      let visibleCount = 0;
+      const results = [];
 
-        const { data, error } = await client
-          .from('sql_phan_quyen_nhan_vien')
-          .select(`
-            ma_nv,
-            ten_nv,
-            vai_tro_id,
-            ten_vai_tro,
-            duong_dan,
-            id_chucnang,
-            ten_chucnang,
-            duoc_xem,
-            duoc_them,
-            duoc_sua,
-            duoc_xoa
-          `)
-          .eq('ma_nv', employee.ma_nv)
-          .eq('vai_tro_id', employee.vai_tro_id)
-          .eq('duong_dan', PAGE)
-          .in('id_chucnang', FUNCTION_IDS);
+      for (const button of buttons) {
+        const idChucNang =
+          String(button.id || '')
+            .trim()
+            .toLowerCase();
 
-        if (error) {
-          throw error;
+        const allowed =
+          await quyen_duocxem(
+            idChucNang
+          );
+
+        button.dataset.duocXem =
+          String(allowed);
+
+        if (allowed) {
+          button.classList.remove(
+            'hidden'
+          );
+
+          visibleCount += 1;
         }
 
-        const rows =
-          Array.isArray(data) ? data : [];
+        results.push({
+          id_chucnang:
+            idChucNang,
+          duoc_xem:
+            allowed
+        });
+      }
 
-        const cskhRow =
-          getRowById(rows, 'chamsockhachhang');
+      emptyNote.style.display =
+        visibleCount === 0
+          ? 'block'
+          : 'none';
 
-        const doanhSoRow =
-          getRowById(rows, 'tinhdoanhso');
+      debugNote.style.display =
+        'block';
 
-        const cskhAllowed =
-          await quyen_duocxem(
-            'chamsockhachhang',
-            PAGE,
-            {
-              thongBao: false,
-              batBuocTaiLai: true
+      debugNote.textContent =
+        JSON.stringify(
+          {
+            ma_nv:
+              layMaNhanVienDangNhap(),
+            duong_dan:
+              layTenTrangHienTai(),
+            ket_qua:
+              results
+          },
+          null,
+          2
+        );
+
+      console.table(results);
+    }
+
+    function bindButtons() {
+      for (const button of buttons) {
+        button.addEventListener(
+          'click',
+          async () => {
+            const idChucNang =
+              String(button.id || '')
+                .trim()
+                .toLowerCase();
+
+            const allowed =
+              await quyen_duocxem(
+                idChucNang
+              );
+
+            if (!allowed) {
+              alert(
+                'Bạn không có quyền sử dụng chức năng này.'
+              );
+
+              return;
             }
-          );
 
-        const doanhSoAllowed =
-          await quyen_duocxem(
-            'tinhdoanhso',
-            PAGE,
-            {
-              thongBao: false,
-              batBuocTaiLai: true
-            }
-          );
-
-        showPermission(
-          'cskh',
-          cskhRow,
-          cskhAllowed
+            openWithToken(
+              button.dataset.url
+            );
+          }
         );
-
-        showPermission(
-          'doanhSo',
-          doanhSoRow,
-          doanhSoAllowed
-        );
-
-        $('#rawData').textContent =
-          JSON.stringify(
-            {
-              bo_loc: {
-                ma_nv: employee.ma_nv,
-                vai_tro_id: employee.vai_tro_id,
-                duong_dan: PAGE,
-                id_chucnang: FUNCTION_IDS
-              },
-              so_dong_tim_thay: rows.length,
-              du_lieu: rows
-            },
-            null,
-            2
-          );
-      } catch (error) {
-        console.error(
-          '[KIỂM TRA PHÂN QUYỀN]',
-          error
-        );
-
-        $('#errorData').textContent =
-          JSON.stringify(
-            {
-              message:
-                error?.message ||
-                String(error),
-              code:
-                error?.code || null,
-              details:
-                error?.details || null,
-              hint:
-                error?.hint || null
-            },
-            null,
-            2
-          );
-
-        $('#rawData').textContent =
-          'Không lấy được dữ liệu.';
       }
     }
 
-    $('#btnKiemTra').addEventListener(
-      'click',
-      runCheck
-    );
+    document
+      .querySelector('#btnBack')
+      .addEventListener(
+        'click',
+        () => {
+          if (
+            document.referrer &&
+            window.history.length > 1
+          ) {
+            window.history.back();
+            return;
+          }
 
-    $('#btnXoa').addEventListener(
-      'click',
-      () => {
-        xoaCachePhanQuyen();
-        resetView();
-      }
-    );
+          openWithToken('./main.html');
+        }
+      );
 
     document.addEventListener(
       'DOMContentLoaded',
-      runCheck
+      async () => {
+        try {
+          const user =
+            readLoginUser();
+
+          document.querySelector(
+            '#tenNhanVien'
+          ).textContent =
+            user?.ten_nv ||
+            user?.name ||
+            layMaNhanVienDangNhap() ||
+            'Nhân viên';
+
+          bindButtons();
+          await applyPermissions();
+        } catch (error) {
+          console.error(
+            '[KINH_DOANH_INIT]',
+            error
+          );
+
+          errorNote.style.display =
+            'block';
+
+          errorNote.textContent =
+            error?.message ||
+            String(error);
+        }
+      }
     );
   </script>
 </body>
 </html>
-"""
-
-out = Path("/mnt/data/kiem_tra_phan_quyen.html")
-out.write_text(html, encoding="utf-8")
-print(out)
