@@ -1,62 +1,74 @@
-from pathlib import Path
+// ==================== js/phan_quyen.js ====================
 
-code = """// ==================== js/phan_quyen.js ====================
+const LOGIN_STORAGE_KEYS = [
+  'nv',
+  'chatwoot_crm_user'
+];
 
-const LOGIN_STORAGE_KEYS = ['nv', 'chatwoot_crm_user'];
-
-let supabaseClient = null;
+let supabaseClientCache = null;
 
 function clean(value) {
   return String(value ?? '').trim();
 }
 
 function toBool(value) {
-  const normalized = clean(value).toLowerCase();
+  const text = clean(value).toLowerCase();
 
   return (
     value === true ||
     value === 1 ||
-    normalized === '1' ||
-    normalized === 'true' ||
-    normalized === 't'
+    text === '1' ||
+    text === 'true' ||
+    text === 't'
   );
 }
 
+/**
+ * Tự lấy tên trang hiện tại.
+ *
+ * Ví dụ:
+ * /main.html?token=abc
+ * → main.html
+ *
+ * /kinh_doanh.html?token=abc
+ * → kinh_doanh.html
+ */
 export function layTenTrangHienTai() {
-  const pathname = window.location.pathname || '';
+  const pathname =
+    window.location.pathname || '';
 
-  return (
-    pathname
-      .split('/')
-      .filter(Boolean)
-      .pop()
-      ?.split('?')[0]
-      .split('#')[0]
-      .trim()
-      .toLowerCase() ||
-    'main.html'
-  );
+  const fileName = pathname
+    .split('/')
+    .filter(Boolean)
+    .pop();
+
+  return clean(
+    fileName || 'main.html'
+  ).toLowerCase();
 }
 
 function layNhanVienDangNhap() {
-  for (const key of LOGIN_STORAGE_KEYS) {
+  for (const storageKey of LOGIN_STORAGE_KEYS) {
     try {
-      const raw = localStorage.getItem(key);
+      const raw =
+        localStorage.getItem(storageKey);
 
-      if (!raw) continue;
+      if (!raw) {
+        continue;
+      }
 
-      const user = JSON.parse(raw);
+      const data = JSON.parse(raw);
 
       if (
-        user &&
-        typeof user === 'object' &&
-        !Array.isArray(user)
+        data &&
+        typeof data === 'object' &&
+        !Array.isArray(data)
       ) {
-        return user;
+        return data;
       }
     } catch (error) {
       console.warn(
-        `[PHÂN QUYỀN] Không đọc được ${key}:`,
+        `[PHÂN QUYỀN] Không đọc được ${storageKey}`,
         error
       );
     }
@@ -66,23 +78,26 @@ function layNhanVienDangNhap() {
 }
 
 export function layMaNhanVienDangNhap() {
-  const user = layNhanVienDangNhap();
+  const nhanVien =
+    layNhanVienDangNhap();
 
   return clean(
-    user?.ma_nv ||
-    user?.id_nv ||
-    user?.maNhanVien ||
-    user?.ma_nhan_vien
+    nhanVien?.ma_nv ||
+    nhanVien?.id_nv ||
+    nhanVien?.maNhanVien ||
+    nhanVien?.ma_nhan_vien
   );
 }
 
 export async function taoSupabaseClient() {
-  if (supabaseClient) {
-    return supabaseClient;
+  if (supabaseClientCache) {
+    return supabaseClientCache;
   }
 
   if (!window.supabase) {
-    throw new Error('Không tải được thư viện Supabase');
+    throw new Error(
+      'Chưa tải thư viện Supabase'
+    );
   }
 
   const internalKey =
@@ -99,30 +114,38 @@ export async function taoSupabaseClient() {
   const headers = {};
 
   if (internalKey) {
-    headers['x-internal-key'] = internalKey;
+    headers['x-internal-key'] =
+      internalKey;
   }
 
-  const response = await fetch('/api/getConfig', {
-    method: 'GET',
-    headers,
-    cache: 'no-store'
-  });
+  const response = await fetch(
+    '/api/getConfig',
+    {
+      method: 'GET',
+      headers,
+      cache: 'no-store'
+    }
+  );
 
   if (!response.ok) {
+    const text =
+      await response.text();
+
     throw new Error(
-      `Không tải được cấu hình Supabase: HTTP ${response.status}`
+      `Không tải được cấu hình: HTTP ${response.status} - ${text}`
     );
   }
 
-  const config = await response.json();
+  const config =
+    await response.json();
 
-  const url =
+  const supabaseUrl =
     config.url ||
     config.SUPABASE_URL ||
     config.supabaseUrl ||
     config.supabase_url;
 
-  const key =
+  const supabaseKey =
     config.anon ||
     config.key ||
     config.SUPABASE_ANON ||
@@ -131,45 +154,76 @@ export async function taoSupabaseClient() {
     config.supabaseKey ||
     config.supabase_anon_key;
 
-  if (!url || !key) {
+  if (
+    !supabaseUrl ||
+    !supabaseKey
+  ) {
     throw new Error(
       'Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY'
     );
   }
 
-  supabaseClient =
-    window.supabase.createClient(url, key);
+  supabaseClientCache =
+    window.supabase.createClient(
+      supabaseUrl,
+      supabaseKey
+    );
 
-  return supabaseClient;
+  return supabaseClientCache;
 }
 
-export async function quyen_duocxem(id_chucnang) {
-  const functionId = clean(id_chucnang).toLowerCase();
-  const duongDan = layTenTrangHienTai();
+/**
+ * Hàm duy nhất kiểm tra quyền.
+ *
+ * Chỉ truyền id_chucnang.
+ * Tên trang sẽ tự lấy từ URL.
+ */
+export async function quyen_duocxem(
+  id_chucnang
+) {
+  const idChucNang = clean(
+    id_chucnang
+  ).toLowerCase();
+
+  const duongDan =
+    layTenTrangHienTai();
 
   try {
-    if (!functionId) {
-      console.error('[PHÂN QUYỀN] Thiếu id_chucnang');
+    if (!idChucNang) {
+      console.error(
+        '[PHÂN QUYỀN] Thiếu id_chucnang'
+      );
+
       return false;
     }
 
-    const maNv = layMaNhanVienDangNhap();
+    const maNv =
+      layMaNhanVienDangNhap();
 
     if (!maNv) {
       console.error(
         '[PHÂN QUYỀN] Không có ma_nv đăng nhập'
       );
+
       return false;
     }
 
-    const client = await taoSupabaseClient();
+    const client =
+      await taoSupabaseClient();
 
+    /*
+     * Bước 1:
+     * Lấy vai_tro_id từ kv_nhan_vien.
+     */
     const {
       data: nhanVienData,
       error: nhanVienError
     } = await client
       .from('kv_nhan_vien')
-      .select('ma_nv, vai_tro_id')
+      .select(`
+        ma_nv,
+        vai_tro_id
+      `)
       .eq('ma_nv', maNv)
       .limit(1);
 
@@ -178,23 +232,39 @@ export async function quyen_duocxem(id_chucnang) {
     }
 
     const nhanVien =
-      Array.isArray(nhanVienData)
+      Array.isArray(nhanVienData) &&
+      nhanVienData.length
         ? nhanVienData[0]
         : null;
 
     const vaiTroId =
-      clean(nhanVien?.vai_tro_id);
+      clean(
+        nhanVien?.vai_tro_id
+      );
 
     if (!vaiTroId) {
       console.error(
         '[PHÂN QUYỀN] Không tìm thấy vai_tro_id',
-        { ma_nv: maNv }
+        {
+          ma_nv: maNv,
+          nhan_vien: nhanVien
+        }
       );
+
       return false;
     }
 
-    const { data, error } = await client
-      .from('sql_phan_quyen_nhan_vien')
+    /*
+     * Bước 2:
+     * Lọc quyền theo đúng 4 điều kiện.
+     */
+    const {
+      data,
+      error
+    } = await client
+      .from(
+        'sql_phan_quyen_nhan_vien'
+      )
       .select(`
         ma_nv,
         vai_tro_id,
@@ -203,9 +273,18 @@ export async function quyen_duocxem(id_chucnang) {
         duoc_xem
       `)
       .eq('ma_nv', maNv)
-      .eq('vai_tro_id', vaiTroId)
-      .eq('duong_dan', duongDan)
-      .eq('id_chucnang', functionId)
+      .eq(
+        'vai_tro_id',
+        vaiTroId
+      )
+      .eq(
+        'duong_dan',
+        duongDan
+      )
+      .eq(
+        'id_chucnang',
+        idChucNang
+      )
       .limit(1);
 
     if (error) {
@@ -213,32 +292,52 @@ export async function quyen_duocxem(id_chucnang) {
     }
 
     const row =
-      Array.isArray(data)
+      Array.isArray(data) &&
+      data.length
         ? data[0]
         : null;
 
     const duocXem =
       toBool(row?.duoc_xem);
 
-    console.log('[PHÂN QUYỀN]', {
-      ma_nv: maNv,
-      vai_tro_id: vaiTroId,
-      duong_dan: duongDan,
-      id_chucnang: functionId,
-      tim_thay: Boolean(row),
-      duoc_xem: duocXem
-    });
+    console.log(
+      '[KẾT QUẢ PHÂN QUYỀN]',
+      {
+        ma_nv: maNv,
+        vai_tro_id: vaiTroId,
+        duong_dan: duongDan,
+        id_chucnang:
+          idChucNang,
+        tim_thay:
+          Boolean(row),
+        duoc_xem:
+          duocXem,
+        du_lieu:
+          row
+      }
+    );
 
     return duocXem;
   } catch (error) {
     console.error(
-      '[PHÂN QUYỀN] Lỗi kiểm tra:',
+      '[PHÂN QUYỀN] Lỗi',
       {
-        duong_dan: duongDan,
-        id_chucnang: functionId,
-        message: error?.message || String(error),
-        code: error?.code || null,
-        details: error?.details || null
+        duong_dan:
+          duongDan,
+        id_chucnang:
+          idChucNang,
+        message:
+          error?.message ||
+          String(error),
+        code:
+          error?.code ||
+          null,
+        details:
+          error?.details ||
+          null,
+        hint:
+          error?.hint ||
+          null
       }
     );
 
@@ -246,6 +345,12 @@ export async function quyen_duocxem(id_chucnang) {
   }
 }
 
+/**
+ * Test trực tiếp trong F12 Console:
+ *
+ * layTenTrangHienTai()
+ * await testQuyenDuocXem('admin')
+ */
 window.layTenTrangHienTai =
   layTenTrangHienTai;
 
@@ -253,10 +358,9 @@ window.testQuyenDuocXem =
   quyen_duocxem;
 
 console.log(
-  '[PHÂN QUYỀN] Đã tải phan_quyen.js'
+  '[PHÂN QUYỀN] Đã tải phan_quyen.js',
+  {
+    trang:
+      layTenTrangHienTai()
+  }
 );
-"""
-
-path = Path("/mnt/data/phan_quyen.js")
-path.write_text(code, encoding="utf-8")
-print(path)
