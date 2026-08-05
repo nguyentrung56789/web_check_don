@@ -38,7 +38,7 @@
     }
 
     body {
-      visibility: hidden;
+      visibility: visible;
       min-height: 100vh;
       padding:
         max(22px, env(safe-area-inset-top))
@@ -634,10 +634,7 @@
 
       const results = [];
 
-      for (
-        const button
-        of permissionButtons
-      ) {
+      for (const button of permissionButtons) {
         const idChucNang =
           String(
             button.dataset.idChucnang ||
@@ -653,24 +650,22 @@
             button
           );
 
+          results.push({
+            id_chucnang: '',
+            ten_chucnang: '',
+            duoc_xem: false
+          });
+
           continue;
         }
 
         try {
-          /*
-           * Hàm phan_quyen.js sẽ lọc:
-           *
-           * ma_nv
-           * vai_tro_id
-           * duong_dan = tên trang hiện tại
-           * id_chucnang
-           */
           const duocXem =
             await quyen_duocxem(
               idChucNang
             );
 
-          const chiTietQuyen =
+          const chiTiet =
             await layChiTietQuyen(
               idChucNang
             );
@@ -679,7 +674,7 @@
             String(duocXem);
 
           button.dataset.tenChucnang =
-            chiTietQuyen?.ten_chucnang || '';
+            chiTiet?.ten_chucnang || '';
 
           const nameElement =
             button.querySelector(
@@ -688,10 +683,10 @@
 
           if (
             nameElement &&
-            chiTietQuyen?.ten_chucnang
+            chiTiet?.ten_chucnang
           ) {
             nameElement.textContent =
-              chiTietQuyen.ten_chucnang;
+              chiTiet.ten_chucnang;
           }
 
           if (duocXem) {
@@ -699,15 +694,14 @@
               'hidden'
             );
 
-            button.style.display =
-              '';
+            button.style.display = '';
           }
 
           results.push({
             id_chucnang:
               idChucNang,
             ten_chucnang:
-              chiTietQuyen?.ten_chucnang || '',
+              chiTiet?.ten_chucnang || '',
             duoc_xem:
               duocXem
           });
@@ -720,6 +714,7 @@
           results.push({
             id_chucnang:
               idChucNang,
+            ten_chucnang: '',
             duoc_xem:
               false,
             error
@@ -961,9 +956,6 @@
               'Mở F12 → Console để xem chi tiết.'
             ].join('\n');
         } finally {
-          document.body.style.visibility =
-            'visible';
-
           document.body.classList.add(
             'ready'
           );
