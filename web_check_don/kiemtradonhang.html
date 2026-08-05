@@ -1,1 +1,581 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+  <title>Kiểm tra đơn hàng</title>
 
+  <script src="./js/internal_key.js"></script>
+  <script src="./js/cod_config.js"></script>
+  <script src="./js/auth_token.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+    }
+
+    body {
+      min-height: 100vh;
+      padding: 24px;
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Arial,
+        sans-serif;
+      color: #fff;
+      background:
+        radial-gradient(
+          circle at 50% 20%,
+          rgba(59, 130, 246, 0.12),
+          transparent 38%
+        ),
+        #07101f;
+    }
+
+    .page {
+      width: min(100%, 760px);
+      margin: 0 auto;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 34px;
+    }
+
+    .back-btn {
+      min-height: 42px;
+      padding: 9px 15px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 11px;
+      background: #0f172a;
+      color: #fff;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .back-btn:hover {
+      background: #172033;
+    }
+
+    #tenNhanVien {
+      max-width: 220px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .page-title {
+      margin: 0 0 28px;
+      text-align: center;
+      font-size: clamp(28px, 6vw, 40px);
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .menu {
+      display: grid;
+      gap: 14px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition:
+        opacity 0.24s ease,
+        transform 0.24s ease;
+    }
+
+    .menu.loaded {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .permission-btn {
+      width: 100%;
+      min-height: 66px;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border: 0;
+      border-radius: 13px;
+      color: #07101f;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
+      transition:
+        transform 0.18s ease,
+        filter 0.18s ease;
+    }
+
+    .permission-btn:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+    }
+
+    .permission-btn.permission-show {
+      animation: hienNut 0.24s ease both;
+    }
+
+    .permission-icon {
+      flex: 0 0 38px;
+      font-size: 27px;
+      line-height: 1;
+      text-align: center;
+    }
+
+    .permission-name {
+      font-size: clamp(18px, 4vw, 24px);
+      font-weight: 900;
+    }
+
+    .btn-donghang {
+      background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    }
+
+    .btn-checkdon {
+      background: linear-gradient(135deg, #22c55e, #86efac);
+    }
+
+    .empty-note,
+    .error-note {
+      display: none;
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: 13px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .empty-note {
+      background: rgba(120, 53, 15, 0.58);
+      color: #fef3c7;
+    }
+
+    .error-note {
+      background: rgba(127, 29, 29, 0.65);
+      color: #fee2e2;
+    }
+
+    @keyframes hienNut {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .menu,
+      .permission-btn {
+        transition: none !important;
+        animation: none !important;
+      }
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 16px;
+      }
+
+      .permission-btn {
+        min-height: 60px;
+        padding: 10px 14px;
+      }
+
+      .permission-icon {
+        flex-basis: 34px;
+        font-size: 24px;
+      }
+
+      .permission-name {
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="page">
+    <div class="topbar">
+      <button
+        id="btnBack"
+        class="back-btn"
+        type="button"
+      >
+        ← Quay lại
+      </button>
+
+      <strong id="tenNhanVien">
+        Nhân viên
+      </strong>
+    </div>
+
+    <h1 class="page-title">
+      Kiểm tra đơn hàng
+    </h1>
+
+    <section
+      id="permissionMenu"
+      class="menu"
+    >
+      <button
+        id="donghang"
+        class="permission-btn btn-donghang hidden"
+        type="button"
+        data-phan-quyen
+        data-id-chucnang="donghang"
+        data-url="./Quan_ly_cod.html"
+      >
+        <span class="permission-icon">📦</span>
+        <span class="permission-name">
+          Đóng hàng COD
+        </span>
+      </button>
+
+      <button
+        id="checkdon"
+        class="permission-btn btn-checkdon hidden"
+        type="button"
+        data-phan-quyen
+        data-id-chucnang="checkdon"
+        data-url="./check_don.html"
+      >
+        <span class="permission-icon">🧾</span>
+        <span class="permission-name">
+          Check đơn
+        </span>
+      </button>
+    </section>
+
+    <div id="emptyNote" class="empty-note">
+      Tài khoản chưa được cấp quyền sử dụng chức năng nào.
+    </div>
+
+    <div id="errorNote" class="error-note"></div>
+  </main>
+
+  <script type="module">
+    import {
+      quyen_duocxem,
+      layDanhSachQuyenTrang,
+      layNhanVienVaVaiTro
+    } from './js/phan_quyen.js';
+
+    const buttons = [
+      ...document.querySelectorAll(
+        '[data-phan-quyen]'
+      )
+    ];
+
+    const permissionMenu =
+      document.querySelector(
+        '#permissionMenu'
+      );
+
+    const emptyNote =
+      document.querySelector(
+        '#emptyNote'
+      );
+
+    const errorNote =
+      document.querySelector(
+        '#errorNote'
+      );
+
+    function getToken() {
+      return (
+        new URLSearchParams(
+          window.location.search
+        ).get('token') ||
+        sessionStorage.getItem(
+          'APP_ACCESS'
+        ) ||
+        ''
+      );
+    }
+
+    function openWithToken(url) {
+      const target =
+        new URL(
+          url,
+          window.location.href
+        );
+
+      const token =
+        getToken();
+
+      if (token) {
+        target.searchParams.set(
+          'token',
+          token
+        );
+      }
+
+      window.location.assign(
+        target.toString()
+      );
+    }
+
+    function hideAllButtons() {
+      for (const button of buttons) {
+        button.classList.add(
+          'hidden'
+        );
+
+        button.classList.remove(
+          'permission-show'
+        );
+
+        button.style.display =
+          'none';
+
+        button.dataset.duocXem =
+          'false';
+      }
+    }
+
+    async function loadEmployeeName() {
+      try {
+        const nhanVien =
+          await layNhanVienVaVaiTro();
+
+        document.querySelector(
+          '#tenNhanVien'
+        ).textContent =
+          nhanVien.ten_nv ||
+          nhanVien.ma_nv ||
+          'Nhân viên';
+      } catch (error) {
+        console.error(
+          '[KIEM_TRA_DON_HANG] Không lấy được tên nhân viên:',
+          error
+        );
+
+        document.querySelector(
+          '#tenNhanVien'
+        ).textContent =
+          'Nhân viên';
+      }
+    }
+
+    async function applyPermissions() {
+      hideAllButtons();
+
+      permissionMenu.classList.remove(
+        'loaded'
+      );
+
+      const danhSachQuyen =
+        await layDanhSachQuyenTrang({
+          batBuocTaiLai: true
+        });
+
+      const quyenMap = new Map(
+        danhSachQuyen.map(item => [
+          item.id_chucnang,
+          item
+        ])
+      );
+
+      let visibleCount = 0;
+      const results = [];
+
+      for (const button of buttons) {
+        const idChucNang =
+          String(
+            button.dataset.idChucnang ||
+            button.id ||
+            ''
+          )
+            .trim()
+            .toLowerCase();
+
+        const quyen =
+          quyenMap.get(
+            idChucNang
+          );
+
+        const allowed =
+          quyen?.duoc_xem === true;
+
+        button.dataset.duocXem =
+          String(allowed);
+
+        button.dataset.tenChucnang =
+          quyen?.ten_chucnang || '';
+
+        const nameElement =
+          button.querySelector(
+            '.permission-name'
+          );
+
+        if (
+          nameElement &&
+          quyen?.ten_chucnang
+        ) {
+          nameElement.textContent =
+            quyen.ten_chucnang;
+        }
+
+        if (allowed) {
+          button.classList.remove(
+            'hidden'
+          );
+
+          button.classList.add(
+            'permission-show'
+          );
+
+          button.style.display = '';
+
+          button.style.animationDelay =
+            `${visibleCount * 45}ms`;
+
+          visibleCount += 1;
+        }
+
+        results.push({
+          id_chucnang:
+            idChucNang,
+          ten_chucnang:
+            quyen?.ten_chucnang || '',
+          duoc_xem:
+            allowed
+        });
+      }
+
+      emptyNote.style.display =
+        visibleCount === 0
+          ? 'block'
+          : 'none';
+
+      requestAnimationFrame(() => {
+        permissionMenu.classList.add(
+          'loaded'
+        );
+      });
+
+      console.table(results);
+    }
+
+    function bindButtons() {
+      for (const button of buttons) {
+        button.addEventListener(
+          'click',
+          async () => {
+            const idChucNang =
+              String(
+                button.dataset.idChucnang ||
+                button.id ||
+                ''
+              )
+                .trim()
+                .toLowerCase();
+
+            const allowed =
+              await quyen_duocxem(
+                idChucNang
+              );
+
+            if (!allowed) {
+              button.classList.add(
+                'hidden'
+              );
+
+              alert(
+                'Bạn không có quyền sử dụng chức năng này.'
+              );
+
+              return;
+            }
+
+            const url =
+              button.dataset.url;
+
+            if (!url) {
+              alert(
+                `Chưa đặt đường dẫn cho chức năng ${idChucNang}.`
+              );
+
+              return;
+            }
+
+            openWithToken(url);
+          }
+        );
+      }
+    }
+
+    document
+      .querySelector('#btnBack')
+      .addEventListener(
+        'click',
+        () => {
+          if (
+            document.referrer &&
+            window.history.length > 1
+          ) {
+            window.history.back();
+            return;
+          }
+
+          openWithToken(
+            './main.html'
+          );
+        }
+      );
+
+    document.addEventListener(
+      'DOMContentLoaded',
+      async () => {
+        try {
+          bindButtons();
+
+          await Promise.all([
+            loadEmployeeName(),
+            applyPermissions()
+          ]);
+        } catch (error) {
+          console.error(
+            '[KIEM_TRA_DON_HANG_INIT]',
+            error
+          );
+
+          permissionMenu.classList.add(
+            'loaded'
+          );
+
+          errorNote.style.display =
+            'block';
+
+          errorNote.textContent =
+            error?.message ||
+            String(error);
+        }
+      }
+    );
+  </script>
+</body>
+</html>
