@@ -533,7 +533,8 @@
 
   <script type="module">
     import {
-      quyen_duocxem
+      quyen_duocxem,
+      layChiTietQuyen
     } from './js/phan_quyen.js';
 
     const $ = selector =>
@@ -669,8 +670,29 @@
               idChucNang
             );
 
+          const chiTietQuyen =
+            await layChiTietQuyen(
+              idChucNang
+            );
+
           button.dataset.duocXem =
             String(duocXem);
+
+          button.dataset.tenChucnang =
+            chiTietQuyen?.ten_chucnang || '';
+
+          const nameElement =
+            button.querySelector(
+              '.permission-name'
+            );
+
+          if (
+            nameElement &&
+            chiTietQuyen?.ten_chucnang
+          ) {
+            nameElement.textContent =
+              chiTietQuyen.ten_chucnang;
+          }
 
           if (duocXem) {
             button.classList.remove(
@@ -684,6 +706,8 @@
           results.push({
             id_chucnang:
               idChucNang,
+            ten_chucnang:
+              chiTietQuyen?.ten_chucnang || '',
             duoc_xem:
               duocXem
           });
