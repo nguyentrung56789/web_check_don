@@ -51,7 +51,7 @@ function debugLog(message, data = '') {
 }
 
 /* =========================================================
-   LẤY TÊN TRANG HIỆN TẠI
+   LẤY TÊN FILE HIỆN TẠI
 ========================================================= */
 
 export function layTenFileHienTai() {
@@ -73,7 +73,11 @@ export function layNhanVienDangNhap() {
 
       const data = JSON.parse(raw);
 
-      if (data && typeof data === 'object') {
+      if (
+        data &&
+        typeof data === 'object' &&
+        !Array.isArray(data)
+      ) {
         return {
           ...data,
           __storageKey: storageKey
@@ -90,7 +94,7 @@ export function layNhanVienDangNhap() {
   return null;
 }
 
-function layMaNhanVienDangNhap() {
+export function layMaNhanVienDangNhap() {
   const user = layNhanVienDangNhap();
 
   if (!user) {
@@ -181,7 +185,9 @@ export async function taoSupabaseClient() {
     supabaseKey
   );
 
-  debugLog('[PHÂN QUYỀN] Tạo Supabase client thành công');
+  debugLog(
+    '[PHÂN QUYỀN] Tạo Supabase client thành công'
+  );
 
   return supabaseClientCache;
 }
@@ -197,11 +203,12 @@ export async function layDongPhanQuyen(
 ) {
   const maNv = layMaNhanVienDangNhap();
   const page = normalizePage(duongDan);
-  const functionId = normalizeFunctionId(id_chucnang);
+  const functionId =
+    normalizeFunctionId(id_chucnang);
 
   if (!maNv) {
     throw new Error(
-      'Không lấy được ma_nv của nhân viên đang đăng nhập'
+      'Không lấy được ma_nv từ tài khoản đang đăng nhập'
     );
   }
 
@@ -224,19 +231,17 @@ export async function layDongPhanQuyen(
 
   const client = await taoSupabaseClient();
 
-  debugLog('[PHÂN QUYỀN] Điều kiện truy vấn', {
+  const dieuKien = {
     ma_nv: maNv,
     duong_dan: page,
     id_chucnang: functionId
-  });
+  };
 
-  /*
-   * Dùng select('*') để có thể đọc được:
-   * - vai_tro_id
-   * hoặc id_vaitro
-   *
-   * tùy tên cột thực tế trong view.
-   */
+  debugLog(
+    '[PHÂN QUYỀN] Điều kiện truy vấn',
+    dieuKien
+  );
+
   const { data, error } = await client
     .from(PERMISSION_VIEW)
     .select('*')
@@ -250,13 +255,143 @@ export async function layDongPhanQuyen(
   }
 
   const row =
-    Array.isArray(data) && data.length
+    Array.isArray(data) && data.length > 0
       ? data[0]
       : null;
 
-  permissionCache.set(cacheKey, row);
+  const result = {
+    ma_nv_dang_nhap: maNv,
+    duong_dan_kiem_tra: page,
+    id_chucnang_kiem_tra: functionId,
+    tim_thay: Boolean(row),
+    row
+  };
 
-  return row;
+  permissionCache.set(cacheKey, result);
+
+  debugLog(
+    '[PHÂN QUYỀN] Kết quả truy vấn',
+    result
+  );
+
+  return result;
+}
+
+/* =========================================================
+   LẤY CHI TIẾT QUYỀN
+========================================================= */
+
+export async function layChiTietQuyen(
+  id_chucnang,
+  duongDan = layTenFileHienTai(),
+  batBuocTaiLai = false
+) {
+  const maNvDangNhap =
+    layMaNhanVienDangNhap();
+
+  const page = normalizePage(duongDan);
+
+  const functionId =
+    normalizeFunctionId(id_chucnang);
+
+  try {
+    const queryResult =
+      await layDongPhanQuyen(
+        functionId,
+        page,
+        batBuocTaiLai
+      );
+
+    const row = queryResult?.row || null;
+
+    const vaiTroId = clean(
+      row?.vai_tro_id ??
+      row?.id_vaitro ??
+      row?.id_vai_tro
+    );
+
+    return {
+      tim_thay: Boolean(row),
+
+      // Luôn trả ma_nv đăng nhập,
+      // kể cả khi chưa tìm thấy quyền.
+      ma_nv:
+        clean(row?.ma_nv) ||
+        maNvDangNhap ||
+        null,
+
+      vai_tro_id:
+        vaiTroId || null,
+
+      // Tạo thêm tên thay thế để dễ dùng.
+      id_vaitro:
+        vaiTroId || null,
+
+      ten_nv:
+        clean(row?.ten_nv) || null,
+
+      ten_vai_tro:
+        clean(row?.ten_vai_tro) || null,
+
+      duong_dan:
+        page,
+
+      id_chucnang:
+        clean(row?.id_chucnang) ||
+        functionId,
+
+      ten_chucnang:
+        clean(row?.ten_chucnang) || null,
+
+      duoc_xem:
+        toBool(row?.duoc_xem),
+
+      duoc_them:
+        toBool(row?.duoc_them),
+
+      duoc_sua:
+        toBool(row?.duoc_sua),
+
+      duoc_xoa:
+        toBool(row?.duoc_xoa),
+
+      du_lieu_sql:
+        row
+    };
+  } catch (error) {
+    console.error(
+      '[PHÂN QUYỀN] Lỗi lấy chi tiết:',
+      error
+    );
+
+    return {
+      tim_thay: false,
+
+      ma_nv:
+        maNvDangNhap || null,
+
+      vai_tro_id: null,
+      id_vaitro: null,
+      ten_nv: null,
+      ten_vai_tro: null,
+
+      duong_dan:
+        page,
+
+      id_chucnang:
+        functionId,
+
+      ten_chucnang: null,
+
+      duoc_xem: false,
+      duoc_them: false,
+      duoc_sua: false,
+      duoc_xoa: false,
+
+      du_lieu_sql: null,
+      error
+    };
+  }
 }
 
 /* =========================================================
@@ -274,94 +409,85 @@ export async function quyen_duocxem(
   } = options;
 
   try {
-    const loginUser = layNhanVienDangNhap();
+    const chiTiet =
+      await layChiTietQuyen(
+        id_chucnang,
+        duongDan,
+        batBuocTaiLai
+      );
 
-    const maNvDangNhap = clean(
-      loginUser?.ma_nv ||
-      loginUser?.id_nv ||
-      loginUser?.maNhanVien ||
-      loginUser?.ma_nhan_vien
+    console.group(
+      '========== KẾT QUẢ PHÂN QUYỀN =========='
     );
 
-    const page = normalizePage(duongDan);
-    const functionId = normalizeFunctionId(id_chucnang);
-
-    if (!maNvDangNhap) {
-      throw new Error('Không lấy được ma_nv từ tài khoản đăng nhập');
-    }
-
-    const client = await taoSupabaseClient();
-
-    const { data, error } = await client
-      .from('sql_phan_quyen_nhan_vien')
-      .select('*')
-      .eq('ma_nv', maNvDangNhap)
-      .eq('duong_dan', page)
-      .eq('id_chucnang', functionId)
-      .limit(1);
-
-    if (error) {
-      throw error;
-    }
-
-    const row =
-      Array.isArray(data) && data.length
-        ? data[0]
-        : null;
-
-    const vaiTroId = clean(
-      row?.vai_tro_id ??
-      row?.id_vaitro ??
-      row?.id_vai_tro
+    console.log(
+      'ma_nv đăng nhập:',
+      chiTiet.ma_nv
     );
 
-    const duocXem = toBool(row?.duoc_xem);
+    console.log(
+      'vai_tro_id:',
+      chiTiet.vai_tro_id
+    );
 
-    const ketQua = {
-      ma_nv: maNvDangNhap,
-      vai_tro_id: vaiTroId || null,
-      id_chucnang: functionId,
-      duong_dan: page,
-      tim_thay: Boolean(row),
-      duoc_xem: duocXem,
-      du_lieu_sql: row
-    };
+    console.log(
+      'id_chucnang:',
+      chiTiet.id_chucnang
+    );
 
-    console.log('[KẾT QUẢ PHÂN QUYỀN]', ketQua);
+    console.log(
+      'duong_dan:',
+      chiTiet.duong_dan
+    );
+
+    console.log(
+      'tìm thấy quyền:',
+      chiTiet.tim_thay
+    );
+
+    console.log(
+      'duoc_xem:',
+      chiTiet.duoc_xem
+    );
+
+    console.log(
+      'dữ liệu SQL:',
+      chiTiet.du_lieu_sql
+    );
+
+    console.groupEnd();
 
     if (thongBao) {
       alert(
         [
           'KẾT QUẢ PHÂN QUYỀN',
           '',
-          `ma_nv đăng nhập: ${maNvDangNhap}`,
-          `vai_tro_id: ${vaiTroId || 'KHÔNG CÓ'}`,
-          `id_chucnang: ${functionId}`,
-          `duong_dan: ${page}`,
-          `tìm thấy quyền: ${Boolean(row)}`,
-          `duoc_xem: ${duocXem}`
+          `ma_nv đăng nhập: ${
+            chiTiet.ma_nv || 'KHÔNG CÓ'
+          }`,
+          `vai_tro_id: ${
+            chiTiet.vai_tro_id ||
+            'KHÔNG CÓ'
+          }`,
+          `id_chucnang: ${
+            chiTiet.id_chucnang ||
+            'KHÔNG CÓ'
+          }`,
+          `duong_dan: ${
+            chiTiet.duong_dan
+          }`,
+          `tìm thấy quyền: ${
+            chiTiet.tim_thay
+          }`,
+          `duoc_xem: ${
+            chiTiet.duoc_xem
+          }`
         ].join('\n')
       );
     }
 
-    return duocXem;
+    return chiTiet.duoc_xem;
   } catch (error) {
-    console.error('[PHÂN QUYỀN] Lỗi:', error);
-
-    if (options?.thongBao) {
-      alert(
-        [
-          'LỖI KIỂM TRA PHÂN QUYỀN',
-          '',
-          `id_chucnang: ${id_chucnang}`,
-          `message: ${error?.message || String(error)}`
-        ].join('\n')
-      );
-    }
-
-    return false;
-  }
-} catch (error) {
     console.error(
       '[QUYỀN ĐƯỢC XEM] Lỗi:',
       {
@@ -370,23 +496,47 @@ export async function quyen_duocxem(
         message:
           error?.message ||
           String(error),
-        code: error?.code || null,
-        details: error?.details || null,
-        hint: error?.hint || null
+        code:
+          error?.code || null,
+        details:
+          error?.details || null,
+        hint:
+          error?.hint || null
       }
     );
 
-    if (options?.thongBao) {
+    if (thongBao) {
       alert(
         [
           'LỖI KIỂM TRA PHÂN QUYỀN',
           '',
-          `id_chucnang: ${id_chucnang || 'KHÔNG CÓ'}`,
-          `duong_dan: ${normalizePage(duongDan)}`,
-          `message: ${error?.message || String(error)}`,
-          `code: ${error?.code || 'KHÔNG CÓ'}`,
-          `details: ${error?.details || 'KHÔNG CÓ'}`,
-          `hint: ${error?.hint || 'KHÔNG CÓ'}`
+          `ma_nv đăng nhập: ${
+            layMaNhanVienDangNhap() ||
+            'KHÔNG CÓ'
+          }`,
+          `id_chucnang: ${
+            id_chucnang ||
+            'KHÔNG CÓ'
+          }`,
+          `duong_dan: ${
+            normalizePage(duongDan)
+          }`,
+          `message: ${
+            error?.message ||
+            String(error)
+          }`,
+          `code: ${
+            error?.code ||
+            'KHÔNG CÓ'
+          }`,
+          `details: ${
+            error?.details ||
+            'KHÔNG CÓ'
+          }`,
+          `hint: ${
+            error?.hint ||
+            'KHÔNG CÓ'
+          }`
         ].join('\n')
       );
     }
@@ -396,81 +546,60 @@ export async function quyen_duocxem(
 }
 
 /* =========================================================
-   LẤY CHI TIẾT QUYỀN
+   QUYỀN ĐƯỢC THÊM
 ========================================================= */
 
-export async function layChiTietQuyen(
+export async function quyen_duocthem(
   id_chucnang,
   duongDan = layTenFileHienTai(),
   batBuocTaiLai = false
 ) {
-  try {
-    const row = await layDongPhanQuyen(
+  const chiTiet =
+    await layChiTietQuyen(
       id_chucnang,
       duongDan,
       batBuocTaiLai
     );
 
-    const vaiTroId = clean(
-      row?.vai_tro_id ??
-      row?.id_vaitro ??
-      row?.id_vai_tro
+  return chiTiet.duoc_them;
+}
+
+/* =========================================================
+   QUYỀN ĐƯỢC SỬA
+========================================================= */
+
+export async function quyen_duocsua(
+  id_chucnang,
+  duongDan = layTenFileHienTai(),
+  batBuocTaiLai = false
+) {
+  const chiTiet =
+    await layChiTietQuyen(
+      id_chucnang,
+      duongDan,
+      batBuocTaiLai
     );
 
-    return {
-      tim_thay: Boolean(row),
+  return chiTiet.duoc_sua;
+}
 
-      ma_nv:
-        clean(row?.ma_nv) || null,
+/* =========================================================
+   QUYỀN ĐƯỢC XÓA
+========================================================= */
 
-      vai_tro_id:
-        vaiTroId || null,
+export async function quyen_duocxoa(
+  id_chucnang,
+  duongDan = layTenFileHienTai(),
+  batBuocTaiLai = false
+) {
+  const chiTiet =
+    await layChiTietQuyen(
+      id_chucnang,
+      duongDan,
+      batBuocTaiLai
+    );
 
-      id_vaitro:
-        vaiTroId || null,
-
-      duong_dan:
-        normalizePage(duongDan),
-
-      id_chucnang:
-        clean(row?.id_chucnang) ||
-        normalizeFunctionId(id_chucnang),
-
-      ten_chucnang:
-        clean(row?.ten_chucnang) || null,
-
-      duoc_xem:
-        toBool(row?.duoc_xem),
-
-      duoc_them:
-        toBool(row?.duoc_them),
-
-      duoc_sua:
-        toBool(row?.duoc_sua),
-
-      duoc_xoa:
-        toBool(row?.duoc_xoa),
-
-      du_lieu_sql: row
-    };
-  } catch (error) {
-    return {
-      tim_thay: false,
-      ma_nv: null,
-      vai_tro_id: null,
-      id_vaitro: null,
-      duong_dan:
-        normalizePage(duongDan),
-      id_chucnang:
-        normalizeFunctionId(id_chucnang),
-      ten_chucnang: null,
-      duoc_xem: false,
-      duoc_them: false,
-      duoc_sua: false,
-      duoc_xoa: false,
-      error
-    };
-  }
+  return chiTiet.duoc_xoa;
 }
 
 /* =========================================================
@@ -484,7 +613,9 @@ export async function apDungQuyenDuocXem(
 ) {
   const element =
     typeof elementHoacSelector === 'string'
-      ? document.querySelector(elementHoacSelector)
+      ? document.querySelector(
+          elementHoacSelector
+        )
       : elementHoacSelector;
 
   if (!element) {
@@ -496,13 +627,15 @@ export async function apDungQuyenDuocXem(
     return false;
   }
 
+  // Mặc định ẩn trước khi kiểm tra.
   element.style.display = 'none';
   element.classList.add('hidden');
 
-  const allowed = await quyen_duocxem(
-    id_chucnang,
-    duongDan
-  );
+  const allowed =
+    await quyen_duocxem(
+      id_chucnang,
+      duongDan
+    );
 
   element.dataset.duocXem =
     String(allowed);
@@ -519,7 +652,7 @@ export async function apDungQuyenDuocXem(
 }
 
 /* =========================================================
-   TỰ ĐỘNG ÁP DỤNG CHO data-phan-quyen
+   TỰ ĐỘNG ÁP DỤNG CHO CÁC PHẦN TỬ data-phan-quyen
 ========================================================= */
 
 export async function apDungPhanQuyenTrang(
@@ -532,6 +665,7 @@ export async function apDungPhanQuyenTrang(
     )
   ];
 
+  // Ẩn toàn bộ trước.
   for (const element of elements) {
     element.style.display = 'none';
     element.classList.add('hidden');
@@ -540,17 +674,28 @@ export async function apDungPhanQuyenTrang(
   const results = [];
 
   for (const element of elements) {
-    const idChucNang = normalizeFunctionId(
-      element.dataset.idChucnang ||
-      element.getAttribute('data-id-chucnang') ||
-      element.id
-    );
+    const idChucNang =
+      normalizeFunctionId(
+        element.dataset.idChucnang ||
+        element.getAttribute(
+          'data-id-chucnang'
+        ) ||
+        element.id
+      );
 
     if (!idChucNang) {
       console.warn(
         '[PHÂN QUYỀN] Phần tử không có id_chucnang',
         element
       );
+
+      results.push({
+        element,
+        id_chucnang: '',
+        duoc_xem: false,
+        error:
+          'Phần tử không có id hoặc data-id-chucnang'
+      });
 
       continue;
     }
@@ -588,10 +733,11 @@ export async function baoVeTrang(
   trangChuyenVe = './main.html',
   duongDan = layTenFileHienTai()
 ) {
-  const allowed = await quyen_duocxem(
-    id_chucnang,
-    duongDan
-  );
+  const allowed =
+    await quyen_duocxem(
+      id_chucnang,
+      duongDan
+    );
 
   if (allowed) {
     return true;
@@ -621,19 +767,40 @@ export function xoaCachePhanQuyen() {
    DEBUG THỦ CÔNG TỪ CONSOLE
 ========================================================= */
 
-window.testQuyenDuocXem = async function (
-  id_chucnang,
-  duongDan
-) {
-  return quyen_duocxem(
+window.testQuyenDuocXem =
+  async function (
     id_chucnang,
-    duongDan || layTenFileHienTai(),
-    {
-      thongBao: true,
-      batBuocTaiLai: true
-    }
-  );
-};
+    duongDan = layTenFileHienTai()
+  ) {
+    return quyen_duocxem(
+      id_chucnang,
+      duongDan,
+      {
+        thongBao: true,
+        batBuocTaiLai: true
+      }
+    );
+  };
+
+window.testChiTietQuyen =
+  async function (
+    id_chucnang,
+    duongDan = layTenFileHienTai()
+  ) {
+    const result =
+      await layChiTietQuyen(
+        id_chucnang,
+        duongDan,
+        true
+      );
+
+    console.log(
+      '[TEST CHI TIẾT QUYỀN]',
+      result
+    );
+
+    return result;
+  };
 
 console.log(
   '[PHÂN QUYỀN] Đã tải thành công js/phan_quyen.js'
