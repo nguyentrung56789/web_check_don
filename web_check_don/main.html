@@ -217,14 +217,20 @@
     quyen_duocxem
   } from './js/phan_quyen.js';
 
-  const input = document.getElementById('idChucNang');
-  const btnCheck = document.getElementById('btnCheck');
+  document.addEventListener('DOMContentLoaded', async () => {
+    const btnKho = document.getElementById('kho');
 
-  btnCheck.addEventListener('click', async () => {
-    const idChucNang = input.value.trim();
+    if (!btnKho) {
+      console.error('Không tìm thấy nút #kho');
+      return;
+    }
 
-    const duocXem = await quyen_duocxem(
-      idChucNang,
+    // Luôn ẩn trước khi kiểm tra
+    btnKho.classList.add('hidden');
+    btnKho.style.display = 'none';
+
+    const duocXemKho = await quyen_duocxem(
+      'kho',
       'main.html',
       {
         thongBao: true,
@@ -232,9 +238,31 @@
       }
     );
 
-    console.log({
-      id_chucnang: idChucNang,
-      duoc_xem: duocXem
+    console.log('[NÚT KHO]', {
+      id_chucnang: 'kho',
+      duong_dan: 'main.html',
+      duoc_xem: duocXemKho
+    });
+
+    if (duocXemKho) {
+      btnKho.classList.remove('hidden');
+      btnKho.style.display = '';
+    }
+
+    btnKho.addEventListener('click', () => {
+      if (!duocXemKho) {
+        alert('Bạn không có quyền xem chức năng Kho.');
+        return;
+      }
+
+      const token = sessionStorage.getItem('APP_ACCESS');
+      const url = new URL('./kho.html', location.href);
+
+      if (token) {
+        url.searchParams.set('token', token);
+      }
+
+      location.href = url.toString();
     });
   });
 </script>
