@@ -212,180 +212,33 @@
     </section>
   </main>
 
-  <script type="module">
-    import {
-      quyen_duocxem
-    } from './js/phanquyen.js';
+<script type="module">
+  import {
+    quyen_duocxem
+  } from './js/phan_quyen.js';
 
-    const input = document.getElementById('idChucNang');
-    const btnCheck = document.getElementById('btnCheck');
-    const resultEl = document.getElementById('result');
+  const input = document.getElementById('idChucNang');
+  const btnCheck = document.getElementById('btnCheck');
 
-    function setResult(type, text) {
-      resultEl.className = `result ${type}`;
-      resultEl.textContent = text;
-    }
+  btnCheck.addEventListener('click', async () => {
+    const idChucNang = input.value.trim();
 
-    async function kiemTraQuyen(idChucNang) {
-      const id = String(idChucNang || '').trim();
-
-      if (!id) {
-        alert('Vui lòng nhập id_chucnang');
-
-        setResult(
-          'error',
-          'Không có id_chucnang để kiểm tra.'
-        );
-
-        return;
+    const duocXem = await quyen_duocxem(
+      idChucNang,
+      'main.html',
+      {
+        thongBao: true,
+        batBuocTaiLai: true
       }
-
-      btnCheck.disabled = true;
-      btnCheck.textContent = 'Đang kiểm tra...';
-
-      setResult(
-        'no',
-        [
-          'Đang lấy phân quyền...',
-          `id_chucnang: ${id}`
-        ].join('\n')
-      );
-
-      try {
-        console.log(
-          '[TEST PHÂN QUYỀN] Bắt đầu kiểm tra:',
-          id
-        );
-
-        const duocXem = await quyen_duocxem(id);
-
-        console.log(
-          '[TEST PHÂN QUYỀN] Kết quả:',
-          {
-            id_chucnang: id,
-            duoc_xem: duocXem
-          }
-        );
-
-        if (duocXem === true) {
-          setResult(
-            'ok',
-            [
-              '✅ CÓ QUYỀN ĐƯỢC XEM',
-              '',
-              `id_chucnang: ${id}`,
-              'duoc_xem: true'
-            ].join('\n')
-          );
-
-          alert(
-            [
-              'KẾT QUẢ PHÂN QUYỀN',
-              '',
-              `id_chucnang: ${id}`,
-              'duoc_xem: TRUE',
-              '',
-              'Nhân viên được phép xem chức năng này.'
-            ].join('\n')
-          );
-        } else {
-          setResult(
-            'no',
-            [
-              '⛔ KHÔNG CÓ QUYỀN ĐƯỢC XEM',
-              '',
-              `id_chucnang: ${id}`,
-              'duoc_xem: false'
-            ].join('\n')
-          );
-
-          alert(
-            [
-              'KẾT QUẢ PHÂN QUYỀN',
-              '',
-              `id_chucnang: ${id}`,
-              'duoc_xem: FALSE',
-              '',
-              'Không tìm thấy quyền hoặc duoc_xem đang bằng false.'
-            ].join('\n')
-          );
-        }
-      } catch (error) {
-        console.error(
-          '[TEST PHÂN QUYỀN] Lỗi:',
-          error
-        );
-
-        const message =
-          error?.message || String(error);
-
-        setResult(
-          'error',
-          [
-            '❌ LỖI KIỂM TRA QUYỀN',
-            '',
-            `id_chucnang: ${id}`,
-            `message: ${message}`
-          ].join('\n')
-        );
-
-        alert(
-          [
-            'LỖI KIỂM TRA PHÂN QUYỀN',
-            '',
-            `id_chucnang: ${id}`,
-            `message: ${message}`,
-            '',
-            'Mở F12 → Console để xem chi tiết.'
-          ].join('\n')
-        );
-      } finally {
-        btnCheck.disabled = false;
-        btnCheck.textContent = 'Kiểm tra quyền';
-      }
-    }
-
-    btnCheck.addEventListener('click', () => {
-      kiemTraQuyen(input.value);
-    });
-
-    input.addEventListener('keydown', event => {
-      if (event.key === 'Enter') {
-        kiemTraQuyen(input.value);
-      }
-    });
-
-    document
-      .getElementById('btnAdmin')
-      .addEventListener('click', () => {
-        input.value = 'admin';
-        kiemTraQuyen('admin');
-      });
-
-    document
-      .getElementById('btnDongHang')
-      .addEventListener('click', () => {
-        input.value = 'donghang';
-        kiemTraQuyen('donghang');
-      });
-
-    document
-      .getElementById('btnCheckDon')
-      .addEventListener('click', () => {
-        input.value = 'checkdon';
-        kiemTraQuyen('checkdon');
-      });
-
-    // Kiểm tra file module đã tải
-    console.log(
-      '[TEST PHÂN QUYỀN] Đã tải test_phan_quyen.html'
     );
 
-    console.log(
-      '[TEST PHÂN QUYỀN] Hàm quyen_duocxem:',
-      typeof quyen_duocxem
-    );
-  </script>
+    console.log({
+      id_chucnang: idChucNang,
+      duoc_xem: duocXem
+    });
+  });
+</script>
+
 </body>
 </html>
 ```
