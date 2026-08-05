@@ -1,6 +1,4 @@
-from pathlib import Path
-
-code = r"""// ==================== js/phan_quyen.js ====================
+// ==================== js/phan_quyen.js ====================
 
 const LOGIN_STORAGE_KEYS = [
   'nv',
@@ -181,13 +179,13 @@ export async function taoSupabaseClient() {
 }
 
 /**
- * Hàm kiểm tra quyền.
+ * Kiểm tra quyền theo:
+ * - ma_nv
+ * - vai_tro_id
+ * - duong_dan
+ * - id_chucnang
  *
- * Chỉ truyền id_chucnang.
- * Tên trang sẽ tự lấy từ URL.
- *
- * Hàm này vẫn trả về true/false
- * để không làm hỏng các trang cũ.
+ * Hàm trả về true/false.
  */
 export async function quyen_duocxem(
   id_chucnang
@@ -269,8 +267,7 @@ export async function quyen_duocxem(
      * Bước 2:
      * Lọc quyền theo đúng 4 điều kiện.
      *
-     * Không lọc theo ten_chucnang.
-     * ten_chucnang chỉ lấy ra để hiển thị trên nút.
+     * ten_chucnang chỉ lấy ra để hiển thị.
      */
     const {
       data,
@@ -395,9 +392,9 @@ export async function quyen_duocxem(
 }
 
 /**
- * Lấy chi tiết quyền sau khi đã lọc theo id_chucnang.
+ * Lấy chi tiết quyền sau khi đã lọc.
  *
- * Dùng hàm này để lấy:
+ * Dùng để lấy:
  * - ten_chucnang
  * - duoc_xem
  * - tim_thay
@@ -448,15 +445,14 @@ export async function layChiTietQuyen(
 }
 
 /**
- * Xóa cache chi tiết quyền.
- * Dùng khi vừa thay đổi quyền trong Supabase.
+ * Xóa cache quyền.
  */
 export function xoaCachePhanQuyen() {
   chiTietQuyenCache.clear();
 }
 
 /**
- * Test trực tiếp trong F12 Console:
+ * Test trong F12 Console:
  *
  * layTenTrangHienTai()
  * await testQuyenDuocXem('admin')
@@ -481,9 +477,3 @@ console.log(
       layTenTrangHienTai()
   }
 );
-"""
-
-path = Path("/mnt/data/phan_quyen.js")
-path.write_text(code, encoding="utf-8")
-
-print(path)
