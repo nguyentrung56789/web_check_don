@@ -1,211 +1,4 @@
-from pathlib import Path
-import zipfile
-
-src = Path("/mnt/data/Văn bản đã dán (1)(20260805-112008).txt")
-main_out = Path("/mnt/data/main_muot.html")
-perm_out = Path("/mnt/data/phan_quyen_muot.js")
-zip_out = Path("/mnt/data/bo_phan_quyen_muot.zip")
-
-main = src.read_text(encoding="utf-8")
-
-# Không để trang trắng nếu module lỗi.
-main = main.replace(
-"""    body {
-      visibility: hidden;""",
-"""    body {
-      visibility: visible;"""
-)
-
-# CSS hiệu ứng mượt.
-css_anchor = """    .permission-menu {
-      width: min(100%, 670px);
-      margin: 0 auto;
-      display: grid;
-      gap: 14px;
-    }
-"""
-css_replacement = """    .permission-menu {
-      width: min(100%, 670px);
-      margin: 0 auto;
-      display: grid;
-      gap: 14px;
-      opacity: 0;
-      transform: translateY(8px);
-      transition:
-        opacity 0.24s ease,
-        transform 0.24s ease;
-    }
-
-    .permission-menu.loaded {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .permission-btn.permission-show {
-      animation: hienNut 0.24s ease both;
-    }
-
-    @keyframes hienNut {
-      from {
-        opacity: 0;
-        transform: translateY(6px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .permission-menu,
-      .permission-btn {
-        transition: none !important;
-        animation: none !important;
-      }
-    }
-"""
-main = main.replace(css_anchor, css_replacement)
-
-# Import hàm tải toàn bộ quyền 1 lần.
-main = main.replace(
-"""    import {
-      quyen_duocxem
-    } from './js/phan_quyen.js';""",
-"""    import {
-      quyen_duocxem,
-      layDanhSachQuyenTrang
-    } from './js/phan_quyen.js';"""
-)
-
-# Thay hàm apDungQuyen.
-start = main.find("    async function apDungQuyen() {")
-end = main.find("    function ganSuKienNut() {", start)
-
-if start == -1 or end == -1:
-    raise RuntimeError("Không tìm thấy hàm apDungQuyen trong main.html")
-
-new_apply = """    async function apDungQuyen() {
-      anTatCaNut();
-
-      const permissionMenu =
-        $('#permissionMenu');
-
-      permissionMenu?.classList.remove(
-        'loaded'
-      );
-
-      const danhSachQuyen =
-        await layDanhSachQuyenTrang({
-          batBuocTaiLai: true
-        });
-
-      const quyenMap = new Map(
-        danhSachQuyen.map(item => [
-          item.id_chucnang,
-          item
-        ])
-      );
-
-      let soNutDuocHien = 0;
-      const results = [];
-
-      for (const button of permissionButtons) {
-        const idChucNang =
-          String(
-            button.dataset.idChucnang ||
-            button.id ||
-            ''
-          )
-            .trim()
-            .toLowerCase();
-
-        const quyen =
-          quyenMap.get(idChucNang);
-
-        const duocXem =
-          quyen?.duoc_xem === true;
-
-        button.dataset.duocXem =
-          String(duocXem);
-
-        button.dataset.tenChucnang =
-          quyen?.ten_chucnang || '';
-
-        const nameElement =
-          button.querySelector(
-            '.permission-name'
-          );
-
-        if (
-          nameElement &&
-          quyen?.ten_chucnang
-        ) {
-          nameElement.textContent =
-            quyen.ten_chucnang;
-        }
-
-        if (duocXem) {
-          button.classList.remove(
-            'hidden'
-          );
-
-          button.classList.add(
-            'permission-show'
-          );
-
-          button.style.display = '';
-
-          button.style.animationDelay =
-            `${soNutDuocHien * 45}ms`;
-
-          soNutDuocHien += 1;
-        }
-
-        results.push({
-          id_chucnang:
-            idChucNang,
-          ten_chucnang:
-            quyen?.ten_chucnang || '',
-          duoc_xem:
-            duocXem
-        });
-      }
-
-      emptyNote.style.display =
-        soNutDuocHien === 0
-          ? 'block'
-          : 'none';
-
-      requestAnimationFrame(() => {
-        permissionMenu?.classList.add(
-          'loaded'
-        );
-      });
-
-      console.table(results);
-
-      return results;
-    }
-
-"""
-main = main[:start] + new_apply + main[end:]
-
-main = main.replace(
-"""          document.body.style.visibility =
-            'visible';
-
-          document.body.classList.add(
-            'ready'
-          );""",
-"""          document.body.classList.add(
-            'ready'
-          );"""
-)
-
-main_out.write_text(main, encoding="utf-8")
-
-perm = r"""// ==================== js/phan_quyen.js ====================
+// ==================== js/phan_quyen.js ====================
 
 const LOGIN_STORAGE_KEYS = [
   'nv',
@@ -378,7 +171,7 @@ export async function taoSupabaseClient() {
   return supabaseClientCache;
 }
 
-async function layNhanVienVaVaiTro(
+export async function layNhanVienVaVaiTro(
   batBuocTaiLai = false
 ) {
   const maNv =
@@ -512,17 +305,22 @@ export async function layDanhSachQuyenTrang(
       .map(row => ({
         ma_nv:
           clean(row.ma_nv),
+
         vai_tro_id:
           clean(row.vai_tro_id),
+
         duong_dan:
           clean(row.duong_dan)
             .toLowerCase(),
+
         id_chucnang:
           normalizeFunctionId(
             row.id_chucnang
           ),
+
         ten_chucnang:
           clean(row.ten_chucnang),
+
         duoc_xem:
           toBool(row.duoc_xem)
       }))
@@ -543,12 +341,16 @@ export async function layDanhSachQuyenTrang(
     {
       ma_nv:
         nhanVien.ma_nv,
+
       vai_tro_id:
         nhanVien.vai_tro_id,
+
       duong_dan:
         duongDan,
+
       so_quyen:
         danhSach.length,
+
       du_lieu:
         danhSach
     }
@@ -588,12 +390,16 @@ export async function quyen_duocxem(
       {
         id_chucnang:
           idChucNang,
+
         ten_chucnang:
           quyen?.ten_chucnang || '',
+
         duong_dan:
           layTenTrangHienTai(),
+
         tim_thay:
           Boolean(quyen),
+
         duoc_xem:
           duocXem
       }
@@ -606,14 +412,18 @@ export async function quyen_duocxem(
       {
         id_chucnang:
           idChucNang,
+
         duong_dan:
           layTenTrangHienTai(),
+
         message:
           error?.message ||
           String(error),
+
         code:
           error?.code ||
           null,
+
         details:
           error?.details ||
           null
@@ -644,10 +454,13 @@ export async function layChiTietQuyen(
       ) || {
         id_chucnang:
           idChucNang,
+
         ten_chucnang:
           '',
+
         duong_dan:
           layTenTrangHienTai(),
+
         duoc_xem:
           false
       }
@@ -656,12 +469,16 @@ export async function layChiTietQuyen(
     return {
       id_chucnang:
         idChucNang,
+
       ten_chucnang:
         '',
+
       duong_dan:
         layTenTrangHienTai(),
+
       duoc_xem:
         false,
+
       error
     };
   }
@@ -674,6 +491,9 @@ export function xoaCachePhanQuyen() {
 
 window.layTenTrangHienTai =
   layTenTrangHienTai;
+
+window.layNhanVienVaVaiTro =
+  layNhanVienVaVaiTro;
 
 window.testQuyenDuocXem =
   quyen_duocxem;
@@ -691,14 +511,3 @@ console.log(
       layTenTrangHienTai()
   }
 );
-"""
-
-perm_out.write_text(perm, encoding="utf-8")
-
-with zipfile.ZipFile(zip_out, "w", zipfile.ZIP_DEFLATED) as z:
-    z.write(main_out, arcname="main.html")
-    z.write(perm_out, arcname="js/phan_quyen.js")
-
-print(f"Đã tạo: {main_out}")
-print(f"Đã tạo: {perm_out}")
-print(f"Đã tạo: {zip_out}")
