@@ -1,4 +1,3 @@
-```html
 <!doctype html>
 <html lang="vi">
 <head>
@@ -6,386 +5,347 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
   />
 
-  <title>Kiểm tra quyền được xem</title>
+  <title>Trang quản trị</title>
 
-  <!-- Các file cấu hình đang dùng trong hệ thống -->
   <script src="./js/internal_key.js"></script>
-  <script src="./js/cod_config.js"></script>
-
-  <!-- Thư viện Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/cod_config.js"></script>
+  <script src="./js/auth_token.js"></script>
 
   <style>
+    :root {
+      --bg: #0b1220;
+      --card: #0f1830;
+      --text: #e6edff;
+      --muted: #9aa7c7;
+      --line: #233043;
+      --primary: #2dd4bf;
+      --primary-hover: #5eead4;
+      --primary-text: #042f2e;
+      --secondary: #60a5fa;
+      --secondary-hover: #93c5fd;
+      --danger: #f87171;
+    }
+
     * {
       box-sizing: border-box;
     }
 
+    html,
+    body {
+      min-height: 100%;
+    }
+
     body {
       margin: 0;
-      min-height: 100vh;
-      padding: 24px;
-      font-family: Arial, sans-serif;
-      background: #0b1220;
-      color: #e6edff;
+      background: linear-gradient(135deg, #0b1220, #111a2f);
+      color: var(--text);
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
     }
 
-    .wrap {
-      width: min(100%, 680px);
-      margin: 0 auto;
+    button,
+    a {
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .card {
-      padding: 22px;
-      border: 1px solid #263451;
-      border-radius: 16px;
-      background: #111a2e;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
-    }
-
-    h1 {
-      margin: 0 0 20px;
-      font-size: 24px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      color: #aebbd5;
-      font-weight: 700;
-    }
-
-    input {
-      width: 100%;
-      min-height: 46px;
-      padding: 10px 12px;
-      border: 1px solid #344563;
-      border-radius: 10px;
-      background: #0b1220;
-      color: #ffffff;
-      font-size: 16px;
-      outline: none;
-    }
-
-    input:focus {
-      border-color: #60a5fa;
-    }
-
-    .buttons {
+    .topbar {
+      position: fixed;
+      top: 0;
+      right: 0;
+      left: 0;
+      z-index: 10;
       display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 14px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 64px;
+      padding: 12px 18px;
+      background: rgba(15, 24, 48, 0.98);
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(10px);
     }
 
-    button {
-      min-height: 42px;
-      padding: 10px 14px;
+    .title {
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .back-btn {
       border: 0;
-      border-radius: 10px;
-      background: #2563eb;
-      color: #ffffff;
+      padding: 8px 4px;
+      background: transparent;
+      color: var(--danger);
       font-size: 15px;
-      font-weight: 700;
+      font-weight: 750;
       cursor: pointer;
     }
 
-    button.secondary {
-      background: #334155;
+    .back-btn:hover {
+      text-decoration: underline;
     }
 
-    button:disabled {
-      cursor: not-allowed;
-      opacity: 0.6;
+    .wrap {
+      width: min(560px, 92vw);
+      margin: 110px auto 40px;
     }
 
-    .result {
-      display: none;
-      margin-top: 18px;
-      padding: 14px;
-      border-radius: 12px;
-      white-space: pre-wrap;
-      line-height: 1.6;
+    .card {
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(15, 24, 48, 0.98);
+      box-shadow: 0 14px 38px rgba(0, 0, 0, 0.3);
     }
 
-    .result.ok {
-      display: block;
-      border: 1px solid #10b981;
-      background: #064e3b;
-      color: #d1fae5;
+    h1 {
+      margin: 0 0 6px;
+      font-size: 24px;
     }
 
-    .result.no {
-      display: block;
-      border: 1px solid #f59e0b;
-      background: #78350f;
-      color: #fef3c7;
-    }
-
-    .result.error {
-      display: block;
-      border: 1px solid #ef4444;
-      background: #7f1d1d;
-      color: #fee2e2;
-    }
-
-    .info {
-      margin-top: 18px;
-      padding: 12px;
-      border-radius: 10px;
-      background: #0b1220;
-      color: #9fb0cf;
+    .desc {
+      margin: 0 0 22px;
+      color: var(--muted);
       font-size: 14px;
-      line-height: 1.6;
+      line-height: 1.5;
     }
 
-    code {
-      color: #93c5fd;
+    .menu {
+      display: grid;
+      gap: 14px;
+    }
+
+    .menu-btn {
+      width: 100%;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 18px;
+      background: var(--primary);
+      color: var(--primary-text);
+      font-size: 18px;
+      font-weight: 850;
+      text-align: center;
+      text-decoration: none;
+      cursor: pointer;
+      transition:
+        transform 0.15s ease,
+        background 0.15s ease,
+        filter 0.15s ease;
+    }
+
+    .menu-btn:hover {
+      transform: translateY(-1px);
+      background: var(--primary-hover);
+      filter: brightness(1.03);
+    }
+
+    .menu-btn:active {
+      transform: translateY(0);
+    }
+
+    #linkDanhSachQuyen {
+      background: var(--secondary);
+      color: #071a34;
+    }
+
+    #linkDanhSachQuyen:hover {
+      background: var(--secondary-hover);
+    }
+
+    footer {
+      padding: 0 16px 24px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @media (max-width: 520px) {
+      .topbar {
+        padding: 12px 14px;
+      }
+
+      .wrap {
+        margin-top: 92px;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      .menu-btn {
+        min-height: 56px;
+        font-size: 17px;
+      }
     }
   </style>
 </head>
 
 <body>
+  <header class="topbar">
+    <div class="title">⚙️ Trang quản trị</div>
+
+    <button
+      id="btnBack"
+      class="back-btn"
+      type="button"
+    >
+      ← Quay lại
+    </button>
+  </header>
+
   <main class="wrap">
     <section class="card">
-      <h1>🔐 Kiểm tra quyền được xem</h1>
+      <h1>Admin</h1>
 
-      <label for="idChucNang">
-        Nhập id_chucnang
-      </label>
+      <p class="desc">
+        Chọn chức năng quản trị bên dưới.
+      </p>
 
-      <input
-        id="idChucNang"
-        type="text"
-        value="admin"
-        placeholder="Ví dụ: admin, donghang, checkdon"
-        autocomplete="off"
-      />
-
-      <div class="buttons">
-        <button id="btnCheck" type="button">
-          Kiểm tra quyền
-        </button>
-
-        <button
-          id="btnAdmin"
-          class="secondary"
-          type="button"
+      <div class="menu">
+        <a
+          id="linkQuanLyNhanVien"
+          class="menu-btn"
+          href="./qly_nhanvien.html"
         >
-          Test admin
-        </button>
+          👥 Quản lý nhân viên
+        </a>
 
-        <button
-          id="btnDongHang"
-          class="secondary"
-          type="button"
+        <a
+          id="linkDanhSachQuyen"
+          class="menu-btn"
+          href="./danh_sach_quyen.html"
         >
-          Test donghang
-        </button>
-
-        <button
-          id="btnCheckDon"
-          class="secondary"
-          type="button"
-        >
-          Test checkdon
-        </button>
-      </div>
-
-      <div id="result" class="result"></div>
-
-      <div class="info">
-        Trang này gọi:
-
-        <br />
-
-        <code>
-          quyen_duocxem(id_chucnang)
-        </code>
-
-        <br /><br />
-
-        Mở F12 → Console để xem chi tiết dữ liệu phân quyền.
+          🛡️ Danh sách quyền
+        </a>
       </div>
     </section>
   </main>
 
-  <script type="module">
-    import {
-      quyen_duocxem
-    } from './js/phanquyen.js';
+  <footer>
+    © <span id="year"></span> COD Internal
+  </footer>
 
-    const input = document.getElementById('idChucNang');
-    const btnCheck = document.getElementById('btnCheck');
-    const resultEl = document.getElementById('result');
+  <script>
+    (() => {
+      'use strict';
 
-    function setResult(type, text) {
-      resultEl.className = `result ${type}`;
-      resultEl.textContent = text;
-    }
+      const yearElement =
+        document.getElementById('year');
 
-    async function kiemTraQuyen(idChucNang) {
-      const id = String(idChucNang || '').trim();
+      const linkQuanLyNhanVien =
+        document.getElementById('linkQuanLyNhanVien');
 
-      if (!id) {
-        alert('Vui lòng nhập id_chucnang');
+      const linkDanhSachQuyen =
+        document.getElementById('linkDanhSachQuyen');
 
-        setResult(
-          'error',
-          'Không có id_chucnang để kiểm tra.'
-        );
+      const btnBack =
+        document.getElementById('btnBack');
 
-        return;
+      if (yearElement) {
+        yearElement.textContent =
+          new Date().getFullYear();
       }
 
-      btnCheck.disabled = true;
-      btnCheck.textContent = 'Đang kiểm tra...';
+      function getTokenFromAnywhere() {
+        const params =
+          new URLSearchParams(window.location.search);
 
-      setResult(
-        'no',
-        [
-          'Đang lấy phân quyền...',
-          `id_chucnang: ${id}`
-        ].join('\n')
+        return (
+          params.get('token') ||
+          params.get('access_token') ||
+          params.get('t') ||
+          localStorage.getItem('token') ||
+          localStorage.getItem('access_token') ||
+          localStorage.getItem('cod_token') ||
+          sessionStorage.getItem('token') ||
+          sessionStorage.getItem('access_token') ||
+          sessionStorage.getItem('cod_token') ||
+          ''
+        );
+      }
+
+      function buildUrl(fileName) {
+        const url =
+          new URL(fileName, window.location.href);
+
+        const currentParams =
+          new URLSearchParams(window.location.search);
+
+        currentParams.forEach((value, key) => {
+          if (key !== '_v') {
+            url.searchParams.set(key, value);
+          }
+        });
+
+        const token = getTokenFromAnywhere();
+
+        if (token) {
+          url.searchParams.set('token', token);
+        }
+
+        url.searchParams.set(
+          '_v',
+          Date.now().toString()
+        );
+
+        return url.href;
+      }
+
+      function bindLink(element, fileName) {
+        if (!element) return;
+
+        element.href = buildUrl(fileName);
+
+        element.addEventListener('click', event => {
+          event.preventDefault();
+
+          window.location.assign(
+            buildUrl(fileName)
+          );
+        });
+      }
+
+      bindLink(
+        linkQuanLyNhanVien,
+        './qly_nhanvien.html'
       );
 
-      try {
-        console.log(
-          '[TEST PHÂN QUYỀN] Bắt đầu kiểm tra:',
-          id
-        );
+      bindLink(
+        linkDanhSachQuyen,
+        './danh_sach_quyen.html'
+      );
 
-        const duocXem = await quyen_duocxem(id);
-
-        console.log(
-          '[TEST PHÂN QUYỀN] Kết quả:',
-          {
-            id_chucnang: id,
-            duoc_xem: duocXem
+      if (btnBack) {
+        btnBack.addEventListener('click', () => {
+          if (
+            document.referrer &&
+            window.history.length > 1
+          ) {
+            window.history.back();
+            return;
           }
-        );
 
-        if (duocXem === true) {
-          setResult(
-            'ok',
-            [
-              '✅ CÓ QUYỀN ĐƯỢC XEM',
-              '',
-              `id_chucnang: ${id}`,
-              'duoc_xem: true'
-            ].join('\n')
+          window.location.assign(
+            buildUrl('./main.html')
           );
-
-          alert(
-            [
-              'KẾT QUẢ PHÂN QUYỀN',
-              '',
-              `id_chucnang: ${id}`,
-              'duoc_xem: TRUE',
-              '',
-              'Nhân viên được phép xem chức năng này.'
-            ].join('\n')
-          );
-        } else {
-          setResult(
-            'no',
-            [
-              '⛔ KHÔNG CÓ QUYỀN ĐƯỢC XEM',
-              '',
-              `id_chucnang: ${id}`,
-              'duoc_xem: false'
-            ].join('\n')
-          );
-
-          alert(
-            [
-              'KẾT QUẢ PHÂN QUYỀN',
-              '',
-              `id_chucnang: ${id}`,
-              'duoc_xem: FALSE',
-              '',
-              'Không tìm thấy quyền hoặc duoc_xem đang bằng false.'
-            ].join('\n')
-          );
-        }
-      } catch (error) {
-        console.error(
-          '[TEST PHÂN QUYỀN] Lỗi:',
-          error
-        );
-
-        const message =
-          error?.message || String(error);
-
-        setResult(
-          'error',
-          [
-            '❌ LỖI KIỂM TRA QUYỀN',
-            '',
-            `id_chucnang: ${id}`,
-            `message: ${message}`
-          ].join('\n')
-        );
-
-        alert(
-          [
-            'LỖI KIỂM TRA PHÂN QUYỀN',
-            '',
-            `id_chucnang: ${id}`,
-            `message: ${message}`,
-            '',
-            'Mở F12 → Console để xem chi tiết.'
-          ].join('\n')
-        );
-      } finally {
-        btnCheck.disabled = false;
-        btnCheck.textContent = 'Kiểm tra quyền';
+        });
       }
-    }
-
-    btnCheck.addEventListener('click', () => {
-      kiemTraQuyen(input.value);
-    });
-
-    input.addEventListener('keydown', event => {
-      if (event.key === 'Enter') {
-        kiemTraQuyen(input.value);
-      }
-    });
-
-    document
-      .getElementById('btnAdmin')
-      .addEventListener('click', () => {
-        input.value = 'admin';
-        kiemTraQuyen('admin');
-      });
-
-    document
-      .getElementById('btnDongHang')
-      .addEventListener('click', () => {
-        input.value = 'donghang';
-        kiemTraQuyen('donghang');
-      });
-
-    document
-      .getElementById('btnCheckDon')
-      .addEventListener('click', () => {
-        input.value = 'checkdon';
-        kiemTraQuyen('checkdon');
-      });
-
-    // Kiểm tra file module đã tải
-    console.log(
-      '[TEST PHÂN QUYỀN] Đã tải test_phan_quyen.html'
-    );
-
-    console.log(
-      '[TEST PHÂN QUYỀN] Hàm quyen_duocxem:',
-      typeof quyen_duocxem
-    );
+    })();
   </script>
 </body>
 </html>
-```
