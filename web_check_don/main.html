@@ -1,21 +1,20 @@
-```html
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8">
 
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1"
-  />
+  >
 
-  <title>Kiểm tra quyền được xem</title>
+  <title>Kiểm tra phân quyền</title>
 
-  <!-- Các file cấu hình đang dùng trong hệ thống -->
+  <!-- Cấu hình của hệ thống -->
   <script src="./js/internal_key.js"></script>
   <script src="./js/cod_config.js"></script>
 
-  <!-- Thư viện Supabase -->
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -23,46 +22,53 @@
       box-sizing: border-box;
     }
 
+    html,
     body {
       margin: 0;
+      min-height: 100%;
+    }
+
+    body {
       min-height: 100vh;
       padding: 24px;
-      font-family: Arial, sans-serif;
+      font-family: Arial, Helvetica, sans-serif;
       background: #0b1220;
       color: #e6edff;
     }
 
     .wrap {
-      width: min(100%, 680px);
+      width: min(100%, 720px);
       margin: 0 auto;
     }
 
     .card {
       padding: 22px;
       border: 1px solid #263451;
-      border-radius: 16px;
+      border-radius: 18px;
       background: #111a2e;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
     }
 
     h1 {
       margin: 0 0 20px;
-      font-size: 24px;
+      font-size: 26px;
+      line-height: 1.3;
     }
 
     label {
       display: block;
       margin-bottom: 8px;
-      color: #aebbd5;
+      color: #b9c6df;
+      font-size: 15px;
       font-weight: 700;
     }
 
     input {
       width: 100%;
-      min-height: 46px;
-      padding: 10px 12px;
+      min-height: 48px;
+      padding: 11px 13px;
       border: 1px solid #344563;
-      border-radius: 10px;
+      border-radius: 11px;
       background: #0b1220;
       color: #ffffff;
       font-size: 16px;
@@ -71,20 +77,21 @@
 
     input:focus {
       border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.12);
     }
 
     .buttons {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-top: 14px;
+      margin-top: 16px;
     }
 
     button {
-      min-height: 42px;
-      padding: 10px 14px;
+      min-height: 44px;
+      padding: 10px 15px;
       border: 0;
-      border-radius: 10px;
+      border-radius: 11px;
       background: #2563eb;
       color: #ffffff;
       font-size: 15px;
@@ -92,39 +99,51 @@
       cursor: pointer;
     }
 
+    button:hover {
+      opacity: 0.92;
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
+
     button.secondary {
       background: #334155;
     }
 
-    button:disabled {
-      cursor: not-allowed;
-      opacity: 0.6;
+    button.kho-btn {
+      background: #059669;
     }
 
-    .result {
+    .hidden {
+      display: none !important;
+    }
+
+    #result {
       display: none;
       margin-top: 18px;
-      padding: 14px;
+      padding: 15px;
       border-radius: 12px;
       white-space: pre-wrap;
       line-height: 1.6;
     }
 
-    .result.ok {
+    #result.ok {
       display: block;
       border: 1px solid #10b981;
       background: #064e3b;
       color: #d1fae5;
     }
 
-    .result.no {
+    #result.no {
       display: block;
       border: 1px solid #f59e0b;
       background: #78350f;
       color: #fef3c7;
     }
 
-    .result.error {
+    #result.error {
       display: block;
       border: 1px solid #ef4444;
       background: #7f1d1d;
@@ -133,16 +152,40 @@
 
     .info {
       margin-top: 18px;
-      padding: 12px;
-      border-radius: 10px;
+      padding: 14px;
+      border-radius: 12px;
       background: #0b1220;
       color: #9fb0cf;
       font-size: 14px;
-      line-height: 1.6;
+      line-height: 1.7;
     }
 
     code {
       color: #93c5fd;
+    }
+
+    .status-kho {
+      margin-top: 14px;
+      color: #9fb0cf;
+      font-size: 14px;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 14px;
+      }
+
+      .card {
+        padding: 18px;
+      }
+
+      button {
+        flex: 1 1 calc(50% - 10px);
+      }
+
+      #btnCheck {
+        flex-basis: 100%;
+      }
     }
   </style>
 </head>
@@ -160,9 +203,9 @@
         id="idChucNang"
         type="text"
         value="admin"
-        placeholder="Ví dụ: admin, donghang, checkdon"
+        placeholder="Ví dụ: admin, donghang, checkdon, kho"
         autocomplete="off"
-      />
+      >
 
       <div class="buttons">
         <button id="btnCheck" type="button">
@@ -192,81 +235,410 @@
         >
           Test checkdon
         </button>
+
+        <button
+          id="btnTestKho"
+          class="secondary"
+          type="button"
+        >
+          Test kho
+        </button>
+
+        <!-- NÚT KHO THẬT -->
+        <button
+          id="kho"
+          class="kho-btn hidden"
+          type="button"
+          data-phan-quyen
+          data-id-chucnang="kho"
+        >
+          📦 Mở Kho
+        </button>
       </div>
 
-      <div id="result" class="result"></div>
+      <div id="statusKho" class="status-kho">
+        Đang kiểm tra quyền nút Kho...
+      </div>
+
+      <div id="result"></div>
 
       <div class="info">
         Trang này gọi:
 
-        <br />
+        <br>
+
+        <code>quyen_duocxem(id_chucnang, 'main.html')</code>
+
+        <br><br>
+
+        Quyền nút Kho được lọc theo:
+
+        <br>
 
         <code>
-          quyen_duocxem(id_chucnang)
+          ma_nv + duong_dan = main.html + id_chucnang = kho
         </code>
 
-        <br /><br />
+        <br><br>
 
-        Mở F12 → Console để xem chi tiết dữ liệu phân quyền.
+        Sau đó đọc giá trị:
+
+        <br>
+
+        <code>duoc_xem</code>
       </div>
     </section>
   </main>
 
-<script type="module">
-  import {
-    quyen_duocxem
-  } from './js/phan_quyen.js';
+  <script type="module">
+    import {
+      quyen_duocxem,
+      layChiTietQuyen
+    } from './js/phan_quyen.js';
 
-  document.addEventListener('DOMContentLoaded', async () => {
-    const btnKho = document.getElementById('kho');
+    const input =
+      document.getElementById('idChucNang');
 
-    if (!btnKho) {
-      console.error('Không tìm thấy nút #kho');
-      return;
+    const btnCheck =
+      document.getElementById('btnCheck');
+
+    const result =
+      document.getElementById('result');
+
+    const btnKho =
+      document.getElementById('kho');
+
+    const statusKho =
+      document.getElementById('statusKho');
+
+    function showResult(type, message) {
+      result.className = type;
+      result.textContent = message;
     }
 
-    // Luôn ẩn trước khi kiểm tra
-    btnKho.classList.add('hidden');
-    btnKho.style.display = 'none';
+    function goWithToken(url) {
+      const token =
+        sessionStorage.getItem('APP_ACCESS');
 
-    const duocXemKho = await quyen_duocxem(
-      'kho',
-      'main.html',
-      {
-        thongBao: true,
-        batBuocTaiLai: true
+      const target =
+        new URL(url, location.href);
+
+      if (token) {
+        target.searchParams.set(
+          'token',
+          token
+        );
       }
-    );
 
-    console.log('[NÚT KHO]', {
-      id_chucnang: 'kho',
-      duong_dan: 'main.html',
-      duoc_xem: duocXemKho
-    });
-
-    if (duocXemKho) {
-      btnKho.classList.remove('hidden');
-      btnKho.style.display = '';
+      location.href = target.toString();
     }
 
-    btnKho.addEventListener('click', () => {
-      if (!duocXemKho) {
-        alert('Bạn không có quyền xem chức năng Kho.');
+    async function kiemTraQuyen(
+      idChucNang,
+      hienThongBao = true
+    ) {
+      const id =
+        String(idChucNang || '').trim();
+
+      if (!id) {
+        alert('Vui lòng nhập id_chucnang');
+
+        showResult(
+          'error',
+          'Không có id_chucnang để kiểm tra.'
+        );
+
+        return false;
+      }
+
+      btnCheck.disabled = true;
+      btnCheck.textContent =
+        'Đang kiểm tra...';
+
+      showResult(
+        'no',
+        [
+          'Đang kiểm tra phân quyền...',
+          '',
+          `id_chucnang: ${id}`,
+          'duong_dan: main.html'
+        ].join('\n')
+      );
+
+      try {
+        const duocXem =
+          await quyen_duocxem(
+            id,
+            'main.html',
+            {
+              thongBao: hienThongBao,
+              batBuocTaiLai: true
+            }
+          );
+
+        const chiTiet =
+          await layChiTietQuyen(
+            id,
+            'main.html',
+            true
+          );
+
+        console.log(
+          '[KẾT QUẢ KIỂM TRA QUYỀN]',
+          chiTiet
+        );
+
+        if (duocXem === true) {
+          showResult(
+            'ok',
+            [
+              '✅ CÓ QUYỀN ĐƯỢC XEM',
+              '',
+              `ma_nv: ${chiTiet.ma_nv || 'KHÔNG CÓ'}`,
+              `vai_tro_id: ${chiTiet.vai_tro_id || 'KHÔNG CÓ'}`,
+              `id_chucnang: ${chiTiet.id_chucnang}`,
+              `duong_dan: ${chiTiet.duong_dan}`,
+              'duoc_xem: true'
+            ].join('\n')
+          );
+
+          return true;
+        }
+
+        showResult(
+          'no',
+          [
+            '⛔ KHÔNG CÓ QUYỀN ĐƯỢC XEM',
+            '',
+            `ma_nv: ${chiTiet.ma_nv || 'KHÔNG CÓ'}`,
+            `vai_tro_id: ${chiTiet.vai_tro_id || 'KHÔNG CÓ'}`,
+            `id_chucnang: ${chiTiet.id_chucnang}`,
+            `duong_dan: ${chiTiet.duong_dan}`,
+            `tìm thấy dòng quyền: ${chiTiet.tim_thay}`,
+            'duoc_xem: false'
+          ].join('\n')
+        );
+
+        return false;
+      } catch (error) {
+        console.error(
+          '[LỖI KIỂM TRA PHÂN QUYỀN]',
+          error
+        );
+
+        showResult(
+          'error',
+          [
+            '❌ LỖI KIỂM TRA QUYỀN',
+            '',
+            `id_chucnang: ${id}`,
+            `message: ${error?.message || String(error)}`
+          ].join('\n')
+        );
+
+        return false;
+      } finally {
+        btnCheck.disabled = false;
+        btnCheck.textContent =
+          'Kiểm tra quyền';
+      }
+    }
+
+    async function apDungQuyenNutKho() {
+      if (!btnKho) {
+        console.error(
+          '[NÚT KHO] Không tìm thấy phần tử id="kho"'
+        );
+
         return;
       }
 
-      const token = sessionStorage.getItem('APP_ACCESS');
-      const url = new URL('./kho.html', location.href);
+      // Mặc định ẩn trước khi kiểm tra
+      btnKho.classList.add('hidden');
+      btnKho.style.display = 'none';
 
-      if (token) {
-        url.searchParams.set('token', token);
+      statusKho.textContent =
+        'Đang lấy quyền chức năng Kho...';
+
+      try {
+        const duocXemKho =
+          await quyen_duocxem(
+            'kho',
+            'main.html',
+            {
+              thongBao: false,
+              batBuocTaiLai: true
+            }
+          );
+
+        console.log(
+          '[PHÂN QUYỀN NÚT KHO]',
+          {
+            id_chucnang: 'kho',
+            duong_dan: 'main.html',
+            duoc_xem: duocXemKho
+          }
+        );
+
+        if (duocXemKho === true) {
+          btnKho.classList.remove('hidden');
+          btnKho.style.display = '';
+
+          statusKho.textContent =
+            '✅ Nhân viên có quyền xem Kho. Nút Kho đã được hiển thị.';
+        } else {
+          btnKho.classList.add('hidden');
+          btnKho.style.display = 'none';
+
+          statusKho.textContent =
+            '⛔ Nhân viên không có quyền xem Kho. Nút Kho đang bị ẩn.';
+        }
+
+        return duocXemKho;
+      } catch (error) {
+        console.error(
+          '[NÚT KHO] Lỗi áp dụng quyền:',
+          error
+        );
+
+        btnKho.classList.add('hidden');
+        btnKho.style.display = 'none';
+
+        statusKho.textContent =
+          `❌ Lỗi kiểm tra quyền Kho: ${
+            error?.message || String(error)
+          }`;
+
+        return false;
       }
+    }
 
-      location.href = url.toString();
-    });
-  });
-</script>
+    btnCheck.addEventListener(
+      'click',
+      async () => {
+        await kiemTraQuyen(
+          input.value,
+          true
+        );
+      }
+    );
 
+    input.addEventListener(
+      'keydown',
+      async event => {
+        if (event.key === 'Enter') {
+          await kiemTraQuyen(
+            input.value,
+            true
+          );
+        }
+      }
+    );
+
+    document
+      .getElementById('btnAdmin')
+      .addEventListener(
+        'click',
+        async () => {
+          input.value = 'admin';
+
+          await kiemTraQuyen(
+            'admin',
+            true
+          );
+        }
+      );
+
+    document
+      .getElementById('btnDongHang')
+      .addEventListener(
+        'click',
+        async () => {
+          input.value = 'donghang';
+
+          await kiemTraQuyen(
+            'donghang',
+            true
+          );
+        }
+      );
+
+    document
+      .getElementById('btnCheckDon')
+      .addEventListener(
+        'click',
+        async () => {
+          input.value = 'checkdon';
+
+          await kiemTraQuyen(
+            'checkdon',
+            true
+          );
+        }
+      );
+
+    document
+      .getElementById('btnTestKho')
+      .addEventListener(
+        'click',
+        async () => {
+          input.value = 'kho';
+
+          const duocXemKho =
+            await kiemTraQuyen(
+              'kho',
+              true
+            );
+
+          if (duocXemKho) {
+            btnKho.classList.remove('hidden');
+            btnKho.style.display = '';
+          } else {
+            btnKho.classList.add('hidden');
+            btnKho.style.display = 'none';
+          }
+        }
+      );
+
+    btnKho.addEventListener(
+      'click',
+      async () => {
+        // Kiểm tra lại quyền trước khi chuyển trang
+        const duocXemKho =
+          await quyen_duocxem(
+            'kho',
+            'main.html',
+            {
+              thongBao: false,
+              batBuocTaiLai: true
+            }
+          );
+
+        if (!duocXemKho) {
+          btnKho.classList.add('hidden');
+          btnKho.style.display = 'none';
+
+          alert(
+            'Bạn không có quyền truy cập chức năng Kho.'
+          );
+
+          return;
+        }
+
+        goWithToken('./kho.html');
+      }
+    );
+
+    document.addEventListener(
+      'DOMContentLoaded',
+      async () => {
+        console.log(
+          '[MAIN] Đã tải thành công ./js/phan_quyen.js'
+        );
+
+        await apDungQuyenNutKho();
+      }
+    );
+  </script>
 </body>
 </html>
-```
