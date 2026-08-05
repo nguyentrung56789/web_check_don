@@ -68,8 +68,19 @@
       cursor: pointer;
     }
 
+    .back-btn:hover {
+      background: #172033;
+    }
+
+    #tenNhanVien {
+      max-width: 220px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
     .page-title {
-      margin: 0 0 32px;
+      margin: 0 0 28px;
       text-align: center;
       font-size: clamp(28px, 6vw, 40px);
       font-weight: 900;
@@ -78,7 +89,17 @@
 
     .menu {
       display: grid;
-      gap: 22px;
+      gap: 14px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition:
+        opacity 0.24s ease,
+        transform 0.24s ease;
+    }
+
+    .menu.loaded {
+      opacity: 1;
+      transform: translateY(0);
     }
 
     .hidden {
@@ -87,16 +108,17 @@
 
     .permission-btn {
       width: 100%;
-      min-height: 116px;
-      padding: 22px 28px;
+      min-height: 66px;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
       border: 0;
-      border-radius: 19px;
+      border-radius: 13px;
       color: #07101f;
       text-align: left;
-      font-size: clamp(22px, 5vw, 31px);
-      font-weight: 900;
       cursor: pointer;
-      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.26);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
       transition:
         transform 0.18s ease,
         filter 0.18s ease;
@@ -105,6 +127,22 @@
     .permission-btn:hover {
       transform: translateY(-2px);
       filter: brightness(1.05);
+    }
+
+    .permission-btn.permission-show {
+      animation: hienNut 0.24s ease both;
+    }
+
+    .permission-icon {
+      flex: 0 0 38px;
+      font-size: 27px;
+      line-height: 1;
+      text-align: center;
+    }
+
+    .permission-name {
+      font-size: clamp(18px, 4vw, 24px);
+      font-weight: 900;
     }
 
     .btn-chamsockhachhang {
@@ -136,6 +174,25 @@
       color: #fee2e2;
     }
 
+    @keyframes hienNut {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .menu,
+      .permission-btn {
+        transition: none !important;
+        animation: none !important;
+      }
+    }
 
     @media (max-width: 600px) {
       body {
@@ -143,8 +200,17 @@
       }
 
       .permission-btn {
-        min-height: 94px;
-        padding: 18px 20px;
+        min-height: 60px;
+        padding: 10px 14px;
+      }
+
+      .permission-icon {
+        flex-basis: 34px;
+        font-size: 24px;
+      }
+
+      .permission-name {
+        font-size: 18px;
       }
     }
   </style>
@@ -153,24 +219,39 @@
 <body>
   <main class="page">
     <div class="topbar">
-      <button id="btnBack" class="back-btn" type="button">
+      <button
+        id="btnBack"
+        class="back-btn"
+        type="button"
+      >
         ← Quay lại
       </button>
 
-      <strong id="tenNhanVien">Nhân viên</strong>
+      <strong id="tenNhanVien">
+        Nhân viên
+      </strong>
     </div>
 
-    <h1 class="page-title">Kinh doanh</h1>
+    <h1 class="page-title">
+      Kinh doanh
+    </h1>
 
-    <section class="menu">
+    <section
+      id="permissionMenu"
+      class="menu"
+    >
       <button
         id="chamsockhachhang"
         class="permission-btn btn-chamsockhachhang hidden"
         type="button"
         data-phan-quyen
+        data-id-chucnang="chamsockhachhang"
         data-url="./chamsockhachhang.html"
       >
-        💬 Chăm sóc khách hàng
+        <span class="permission-icon">💬</span>
+        <span class="permission-name">
+          Chăm sóc khách hàng
+        </span>
       </button>
 
       <button
@@ -178,14 +259,18 @@
         class="permission-btn btn-tinhdoanhso hidden"
         type="button"
         data-phan-quyen
+        data-id-chucnang="tinhdoanhso"
         data-url="./tinhdoanhsonhanvien.html"
       >
-        🧮 Tính doanh số nhân viên
+        <span class="permission-icon">🧮</span>
+        <span class="permission-name">
+          Tính doanh số nhân viên
+        </span>
       </button>
     </section>
 
     <div id="emptyNote" class="empty-note">
-      Tài khoản chưa được cấp quyền sử dụng hai chức năng này.
+      Tài khoản chưa được cấp quyền sử dụng chức năng nào.
     </div>
 
     <div id="errorNote" class="error-note"></div>
@@ -194,35 +279,52 @@
   <script type="module">
     import {
       quyen_duocxem,
-      layTenTrangHienTai,
-      layMaNhanVienDangNhap
+      layDanhSachQuyenTrang,
+      layNhanVienVaVaiTro
     } from './js/phan_quyen.js';
 
     const buttons = [
-      ...document.querySelectorAll('[data-phan-quyen]')
+      ...document.querySelectorAll(
+        '[data-phan-quyen]'
+      )
     ];
 
+    const permissionMenu =
+      document.querySelector(
+        '#permissionMenu'
+      );
+
     const emptyNote =
-      document.querySelector('#emptyNote');
+      document.querySelector(
+        '#emptyNote'
+      );
 
     const errorNote =
-      document.querySelector('#errorNote');
+      document.querySelector(
+        '#errorNote'
+      );
 
     function getToken() {
       return (
         new URLSearchParams(
           window.location.search
         ).get('token') ||
-        sessionStorage.getItem('APP_ACCESS') ||
+        sessionStorage.getItem(
+          'APP_ACCESS'
+        ) ||
         ''
       );
     }
 
     function openWithToken(url) {
       const target =
-        new URL(url, window.location.href);
+        new URL(
+          url,
+          window.location.href
+        );
 
-      const token = getToken();
+      const token =
+        getToken();
 
       if (token) {
         target.searchParams.set(
@@ -236,59 +338,120 @@
       );
     }
 
-    function readLoginUser() {
-      const keys = [
-        'nv',
-        'chatwoot_crm_user'
-      ];
+    function hideAllButtons() {
+      for (const button of buttons) {
+        button.classList.add(
+          'hidden'
+        );
 
-      for (const key of keys) {
-        try {
-          const raw =
-            localStorage.getItem(key);
+        button.classList.remove(
+          'permission-show'
+        );
 
-          if (!raw) {
-            continue;
-          }
+        button.style.display =
+          'none';
 
-          const user = JSON.parse(raw);
-
-          if (
-            user &&
-            typeof user === 'object'
-          ) {
-            return user;
-          }
-        } catch (error) {
-          console.warn(error);
-        }
+        button.dataset.duocXem =
+          'false';
       }
+    }
 
-      return null;
+    async function loadEmployeeName() {
+      try {
+        const nhanVien =
+          await layNhanVienVaVaiTro();
+
+        document.querySelector(
+          '#tenNhanVien'
+        ).textContent =
+          nhanVien.ten_nv ||
+          nhanVien.ma_nv ||
+          'Nhân viên';
+      } catch (error) {
+        console.error(
+          '[KINH_DOANH] Không lấy được tên nhân viên:',
+          error
+        );
+
+        document.querySelector(
+          '#tenNhanVien'
+        ).textContent =
+          'Nhân viên';
+      }
     }
 
     async function applyPermissions() {
+      hideAllButtons();
+
+      permissionMenu.classList.remove(
+        'loaded'
+      );
+
+      const danhSachQuyen =
+        await layDanhSachQuyenTrang({
+          batBuocTaiLai: true
+        });
+
+      const quyenMap = new Map(
+        danhSachQuyen.map(item => [
+          item.id_chucnang,
+          item
+        ])
+      );
+
       let visibleCount = 0;
       const results = [];
 
       for (const button of buttons) {
         const idChucNang =
-          String(button.id || '')
+          String(
+            button.dataset.idChucnang ||
+            button.id ||
+            ''
+          )
             .trim()
             .toLowerCase();
 
-        const allowed =
-          await quyen_duocxem(
+        const quyen =
+          quyenMap.get(
             idChucNang
           );
 
+        const allowed =
+          quyen?.duoc_xem === true;
+
         button.dataset.duocXem =
           String(allowed);
+
+        button.dataset.tenChucnang =
+          quyen?.ten_chucnang || '';
+
+        const nameElement =
+          button.querySelector(
+            '.permission-name'
+          );
+
+        if (
+          nameElement &&
+          quyen?.ten_chucnang
+        ) {
+          nameElement.textContent =
+            quyen.ten_chucnang;
+        }
 
         if (allowed) {
           button.classList.remove(
             'hidden'
           );
+
+          button.classList.add(
+            'permission-show'
+          );
+
+          button.style.display = '';
+
+          button.style.animationDelay =
+            `${visibleCount * 45}ms`;
 
           visibleCount += 1;
         }
@@ -296,6 +459,8 @@
         results.push({
           id_chucnang:
             idChucNang,
+          ten_chucnang:
+            quyen?.ten_chucnang || '',
           duoc_xem:
             allowed
         });
@@ -306,6 +471,12 @@
           ? 'block'
           : 'none';
 
+      requestAnimationFrame(() => {
+        permissionMenu.classList.add(
+          'loaded'
+        );
+      });
+
       console.table(results);
     }
 
@@ -315,7 +486,11 @@
           'click',
           async () => {
             const idChucNang =
-              String(button.id || '')
+              String(
+                button.dataset.idChucnang ||
+                button.id ||
+                ''
+              )
                 .trim()
                 .toLowerCase();
 
@@ -325,6 +500,10 @@
               );
 
             if (!allowed) {
+              button.classList.add(
+                'hidden'
+              );
+
               alert(
                 'Bạn không có quyền sử dụng chức năng này.'
               );
@@ -332,9 +511,18 @@
               return;
             }
 
-            openWithToken(
-              button.dataset.url
-            );
+            const url =
+              button.dataset.url;
+
+            if (!url) {
+              alert(
+                `Chưa đặt đường dẫn cho chức năng ${idChucNang}.`
+              );
+
+              return;
+            }
+
+            openWithToken(url);
           }
         );
       }
@@ -353,7 +541,9 @@
             return;
           }
 
-          openWithToken('./main.html');
+          openWithToken(
+            './main.html'
+          );
         }
       );
 
@@ -361,23 +551,20 @@
       'DOMContentLoaded',
       async () => {
         try {
-          const user =
-            readLoginUser();
-
-          document.querySelector(
-            '#tenNhanVien'
-          ).textContent =
-            user?.ten_nv ||
-            user?.name ||
-            layMaNhanVienDangNhap() ||
-            'Nhân viên';
-
           bindButtons();
-          await applyPermissions();
+
+          await Promise.all([
+            loadEmployeeName(),
+            applyPermissions()
+          ]);
         } catch (error) {
           console.error(
             '[KINH_DOANH_INIT]',
             error
+          );
+
+          permissionMenu.classList.add(
+            'loaded'
           );
 
           errorNote.style.display =
