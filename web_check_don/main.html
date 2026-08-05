@@ -174,6 +174,40 @@
       margin: 0 auto;
       display: grid;
       gap: 14px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition:
+        opacity 0.24s ease,
+        transform 0.24s ease;
+    }
+
+    .permission-menu.loaded {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .permission-btn.permission-show {
+      animation: hienNut 0.24s ease both;
+    }
+
+    @keyframes hienNut {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .permission-menu,
+      .permission-btn {
+        transition: none !important;
+        animation: none !important;
+      }
     }
 
     .permission-btn {
@@ -534,7 +568,7 @@
   <script type="module">
     import {
       quyen_duocxem,
-      layChiTietQuyen
+      layDanhSachQuyenTrang
     } from './js/phan_quyen.js';
 
     const $ = selector =>
@@ -632,6 +666,26 @@
     async function apDungQuyen() {
       anTatCaNut();
 
+      const permissionMenu =
+        $('#permissionMenu');
+
+      permissionMenu?.classList.remove(
+        'loaded'
+      );
+
+      const danhSachQuyen =
+        await layDanhSachQuyenTrang({
+          batBuocTaiLai: true
+        });
+
+      const quyenMap = new Map(
+        danhSachQuyen.map(item => [
+          item.id_chucnang,
+          item
+        ])
+      );
+
+      let soNutDuocHien = 0;
       const results = [];
 
       for (const button of permissionButtons) {
@@ -644,94 +698,68 @@
             .trim()
             .toLowerCase();
 
-        if (!idChucNang) {
-          console.warn(
-            'Nút không có id_chucnang:',
-            button
+        const quyen =
+          quyenMap.get(idChucNang);
+
+        const duocXem =
+          quyen?.duoc_xem === true;
+
+        button.dataset.duocXem =
+          String(duocXem);
+
+        button.dataset.tenChucnang =
+          quyen?.ten_chucnang || '';
+
+        const nameElement =
+          button.querySelector(
+            '.permission-name'
           );
 
-          results.push({
-            id_chucnang: '',
-            ten_chucnang: '',
-            duoc_xem: false
-          });
-
-          continue;
+        if (
+          nameElement &&
+          quyen?.ten_chucnang
+        ) {
+          nameElement.textContent =
+            quyen.ten_chucnang;
         }
 
-        try {
-          const duocXem =
-            await quyen_duocxem(
-              idChucNang
-            );
-
-          const chiTiet =
-            await layChiTietQuyen(
-              idChucNang
-            );
-
-          button.dataset.duocXem =
-            String(duocXem);
-
-          button.dataset.tenChucnang =
-            chiTiet?.ten_chucnang || '';
-
-          const nameElement =
-            button.querySelector(
-              '.permission-name'
-            );
-
-          if (
-            nameElement &&
-            chiTiet?.ten_chucnang
-          ) {
-            nameElement.textContent =
-              chiTiet.ten_chucnang;
-          }
-
-          if (duocXem) {
-            button.classList.remove(
-              'hidden'
-            );
-
-            button.style.display = '';
-          }
-
-          results.push({
-            id_chucnang:
-              idChucNang,
-            ten_chucnang:
-              chiTiet?.ten_chucnang || '',
-            duoc_xem:
-              duocXem
-          });
-        } catch (error) {
-          console.error(
-            `Lỗi kiểm tra quyền ${idChucNang}:`,
-            error
+        if (duocXem) {
+          button.classList.remove(
+            'hidden'
           );
 
-          results.push({
-            id_chucnang:
-              idChucNang,
-            ten_chucnang: '',
-            duoc_xem:
-              false,
-            error
-          });
+          button.classList.add(
+            'permission-show'
+          );
+
+          button.style.display = '';
+
+          button.style.animationDelay =
+            `${soNutDuocHien * 45}ms`;
+
+          soNutDuocHien += 1;
         }
+
+        results.push({
+          id_chucnang:
+            idChucNang,
+          ten_chucnang:
+            quyen?.ten_chucnang || '',
+          duoc_xem:
+            duocXem
+        });
       }
-
-      const soNutDuocHien =
-        results.filter(
-          item =>
-            item.duoc_xem === true
-        ).length;
 
       emptyNote.style.display =
         soNutDuocHien === 0
           ? 'block'
           : 'none';
+
+      requestAnimationFrame(() => {
+        permissionMenu?.classList.add(
+          'loaded'
+        );
+      });
 
       console.table(results);
 
