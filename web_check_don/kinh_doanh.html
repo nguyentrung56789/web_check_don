@@ -116,8 +116,7 @@
     }
 
     .empty-note,
-    .error-note,
-    .debug-note {
+    .error-note {
       display: none;
       margin-top: 20px;
       padding: 16px;
@@ -137,13 +136,6 @@
       color: #fee2e2;
     }
 
-    .debug-note {
-      background: #0f172a;
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      color: #cbd5e1;
-      font-family: Consolas, monospace;
-      font-size: 13px;
-    }
 
     @media (max-width: 600px) {
       body {
@@ -197,7 +189,6 @@
     </div>
 
     <div id="errorNote" class="error-note"></div>
-    <div id="debugNote" class="debug-note"></div>
   </main>
 
   <script type="module">
@@ -216,9 +207,6 @@
 
     const errorNote =
       document.querySelector('#errorNote');
-
-    const debugNote =
-      document.querySelector('#debugNote');
 
     function getToken() {
       return (
@@ -317,23 +305,6 @@
         visibleCount === 0
           ? 'block'
           : 'none';
-
-      debugNote.style.display =
-        'block';
-
-      debugNote.textContent =
-        JSON.stringify(
-          {
-            ma_nv:
-              layMaNhanVienDangNhap(),
-            duong_dan:
-              layTenTrangHienTai(),
-            ket_qua:
-              results
-          },
-          null,
-          2
-        );
 
       console.table(results);
     }
