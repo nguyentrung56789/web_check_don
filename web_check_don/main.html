@@ -632,17 +632,12 @@
            *
            * ma_nv
            * vai_tro_id
-           * duong_dan = main.html
+           * duong_dan = tên trang hiện tại
            * id_chucnang
            */
           const duocXem =
             await quyen_duocxem(
-              idChucNang,
-              'main.html',
-              {
-                thongBao: false,
-                batBuocTaiLai: false
-              }
+              idChucNang
             );
 
           button.dataset.duocXem =
@@ -721,12 +716,7 @@
              */
             const duocXem =
               await quyen_duocxem(
-                idChucNang,
-                'main.html',
-                {
-                  thongBao: false,
-                  batBuocTaiLai: true
-                }
+                idChucNang
               );
 
             if (!duocXem) {
