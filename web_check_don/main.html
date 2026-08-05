@@ -173,7 +173,7 @@
       width: min(100%, 670px);
       margin: 0 auto;
       display: grid;
-      gap: 28px;
+      gap: 14px;
     }
 
     .permission-btn {
@@ -181,10 +181,10 @@
       display: flex;
       align-items: center;
       width: 100%;
-      min-height: 126px;
-      padding: 22px 34px;
+      min-height: 64px;
+      padding: 11px 18px;
       border: 0;
-      border-radius: 21px;
+      border-radius: 12px;
       color: #050b14;
       text-align: left;
       cursor: pointer;
@@ -231,18 +231,18 @@
     .permission-icon {
       position: relative;
       z-index: 1;
-      flex: 0 0 92px;
+      flex: 0 0 52px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 54px;
+      font-size: 30px;
       line-height: 1;
     }
 
     .permission-name {
       position: relative;
       z-index: 1;
-      font-size: clamp(26px, 5vw, 37px);
+      font-size: clamp(17px, 3.8vw, 23px);
       font-weight: 950;
       letter-spacing: 0.5px;
       text-transform: uppercase;
@@ -281,6 +281,16 @@
           135deg,
           #ff5570,
           #ff617d
+        );
+    }
+
+
+    .btn-kiemtradonhang {
+      background:
+        linear-gradient(
+          135deg,
+          #38bdf8,
+          #67e8f9
         );
     }
 
@@ -343,35 +353,35 @@
       }
 
       .permission-btn {
-        min-height: 100px;
-        padding: 18px 22px;
-        border-radius: 17px;
+        min-height: 58px;
+        padding: 10px 14px;
+        border-radius: 11px;
       }
 
       .permission-icon {
-        flex-basis: 70px;
+        flex-basis: 46px;
         justify-content: flex-start;
-        font-size: 43px;
+        font-size: 27px;
       }
 
       .permission-name {
-        font-size: 26px;
+        font-size: 19px;
       }
     }
 
     @media (max-width: 370px) {
       .permission-btn {
-        min-height: 88px;
-        padding: 15px 17px;
+        min-height: 54px;
+        padding: 9px 12px;
       }
 
       .permission-icon {
-        flex-basis: 60px;
-        font-size: 38px;
+        flex-basis: 42px;
+        font-size: 24px;
       }
 
       .permission-name {
-        font-size: 22px;
+        font-size: 17px;
       }
     }
   </style>
@@ -485,6 +495,25 @@
 
           <span class="permission-name">
             Giao vận
+          </span>
+        </button>
+
+
+        <!-- KIỂM TRA ĐƠN HÀNG -->
+        <button
+          id="kiemtradonhang"
+          class="permission-btn btn-kiemtradonhang hidden"
+          type="button"
+          data-phan-quyen
+          data-id-chucnang="kiemtradonhang"
+          data-url="./kiemtradonhang.html"
+        >
+          <span class="permission-icon">
+            🔎
+          </span>
+
+          <span class="permission-name">
+            Kiểm tra đơn hàng
           </span>
         </button>
       </section>
