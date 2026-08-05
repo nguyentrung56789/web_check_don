@@ -1,200 +1,391 @@
+```html
 <!doctype html>
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Trang chính</title>
 
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  />
+
+  <title>Kiểm tra quyền được xem</title>
+
+  <!-- Các file cấu hình đang dùng trong hệ thống -->
   <script src="./js/internal_key.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./js/cod_config.js"></script>
-  <script src="./js/auth_token.js"></script>
+
+  <!-- Thư viện Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    :root {
-      --bg:#0b1220; --card:#0f1830; --txt:#e6edff; --muted:#9aa7c7;
-      --btn1:#2dd4bf; --btn2:#60a5fa; --btn3:#fbbf24;
-      --btn4:#a78bfa; --btn5:#fb7185; --btn6:#34d399;
+    * {
+      box-sizing: border-box;
     }
-    *{box-sizing:border-box}
-    html,body{min-height:100%}
-    body{
-      visibility:hidden;margin:0;background:var(--bg);color:var(--txt);
-      font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px;
+      font-family: Arial, sans-serif;
+      background: #0b1220;
+      color: #e6edff;
     }
-    body.ready{visibility:visible}
-    .top{
-      position:fixed;z-index:10;inset:0 0 auto 0;display:flex;
-      align-items:center;justify-content:space-between;padding:14px 18px;
-      background:var(--card);border-bottom:1px solid #233043;
-      box-shadow:0 2px 10px rgba(0,0,0,.35)
+
+    .wrap {
+      width: min(100%, 680px);
+      margin: 0 auto;
     }
-    .hello{font-weight:600}
-    #btnLogout{
-      background:none;border:0;color:#f87171;cursor:pointer;
-      font-weight:700;font-size:15px
+
+    .card {
+      padding: 22px;
+      border: 1px solid #263451;
+      border-radius: 16px;
+      background: #111a2e;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
     }
-    .menu{
-      width:min(520px,92vw);margin:120px auto 48px;
-      display:grid;gap:18px
+
+    h1 {
+      margin: 0 0 20px;
+      font-size: 24px;
     }
-    .menu button{
-      width:100%;padding:18px;border:0;border-radius:14px;
-      cursor:pointer;font-weight:800;font-size:18px;color:#041a18
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #aebbd5;
+      font-weight: 700;
     }
-    #admin{background:var(--btn1)}
-    #donghang{background:var(--btn2)}
-    #checkdon{background:var(--btn3);color:#3a2a04}
-    #mapview{background:var(--btn4)}
-    #chamsockhachhang{background:var(--btn5);color:#3b0713}
-    #tinhdoanhso{background:var(--btn6);color:#052e20}
-    .hidden{display:none!important}
-    footer{text-align:center;color:var(--muted);font-size:12px;margin:8px 0 24px}
+
+    input {
+      width: 100%;
+      min-height: 46px;
+      padding: 10px 12px;
+      border: 1px solid #344563;
+      border-radius: 10px;
+      background: #0b1220;
+      color: #ffffff;
+      font-size: 16px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #60a5fa;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      min-height: 42px;
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 10px;
+      background: #2563eb;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #334155;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .result {
+      display: none;
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 12px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+
+    .result.ok {
+      display: block;
+      border: 1px solid #10b981;
+      background: #064e3b;
+      color: #d1fae5;
+    }
+
+    .result.no {
+      display: block;
+      border: 1px solid #f59e0b;
+      background: #78350f;
+      color: #fef3c7;
+    }
+
+    .result.error {
+      display: block;
+      border: 1px solid #ef4444;
+      background: #7f1d1d;
+      color: #fee2e2;
+    }
+
+    .info {
+      margin-top: 18px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #0b1220;
+      color: #9fb0cf;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    code {
+      color: #93c5fd;
+    }
   </style>
 </head>
-<body>
-  <header class="top">
-    <div class="hello">Xin chào <span id="ten_nv">...</span> 👋</div>
-    <button id="btnLogout" type="button">Đăng xuất</button>
-  </header>
 
-  <main class="menu">
-    <button id="admin" class="hidden" data-phan-quyen>👤 Admin</button>
-    <button id="donghang" class="hidden" data-phan-quyen>📦 Đóng hàng COD</button>
-    <button id="checkdon" class="hidden" data-phan-quyen>🧾 Check đơn</button>
-    <button id="mapview" class="hidden" data-phan-quyen>🗺️ Xem bản đồ</button>
-    <button id="chamsockhachhang" class="hidden" data-phan-quyen>💬 Chăm sóc khách hàng</button>
-    <button id="tinhdoanhso" class="hidden" data-phan-quyen>🧮 Tính doanh số nhân viên</button>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1>🔐 Kiểm tra quyền được xem</h1>
+
+      <label for="idChucNang">
+        Nhập id_chucnang
+      </label>
+
+      <input
+        id="idChucNang"
+        type="text"
+        value="admin"
+        placeholder="Ví dụ: admin, donghang, checkdon"
+        autocomplete="off"
+      />
+
+      <div class="buttons">
+        <button id="btnCheck" type="button">
+          Kiểm tra quyền
+        </button>
+
+        <button
+          id="btnAdmin"
+          class="secondary"
+          type="button"
+        >
+          Test admin
+        </button>
+
+        <button
+          id="btnDongHang"
+          class="secondary"
+          type="button"
+        >
+          Test donghang
+        </button>
+
+        <button
+          id="btnCheckDon"
+          class="secondary"
+          type="button"
+        >
+          Test checkdon
+        </button>
+      </div>
+
+      <div id="result" class="result"></div>
+
+      <div class="info">
+        Trang này gọi:
+
+        <br />
+
+        <code>
+          quyen_duocxem(id_chucnang)
+        </code>
+
+        <br /><br />
+
+        Mở F12 → Console để xem chi tiết dữ liệu phân quyền.
+      </div>
+    </section>
   </main>
 
-  <footer>© <span id="year"></span> COD Internal</footer>
-
   <script type="module">
-    const VIEW_NAME = 'sql_phan_quyen_nhan_vien';
-    const LOGIN_STORAGE_KEY = 'nv';
+    import {
+      quyen_duocxem
+    } from './js/phanquyen.js';
 
-    const routes = {
-      admin:'./admin.html',
-      donghang:'./Quan_ly_cod.html',
-      checkdon:'./check_don.html',
-      mapview:'./map_tuyen.html',
-      chamsockhachhang:'./chamsockhachhang.html',
-      tinhdoanhso:'./tinhdoanhsonhanvien.html'
-    };
+    const input = document.getElementById('idChucNang');
+    const btnCheck = document.getElementById('btnCheck');
+    const resultEl = document.getElementById('result');
 
-    function showPage(){
-      document.body.classList.add('ready');
-      document.body.style.visibility='visible';
+    function setResult(type, text) {
+      resultEl.className = `result ${type}`;
+      resultEl.textContent = text;
     }
 
-    function readUser(){
-      const raw=localStorage.getItem(LOGIN_STORAGE_KEY);
-      if(!raw) throw new Error('Không có localStorage key "nv"');
-      return JSON.parse(raw);
-    }
+    async function kiemTraQuyen(idChucNang) {
+      const id = String(idChucNang || '').trim();
 
-    function currentPage(){
-      return (location.pathname.split('/').pop()||'main.html').toLowerCase();
-    }
+      if (!id) {
+        alert('Vui lòng nhập id_chucnang');
 
-    async function createClient(){
-      const internalKey =
-        (typeof window.getInternalKey==='function' ? window.getInternalKey() : '') ||
-        window.INTERNAL_KEY ||
-        window.COD_INTERNAL_KEY ||
-        window.internalKey ||
-        '';
+        setResult(
+          'error',
+          'Không có id_chucnang để kiểm tra.'
+        );
 
-      const res=await fetch('/api/getConfig',{
-        headers:{'x-internal-key':internalKey||''},
-        cache:'no-store'
-      });
-
-      if(!res.ok){
-        throw new Error(`getConfig HTTP ${res.status}: ${await res.text()}`);
+        return;
       }
 
-      const cfg=await res.json();
-      const url=cfg.url||cfg.SUPABASE_URL||cfg.supabaseUrl||cfg.supabase_url;
-      const key=cfg.anon||cfg.key||cfg.SUPABASE_ANON||cfg.SUPABASE_ANON_KEY||
-        cfg.supabaseAnon||cfg.supabaseKey||cfg.supabase_anon_key;
+      btnCheck.disabled = true;
+      btnCheck.textContent = 'Đang kiểm tra...';
 
-      if(!url||!key) throw new Error('Thiếu URL hoặc anon key Supabase');
-      return window.supabase.createClient(url,key);
-    }
-
-    function applyPermissions(rows){
-      const map=new Map(
-        (rows||[])
-          .filter(x=>x.id_chucnang)
-          .map(x=>[String(x.id_chucnang).trim(),x])
+      setResult(
+        'no',
+        [
+          'Đang lấy phân quyền...',
+          `id_chucnang: ${id}`
+        ].join('\n')
       );
 
-      document.querySelectorAll('[data-phan-quyen]').forEach(el=>{
-        const q=map.get(el.id);
-        el.classList.toggle('hidden',q?.duoc_xem!==true);
-      });
+      try {
+        console.log(
+          '[TEST PHÂN QUYỀN] Bắt đầu kiểm tra:',
+          id
+        );
+
+        const duocXem = await quyen_duocxem(id);
+
+        console.log(
+          '[TEST PHÂN QUYỀN] Kết quả:',
+          {
+            id_chucnang: id,
+            duoc_xem: duocXem
+          }
+        );
+
+        if (duocXem === true) {
+          setResult(
+            'ok',
+            [
+              '✅ CÓ QUYỀN ĐƯỢC XEM',
+              '',
+              `id_chucnang: ${id}`,
+              'duoc_xem: true'
+            ].join('\n')
+          );
+
+          alert(
+            [
+              'KẾT QUẢ PHÂN QUYỀN',
+              '',
+              `id_chucnang: ${id}`,
+              'duoc_xem: TRUE',
+              '',
+              'Nhân viên được phép xem chức năng này.'
+            ].join('\n')
+          );
+        } else {
+          setResult(
+            'no',
+            [
+              '⛔ KHÔNG CÓ QUYỀN ĐƯỢC XEM',
+              '',
+              `id_chucnang: ${id}`,
+              'duoc_xem: false'
+            ].join('\n')
+          );
+
+          alert(
+            [
+              'KẾT QUẢ PHÂN QUYỀN',
+              '',
+              `id_chucnang: ${id}`,
+              'duoc_xem: FALSE',
+              '',
+              'Không tìm thấy quyền hoặc duoc_xem đang bằng false.'
+            ].join('\n')
+          );
+        }
+      } catch (error) {
+        console.error(
+          '[TEST PHÂN QUYỀN] Lỗi:',
+          error
+        );
+
+        const message =
+          error?.message || String(error);
+
+        setResult(
+          'error',
+          [
+            '❌ LỖI KIỂM TRA QUYỀN',
+            '',
+            `id_chucnang: ${id}`,
+            `message: ${message}`
+          ].join('\n')
+        );
+
+        alert(
+          [
+            'LỖI KIỂM TRA PHÂN QUYỀN',
+            '',
+            `id_chucnang: ${id}`,
+            `message: ${message}`,
+            '',
+            'Mở F12 → Console để xem chi tiết.'
+          ].join('\n')
+        );
+      } finally {
+        btnCheck.disabled = false;
+        btnCheck.textContent = 'Kiểm tra quyền';
+      }
     }
 
-    function openWithParams(path){
-      const u=new URL(path,location.href);
-      new URLSearchParams(location.search).forEach((v,k)=>u.searchParams.set(k,v));
-      location.assign(u.href);
-    }
-
-    Object.entries(routes).forEach(([id,path])=>{
-      document.getElementById(id)?.addEventListener('click',()=>openWithParams(path));
+    btnCheck.addEventListener('click', () => {
+      kiemTraQuyen(input.value);
     });
 
-    document.getElementById('btnLogout')?.addEventListener('click',()=>{
-      localStorage.removeItem('nv');
-      localStorage.removeItem('last_ma_nv');
-      location.replace('./login.html');
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        kiemTraQuyen(input.value);
+      }
     });
 
-    document.getElementById('year').textContent=new Date().getFullYear();
-
-    try{
-      const user=readUser();
-      const maNv=String(user?.ma_nv||'').trim();
-      const tenNv=String(user?.ten_nv||'').trim();
-      const page=currentPage();
-
-      document.getElementById('ten_nv').textContent=tenNv||maNv||'Nhân viên';
-
-      const client=await createClient();
-
-      const {data,error}=await client
-        .from(VIEW_NAME)
-        .select('ma_nv,ten_nv,ten_vai_tro,duong_dan,id_chucnang,ten_chucnang,duoc_xem')
-        .eq('ma_nv',maNv)
-        .eq('duong_dan',page);
-
-      if(error) throw error;
-
-      const rows=data||[];
-      applyPermissions(rows);
-
-      console.log('[PHÂN QUYỀN] Đã tải thành công:', {
-        ten_nv: tenNv,
-        ma_nv: maNv,
-        trang: page,
-        so_dong_quyen: rows.length,
-        danh_sach_quyen: rows
+    document
+      .getElementById('btnAdmin')
+      .addEventListener('click', () => {
+        input.value = 'admin';
+        kiemTraQuyen('admin');
       });
-    }catch(error){
-      console.error('[INLINE DEBUG] Lỗi:',error);
 
-      alert(
-        `LỖI LẤY QUYỀN\n\n`+
-        `message: ${error?.message||error}\n`+
-        `code: ${error?.code||'không có'}\n`+
-        `details: ${error?.details||'không có'}\n`+
-        `hint: ${error?.hint||'không có'}`
-      );
-    }finally{
-      showPage();
-    }
+    document
+      .getElementById('btnDongHang')
+      .addEventListener('click', () => {
+        input.value = 'donghang';
+        kiemTraQuyen('donghang');
+      });
+
+    document
+      .getElementById('btnCheckDon')
+      .addEventListener('click', () => {
+        input.value = 'checkdon';
+        kiemTraQuyen('checkdon');
+      });
+
+    // Kiểm tra file module đã tải
+    console.log(
+      '[TEST PHÂN QUYỀN] Đã tải test_phan_quyen.html'
+    );
+
+    console.log(
+      '[TEST PHÂN QUYỀN] Hàm quyen_duocxem:',
+      typeof quyen_duocxem
+    );
   </script>
 </body>
 </html>
+```
