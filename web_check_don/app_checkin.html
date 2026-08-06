@@ -359,8 +359,17 @@ function getLoggedNV(){
 }
 
 const LOGGED_NV = getLoggedNV();
-const MA_NV = (qp.get('ma_nv') || '').trim();
-const TEN_NV = (qp.get('ten_nv') || LOGGED_NV?.ten_nv || '').trim();
+const MA_NV = (
+  qp.get('ma_nv') ||
+  LOGGED_NV?.ma_nv ||
+  ''
+).trim();
+
+const TEN_NV = (
+  qp.get('ten_nv') ||
+  LOGGED_NV?.ten_nv ||
+  ''
+).trim();
 
 if (!MA_NV) {
   try { alert('Thiếu mã nhân viên. Vui lòng vào từ Trang chính.'); } catch {}
