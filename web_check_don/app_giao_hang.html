@@ -737,6 +737,7 @@ video{width:100%;max-height:260px;border-radius:12px;background:#000;object-fit:
 
   <script>
 /* global ZXing */
+window.APP_GIAO_HANG_BUILD = '2026-08-06-fix-trim-v3';
 /* ====================== app_giao_hang.js — build r7 (NO-GEO, CHECK-IN OVERLAY, SCAN BEEP, NOTIFY PANEL) ======================
  * - KHÔNG xin GPS, KHÔNG gửi vị trí/webhook tại file này
  * - Khi lên "Giao thành công": mở checkin.html full-screen từ TRÊN xuống (truyền đúng ma_kh & ma_hd)
@@ -766,122 +767,122 @@ const CFG = {
 
 function safeTrim(value) {
   if (value === null || value === undefined) return '';
-  if (
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean'
-  ) {
-    return String(value).trim();
-  }
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value).trim();
   return '';
 }
 
-function normalizeConfigString(value) {
-  if (typeof value !== 'string') return '';
-  return value.trim();
+function readConfigString(value, keys = []) {
+  const direct = safeTrim(value);
+  if (direct) return direct;
+
+  if (value && typeof value === 'object') {
+    for (const key of keys) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        const nested = safeTrim(value[key]);
+        if (nested) return nested;
+      }
+    }
+  }
+
+  return '';
 }
 
-async function getSupabaseRuntimeConfig() {
-  if (
-    window.configReady &&
-    typeof window.configReady.then === 'function'
-  ) {
+async function resolveSupabaseConfig() {
+  if (window.configReady && typeof window.configReady.then === 'function') {
     await window.configReady;
   }
 
-  let url = normalizeConfigString(
-    window.getConfig?.('url')
-  );
+  let rawUrl = window.getConfig?.('url');
+  let rawAnon = window.getConfig?.('anon');
 
-  let anon = normalizeConfigString(
-    window.getConfig?.('anon')
-  );
+  let url = readConfigString(rawUrl, [
+    'url', 'value', 'SUPABASE_URL', 'supabaseUrl', 'supabase_url'
+  ]);
+
+  let anon = readConfigString(rawAnon, [
+    'anon', 'key', 'value', 'SUPABASE_ANON', 'SUPABASE_ANON_KEY',
+    'supabaseAnon', 'supabaseKey', 'supabase_anon_key'
+  ]);
 
   if (!url || !anon) {
-    const internalKey =
-      typeof window.getInternalKey === 'function'
-        ? window.getInternalKey()
-        : '';
+    const internalKey = typeof window.getInternalKey === 'function'
+      ? safeTrim(window.getInternalKey())
+      : '';
 
     const response = await fetch('/api/getConfig', {
       method: 'GET',
       headers: {
         'x-internal-key': internalKey,
-        Accept: 'application/json'
+        'Accept': 'application/json'
       },
       cache: 'no-store'
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Không lấy được cấu hình Supabase: HTTP ${response.status}`
-      );
+      const detail = await response.text();
+      throw new Error(`Không lấy được cấu hình Supabase: HTTP ${response.status} ${detail}`);
     }
 
     const config = await response.json();
 
-    url = normalizeConfigString(config?.url);
-    anon = normalizeConfigString(config?.anon);
+    if (!url) {
+      url = readConfigString(config, [
+        'url', 'SUPABASE_URL', 'supabaseUrl', 'supabase_url'
+      ]);
+    }
+
+    if (!anon) {
+      anon = readConfigString(config, [
+        'anon', 'key', 'SUPABASE_ANON', 'SUPABASE_ANON_KEY',
+        'supabaseAnon', 'supabaseKey', 'supabase_anon_key'
+      ]);
+    }
   }
 
-  if (!url) {
-    throw new Error('Thiếu URL Supabase');
-  }
+  url = safeTrim(url).replace(/\/+$/, '');
+  anon = safeTrim(anon);
 
-  if (!anon) {
-    throw new Error('Thiếu anon key Supabase');
-  }
+  if (!url) throw new Error('Thiếu URL Supabase');
+  if (!anon) throw new Error('Thiếu anon key Supabase');
+  if (!/^https:\/\//i.test(url)) throw new Error(`URL Supabase không hợp lệ: ${url}`);
 
-  return {
-    url: url.replace(/\/+$/, ''),
-    anon
-  };
+  console.log('[GIAO HÀNG] Cấu hình Supabase hợp lệ:', {
+    url,
+    urlType: typeof url,
+    anonType: typeof anon,
+    anonLength: anon.length
+  });
+
+  return { url, anon };
 }
 
 const supabaseReady = (async () => {
-  const { url, anon } =
-    await getSupabaseRuntimeConfig();
+  const { url, anon } = await resolveSupabaseConfig();
 
-  if (
-    !window.supabase ||
-    typeof window.supabase.createClient !== 'function'
-  ) {
-    throw new Error(
-      'Thư viện Supabase chưa được tải'
-    );
+  if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+    throw new Error('Thư viện Supabase chưa được tải');
   }
 
-  supa = window.supabase.createClient(
-    url,
-    anon
-  );
-
-  confNV.url = url;
-  confNV.key = anon;
-
-  CFG.url = url;
-  CFG.key = anon;
-
-  console.log(
-    '[GIAO HÀNG] Supabase sẵn sàng:',
-    {
-      url,
-      anonLength: anon.length
+  supa = window.supabase.createClient(String(url), String(anon), {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
     }
-  );
+  });
 
+  confNV.url = String(url);
+  confNV.key = String(anon);
+  CFG.url = String(url);
+  CFG.key = String(anon);
+
+  console.log('[GIAO HÀNG] Supabase sẵn sàng:', CFG.url);
   return supa;
 })().catch(error => {
-  console.error(
-    '[GIAO HÀNG] Lỗi khởi tạo Supabase:',
-    error
-  );
-
-  alert(
-    error?.message ||
-    'Không thể khởi tạo Supabase'
-  );
-
+  console.error('[GIAO HÀNG] Lỗi khởi tạo Supabase:', error);
+  const message = error instanceof Error ? error.message : String(error);
+  alert(message || 'Không thể khởi tạo Supabase');
   throw error;
 });
 
@@ -1100,7 +1101,7 @@ async function getMaKhByMaHd(ma_hd){
   function showLogin(){el.appSec&&(el.appSec.style.display='none');el.loginSec&&(el.loginSec.style.display='block');}
   function setMsg(text,type='err'){el.msg&&(el.msg.textContent=text||'');showSlide(text,type==='err'?'err':(type==='ok'?'ok':'info'));}
   function lockBtn(on=true,label='Đang kiểm tra...'){el.btn&&(el.btn.disabled=!!on,el.btn.textContent=on?label:'Đăng nhập');}
-  function readInput(){const ma=(el.ma.value||'').trim(),mk=el.mk.value||'';if(!ma||!mk){setMsg('Vui lòng nhập đủ thông tin','err');return null;}return{ma,mk};}
+  function readInput(){const ma=safeTrim(el.ma?.value),mk=el.mk?.value||'';if(!ma||!mk){setMsg('Vui lòng nhập đủ thông tin','err');return null;}return{ma,mk};}
   async function fetchUser(ma,mk){await supabaseReady;const table=confNV?.table||'kv_nhan_vien';const {data,error}=await supa.from(table).select('ma_nv,ten_nv').eq('ma_nv',ma).eq('mat_khau',mk).maybeSingle();return error||!data?null:data;}
   let logging=false;
   async function doLogin(){ if(logging) return; const inp=readInput(); if(!inp) return; logging=true; lockBtn(true); setMsg('');
@@ -1532,7 +1533,7 @@ attachSwipe(ordersWrap,ordersSheet);attachSwipe(detailWrap,detailSheet);
         const input=d.querySelector('#q,#search,#query,input[name="q"],input[type="search"]');
         if(!input) return false;
         input.value=queryText; ['input','change','keyup'].forEach(t=>input.dispatchEvent(new Event(t,{bubbles:true})));
-        let reloadBtn=d.querySelector('#btnReload,[data-reload]')||Array.from(d.querySelectorAll('button,a')).find(el=>(el.textContent||'').trim().toLowerCase().includes('tải lại'));
+        let reloadBtn=d.querySelector('#btnReload,[data-reload]')||Array.from(d.querySelectorAll('button,a')).find(el=>safeTrim(el.textContent).toLowerCase().includes('tải lại'));
         if(reloadBtn){reloadBtn.click();return true;}
         const form=input.form||input.closest('form'); if(form){form.requestSubmit?form.requestSubmit():form.submit();return true;}
         input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
@@ -1548,7 +1549,7 @@ attachSwipe(ordersWrap,ordersSheet);attachSwipe(detailWrap,detailSheet);
     if(!ordersList) return [];
     return [...ordersList.querySelectorAll('.order')]
       .filter(el=>getComputedStyle(el).display!=='none')
-      .map(el=>safeTrim(el?.dataset?.kh))
+      .map(el=>safeTrim(el.dataset.kh))
       .filter(Boolean)
       .filter((v,i,a)=>a.indexOf(v)===i);
   }
@@ -1739,7 +1740,7 @@ supabaseReady.then(() => {
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:TABLE_DON},p=>{
       if(ordersWrap?.style.display==='block') loadOrders();
       try{
-        const ma = safeTrim(p?.new?.[KEY_DON_HD] ?? p?.old?.[KEY_DON_HD]);
+        const ma = p.new?.[KEY_DON_HD] || p.old?.[KEY_DON_HD] || '';
         const tt = safeTrim(p?.new?.trang_thai);
         pushNotify(`🔄 Cập nhật đơn ${ma}${tt?` → “${tt}”`:''}`);
       }catch{}
