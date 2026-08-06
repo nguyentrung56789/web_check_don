@@ -1,0 +1,212 @@
+<!-- ====================== BẮT ĐẦU: index.html ====================== -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Đăng nhập → Quét mã</title>
+
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1a73e8">
+<script>if('serviceWorker'in navigator){addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));}</script>
+
+<script src="./js/cod_config.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/@zxing/library@latest"></script>
+
+<!-- CSS đã tách -->
+<link rel="stylesheet" href="./css/app_giao_hang.css" />
+
+<!-- Bổ sung rất nhỏ để canh giữa chuông trên top mà không ảnh hưởng layout cũ -->
+<style>
+  .top { position: relative; }
+  .top .bell-top {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: auto; /* đảm bảo click được */
+  }
+  .top .bell-top #tabBell {
+    position: relative;
+  }
+  .top .bell-top #bellNum {
+    position: absolute;
+    top: -6px; right: -6px;
+    min-width: 16px; height: 16px; line-height: 16px;
+    padding: 0 4px; border-radius: 999px; font-size: 11px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- LOGIN -->
+  <section id="login" class="card">
+    <h2 style="margin:6px 0 10px">🔐 Đăng nhập nhân viên</h2>
+    <div class="grid">
+      <div><label>Mã nhân viên</label><input id="ma_nv" placeholder="VD: NV001" autocomplete="username" autocapitalize="none"></div>
+      <div><label>Mật khẩu</label><input id="mat_khau" type="password" placeholder="Mật khẩu" autocomplete="current-password"></div>
+      <button id="btnLogin" class="btn">Đăng nhập</button>
+      <div id="loginMsg" class="muted"></div>
+    </div>
+  </section>
+
+  <!-- APP -->
+  <section id="app" style="display:none">
+    <div class="top">
+      <div class="row">
+        <button id="startBtn" class="cam-btn">📷 Bật camera</button>
+        <button id="refreshBtn" class="small-btn">♻️ Làm tươi</button>
+        <button id="installBtn" class="small-btn install-btn">📲 Cài đặt</button>
+      </div>
+
+      <!-- 🔔 Chuông chuyển lên top và canh giữa -->
+      <div class="bell bell-top">
+        <button id="tabBell" title="Thông báo">🔔</button>
+        <div id="bellNum" class="bell-badge" style="display:none">0</div>
+      </div>
+
+      <div class="user">
+        <button class="user-btn" id="userBtn"><span id="who">👤</span><i class="caret"></i></button>
+        <div class="menu" id="userMenu"><button id="logout">Đăng xuất</button></div>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;justify-content:center;margin-top:8px">
+      <div class="seg">
+        <input type="radio" name="mode" id="modeHang" value="hang" checked><label for="modeHang" id="lblHang">Quét hóa đơn</label>
+        <input type="radio" name="mode" id="modeVD" value="vd"><label for="modeVD" id="lblVD">Quét mã vận đơn</label>
+      </div>
+    </div>
+
+    <div class="info-bar" id="info">Sẵn sàng quét. Nhấn “Bật camera”.</div>
+
+    <div class="card video-wrap" id="camCard">
+      <video id="preview" playsinline autoplay muted></video>
+      <div class="scan-box"></div>
+    </div>
+
+    <div class="card">
+      <div id="statusText" class="info-bar" style="margin:0">Trạng thái giao hàng</div>
+    </div>
+
+    <div class="card">
+      <div id="rowVD" style="display:none"><label>Mã vận đơn</label><input id="mavd" placeholder="Tự điền sau khi quét"></div>
+      <div id="rowDon"><label>Mã đơn</label><input id="madon" placeholder="Tự điền sau khi quét"></div>
+     <button id="saveBtn" class="btn" style="margin-top:10px">Cập nhật</button>
+      <div class="muted" style="margin-top:6px"></div>
+    </div>
+  </section>
+</div>
+
+<!-- Thanh đáy -->
+<nav class="bottom-bar">
+  <div class="bar-item"><button id="tabOrders">Đơn hàng</button></div>
+  <button id="fabScan" class="fab" title="Quét mã">▦</button>
+
+  <!-- 🗺️ Thay chuông cũ bằng nút xem bản đồ -->
+  <div class="bar-item">
+    <button id="tabMap" title="Xem bản đồ">Xem bản đồ</button>
+  </div>
+</nav>
+
+<!-- Sheet ĐƠN HÀNG -->
+<div id="ordersWrap" class="sheet-wrap">
+  <div id="ordersSheet" class="sheet" role="dialog" aria-modal="true">
+<div class="sheet-header" id="ordersHeader">
+  <div class="grip"></div>
+  <div class="row" style="justify-content:space-between;align-items:center;pointer-events:none">
+    <h3 style="margin:0;pointer-events:none">📦 Đơn hàng</h3>
+    <div style="display:flex;gap:10px;align-items:center;pointer-events:auto">
+      <a id="ordersMapLink" href="#" title="Xem bản đồ">🗺️ Xem bản đồ</a>
+      <select id="statusFilter">
+        <option value="">Tất cả</option>
+        <option>Đã kiểm đơn</option>
+        <option>Đang giao hàng</option>
+        <option>Giao thành công</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+    <div id="ordersBody" class="sheet-body">
+      <div id="ordersList"></div>
+      <div id="ordersEmpty" class="muted" style="display:none">Chưa có dữ liệu.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet CHI TIẾT -->
+<div id="detailWrap" class="sheet-wrap">
+  <div id="detailSheet" class="sheet" role="dialog" aria-modal="true">
+    <div class="sheet-header" id="detailHeader">
+      <div class="grip"></div>
+      <div class="detail-head">
+        <button id="backOrders" class="small-btn" type="button">⬅️ Đơn hàng</button>
+        <div id="detailTitle" style="font-weight:800"></div>
+      </div>
+    </div>
+    <div class="sheet-body">
+      <table class="table" id="ctTable">
+        <thead><tr><th>Tên hàng</th><th>SL</th><th>ĐG</th><th>TT</th></tr></thead>
+        <tbody id="ctBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="display:none;position:fixed;left:50%;bottom:calc(var(--barh)+10px);transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:10px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:9999"></div>
+
+<!-- === GEO BOTTOM SHEET === -->
+<div id="geoWrap" class="sheetWrap" style="display:none">
+  <div id="geoSheet" class="sheet">
+    <div id="geoHeader" class="sheetHeader">
+      <div class="dragBar"></div>
+      <div class="title">Gửi vị trí giao hàng?</div>
+    </div>
+
+    <div class="sheetBody">
+      <p id="geoMsg2" style="margin: 8px 0 16px">
+        Đã cập nhật trạng thái <b>Giao thành công</b>. Bạn có muốn gửi kèm toạ độ, link bản đồ và ảnh chụp để lưu lại điểm giao không?
+      </p>
+
+      <div class="row" style="gap:8px; display:flex">
+        <button id="geoSend" class="btn primary" style="flex:1">📍 Gửi vị trí</button>
+        <button id="geoClose2" class="btn" style="flex:1">Thoát</button>
+      </div>
+
+      <div id="geoHint" style="color:#8892a6; font-size:12px; margin-top:10px">
+        (Hệ thống sẽ xin quyền định vị, chụp ảnh từ camera nếu đang mở. Thời gian lưu theo giờ Việt Nam — dd/MM/yyyy HH:mm)
+      </div>
+    </div>
+  </div>
+</div>
+<!-- === /GEO BOTTOM SHEET === -->
+
+<audio id="beep" preload="auto">
+  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+  // Đồng bộ NV đang đăng nhập từ localStorage -> sessionStorage cho các trang con (map_tuyen.html) đọc
+  document.addEventListener('DOMContentLoaded', () => {
+    try {
+      const nv = JSON.parse(localStorage.getItem('nv') || '{}');
+      if (nv.ma_nv || nv.ten_nv) {
+        sessionStorage.setItem('nv_ctx', JSON.stringify({
+          ma_nv: nv.ma_nv || '',
+          ten_nv: nv.ten_nv || '',
+          ts: Date.now()
+        }));
+      }
+    } catch {}
+  });
+</script>
+
+<!-- JS đã tách -->
+<script src="./js/app_giao_hang.js"></script>
+
+</body>
+</html>
+<!-- ====================== KẾT THÚC: index.html ====================== -->
