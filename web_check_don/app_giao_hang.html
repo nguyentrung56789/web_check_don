@@ -43,8 +43,24 @@
         readJsonStorage("nv") ||
         readJsonStorage("chatwoot_crm_user");
 
+      /*
+       * Không tìm thấy phiên đăng nhập:
+       * vẫn cho mở app, không chuyển về login.html.
+       */
       if (!loginUser) {
-        location.replace("./login.html");
+        const guestUser = {
+          ma_nv: "",
+          ten_nv: "Nhân viên",
+          ts: Date.now()
+        };
+
+        window.APP_LOGIN_USER = guestUser;
+        document.documentElement.classList.add("auth-ok");
+
+        console.warn(
+          "[GIAO HÀNG] Không tìm thấy phiên đăng nhập, vẫn mở ứng dụng."
+        );
+
         return;
       }
 
@@ -61,9 +77,25 @@
         ""
       ).trim();
 
+      /*
+       * Có dữ liệu đăng nhập nhưng không có ma_nv:
+       * vẫn cho mở app, không chuyển về login.html.
+       */
       if (!maNv) {
-        alert("Tài khoản đăng nhập không có ma_nv.");
-        location.replace("./login.html");
+        const fallbackUser = {
+          ...loginUser,
+          ma_nv: "",
+          ten_nv: tenNv || "Nhân viên",
+          ts: Date.now()
+        };
+
+        window.APP_LOGIN_USER = fallbackUser;
+        document.documentElement.classList.add("auth-ok");
+
+        console.warn(
+          "[GIAO HÀNG] Tài khoản không có ma_nv, vẫn mở ứng dụng."
+        );
+
         return;
       }
 
@@ -188,7 +220,7 @@
     <!--
       Giữ lại các phần tử đăng nhập ở trạng thái ẩn
       để app_giao_hang.js cũ không bị lỗi null nếu vẫn tham chiếu.
-      Người chưa đăng nhập sẽ được chuyển thẳng về login.html.
+      Nếu chưa có phiên đăng nhập, ứng dụng vẫn được mở.
     -->
     <section
       id="login"
