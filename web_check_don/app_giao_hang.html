@@ -764,35 +764,124 @@ const CFG = {
   ...(window.COD_CONFIG || {})
 };
 
-const supabaseReady = (async () => {
-  if (window.configReady) {
+function safeTrim(value) {
+  if (value === null || value === undefined) return '';
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
+    return String(value).trim();
+  }
+  return '';
+}
+
+function normalizeConfigString(value) {
+  if (typeof value !== 'string') return '';
+  return value.trim();
+}
+
+async function getSupabaseRuntimeConfig() {
+  if (
+    window.configReady &&
+    typeof window.configReady.then === 'function'
+  ) {
     await window.configReady;
   }
 
-  const url = window.getConfig?.('url') || '';
-  const anon = window.getConfig?.('anon') || '';
+  let url = normalizeConfigString(
+    window.getConfig?.('url')
+  );
+
+  let anon = normalizeConfigString(
+    window.getConfig?.('anon')
+  );
 
   if (!url || !anon) {
-    console.error('[GIAO HÀNG] Cấu hình hiện tại:', window.dumpConfig?.());
-    throw new Error('Thiếu cấu hình Supabase: url/anon');
+    const internalKey =
+      typeof window.getInternalKey === 'function'
+        ? window.getInternalKey()
+        : '';
+
+    const response = await fetch('/api/getConfig', {
+      method: 'GET',
+      headers: {
+        'x-internal-key': internalKey,
+        Accept: 'application/json'
+      },
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Không lấy được cấu hình Supabase: HTTP ${response.status}`
+      );
+    }
+
+    const config = await response.json();
+
+    url = normalizeConfigString(config?.url);
+    anon = normalizeConfigString(config?.anon);
   }
 
-  if (!window.supabase?.createClient) {
-    throw new Error('Thư viện Supabase chưa được tải');
+  if (!url) {
+    throw new Error('Thiếu URL Supabase');
   }
 
-  supa = window.supabase.createClient(url, anon);
+  if (!anon) {
+    throw new Error('Thiếu anon key Supabase');
+  }
+
+  return {
+    url: url.replace(/\/+$/, ''),
+    anon
+  };
+}
+
+const supabaseReady = (async () => {
+  const { url, anon } =
+    await getSupabaseRuntimeConfig();
+
+  if (
+    !window.supabase ||
+    typeof window.supabase.createClient !== 'function'
+  ) {
+    throw new Error(
+      'Thư viện Supabase chưa được tải'
+    );
+  }
+
+  supa = window.supabase.createClient(
+    url,
+    anon
+  );
 
   confNV.url = url;
   confNV.key = anon;
+
   CFG.url = url;
   CFG.key = anon;
 
-  console.log('[GIAO HÀNG] Supabase sẵn sàng:', url);
+  console.log(
+    '[GIAO HÀNG] Supabase sẵn sàng:',
+    {
+      url,
+      anonLength: anon.length
+    }
+  );
+
   return supa;
 })().catch(error => {
-  console.error('[GIAO HÀNG] Lỗi khởi tạo Supabase:', error);
-  alert(error?.message || 'Không thể khởi tạo Supabase');
+  console.error(
+    '[GIAO HÀNG] Lỗi khởi tạo Supabase:',
+    error
+  );
+
+  alert(
+    error?.message ||
+    'Không thể khởi tạo Supabase'
+  );
+
   throw error;
 });
 
@@ -1191,7 +1280,7 @@ function renderStatus(t){statusText&&(statusText.textContent=t||'Trạng thái g
 
 /* ===== Trạng thái tuyến tính ===== */
 function nextStatusNew(cur){
-  const c=(cur||'').trim();
+  const c=safeTrim(cur);
   if(c==='Đã kiểm đơn')return 'Đang giao hàng';
   if(c==='Đang giao hàng')return 'Giao thành công';
   if(c==='Giao thành công')return null;
@@ -1201,14 +1290,14 @@ function nextStatusNew(cur){
 /* ===== LƯU (NO-GEO) — MỞ CHECK-IN KHI “GIAO THÀNH CÔNG” ===== */
 async function doSaveByMode(codeScanned){
   if(MODE==='hang'){
-    const code=codeScanned||(madon?.value||'').trim();
+    const code=safeTrim(codeScanned || madon?.value);
     if(!code){ setInfo('err','Thiếu mã đơn'); showSlide('THIẾU MÃ HÓA ĐƠN','err'); return; }
     if(isBlocked(code)){ setInfo('','Mã này vừa quét rồi — chờ 2 phút.'); showSlide('MÃ VỪA QUÉT — CHỜ 2 PHÚT','warn'); vibrate([60,40,60]); return; }
 
     const rows=await sbSelect(TABLE_DON,{[KEY_DON_HD]:`eq.${code}`,limit:1},'id,trang_thai');
     if(!rows.length){ setInfo('err','Không tìm thấy mã hóa đơn'); showSlide('KHÔNG TÌM THẤY HÓA ĐƠN','err'); return; }
 
-    const cur=(rows[0].trang_thai||'').trim();
+    const cur=safeTrim(rows?.[0]?.trang_thai);
     const nxt=nextStatusNew(cur);
 
     // ĐÃ giao thành công từ trước → chỉ báo & dừng
@@ -1240,7 +1329,7 @@ async function doSaveByMode(codeScanned){
 
   }else{
     // === QUÉT MÃ VẬN ĐƠN
-    const code = codeScanned || (mavd?.value || '').trim();
+    const code = safeTrim(codeScanned || mavd?.value);
     if (!code) {
       setInfo('err','Thiếu mã vận đơn');
       showSlide('THIẾU MÃ VẬN ĐƠN','err');
@@ -1293,7 +1382,7 @@ async function doSaveByMode(codeScanned){
         return;
       }
 
-      const cur = (existed[0]?.trang_thai || '').trim();
+      const cur = safeTrim(existed?.[0]?.trang_thai);
 
       // ĐÃ “Giao thành công” → chỉ báo & dừng
       if (cur === 'Giao thành công') {
@@ -1350,7 +1439,7 @@ async function doSaveByMode(codeScanned){
 /* ===== onScan ===== */
 async function onScan(res){
   if(!res)return;
-  const code=(res.text||'').trim(); if(!code||code===last||scanLock)return;
+  const code=safeTrim(res?.text); if(!code||code===last||scanLock)return;
   if(isBlocked(code)){setInfo('','Mã này vừa quét rồi — chờ 2 phút.');showSlide('MÃ VỪA QUÉT — CHỜ 2 PHÚT','warn');vibrate([40,40,40]);return;}
   clearTimeout(noScanTimer);startNoScanTimer();
   last=code;scanLock=true;
@@ -1459,7 +1548,7 @@ attachSwipe(ordersWrap,ordersSheet);attachSwipe(detailWrap,detailSheet);
     if(!ordersList) return [];
     return [...ordersList.querySelectorAll('.order')]
       .filter(el=>getComputedStyle(el).display!=='none')
-      .map(el=>(el.dataset.kh||'').trim())
+      .map(el=>safeTrim(el?.dataset?.kh))
       .filter(Boolean)
       .filter((v,i,a)=>a.indexOf(v)===i);
   }
@@ -1471,8 +1560,8 @@ attachSwipe(ordersWrap,ordersSheet);attachSwipe(detailWrap,detailSheet);
   $('#tabMap')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openMapByCurrentFilter();});
   $('#ordersMapLink')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openMapByCurrentFilter();});
   window.__openMapForOneCustomer = (ma_kh) => {
-    const q='ma: '+String(ma_kh||'').trim();
-    if(!q.trim()) return;
+    const q='ma: '+safeTrim(ma_kh);
+    if(!safeTrim(q)) return;
     openMapSheet(q);
   };
 })();
@@ -1549,7 +1638,7 @@ function toTelLink(v){
 }
 async function loadOrders(){
   ensurePaginationUI();
-  const f=statusFilter?.value.trim();
+  const f=safeTrim(statusFilter?.value);
   const offset=(CURRENT_PAGE-1)*PAGE_SIZE;
   const params={order:`${DATE_COL}.desc.nullslast`,limit:PAGE_SIZE,offset};
   if(f) params.trang_thai=`eq.${f}`;
@@ -1580,7 +1669,7 @@ function renderOrders(rows){
   if(!rows.length){ordersEmpty&&(ordersEmpty.style.display='block');return;}
   ordersEmpty&&(ordersEmpty.style.display='none');
   rows.forEach(r=>{
-    const ma=r[KEY_DON_HD]||'';const st=(r.trang_thai||'').trim()||'Chưa rõ';
+    const ma=safeTrim(r?.[KEY_DON_HD]);const st=safeTrim(r?.trang_thai)||'Chưa rõ';
     const ma_kh=r[KEY_KH]||'';
     const div=document.createElement('div');
     div.className='order';div.dataset.kh=ma_kh;
@@ -1606,7 +1695,7 @@ function renderOrders(rows){
     div.querySelector('.hd-link')?.addEventListener('click',async(e)=>{e.preventDefault();await openDetail(ma);});
     div.querySelector('.map-link')?.addEventListener('click',(e)=>{
       e.preventDefault();e.stopPropagation();
-      const kh=(ma_kh||'').trim();if(!kh){showSlide('KHÔNG CÓ MÃ KHÁCH','warn');return;}
+      const kh=safeTrim(ma_kh);if(!kh){showSlide('KHÔNG CÓ MÃ KHÁCH','warn');return;}
       window.__openMapForOneCustomer(kh);
     });
     ordersList.appendChild(div);
@@ -1650,12 +1739,14 @@ supabaseReady.then(() => {
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:TABLE_DON},p=>{
       if(ordersWrap?.style.display==='block') loadOrders();
       try{
-        const ma = p.new?.[KEY_DON_HD] || p.old?.[KEY_DON_HD] || '';
-        const tt = (p.new?.trang_thai || '').trim();
+        const ma = safeTrim(p?.new?.[KEY_DON_HD] ?? p?.old?.[KEY_DON_HD]);
+        const tt = safeTrim(p?.new?.trang_thai);
         pushNotify(`🔄 Cập nhật đơn ${ma}${tt?` → “${tt}”`:''}`);
       }catch{}
     })
-    .subscribe();
+    .subscribe(status => {
+      console.log('[GIAO HÀNG] Realtime:', status);
+    });
 }).catch(error => {
   console.error('[REALTIME] Không khởi tạo được:', error);
 });
