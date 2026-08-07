@@ -1782,6 +1782,11 @@
         return false;
       }
 
+      const idZalo = uid.split("_").pop().trim();
+
+      return /^\d+$/.test(idZalo);
+    }
+
       // Chỉ kiểm tra phần nằm SAU dấu "_" cuối cùng.
       // Ví dụ:
       // 410862165734305570_7724591000271569314  => HIỆN
@@ -1993,11 +1998,6 @@
         return;
       }
 
-      if (!hasValidUidFrom(customer.uid_from)) {
-        showNotice("uid_from không hợp lệ.", "error", 2200);
-        return;
-      }
-
       const rowStaff = getCustomerStaffRows(customer.ma_kh || maKh)[0] || null;
 
       const sender = rowStaff || {
@@ -2151,6 +2151,11 @@
     }
     async function sendZaloChatMessage() {
       if (!currentZaloChatRow) {
+        return;
+      }
+
+      if (!hasValidUidFrom(currentZaloChatRow.uid_from)) {
+        showNotice("Chưa có ID Zalo.", "error", 2600);
         return;
       }
 
@@ -3299,15 +3304,8 @@ logoutBtn.addEventListener("click", function () {
       customerBody.innerHTML = filtered.map(function (item) {
         const rowStaff = getCustomerStaffRows(item.ma_kh || "")[0] || null;
         const staffTitle = rowStaff ? (rowStaff.ten_nv || rowStaff.id_nv || "") : "";
-        const hasZaloUid = hasValidUidFrom(item.uid_from);
-
-        console.log("[ZALO UID]", {
-          ma_kh: item.ma_kh,
-          uid_from: item.uid_from,
-          hien_zalo: hasZaloUid
-        });
-
-        const maKh = String(item.ma_kh || "");
+        const hasZaloUid = true;
+const maKh = String(item.ma_kh || "");
         const safeMaKh = escapeJs(maKh);
         const productRowId = getCustomerProductRowId(maKh);
 
