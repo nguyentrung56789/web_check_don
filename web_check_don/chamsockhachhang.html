@@ -1794,6 +1794,12 @@
       return raw ? raw : null;
     }
 
+    function normalizeConversationId(value) {
+      const text = String(value ?? "").trim();
+      return text ? text : null;
+    }
+
+
     function showNotice(message, type = "ok", timeoutMs = 10000) {
       noticeBox.classList.remove("hidden");
       noticeBox.innerHTML = escapeHtml(message);
