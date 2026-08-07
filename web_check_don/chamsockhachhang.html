@@ -1778,9 +1778,18 @@
     function hasValidUidFrom(value) {
       const uid = String(value || "").trim();
 
-      // Chỉ hợp lệ khi đúng dạng: dãy_số_dãy_số
-      // Ví dụ: 410862165734305570_7724591000271569314
-      return /^\d+_\d+$/.test(uid);
+      if (!uid || !uid.includes("_")) {
+        return false;
+      }
+
+      // Chỉ kiểm tra phần nằm SAU dấu "_" cuối cùng.
+      // Ví dụ:
+      // 410862165734305570_7724591000271569314  => HIỆN
+      // 410862165734305570_                     => ẨN
+      // 410862165734305570                      => ẨN
+      const idSauDauGach = uid.split("_").pop().trim();
+
+      return /^\d+$/.test(idSauDauGach);
     }
 
     function normalizeConversationId(value) {
@@ -3291,6 +3300,13 @@ logoutBtn.addEventListener("click", function () {
         const rowStaff = getCustomerStaffRows(item.ma_kh || "")[0] || null;
         const staffTitle = rowStaff ? (rowStaff.ten_nv || rowStaff.id_nv || "") : "";
         const hasZaloUid = hasValidUidFrom(item.uid_from);
+
+        console.log("[ZALO UID]", {
+          ma_kh: item.ma_kh,
+          uid_from: item.uid_from,
+          hien_zalo: hasZaloUid
+        });
+
         const maKh = String(item.ma_kh || "");
         const safeMaKh = escapeJs(maKh);
         const productRowId = getCustomerProductRowId(maKh);
