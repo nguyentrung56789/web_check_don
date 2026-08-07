@@ -1347,17 +1347,6 @@
         </div>
       </div>
 
-      <div id="floatingSaveBar" class="floating-save-bar hidden">
-        <div>
-          <b id="changedCountText">0 thay đổi</b>
-          <span id="saveMessage"></span>
-        </div>
-
-        <div class="floating-save-actions">
-          <button id="saveStaffBtn" type="button">Lưu</button>
-        </div>
-      </div>
-
       <div id="noticeBox" class="notice-box hidden"></div>
 
       <div id="zaloChatPopover" class="zalo-chat-popover hidden">
@@ -1789,10 +1778,9 @@
     function hasValidUidFrom(value) {
       const uid = String(value || "").trim();
 
-      // Phải có dấu "_" và phía sau "_" là một dãy số.
-      // Ví dụ hợp lệ:
-      // 410862165734305570_7724591000271569314
-      return /^.+_\d+$/.test(uid);
+      // Chỉ hợp lệ khi đúng dạng: dãy_số_dãy_số
+      // Ví dụ: 410862165734305570_7724591000271569314
+      return /^\d+_\d+$/.test(uid);
     }
 
     function normalizeConversationId(value) {
@@ -1997,19 +1985,21 @@
       }
 
       if (!hasValidUidFrom(customer.uid_from)) {
-        showNotice("Khách này chưa có uid_from hợp lệ nên chưa thể mở Zalo chat.", "error", 2800);
+        showNotice("uid_from không hợp lệ.", "error", 2200);
         return;
       }
 
-      const staff = getCustomerStaffRows(customer.ma_kh || maKh)[0] || null;
+      const rowStaff = getCustomerStaffRows(customer.ma_kh || maKh)[0] || null;
 
-      if (!staff || !normalizeKiotStaffId(staff.id_nv)) {
-        showNotice("Khách này chưa được gán nhân viên phụ trách.", "error", 2600);
-        return;
-      }
+      const sender = rowStaff || {
+        id_nv: currentUser?.id_nv || currentUser?.ma_nv || "",
+        ma_nv: currentUser?.ma_nv || "",
+        ten_nv: currentUser?.ten_nv || ""
+      };
 
-      openZaloChatWithSender(customer, [staff], staff, buttonEl);
+      openZaloChatWithSender(customer, [sender], sender, buttonEl);
     }
+
     function openZaloSenderChooser(customer, staffList, buttonEl) {
       // Bản đơn nhân viên không còn hộp chọn nhân viên gửi Zalo.
       const staff = staffList && staffList[0] ? staffList[0] : null;
@@ -2551,7 +2541,8 @@
     // Giữ tên hàm cũ để không phải đổi nhiều chỗ render.
     // Bản mới không dùng popup/chip nữa; dùng select native để nhẹ và nhanh hơn.
     function renderStaffChips(maKh) {
-      return renderStaffSelect(maKh);
+      const row = getCustomerStaffRows(maKh)[0] || null;
+      return escapeHtml(row ? (row.ten_nv || row.ma_nv || row.id_nv || "") : "");
     }
 
     function closeCustomerStaffPicker() {
@@ -3054,7 +3045,7 @@ logoutBtn.addEventListener("click", function () {
       }
     });
 
-    saveStaffBtn.addEventListener("click", saveStaffChanges);
+    if (saveStaffBtn) saveStaffBtn.addEventListener("click", saveStaffChanges);
 
     zaloChatCloseBtn.addEventListener("click", closeZaloChat);
     zaloChatSendBtn.addEventListener("click", sendZaloChatMessage);
@@ -3308,14 +3299,13 @@ logoutBtn.addEventListener("click", function () {
           <tr
             class="customer-main-row"
             data-ma-kh="${escapeHtml(maKh)}"
-            onclick="toggleCustomerProducts('${safeMaKh}', event)"
           >
             <td data-col="ma_kh" title="${escapeHtml(item.ma_kh || "")}">${escapeHtml(item.ma_kh || "")}</td>
             <td data-col="ten_kh" title="${escapeHtml(item.ten_kh || "")}">${escapeHtml(item.ten_kh || "")}</td>
             <td data-col="sdt" title="${escapeHtml(item.sdt || "")}">${escapeHtml(item.sdt || "")}</td>
             <td data-col="cong_no" title="${formatMoney(item.cong_no)}">${formatMoney(item.cong_no)}</td>
             <td data-col="ma_nv" title="${escapeHtml(staffTitle)}">
-              ${renderStaffChips(item.ma_kh || "")}
+              ${escapeHtml(staffTitle || "")}
             </td>
             <td data-col="ngay_chat_cuoi" title="${escapeHtml(formatDateOnlySafe(item.ngay_chat_cuoi))}">
               ${escapeHtml(formatDateOnlySafe(item.ngay_chat_cuoi))}
