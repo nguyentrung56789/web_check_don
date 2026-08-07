@@ -1270,7 +1270,6 @@
             <col data-col="cong_no" style="width: 130px;">
             <col data-col="ma_nv" style="width: 160px;">
             <col data-col="ngay_chat_cuoi" style="width: 160px;">
-            <col data-col="conversation_id" style="width: 130px;">
             <col data-col="action" style="width: 190px;">
           </colgroup>
 
@@ -1305,13 +1304,7 @@
                 Ngày <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
-
-              <th class="sortable resizable" data-col="conversation_id" data-sort="conversation_id" data-col-index="6">
-                ID hộp thoại <span class="sort-icon"></span>
-                <span class="col-resizer"></span>
-              </th>
-              
-              <th class="resizable" data-col="action" data-col-index="7">
+<th class="resizable" data-col="action" data-col-index="7">
                 Thao tác
                 <span class="col-resizer"></span>
               </th>
@@ -1320,7 +1313,7 @@
 
           <tbody id="customerBody">
             <tr>
-              <td colspan="8">Đang tải dữ liệu...</td>
+              <td colspan="7">Đang tải dữ liệu...</td>
             </tr>
           </tbody>
         </table>
@@ -1439,7 +1432,6 @@
       { key: "cong_no", label: "Công nợ" },
       { key: "ma_nv", label: "Nhân viên" },
       { key: "ngay_chat_cuoi", label: "Ngày" },
-      { key: "conversation_id", label: "ID hộp thoại" },
       { key: "action", label: "Thao tác", required: true }
     ];
     let hiddenColumns = [];
@@ -1525,7 +1517,7 @@
       console.error("Lỗi khởi tạo trang:", error);
       customerBody.innerHTML = `
         <tr>
-          <td colspan="8">Lỗi khởi tạo: ${escapeHtml(error.message || String(error))}</td>
+          <td colspan="7">Lỗi khởi tạo: ${escapeHtml(error.message || String(error))}</td>
         </tr>
       `;
     });
@@ -1794,6 +1786,15 @@
       return raw ? raw : null;
     }
 
+    function hasValidUidFrom(value) {
+      const uid = String(value || "").trim();
+
+      // Phải có dấu "_" và phía sau "_" là một dãy số.
+      // Ví dụ hợp lệ:
+      // 410862165734305570_7724591000271569314
+      return /^.+_\d+$/.test(uid);
+    }
+
     function normalizeConversationId(value) {
       const text = String(value ?? "").trim();
       return text ? text : null;
@@ -1995,10 +1996,8 @@
         return;
       }
 
-      const rowConversationId = normalizeConversationId(customer.conversation_id || customer.chatwoot_conversation_id);
-
-      if (!rowConversationId) {
-        showNotice("Khách này chưa có conversation_id/hội thoại nên chưa thể mở Zalo chat.", "error", 2800);
+      if (!hasValidUidFrom(customer.uid_from)) {
+        showNotice("Khách này chưa có uid_from hợp lệ nên chưa thể mở Zalo chat.", "error", 2800);
         return;
       }
 
@@ -2032,9 +2031,9 @@
         ma_kh: customer.ma_kh || "",
         ten_kh: customer.ten_kh || "",
         sdt: customer.sdt || "",
+        uid_from: customer.uid_from || "",
 
-        // Zalo chat ưu tiên dùng conversation_id đã lưu trên dòng khách hàng.
-        // Không lấy nhầm hội thoại đang mở nếu dòng khách chưa được gán.
+        // conversation_id chỉ giữ làm dữ liệu phụ nếu hệ thống có sẵn.
         conversation_id: rowConversationId || currentChatwootConversationId || "",
         row_conversation_id: rowConversationId || "",
         contact_id: getCurrentContactId() || customer.contact_id || null,
@@ -2698,7 +2697,7 @@
         if (!customers || customers.length === 0) {
           customerBody.innerHTML = `
             <tr>
-              <td colspan="8">Đang tải danh sách khách hàng...</td>
+              <td colspan="7">Đang tải danh sách khách hàng...</td>
             </tr>
           `;
         }
@@ -2755,7 +2754,7 @@
       if (!supabaseClient) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="8">Supabase chưa sẵn sàng.</td>
+            <td colspan="7">Supabase chưa sẵn sàng.</td>
           </tr>
         `;
         return;
@@ -2801,7 +2800,7 @@
 
         customerBody.innerHTML = `
           <tr>
-            <td colspan="8">
+            <td colspan="7">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -2866,7 +2865,7 @@
       if (error) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="8">
+            <td colspan="7">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -3291,7 +3290,7 @@ logoutBtn.addEventListener("click", function () {
       if (filtered.length === 0) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="8">Không có dữ liệu.</td>
+            <td colspan="7">Không có dữ liệu.</td>
           </tr>
         `;
         return;
@@ -3300,7 +3299,7 @@ logoutBtn.addEventListener("click", function () {
       customerBody.innerHTML = filtered.map(function (item) {
         const rowStaff = getCustomerStaffRows(item.ma_kh || "")[0] || null;
         const staffTitle = rowStaff ? (rowStaff.ten_nv || rowStaff.id_nv || "") : "";
-        const hasConversationId = !!normalizeConversationId(item.conversation_id || item.chatwoot_conversation_id);
+        const hasZaloUid = hasValidUidFrom(item.uid_from);
         const maKh = String(item.ma_kh || "");
         const safeMaKh = escapeJs(maKh);
         const productRowId = getCustomerProductRowId(maKh);
@@ -3321,12 +3320,9 @@ logoutBtn.addEventListener("click", function () {
             <td data-col="ngay_chat_cuoi" title="${escapeHtml(formatDateOnlySafe(item.ngay_chat_cuoi))}">
               ${escapeHtml(formatDateOnlySafe(item.ngay_chat_cuoi))}
             </td>
-            <td data-col="conversation_id" title="${escapeHtml(item.conversation_id || '')}">
-              ${escapeHtml(item.conversation_id || '')}
-            </td>
             <td data-col="action">
               <div class="row-actions">
-                ${hasConversationId ? `
+                ${hasZaloUid ? `
                   <button
                     class="zalo-chat-btn"
                     title="Zalo chat"
@@ -3344,7 +3340,7 @@ logoutBtn.addEventListener("click", function () {
             class="customer-product-row hidden"
             data-product-for="${escapeHtml(maKh)}"
           >
-            <td colspan="8">
+            <td colspan="7">
               <div class="customer-product-box">
                 <div class="customer-product-head">
                   <div>
