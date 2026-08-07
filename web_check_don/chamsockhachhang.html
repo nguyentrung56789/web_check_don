@@ -1320,7 +1320,7 @@
 
           <tbody id="customerBody">
             <tr>
-              <td colspan="8">Vui lòng đăng nhập để xem dữ liệu.</td>
+              <td colspan="8">Đang tải dữ liệu...</td>
             </tr>
           </tbody>
         </table>
@@ -1349,7 +1349,7 @@
         </div>
 
         <div class="user-actions">
-          <span id="userInfo">Chưa đăng nhập</span>
+          <span id="userInfo">Nhân viên</span>
           <button id="logoutBtn">← Quay lại</button>
         </div>
       </div>
@@ -2355,7 +2355,7 @@
           const idNv = normalizeKiotStaffId(item.id_nv);
 
           return {
-            // ma_nv là mã đăng nhập / mã nội bộ để lưu vào kv_khachhang.ma_nv.
+            // ma_nv là mã nhân viên nội bộ để lưu vào kv_khachhang.ma_nv.
             ma_nv: maNv,
 
             // id_nv là ID nhân viên KiotViet, chỉ dùng để lọc và gửi kèm webhook.
@@ -2365,7 +2365,7 @@
           };
         })
         .filter(function (item) {
-          // Chỉ hiện nhân viên đã có cả mã đăng nhập ma_nv và ID KiotViet id_nv.
+          // Chỉ hiện nhân viên đã có cả ma_nv và ID KiotViet id_nv.
           return item.ma_nv !== "" && item.id_nv !== "";
         });
 
