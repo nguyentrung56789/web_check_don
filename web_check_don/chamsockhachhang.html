@@ -1787,15 +1787,6 @@
       return /^\d+$/.test(idZalo);
     }
 
-      // Chỉ kiểm tra phần nằm SAU dấu "_" cuối cùng.
-      // Ví dụ:
-      // 410862165734305570_7724591000271569314  => HIỆN
-      // 410862165734305570_                     => ẨN
-      // 410862165734305570                      => ẨN
-      const idSauDauGach = uid.split("_").pop().trim();
-
-      return /^\d+$/.test(idSauDauGach);
-    }
 
     function normalizeConversationId(value) {
       const text = String(value ?? "").trim();
