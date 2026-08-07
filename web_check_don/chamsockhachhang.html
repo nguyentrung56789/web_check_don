@@ -1775,12 +1775,21 @@
       return raw ? raw : null;
     }
 
-    function hasValidUidFrom(value) {
-      const uid = String(value || "").trim();
+    function getZaloIdFromUidFrom(value) {
+      const uidFrom = String(value || "").trim();
 
-      if (!uid || !uid.includes("_")) {
-        return false;
+      if (!uidFrom || !uidFrom.includes("_")) {
+        return "";
       }
+
+      const idZalo = uidFrom.split("_").pop().trim();
+
+      return /^\d+$/.test(idZalo) ? idZalo : "";
+    }
+
+    function hasValidUidFrom(value) {
+      return !!getZaloIdFromUidFrom(value);
+    }
 
       const idZalo = uid.split("_").pop().trim();
 
@@ -2027,7 +2036,6 @@
         ten_kh: customer.ten_kh || "",
         sdt: customer.sdt || "",
         uid_from: customer.uid_from || "",
-        uid_from: customer.uid_from || "",
 
         // conversation_id chỉ giữ làm dữ liệu phụ nếu hệ thống có sẵn.
         conversation_id: rowConversationId || currentChatwootConversationId || "",
@@ -2151,7 +2159,10 @@
         return;
       }
 
-      if (!hasValidUidFrom(currentZaloChatRow.uid_from)) {
+      const uidFrom = String(currentZaloChatRow.uid_from || "").trim();
+      const idZalo = getZaloIdFromUidFrom(uidFrom);
+
+      if (!idZalo) {
         showNotice("Chưa có ID Zalo.", "error", 2600);
         return;
       }
@@ -2186,7 +2197,8 @@
         formData.append("chatwoot_conversation_id", currentZaloChatRow.conversation_id || "");
         formData.append("row_conversation_id", currentZaloChatRow.row_conversation_id || "");
         formData.append("contact_id", currentZaloChatRow.contact_id || "");
-        formData.append("uid_from", currentZaloChatRow.uid_from || "");
+        formData.append("uid_from", uidFrom);
+        formData.append("id_zalo", idZalo);
         formData.append("message", message || "");
 
         // Bản đơn nhân viên: chỉ gửi 1 nhân viên phụ trách.
