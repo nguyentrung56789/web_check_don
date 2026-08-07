@@ -2155,8 +2155,42 @@
         return;
       }
 
-      const uidFrom = String(currentZaloChatRow.uid_from || "").trim();
-      const idZalo = getZaloIdFromUidFrom(uidFrom);
+      let uidFrom = String(currentZaloChatRow.uid_from || "").trim();
+      let idZalo = getZaloIdFromUidFrom(uidFrom);
+
+      // Nếu dữ liệu trên dòng chưa có uid_from thì đọc lại trực tiếp từ
+      // sql_khachhang_nhanvien theo ma_kh trước khi kết luận chưa có ID Zalo.
+      if (!idZalo && supabaseClient && currentZaloChatRow.ma_kh) {
+        try {
+          const { data: zaloRows, error: zaloUidError } = await supabaseClient
+            .from("sql_khachhang_nhanvien")
+            .select("ma_kh, uid_from")
+            .eq("ma_kh", currentZaloChatRow.ma_kh)
+            .limit(1);
+
+          if (zaloUidError) {
+            console.error("[ZALO] Lỗi đọc lại uid_from:", zaloUidError);
+          } else if (zaloRows && zaloRows.length > 0) {
+            uidFrom = String(zaloRows[0].uid_from || "").trim();
+            idZalo = getZaloIdFromUidFrom(uidFrom);
+
+            currentZaloChatRow.uid_from = uidFrom;
+
+            const customer = getCustomerByMaKh(currentZaloChatRow.ma_kh);
+            if (customer) {
+              customer.uid_from = uidFrom;
+            }
+
+            console.log("[ZALO] Đọc lại uid_from từ Supabase:", {
+              ma_kh: currentZaloChatRow.ma_kh,
+              uid_from: uidFrom,
+              id_zalo: idZalo
+            });
+          }
+        } catch (uidError) {
+          console.error("[ZALO] Không đọc được uid_from:", uidError);
+        }
+      }
 
       if (!idZalo) {
         showNotice("Chưa có ID Zalo.", "error", 2600);
