@@ -3299,6 +3299,7 @@ logoutBtn.addEventListener("click", function () {
           <tr
             class="customer-main-row"
             data-ma-kh="${escapeHtml(maKh)}"
+            onclick="toggleCustomerProducts('${safeMaKh}', event)"
           >
             <td data-col="ma_kh" title="${escapeHtml(item.ma_kh || "")}">${escapeHtml(item.ma_kh || "")}</td>
             <td data-col="ten_kh" title="${escapeHtml(item.ten_kh || "")}">${escapeHtml(item.ten_kh || "")}</td>
