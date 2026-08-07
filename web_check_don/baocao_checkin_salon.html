@@ -609,8 +609,6 @@
     const pageInfo    = $('#pageInfo');
 
     const params = new URLSearchParams(location.search);
-    const currentMaNV = String(params.get('ma_nv') || '').trim();
-    const currentTenNV = String(params.get('ten_nv') || '').trim();
 
     function safeParseStorage(key, storage){
       try { return JSON.parse(storage.getItem(key) || 'null'); }
@@ -629,9 +627,21 @@
 
     const loggedNV = getLoggedNV();
 
+    const currentMaNV = String(
+      params.get('ma_nv') ||
+      loggedNV?.ma_nv ||
+      ''
+    ).trim();
+
+    const currentTenNV = String(
+      params.get('ten_nv') ||
+      loggedNV?.ten_nv ||
+      ''
+    ).trim();
+
     if(!currentMaNV){
-      try { alert('Thiếu mã nhân viên. Vui lòng vào từ Trang chính.'); } catch {}
-      location.replace('./main.html');
+      try { alert('Thiếu mã nhân viên. Vui lòng đăng nhập lại.'); } catch {}
+      location.replace('./login.html');
       throw new Error('Missing ma_nv');
     }
 
