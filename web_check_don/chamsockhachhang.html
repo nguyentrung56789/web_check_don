@@ -1997,6 +1997,11 @@
         ten_nv: currentUser?.ten_nv || ""
       };
 
+      console.log("[ZALO OPEN]", {
+        ma_kh: customer.ma_kh,
+        uid_from: customer.uid_from
+      });
+
       openZaloChatWithSender(customer, [sender], sender, buttonEl);
     }
 
@@ -2021,6 +2026,7 @@
         ma_kh: customer.ma_kh || "",
         ten_kh: customer.ten_kh || "",
         sdt: customer.sdt || "",
+        uid_from: customer.uid_from || "",
         uid_from: customer.uid_from || "",
 
         // conversation_id chỉ giữ làm dữ liệu phụ nếu hệ thống có sẵn.
