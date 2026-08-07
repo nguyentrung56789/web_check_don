@@ -1513,14 +1513,21 @@
 
     window.addEventListener("message", handleChatwootMessage);
 
-    initSupabase().then(function () {
+    initSupabase().then(async function () {
       requestChatwootContext();
       setTimeout(requestChatwootContext, 500);
       setTimeout(requestChatwootContext, 1200);
 
-      initPage();
+      await initPage();
       enableColumnResize();
       initColumnVisibility();
+    }).catch(function (error) {
+      console.error("Lỗi khởi tạo trang:", error);
+      customerBody.innerHTML = `
+        <tr>
+          <td colspan="8">Lỗi khởi tạo: ${escapeHtml(error.message || String(error))}</td>
+        </tr>
+      `;
     });
 
 
@@ -2279,7 +2286,7 @@
         }
 
         if (!supabaseUrl || !supabaseAnon) {
-          popupLoginMessage.textContent = "Chưa lấy được Supabase URL hoặc anon key.";
+          console.error("Chưa lấy được Supabase URL hoặc anon key.");
           return;
         }
 
@@ -2287,10 +2294,9 @@
         SUPABASE_REST_ANON = supabaseAnon;
 
         supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnon);
-        popupLoginMessage.textContent = "";
       } catch (error) {
         console.error("Lỗi initSupabase:", error);
-        popupLoginMessage.textContent = error.message || "Không lấy được cấu hình.";
+        console.error(error.message || "Không lấy được cấu hình.");
       }
     }
 
