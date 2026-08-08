@@ -4421,6 +4421,53 @@ const maKh = String(item.ma_kh || "");
       );
     }
 
+    async function sendRunWebhookByLoggedInStaff(delayConfig) {
+      const maNv = String(currentUser?.ma_nv || "").trim();
+
+      if (!maNv) {
+        throw new Error("Không lấy được ma_nv của nhân viên đang đăng nhập.");
+      }
+
+      const webhookUrl =
+        "https://n8n.clawbot.io.vn/webhook/" + encodeURIComponent(maNv);
+
+      const body = {
+        action: "run",
+        ma_nv: maNv,
+        payload: {
+          thoi_gian_cho: {
+            mode: delayConfig.mode,
+            fixed_seconds: delayConfig.fixed_seconds,
+            min_seconds: delayConfig.min_seconds,
+            max_seconds: delayConfig.max_seconds
+          }
+        }
+      };
+
+      console.log("[RUN WEBHOOK] URL:", webhookUrl);
+      console.log("[RUN WEBHOOK] BODY:", body);
+
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        let responseText = "";
+        try { responseText = await response.text(); } catch {}
+
+        throw new Error(
+          "Webhook " + maNv + " lỗi HTTP " + response.status +
+          (responseText ? ": " + responseText : "")
+        );
+      }
+
+      return true;
+    }
+
     async function runSelectedCustomers() {
       const selectedRows = getSelectedCustomerRows();
       const template = String(runTextInput?.value || "").trim();
@@ -4486,6 +4533,11 @@ const maKh = String(item.ma_kh || "");
 
         // Mỗi lần bấm Chạy: xóa bảng gửi tin cũ rồi ghi lại đúng các dòng đang tick.
         await syncSelectedCustomersToGuiTin(selectedRows, template);
+
+        // Cập nhật DB xong mới gọi webhook theo ma_nv đang đăng nhập.
+        // Ví dụ ma_nv = 1234 => https://n8n.clawbot.io.vn/webhook/1234
+        runSelectedBtn.textContent = "Đang gửi webhook...";
+        await sendRunWebhookByLoggedInStaff(delayConfig);
 
         runSelectedBtn.textContent = "Đang mở...";
         await saveCampaignToIndexedDb(campaign);
