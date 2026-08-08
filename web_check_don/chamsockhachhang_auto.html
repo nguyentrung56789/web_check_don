@@ -4569,9 +4569,42 @@ const maKh = String(item.ma_kh || "");
         // Lưu id dự phòng để trang gửi tin biết chiến dịch gần nhất.
         sessionStorage.setItem("auto_nuoi_campaign_id", campaignId);
 
-        window.location.href =
-          "./chamsockhachhang_guitin.html?campaign_id=" +
-          encodeURIComponent(campaignId);
+const popupUrl =
+  "./chamsockhachhang_guitin.html?campaign_id=" +
+  encodeURIComponent(campaignId);
+
+const popupWidth = 1100;
+const popupHeight = 700;
+
+const popupLeft =
+  Math.max(0, Math.round((window.screen.width - popupWidth) / 2));
+
+const popupTop =
+  Math.max(0, Math.round((window.screen.height - popupHeight) / 2));
+
+const popupWindow = window.open(
+  popupUrl,
+  "guitinPopup",
+  [
+    "width=" + popupWidth,
+    "height=" + popupHeight,
+    "left=" + popupLeft,
+    "top=" + popupTop,
+    "resizable=yes",
+    "scrollbars=yes"
+  ].join(",")
+);
+
+if (!popupWindow) {
+  throw new Error(
+    "Trình duyệt đang chặn popup. Hãy cho phép popup cho trang này."
+  );
+}
+
+popupWindow.focus();
+
+runSelectedBtn.disabled = false;
+runSelectedBtn.textContent = "▶ Chạy";
 
       } catch (error) {
         console.error("Lỗi tạo chiến dịch:", error);
