@@ -941,26 +941,58 @@
         );
     }
 
+    function xoaPhienVaVeDangNhap() {
+      try {
+        sessionStorage.removeItem('APP_ACCESS');
+      } catch (error) {
+        console.warn('Không xóa được APP_ACCESS:', error);
+      }
+
+      try {
+        localStorage.removeItem('nv');
+        localStorage.removeItem('chatwoot_crm_user');
+      } catch (error) {
+        console.warn('Không xóa được tài khoản đăng nhập cũ:', error);
+      }
+
+      location.replace('./login.html');
+    }
+
     document.addEventListener(
       'DOMContentLoaded',
       async () => {
         try {
-          if (
-            typeof window.checkAccess ===
-            'function'
-          ) {
-            const accessOk =
-              window.checkAccess();
-
-            if (!accessOk) {
-              return;
-            }
-          }
-
+          /*
+           * 1) Kiểm tra tài khoản đăng nhập trước.
+           * Nếu chưa có tài khoản thì khoiTaoTaiKhoan()
+           * sẽ tự chuyển về login.html.
+           */
           if (!khoiTaoTaiKhoan()) {
             return;
           }
 
+          /*
+           * 2) Sau đó mới kiểm tra token/quyền truy cập hệ thống.
+           * Nếu token cũ, hết hạn hoặc không hợp lệ thì xóa sạch phiên
+           * để login.html không đọc lại tài khoản/token cũ rồi quay vòng.
+           */
+          if (typeof window.checkAccess === 'function') {
+            let accessOk = false;
+
+            try {
+              accessOk = window.checkAccess() === true;
+            } catch (accessError) {
+              console.error('CHECK_ACCESS_ERROR:', accessError);
+              accessOk = false;
+            }
+
+            if (!accessOk) {
+              xoaPhienVaVeDangNhap();
+              return;
+            }
+          }
+
+          /* 3) Tài khoản + access hợp lệ thì mới tải menu phân quyền. */
           khoiTaoMenuTaiKhoan();
           ganSuKienNut();
 
@@ -978,8 +1010,7 @@
             [
               'Không thể tải phân quyền.',
               '',
-              error?.message ||
-                String(error),
+              error?.message || String(error),
               '',
               'Mở F12 → Console để xem chi tiết.'
             ].join('\n');
