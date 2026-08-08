@@ -309,6 +309,64 @@
       margin-left: 2px;
     }
 
+    .send-timing-box {
+      margin-top: 8px;
+      padding: 9px 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 9px;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .send-timing-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #111827;
+    }
+
+    .send-timing-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      color: #374151;
+      cursor: pointer;
+    }
+
+    .send-timing-option input[type="radio"] {
+      margin: 0;
+    }
+
+    .send-timing-number {
+      width: 78px;
+      height: 30px;
+      border: 1px solid #d1d5db;
+      border-radius: 7px;
+      padding: 0 7px;
+      font-size: 12px;
+      outline: none;
+    }
+
+    .send-timing-number:focus {
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 2px rgba(124,58,237,.10);
+    }
+
+    .send-timing-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .send-timing-note {
+      font-size: 11px;
+      color: #6b7280;
+    }
+
     .select-col-cell{
       width:44px; min-width:44px; max-width:44px;
       text-align:center !important; overflow:visible !important;
@@ -1513,6 +1571,33 @@ Bên em gửi bạn thông tin mới..."
         </div>
 
         <div id="composerAttachments" class="composer-attachments"></div>
+
+        <div class="send-timing-box">
+          <span class="send-timing-title">⏱ Thời gian gửi:</span>
+
+          <label class="send-timing-option">
+            <input id="delayModeFixed" type="radio" name="delayMode" value="fixed">
+            Cố định
+          </label>
+
+          <span class="send-timing-group">
+            <input id="fixedDelaySeconds" class="send-timing-number" type="number" min="1" value="120">
+            <span class="send-timing-note">giây / khách</span>
+          </span>
+
+          <label class="send-timing-option">
+            <input id="delayModeRandom" type="radio" name="delayMode" value="random" checked>
+            Ngẫu nhiên
+          </label>
+
+          <span class="send-timing-group">
+            <span class="send-timing-note">Từ</span>
+            <input id="randomDelayMin" class="send-timing-number" type="number" min="1" value="100">
+            <span class="send-timing-note">đến</span>
+            <input id="randomDelayMax" class="send-timing-number" type="number" min="1" value="200">
+            <span class="send-timing-note">giây</span>
+          </span>
+        </div>
       </div>
 
       <div class="table-wrap">
@@ -1729,6 +1814,11 @@ Bên em gửi bạn thông tin mới..."
     const composerImageInput = document.getElementById("composerImageInput");
     const composerVideoInput = document.getElementById("composerVideoInput");
     const composerAttachments = document.getElementById("composerAttachments");
+    const delayModeFixed = document.getElementById("delayModeFixed");
+    const delayModeRandom = document.getElementById("delayModeRandom");
+    const fixedDelaySeconds = document.getElementById("fixedDelaySeconds");
+    const randomDelayMin = document.getElementById("randomDelayMin");
+    const randomDelayMax = document.getElementById("randomDelayMax");
     const columnToggleBtn = document.getElementById("columnToggleBtn");
     const columnToggleMenu = document.getElementById("columnToggleMenu");
     const customerBody = document.getElementById("customerBody");
@@ -4149,6 +4239,98 @@ const maKh = String(item.ma_kh || "");
 
     window.removeComposerFile = removeComposerFile;
 
+
+    const AUTO_NUOI_DB_NAME = "chatwoot_auto_nuoi_db";
+    const AUTO_NUOI_DB_VERSION = 1;
+    const AUTO_NUOI_STORE = "campaigns";
+
+    function openAutoNuoiDb() {
+      return new Promise(function (resolve, reject) {
+        const request = indexedDB.open(AUTO_NUOI_DB_NAME, AUTO_NUOI_DB_VERSION);
+
+        request.onupgradeneeded = function () {
+          const db = request.result;
+          if (!db.objectStoreNames.contains(AUTO_NUOI_STORE)) {
+            db.createObjectStore(AUTO_NUOI_STORE, { keyPath: "id" });
+          }
+        };
+
+        request.onsuccess = function () {
+          resolve(request.result);
+        };
+
+        request.onerror = function () {
+          reject(request.error || new Error("Không mở được IndexedDB"));
+        };
+      });
+    }
+
+    async function saveCampaignToIndexedDb(campaign) {
+      const db = await openAutoNuoiDb();
+
+      return new Promise(function (resolve, reject) {
+        const tx = db.transaction(AUTO_NUOI_STORE, "readwrite");
+        const store = tx.objectStore(AUTO_NUOI_STORE);
+
+        store.put(campaign);
+
+        tx.oncomplete = function () {
+          db.close();
+          resolve(true);
+        };
+
+        tx.onerror = function () {
+          db.close();
+          reject(tx.error || new Error("Không lưu được chiến dịch"));
+        };
+      });
+    }
+
+    function getDelayConfig() {
+      const mode = delayModeFixed && delayModeFixed.checked ? "fixed" : "random";
+
+      if (mode === "fixed") {
+        const seconds = Math.max(1, Number(fixedDelaySeconds?.value || 0));
+
+        if (!Number.isFinite(seconds) || seconds < 1) {
+          throw new Error("Thời gian cố định phải lớn hơn 0 giây.");
+        }
+
+        return {
+          mode: "fixed",
+          fixed_seconds: Math.round(seconds),
+          min_seconds: Math.round(seconds),
+          max_seconds: Math.round(seconds)
+        };
+      }
+
+      const min = Math.max(1, Number(randomDelayMin?.value || 0));
+      const max = Math.max(1, Number(randomDelayMax?.value || 0));
+
+      if (!Number.isFinite(min) || !Number.isFinite(max) || min < 1 || max < 1) {
+        throw new Error("Khoảng thời gian ngẫu nhiên phải lớn hơn 0 giây.");
+      }
+
+      if (min > max) {
+        throw new Error("Thời gian Từ không được lớn hơn thời gian Đến.");
+      }
+
+      return {
+        mode: "random",
+        fixed_seconds: null,
+        min_seconds: Math.round(min),
+        max_seconds: Math.round(max)
+      };
+    }
+
+    function makeCampaignId() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
+      }
+
+      return "campaign_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
+    }
+
     async function runSelectedCustomers() {
       const selectedRows = getSelectedCustomerRows();
       const template = String(runTextInput?.value || "").trim();
@@ -4163,36 +4345,75 @@ const maKh = String(item.ma_kh || "");
         return;
       }
 
-      const jobs = selectedRows.map(function (row) {
+      let delayConfig;
+
+      try {
+        delayConfig = getDelayConfig();
+      } catch (error) {
+        showNotice(error.message || String(error), "error", 3500);
+        return;
+      }
+
+      const jobs = selectedRows.map(function (row, index) {
         return {
+          index: index + 1,
           ma_kh: row.ma_kh || "",
           name: row.ten_kh || "",
           sdt: row.sdt || "",
           conversation_id: row.conversation_id || null,
+          contact_id: row.contact_id || null,
+          uid_from: row.uid_from || null,
           content: renderTemplateForCustomer(template, row)
         };
       });
 
-      console.log("▶ AUTO NUÔI - DỮ LIỆU CHẠY:", {
+      const campaignId = makeCampaignId();
+
+      const campaign = {
+        id: campaignId,
+        created_at: new Date().toISOString(),
+        status: "ready",
         template: template,
-        selected_count: selectedRows.length,
+        selected_count: jobs.length,
+        delay: delayConfig,
+        jobs: jobs,
+
+        // Blob/File được IndexedDB lưu trực tiếp, nên sang HTML mới vẫn lấy lại được.
         attachments: composerFiles.map(function (file) {
           return {
             name: file.name,
             type: file.type,
-            size: file.size
+            size: file.size,
+            lastModified: file.lastModified || null,
+            blob: file
           };
-        }),
-        jobs: jobs
-      });
+        })
+      };
 
-      showNotice(
-        "Đã chuẩn bị " + jobs.length + " khách" +
-        (composerFiles.length ? " + " + composerFiles.length + " tệp ảnh/video" : "") +
-        ". Mở Console để xem dữ liệu từng khách.",
-        "ok",
-        5000
-      );
+      try {
+        runSelectedBtn.disabled = true;
+        runSelectedBtn.textContent = "Đang mở...";
+
+        await saveCampaignToIndexedDb(campaign);
+
+        // Lưu id dự phòng để trang gửi tin biết chiến dịch gần nhất.
+        sessionStorage.setItem("auto_nuoi_campaign_id", campaignId);
+
+        window.location.href =
+          "./guitin_chamsockhachhang.html?campaign_id=" +
+          encodeURIComponent(campaignId);
+
+      } catch (error) {
+        console.error("Lỗi tạo chiến dịch:", error);
+        showNotice(
+          "Không tạo được chiến dịch: " + (error.message || String(error)),
+          "error",
+          5000
+        );
+
+        runSelectedBtn.disabled = false;
+        runSelectedBtn.textContent = "▶ Chạy";
+      }
     }
 
     window.handleRowSelectionChange = handleRowSelectionChange;
