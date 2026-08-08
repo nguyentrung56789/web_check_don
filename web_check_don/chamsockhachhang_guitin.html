@@ -28,6 +28,7 @@
       max-width: 1300px;
       margin: 0 auto;
       padding: 18px;
+      position: relative;
     }
 
     .topbar {
@@ -44,6 +45,8 @@
 
       box-shadow: 0 4px 18px rgba(0,0,0,.05);
       margin-bottom: 14px;
+      cursor: move;
+      user-select: none;
     }
 
     .titlebox h1 {
@@ -65,6 +68,7 @@
 
     .actions {
       display: flex;
+      cursor: default;
       gap: 8px;
       flex-wrap: wrap;
     }
@@ -279,6 +283,9 @@
 const TABLE_NAME =
   'kv_khachhang_nhanvien_guitin';
 
+const TABLE_NHAN_VIEN =
+  'kv_nhan_vien';
+
 const WEBHOOK_URL =
   'https://n8n.clawbot.io.vn/webhook/guitin_autozalo';
 
@@ -313,6 +320,8 @@ let sb = null;
 let rows = [];
 
 let isRunning = false;
+
+let currentRunId = null;
 
 
 /* =========================================================
@@ -629,18 +638,55 @@ async function loadData() {
       conversation_id = ""
     */
 
-    rows =
-      (data || []).filter(r => {
+    /*
+      Nếu ten_nv trong bảng gửi tin đang NULL/rỗng,
+      đọc lại kv_nhan_vien theo ma_nv để bổ sung tên nhân viên.
+    */
+    const validData = (data || []).filter(r => {
+      return (
+        r.conversation_id !== null &&
+        r.conversation_id !== undefined &&
+        String(r.conversation_id).trim() !== ''
+      );
+    });
 
-        return (
-          r.conversation_id !== null &&
-          r.conversation_id !== undefined &&
-          String(
-            r.conversation_id
-          ).trim() !== ''
-        );
+    const maNvList = Array.from(
+      new Set(
+        validData
+          .map(r => String(r.ma_nv || '').trim())
+          .filter(Boolean)
+      )
+    );
 
-      });
+    const tenNvMap = new Map();
+
+    if (maNvList.length > 0) {
+      const { data: nvData, error: nvError } = await sb
+        .from(TABLE_NHAN_VIEN)
+        .select('ma_nv, ten_nv')
+        .in('ma_nv', maNvList);
+
+      if (nvError) {
+        console.warn('[LOAD TEN_NV WARNING]', nvError);
+      } else {
+        (nvData || []).forEach(nv => {
+          tenNvMap.set(
+            String(nv.ma_nv || '').trim(),
+            String(nv.ten_nv || '').trim()
+          );
+        });
+      }
+    }
+
+    rows = validData.map(r => {
+      const maNv = String(r.ma_nv || '').trim();
+      const tenNvTrongBangGuiTin = String(r.ten_nv || '').trim();
+
+      return {
+        ...r,
+        ten_nv: tenNvTrongBangGuiTin || tenNvMap.get(maNv) || ''
+      };
+    });
 
 
     document
@@ -855,6 +901,13 @@ async function sendRunWebhook() {
     BODY ĐÚNG NHƯ ẢNH BẠN GỬI
   */
 
+  if (!currentRunId) {
+    currentRunId =
+      (window.crypto && typeof window.crypto.randomUUID === 'function')
+        ? window.crypto.randomUUID()
+        : ('run_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9));
+  }
+
   const body = {
 
     action: 'run',
@@ -862,6 +915,10 @@ async function sendRunWebhook() {
     ma_nv: maNv,
 
     payload: {
+
+      run_id: currentRunId,
+
+      so_khach_hop_le: rows.length,
 
       thoi_gian_cho: {
 
@@ -1110,38 +1167,113 @@ async function startRun() {
 
 
 /* =========================================================
+   GỬI WEBHOOK DỪNG
+========================================================= */
+
+async function sendStopWebhook() {
+
+  const maNv = getLoggedInMaNv();
+
+  if (!maNv) {
+    throw new Error('Không lấy được ma_nv của nhân viên đang đăng nhập.');
+  }
+
+  const body = {
+    action: 'stop',
+    ma_nv: maNv,
+    payload: {
+      run_id: currentRunId,
+      stop: true
+    }
+  };
+
+  console.log('[GUITIN_AUTOZALO][STOP] URL:', WEBHOOK_URL);
+  console.log('[GUITIN_AUTOZALO][STOP] BODY:', body);
+
+  const response = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+
+  let responseText = '';
+  try {
+    responseText = await response.text();
+  } catch (e) {}
+
+  console.log(
+    '[GUITIN_AUTOZALO][STOP] RESPONSE:',
+    response.status,
+    responseText
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      'Webhook dừng lỗi HTTP ' +
+      response.status +
+      (responseText ? ': ' + responseText : '')
+    );
+  }
+
+  return {
+    ok: true,
+    status: response.status,
+    responseText
+  };
+}
+
+
+/* =========================================================
    NÚT DỪNG
 ========================================================= */
 
-function stopRun() {
+async function stopRun() {
 
-  isRunning = false;
+  if (!isRunning) {
+    return;
+  }
 
+  const btnStop = document.getElementById('btnStop');
+  const btnRun = document.getElementById('btnRun');
 
-  document
-    .getElementById('btnRun')
-    .disabled =
-      false;
+  try {
+    btnStop.disabled = true;
+    btnStop.textContent = 'Đang dừng...';
 
+    setStatus('Đang gửi lệnh dừng tới n8n...');
 
-  document
-    .getElementById('btnStop')
-    .disabled =
-      true;
+    await sendStopWebhook();
 
+    isRunning = false;
 
-  renderTable();
+    btnRun.disabled = false;
+    btnStop.disabled = true;
+    btnStop.textContent = '■ Dừng';
 
+    renderTable();
 
-  /*
-    Hiện tại nút Dừng chỉ dừng trạng thái giao diện.
-    Không gửi webhook stop.
-  */
+    setStatus(
+      'Đã gửi lệnh DỪNG tới n8n.' +
+      (currentRunId ? ' run_id: ' + currentRunId : '')
+    );
 
-  setStatus(
-    'Đã dừng trạng thái trên giao diện.'
-  );
+    currentRunId = null;
 
+  } catch (err) {
+    console.error('[STOP ERROR]', err);
+
+    btnStop.disabled = false;
+    btnStop.textContent = '■ Dừng';
+
+    setStatus('Lỗi gửi lệnh dừng: ' + (err.message || err));
+
+    alert(
+      'Không gửi được lệnh dừng.\n\n' +
+      (err.message || err)
+    );
+  }
 }
 
 
@@ -1174,12 +1306,68 @@ document
 
 
 /* =========================================================
+   KÉO / DI CHUYỂN FORM
+========================================================= */
+
+function enableDraggableForm() {
+  const wrap = document.querySelector('.wrap');
+  const handle = document.querySelector('.topbar');
+
+  if (!wrap || !handle) return;
+
+  let dragging = false;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  handle.addEventListener('mousedown', function (event) {
+    if (event.button !== 0) return;
+    if (event.target.closest('button, input, select, textarea, a')) return;
+
+    const rect = wrap.getBoundingClientRect();
+
+    wrap.style.position = 'fixed';
+    wrap.style.margin = '0';
+    wrap.style.width = rect.width + 'px';
+    wrap.style.maxWidth = 'calc(100vw - 12px)';
+    wrap.style.left = rect.left + 'px';
+    wrap.style.top = rect.top + 'px';
+    wrap.style.zIndex = '9999';
+
+    offsetX = event.clientX - rect.left;
+    offsetY = event.clientY - rect.top;
+    dragging = true;
+
+    event.preventDefault();
+  });
+
+  document.addEventListener('mousemove', function (event) {
+    if (!dragging) return;
+
+    const maxLeft = Math.max(0, window.innerWidth - wrap.offsetWidth);
+    const maxTop = Math.max(0, window.innerHeight - 60);
+
+    const left = Math.min(Math.max(0, event.clientX - offsetX), maxLeft);
+    const top = Math.min(Math.max(0, event.clientY - offsetY), maxTop);
+
+    wrap.style.left = left + 'px';
+    wrap.style.top = top + 'px';
+  });
+
+  document.addEventListener('mouseup', function () {
+    dragging = false;
+  });
+}
+
+
+/* =========================================================
    KHỞI TẠO
 ========================================================= */
 
 (async () => {
 
   try {
+
+    enableDraggableForm();
 
     sb =
       await createSupabaseClient();
