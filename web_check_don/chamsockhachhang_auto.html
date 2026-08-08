@@ -236,7 +236,7 @@
       font-size: 13px;
       font-weight: 800;
       white-space: nowrap;
-      margin-left: auto;
+      margin-left: 4px;
     }
 
     #runSelectedBtn:hover { background: #6d28d9; }
@@ -309,16 +309,12 @@
       margin-left: 2px;
     }
 
-    .send-timing-box {
-      margin-top: 8px;
-      padding: 9px 10px;
-      border: 1px solid #e5e7eb;
-      border-radius: 9px;
-      background: #ffffff;
-      display: flex;
+    .send-timing-inline {
+      display: inline-flex;
       align-items: center;
-      gap: 12px;
+      gap: 7px;
       flex-wrap: wrap;
+      margin-left: auto;
     }
 
     .send-timing-title {
@@ -1567,37 +1563,37 @@ Bên em gửi bạn thông tin mới..."
             <input id="composerVideoInput" type="file" accept="video/*" multiple hidden>
           </label>
 
+          <div class="send-timing-inline">
+            <span class="send-timing-title">⏱ Thời gian:</span>
+
+            <label class="send-timing-option">
+              <input id="delayModeFixed" type="radio" name="delayMode" value="fixed">
+              Cố định
+            </label>
+
+            <span class="send-timing-group">
+              <input id="fixedDelaySeconds" class="send-timing-number" type="number" min="1" value="120">
+              <span class="send-timing-note">giây/khách</span>
+            </span>
+
+            <label class="send-timing-option">
+              <input id="delayModeRandom" type="radio" name="delayMode" value="random" checked>
+              Ngẫu nhiên
+            </label>
+
+            <span class="send-timing-group">
+              <span class="send-timing-note">Từ</span>
+              <input id="randomDelayMin" class="send-timing-number" type="number" min="1" value="100">
+              <span class="send-timing-note">đến</span>
+              <input id="randomDelayMax" class="send-timing-number" type="number" min="1" value="200">
+              <span class="send-timing-note">giây</span>
+            </span>
+          </div>
+
           <button id="runSelectedBtn" type="button">▶ Chạy</button>
         </div>
 
         <div id="composerAttachments" class="composer-attachments"></div>
-
-        <div class="send-timing-box">
-          <span class="send-timing-title">⏱ Thời gian gửi:</span>
-
-          <label class="send-timing-option">
-            <input id="delayModeFixed" type="radio" name="delayMode" value="fixed">
-            Cố định
-          </label>
-
-          <span class="send-timing-group">
-            <input id="fixedDelaySeconds" class="send-timing-number" type="number" min="1" value="120">
-            <span class="send-timing-note">giây / khách</span>
-          </span>
-
-          <label class="send-timing-option">
-            <input id="delayModeRandom" type="radio" name="delayMode" value="random" checked>
-            Ngẫu nhiên
-          </label>
-
-          <span class="send-timing-group">
-            <span class="send-timing-note">Từ</span>
-            <input id="randomDelayMin" class="send-timing-number" type="number" min="1" value="100">
-            <span class="send-timing-note">đến</span>
-            <input id="randomDelayMax" class="send-timing-number" type="number" min="1" value="200">
-            <span class="send-timing-note">giây</span>
-          </span>
-        </div>
       </div>
 
       <div class="table-wrap">
