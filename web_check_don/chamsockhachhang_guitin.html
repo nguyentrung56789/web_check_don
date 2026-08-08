@@ -2,204 +2,399 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,viewport-fit=cover"
+  />
+
   <title>Gửi tin khách hàng</title>
 
   <script src="./js/internal_key.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:Arial,Helvetica,sans-serif;
-      background:#f5f7fb;
-      color:#172033;
-    }
-    .wrap{
-      max-width:1200px;
-      margin:0 auto;
-      padding:18px;
-    }
-    .topbar{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-      background:#fff;
-      border:1px solid #e6e9ef;
-      border-radius:14px;
-      padding:14px 16px;
-      box-shadow:0 4px 18px rgba(0,0,0,.05);
-      margin-bottom:14px;
-    }
-    .titlebox h1{
-      margin:0 0 4px;
-      font-size:20px;
-    }
-    .count{
-      font-size:14px;
-      color:#5d6677;
-    }
-    #validCount{
-      font-size:20px;
-      font-weight:700;
-      color:#0f766e;
-      margin-left:5px;
-    }
-    .actions{
-      display:flex;
-      gap:8px;
-    }
-    button{
-      border:0;
-      border-radius:9px;
-      padding:10px 15px;
-      font-weight:700;
-      cursor:pointer;
-    }
-    .btn-run{background:#16a34a;color:#fff}
-    .btn-stop{background:#dc2626;color:#fff}
-    .btn-reload{background:#e8edf5;color:#172033}
-    button:disabled{opacity:.5;cursor:not-allowed}
-
-    .status{
-      margin-bottom:12px;
-      padding:10px 12px;
-      background:#fff;
-      border:1px solid #e6e9ef;
-      border-radius:10px;
-      font-size:14px;
+    * {
+      box-sizing: border-box;
     }
 
-    .table-card{
-      background:#fff;
-      border:1px solid #e6e9ef;
-      border-radius:14px;
-      overflow:hidden;
-      box-shadow:0 4px 18px rgba(0,0,0,.05);
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f5f7fb;
+      color: #172033;
     }
-    .table-scroll{overflow:auto}
-    table{
-      width:100%;
-      border-collapse:collapse;
-      min-width:720px;
+
+    .wrap {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 18px;
     }
-    th,td{
-      padding:11px 12px;
-      border-bottom:1px solid #edf0f5;
-      text-align:left;
-      font-size:14px;
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+
+      background: #fff;
+      border: 1px solid #e6e9ef;
+      border-radius: 14px;
+      padding: 14px 16px;
+
+      box-shadow: 0 4px 18px rgba(0,0,0,.05);
+      margin-bottom: 14px;
     }
-    th{
-      position:sticky;
-      top:0;
-      background:#f8fafc;
-      z-index:1;
-      font-size:13px;
-      color:#475569;
+
+    .titlebox h1 {
+      margin: 0 0 4px;
+      font-size: 20px;
     }
-    tbody tr:hover{background:#f8fafc}
-    .cmd{
-      display:inline-block;
-      padding:5px 9px;
-      border-radius:999px;
-      background:#eef2ff;
-      color:#3730a3;
-      font-size:12px;
-      font-weight:700;
+
+    .count {
+      font-size: 14px;
+      color: #5d6677;
     }
-    .empty{
-      text-align:center;
-      padding:30px;
-      color:#64748b;
+
+    #validCount {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f766e;
+      margin-left: 5px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 9px;
+      padding: 10px 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-run {
+      background: #16a34a;
+      color: #fff;
+    }
+
+    .btn-stop {
+      background: #dc2626;
+      color: #fff;
+    }
+
+    .btn-reload {
+      background: #e8edf5;
+      color: #172033;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+
+      background: #fff;
+      border: 1px solid #e6e9ef;
+      border-radius: 10px;
+
+      font-size: 14px;
+    }
+
+    .table-card {
+      background: #fff;
+      border: 1px solid #e6e9ef;
+      border-radius: 14px;
+      overflow: hidden;
+
+      box-shadow: 0 4px 18px rgba(0,0,0,.05);
+    }
+
+    .table-scroll {
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 900px;
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid #edf0f5;
+      text-align: left;
+      font-size: 14px;
+      vertical-align: middle;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      z-index: 1;
+
+      font-size: 13px;
+      color: #475569;
+    }
+
+    tbody tr:hover {
+      background: #f8fafc;
+    }
+
+    .cmd {
+      display: inline-block;
+      padding: 5px 9px;
+      border-radius: 999px;
+
+      background: #eef2ff;
+      color: #3730a3;
+
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .cmd.running {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 30px;
+      color: #64748b;
+    }
+
+    @media (max-width: 700px) {
+      .wrap {
+        padding: 10px;
+      }
+
+      .topbar {
+        align-items: stretch;
+      }
+
+      .actions {
+        width: 100%;
+      }
+
+      .actions button {
+        flex: 1;
+      }
     }
   </style>
 </head>
 
 <body>
+
 <div class="wrap">
 
   <div class="topbar">
+
     <div class="titlebox">
       <h1>Danh sách khách hàng gửi tin</h1>
+
       <div class="count">
-        Khách hợp lệ (conversation_id khác NULL):
+        Khách hợp lệ:
         <span id="validCount">0</span>
       </div>
     </div>
 
     <div class="actions">
-      <button id="btnReload" class="btn-reload">↻ Tải lại</button>
-      <button id="btnRun" class="btn-run">▶ Chạy</button>
-      <button id="btnStop" class="btn-stop" disabled>■ Dừng</button>
+      <button
+        id="btnReload"
+        class="btn-reload"
+      >
+        ↻ Tải lại
+      </button>
+
+      <button
+        id="btnRun"
+        class="btn-run"
+      >
+        ▶ Chạy
+      </button>
+
+      <button
+        id="btnStop"
+        class="btn-stop"
+        disabled
+      >
+        ■ Dừng
+      </button>
     </div>
+
   </div>
 
-  <div id="status" class="status">Đang khởi tạo...</div>
+  <div id="status" class="status">
+    Đang khởi tạo...
+  </div>
 
   <div class="table-card">
     <div class="table-scroll">
+
       <table>
+
         <thead>
           <tr>
             <th>STT</th>
-            <th>ma_kh</th>
-            <th>ma_nv</th>
+            <th>Mã KH</th>
+            <th>Tên khách hàng</th>
+            <th>Tên nhân viên</th>
             <th>conversation_id</th>
             <th>Lệnh</th>
           </tr>
         </thead>
+
         <tbody id="tbody">
-          <tr><td colspan="5" class="empty">Đang tải dữ liệu...</td></tr>
+          <tr>
+            <td colspan="6" class="empty">
+              Đang tải dữ liệu...
+            </td>
+          </tr>
         </tbody>
+
       </table>
+
     </div>
   </div>
 
 </div>
 
+
 <script>
-const TABLE_NAME = 'kv_khachhang_nhanvien_guitin';
+
+/* =========================================================
+   CẤU HÌNH
+========================================================= */
+
+const TABLE_NAME =
+  'kv_khachhang_nhanvien_guitin';
+
+const WEBHOOK_URL =
+  'https://n8n.clawbot.io.vn/webhook/guitin_autozalo';
+
+
+/*
+  Thời gian chờ gửi tin.
+
+  Payload sẽ là:
+
+  {
+    mode: "random",
+    fixed_seconds: null,
+    min_seconds: 100,
+    max_seconds: 200
+  }
+*/
+
+const DELAY_CONFIG = {
+  mode: 'random',
+  fixed_seconds: null,
+  min_seconds: 100,
+  max_seconds: 200
+};
+
+
+/* =========================================================
+   BIẾN
+========================================================= */
 
 let sb = null;
+
 let rows = [];
+
 let isRunning = false;
 
+
+/* =========================================================
+   STATUS
+========================================================= */
+
 function setStatus(text) {
-  document.getElementById('status').textContent = text;
+
+  document
+    .getElementById('status')
+    .textContent = text;
+
 }
+
+
+/* =========================================================
+   INTERNAL KEY
+========================================================= */
 
 function getInternalKeySafe() {
-  try {
-    if (typeof getInternalKey === 'function') return getInternalKey();
-  } catch(e) {}
 
-  return window.INTERNAL_KEY ||
-         window.COD_INTERNAL_KEY ||
-         window.internalKey ||
-         '';
+  try {
+
+    if (typeof getInternalKey === 'function') {
+
+      return getInternalKey();
+
+    }
+
+  } catch (e) {}
+
+  return (
+    window.INTERNAL_KEY ||
+    window.COD_INTERNAL_KEY ||
+    window.internalKey ||
+    ''
+  );
+
 }
 
-async function createSupabaseClient() {
-  const internalKey = getInternalKeySafe();
 
-  const res = await fetch('/api/getConfig', {
-    headers: internalKey ? { 'x-internal-key': internalKey } : {}
-  });
+/* =========================================================
+   TẠO SUPABASE CLIENT
+========================================================= */
+
+async function createSupabaseClient() {
+
+  const internalKey =
+    getInternalKeySafe();
+
+  const res =
+    await fetch('/api/getConfig', {
+
+      headers: internalKey
+        ? {
+            'x-internal-key': internalKey
+          }
+        : {}
+
+    });
+
 
   if (!res.ok) {
-    throw new Error('Không lấy được /api/getConfig. HTTP ' + res.status);
+
+    throw new Error(
+      'Không lấy được /api/getConfig. HTTP ' +
+      res.status
+    );
+
   }
 
-  const cfg = await res.json();
+
+  const cfg =
+    await res.json();
+
 
   const url =
     cfg.url ||
     cfg.SUPABASE_URL ||
     cfg.supabaseUrl ||
     cfg.supabase_url;
+
 
   const anon =
     cfg.anon ||
@@ -208,121 +403,822 @@ async function createSupabaseClient() {
     cfg.SUPABASE_ANON_KEY ||
     cfg.supabase_anon_key;
 
+
   if (!url || !anon) {
-    throw new Error('Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY');
-  }
 
-  return window.supabase.createClient(url, anon);
-}
-
-async function loadData() {
-  try {
-    setStatus('Đang tải dữ liệu...');
-    document.getElementById('tbody').innerHTML =
-      '<tr><td colspan="5" class="empty">Đang tải dữ liệu...</td></tr>';
-
-    /*
-      Chỉ lấy khách HỢP LỆ:
-      conversation_id IS NOT NULL
-    */
-    const { data, error } = await sb
-      .from(TABLE_NAME)
-      .select('ma_kh,ma_nv,conversation_id')
-      .not('conversation_id', 'is', null)
-      .order('ma_kh', { ascending: true });
-
-    if (error) throw error;
-
-    /*
-      Phòng trường hợp conversation_id là chuỗi rỗng.
-      NULL đã lọc từ Supabase, ở đây lọc thêm "".
-    */
-    rows = (data || []).filter(r =>
-      r.conversation_id !== null &&
-      r.conversation_id !== undefined &&
-      String(r.conversation_id).trim() !== ''
+    throw new Error(
+      'Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY'
     );
 
-    document.getElementById('validCount').textContent = rows.length;
+  }
+
+
+  return window.supabase.createClient(
+    url,
+    anon
+  );
+
+}
+
+
+/* =========================================================
+   LẤY NHÂN VIÊN ĐANG ĐĂNG NHẬP
+========================================================= */
+
+function getCurrentUser() {
+
+  /*
+    1. Thử lấy từ localStorage "nv"
+  */
+
+  try {
+
+    const nv =
+      JSON.parse(
+        localStorage.getItem('nv') || 'null'
+      );
+
+    if (nv && nv.ma_nv) {
+
+      return nv;
+
+    }
+
+  } catch (e) {}
+
+
+  /*
+    2. Thử kiểu đăng nhập Chatwoot cũ
+  */
+
+  try {
+
+    const nv =
+      JSON.parse(
+        localStorage.getItem(
+          'chatwoot_crm_user'
+        ) || 'null'
+      );
+
+    if (nv && nv.ma_nv) {
+
+      return nv;
+
+    }
+
+  } catch (e) {}
+
+
+  /*
+    3. last_ma_nv
+  */
+
+  const lastMaNv =
+    String(
+      localStorage.getItem('last_ma_nv') ||
+      ''
+    ).trim();
+
+  if (lastMaNv) {
+
+    return {
+      ma_nv: lastMaNv
+    };
+
+  }
+
+
+  /*
+    4. URL ?ma_nv=...
+  */
+
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  const maNvUrl =
+    String(
+      params.get('ma_nv') || ''
+    ).trim();
+
+  if (maNvUrl) {
+
+    return {
+      ma_nv: maNvUrl
+    };
+
+  }
+
+
+  /*
+    5. Nếu trang này được mở bằng popup
+       thử lấy user từ trang cha.
+  */
+
+  try {
+
+    if (
+      window.opener &&
+      window.opener.currentUser &&
+      window.opener.currentUser.ma_nv
+    ) {
+
+      return window.opener.currentUser;
+
+    }
+
+  } catch (e) {}
+
+
+  return null;
+
+}
+
+
+/* =========================================================
+   LẤY MA_NV ĐANG ĐĂNG NHẬP
+========================================================= */
+
+function getLoggedInMaNv() {
+
+  const currentUser =
+    getCurrentUser();
+
+  return String(
+    currentUser?.ma_nv || ''
+  ).trim();
+
+}
+
+
+/* =========================================================
+   TẢI DỮ LIỆU
+========================================================= */
+
+async function loadData() {
+
+  try {
+
+    setStatus(
+      'Đang tải dữ liệu...'
+    );
+
+
+    document
+      .getElementById('tbody')
+      .innerHTML =
+        `
+        <tr>
+          <td
+            colspan="6"
+            class="empty"
+          >
+            Đang tải dữ liệu...
+          </td>
+        </tr>
+        `;
+
+
+    /*
+      Lấy thêm:
+      - ten_khachhang
+      - ten_nhanvien
+
+      ma_nv vẫn được lấy,
+      nhưng KHÔNG HIỂN THỊ ra bảng.
+
+      ma_nv cần giữ lại để xử lý bên trong.
+    */
+
+    const {
+      data,
+      error
+    } =
+      await sb
+        .from(TABLE_NAME)
+        .select(`
+          ma_kh,
+          ma_nv,
+          ten_khachhang,
+          ten_nhanvien,
+          conversation_id
+        `)
+        .not(
+          'conversation_id',
+          'is',
+          null
+        )
+        .order(
+          'ma_kh',
+          {
+            ascending: true
+          }
+        );
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    /*
+      Lọc thêm trường hợp
+      conversation_id = ""
+    */
+
+    rows =
+      (data || []).filter(r => {
+
+        return (
+          r.conversation_id !== null &&
+          r.conversation_id !== undefined &&
+          String(
+            r.conversation_id
+          ).trim() !== ''
+        );
+
+      });
+
+
+    document
+      .getElementById('validCount')
+      .textContent =
+        rows.length;
+
+
     renderTable();
 
-    setStatus('Đã tải ' + rows.length + ' khách hợp lệ.');
-  } catch (err) {
-    console.error(err);
-    setStatus('Lỗi: ' + (err.message || err));
-    document.getElementById('validCount').textContent = '0';
-    document.getElementById('tbody').innerHTML =
-      '<tr><td colspan="5" class="empty">Không tải được dữ liệu</td></tr>';
+
+    setStatus(
+      'Đã tải ' +
+      rows.length +
+      ' khách hợp lệ.'
+    );
+
   }
+
+  catch (err) {
+
+    console.error(
+      '[LOAD DATA ERROR]',
+      err
+    );
+
+
+    rows = [];
+
+
+    document
+      .getElementById('validCount')
+      .textContent =
+        '0';
+
+
+    document
+      .getElementById('tbody')
+      .innerHTML =
+        `
+        <tr>
+          <td
+            colspan="6"
+            class="empty"
+          >
+            Không tải được dữ liệu
+          </td>
+        </tr>
+        `;
+
+
+    setStatus(
+      'Lỗi tải dữ liệu: ' +
+      (
+        err.message ||
+        err
+      )
+    );
+
+  }
+
 }
+
+
+/* =========================================================
+   HIỂN THỊ BẢNG
+========================================================= */
 
 function renderTable() {
-  const tbody = document.getElementById('tbody');
+
+  const tbody =
+    document.getElementById('tbody');
+
 
   if (!rows.length) {
+
     tbody.innerHTML =
-      '<tr><td colspan="5" class="empty">Không có khách hợp lệ</td></tr>';
+      `
+      <tr>
+        <td
+          colspan="6"
+          class="empty"
+        >
+          Không có khách hợp lệ
+        </td>
+      </tr>
+      `;
+
     return;
+
   }
 
-  tbody.innerHTML = rows.map((r, i) => `
-    <tr>
-      <td>${i + 1}</td>
-      <td>${escapeHtml(r.ma_kh ?? '')}</td>
-      <td>${escapeHtml(r.ma_nv ?? '')}</td>
-      <td>${escapeHtml(r.conversation_id ?? '')}</td>
-      <td><span class="cmd">${isRunning ? 'Đang chờ' : 'Chưa chạy'}</span></td>
-    </tr>
-  `).join('');
+
+  tbody.innerHTML =
+    rows.map(
+      (r, i) => `
+
+        <tr>
+
+          <td>
+            ${i + 1}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              r.ma_kh ?? ''
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              r.ten_khachhang ?? ''
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              r.ten_nhanvien ?? ''
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              r.conversation_id ?? ''
+            )}
+          </td>
+
+          <td>
+
+            <span
+              class="cmd ${
+                isRunning
+                  ? 'running'
+                  : ''
+              }"
+            >
+
+              ${
+                isRunning
+                  ? 'Đang chờ'
+                  : 'Chưa chạy'
+              }
+
+            </span>
+
+          </td>
+
+        </tr>
+
+      `
+    ).join('');
+
 }
+
+
+/* =========================================================
+   CHỐNG HTML
+========================================================= */
 
 function escapeHtml(value) {
+
   return String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+
+    .replaceAll(
+      '&',
+      '&amp;'
+    )
+
+    .replaceAll(
+      '<',
+      '&lt;'
+    )
+
+    .replaceAll(
+      '>',
+      '&gt;'
+    )
+
+    .replaceAll(
+      '"',
+      '&quot;'
+    )
+
+    .replaceAll(
+      "'",
+      '&#039;'
+    );
+
 }
 
-/*
-  Hiện tại nút Chạy/Dừng mới quản lý trạng thái trên giao diện.
-  Khi nối webhook n8n, thêm fetch webhook tại đây.
-*/
-function startRun() {
-  if (!rows.length) {
-    alert('Không có khách hợp lệ để chạy.');
-    return;
+
+/* =========================================================
+   GỬI WEBHOOK CHẠY
+========================================================= */
+
+async function sendRunWebhook() {
+
+  const maNv =
+    getLoggedInMaNv();
+
+
+  if (!maNv) {
+
+    throw new Error(
+      'Không lấy được ma_nv của nhân viên đang đăng nhập.'
+    );
+
   }
 
-  isRunning = true;
-  document.getElementById('btnRun').disabled = true;
-  document.getElementById('btnStop').disabled = false;
-  renderTable();
-  setStatus('Đang chạy ' + rows.length + ' khách...');
+
+  /*
+    BODY ĐÚNG NHƯ ẢNH BẠN GỬI
+  */
+
+  const body = {
+
+    action: 'run',
+
+    ma_nv: maNv,
+
+    payload: {
+
+      thoi_gian_cho: {
+
+        mode:
+          DELAY_CONFIG.mode,
+
+        fixed_seconds:
+          DELAY_CONFIG.fixed_seconds,
+
+        min_seconds:
+          DELAY_CONFIG.min_seconds,
+
+        max_seconds:
+          DELAY_CONFIG.max_seconds
+
+      }
+
+    }
+
+  };
+
+
+  console.log(
+    '[GUITIN_AUTOZALO] URL:',
+    WEBHOOK_URL
+  );
+
+
+  console.log(
+    '[GUITIN_AUTOZALO] BODY:',
+    body
+  );
+
+
+  const response =
+    await fetch(
+      WEBHOOK_URL,
+      {
+
+        method: 'POST',
+
+        headers: {
+          'Content-Type':
+            'application/json'
+        },
+
+        body:
+          JSON.stringify(body)
+
+      }
+    );
+
+
+  /*
+    Lấy response n8n để debug
+  */
+
+  let responseText = '';
+
+  try {
+
+    responseText =
+      await response.text();
+
+  } catch (e) {}
+
+
+  console.log(
+    '[GUITIN_AUTOZALO] RESPONSE:',
+    response.status,
+    responseText
+  );
+
+
+  if (!response.ok) {
+
+    throw new Error(
+      'Webhook lỗi HTTP ' +
+      response.status +
+      (
+        responseText
+          ? ': ' + responseText
+          : ''
+      )
+    );
+
+  }
+
+
+  return {
+    ok: true,
+    status: response.status,
+    responseText
+  };
+
 }
+
+
+/* =========================================================
+   NÚT CHẠY
+========================================================= */
+
+async function startRun() {
+
+  if (isRunning) {
+
+    return;
+
+  }
+
+
+  if (!rows.length) {
+
+    alert(
+      'Không có khách hợp lệ để chạy.'
+    );
+
+    return;
+
+  }
+
+
+  /*
+    Kiểm tra ma_nv trước khi chạy
+  */
+
+  const maNv =
+    getLoggedInMaNv();
+
+
+  if (!maNv) {
+
+    alert(
+      'Không lấy được mã nhân viên đang đăng nhập.'
+    );
+
+    return;
+
+  }
+
+
+  try {
+
+    /*
+      Khóa nút trong lúc gọi webhook
+    */
+
+    document
+      .getElementById('btnRun')
+      .disabled =
+        true;
+
+
+    setStatus(
+      'Đang gửi lệnh chạy tới n8n...'
+    );
+
+
+    /*
+      GỬI WEBHOOK
+    */
+
+    await sendRunWebhook();
+
+
+    /*
+      Chỉ chuyển sang chạy
+      nếu webhook thành công
+    */
+
+    isRunning = true;
+
+
+    document
+      .getElementById('btnRun')
+      .disabled =
+        true;
+
+
+    document
+      .getElementById('btnStop')
+      .disabled =
+        false;
+
+
+    renderTable();
+
+
+    setStatus(
+      'Đã gửi lệnh chạy ' +
+      rows.length +
+      ' khách. ' +
+      'ma_nv: ' +
+      maNv +
+      ' | Chờ ngẫu nhiên 100 - 200 giây.'
+    );
+
+  }
+
+  catch (err) {
+
+    console.error(
+      '[RUN ERROR]',
+      err
+    );
+
+
+    isRunning = false;
+
+
+    document
+      .getElementById('btnRun')
+      .disabled =
+        false;
+
+
+    document
+      .getElementById('btnStop')
+      .disabled =
+        true;
+
+
+    renderTable();
+
+
+    setStatus(
+      'Lỗi chạy: ' +
+      (
+        err.message ||
+        err
+      )
+    );
+
+
+    alert(
+      'Không chạy được.\n\n' +
+      (
+        err.message ||
+        err
+      )
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   NÚT DỪNG
+========================================================= */
 
 function stopRun() {
+
   isRunning = false;
-  document.getElementById('btnRun').disabled = false;
-  document.getElementById('btnStop').disabled = true;
+
+
+  document
+    .getElementById('btnRun')
+    .disabled =
+      false;
+
+
+  document
+    .getElementById('btnStop')
+    .disabled =
+      true;
+
+
   renderTable();
-  setStatus('Đã dừng.');
+
+
+  /*
+    Hiện tại nút Dừng chỉ dừng trạng thái giao diện.
+    Không gửi webhook stop.
+  */
+
+  setStatus(
+    'Đã dừng trạng thái trên giao diện.'
+  );
+
 }
 
-document.getElementById('btnReload').addEventListener('click', loadData);
-document.getElementById('btnRun').addEventListener('click', startRun);
-document.getElementById('btnStop').addEventListener('click', stopRun);
+
+/* =========================================================
+   EVENT
+========================================================= */
+
+document
+  .getElementById('btnReload')
+  .addEventListener(
+    'click',
+    loadData
+  );
+
+
+document
+  .getElementById('btnRun')
+  .addEventListener(
+    'click',
+    startRun
+  );
+
+
+document
+  .getElementById('btnStop')
+  .addEventListener(
+    'click',
+    stopRun
+  );
+
+
+/* =========================================================
+   KHỞI TẠO
+========================================================= */
 
 (async () => {
+
   try {
-    sb = await createSupabaseClient();
+
+    sb =
+      await createSupabaseClient();
+
+
+    const maNv =
+      getLoggedInMaNv();
+
+
+    console.log(
+      '[NHÂN VIÊN ĐĂNG NHẬP]',
+      maNv
+    );
+
+
     await loadData();
-  } catch (err) {
-    console.error(err);
-    setStatus('Lỗi khởi tạo: ' + (err.message || err));
+
   }
+
+  catch (err) {
+
+    console.error(
+      '[INIT ERROR]',
+      err
+    );
+
+
+    setStatus(
+      'Lỗi khởi tạo: ' +
+      (
+        err.message ||
+        err
+      )
+    );
+
+  }
+
 })();
+
 </script>
 
 </body>
