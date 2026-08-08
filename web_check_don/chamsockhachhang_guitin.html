@@ -1193,65 +1193,6 @@ async function startRun() {
 
 
 /* =========================================================
-   GỬI WEBHOOK DỪNG
-========================================================= */
-
-async function sendStopWebhook() {
-
-  const maNv = getLoggedInMaNv();
-
-  if (!maNv) {
-    throw new Error('Không lấy được ma_nv của nhân viên đang đăng nhập.');
-  }
-
-  const body = {
-    action: 'stop',
-    ma_nv: maNv,
-    payload: {
-      run_id: currentRunId,
-      stop: true
-    }
-  };
-
-  console.log('[GUITIN_AUTOZALO][STOP] URL:', WEBHOOK_URL);
-  console.log('[GUITIN_AUTOZALO][STOP] BODY:', body);
-
-  const response = await fetch(WEBHOOK_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  });
-
-  let responseText = '';
-  try {
-    responseText = await response.text();
-  } catch (e) {}
-
-  console.log(
-    '[GUITIN_AUTOZALO][STOP] RESPONSE:',
-    response.status,
-    responseText
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      'Webhook dừng lỗi HTTP ' +
-      response.status +
-      (responseText ? ': ' + responseText : '')
-    );
-  }
-
-  return {
-    ok: true,
-    status: response.status,
-    responseText
-  };
-}
-
-
-/* =========================================================
    UPDATE STOP TRỰC TIẾP TỪ HTML
    - Tìm dòng chưa có trạng thái trong Supabase
    - conversation_id cao nhất trước
@@ -1334,18 +1275,9 @@ async function stopRun() {
 
     setStatus('Đang đánh dấu dòng tiếp theo = stop trên Supabase...');
 
-    // 1) HTML tự tìm dòng trang_thai NULL gần nhất theo conversation_id cao -> thấp
-    //    và tự update dòng đó thành stop.
+    // HTML tự tìm dòng trang_thai NULL gần nhất theo conversation_id cao -> thấp
+    // và tự update dòng đó thành stop.
     const stopResult = await markNextRowStopFromHtml();
-
-    // 2) Vẫn gửi webhook stop cho n8n để giữ cơ chế dừng hiện có.
-    setStatus(
-      stopResult.updated
-        ? 'Đã đặt stop cho conversation_id ' + stopResult.conversation_id + '. Đang báo n8n...'
-        : stopResult.reason + ' Đang báo n8n...'
-    );
-
-    await sendStopWebhook();
 
     isRunning = false;
 
@@ -1354,13 +1286,12 @@ async function stopRun() {
     btnStop.textContent = '■ Dừng';
 
     // Realtime sẽ tự cập nhật dòng stop.
-    // Render lại để đảm bảo giao diện nút được cập nhật ngay.
     renderTable();
 
     setStatus(
       stopResult.updated
         ? '⛔ Đã DỪNG. conversation_id ' + stopResult.conversation_id + ' đã được HTML cập nhật thành stop.'
-        : '⛔ Đã gửi lệnh DỪNG. ' + stopResult.reason
+        : '⛔ ' + stopResult.reason
     );
 
     currentRunId = null;
