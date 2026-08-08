@@ -1743,6 +1743,7 @@ Bên em gửi bạn thông tin mới..."
     const TABLE_NHAN_VIEN = getConfiguredTableName("index", "kv_nhan_vien");
     const TABLE_KHACH_HANG = getConfiguredTableName("kh", "sql_khachhang_nhanvien");
     const TABLE_KHACH_HANG_NHANVIEN = getConfiguredTableName("kh", "kv_khachhang_nhanvien");
+    const TABLE_KHACH_HANG_NHANVIEN_GUITIN = "kv_khachhang_nhanvien_guitin";
     const VIEW_HANG_HOA_THEO_KHACH = "sql_hanghoa_theokhach";
     const PRODUCT_DETAIL_MAX_ROWS = 500;
     const UPDATE_CHATWOOT_WEBHOOK_URL = "https://n8n.clawbot.io.vn/webhook/capnhat-chatwoot";
@@ -4327,6 +4328,48 @@ const maKh = String(item.ma_kh || "");
       return "campaign_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
     }
 
+    async function syncSelectedCustomersToGuiTin(selectedRows) {
+      if (!supabaseClient) {
+        throw new Error("Supabase chưa sẵn sàng.");
+      }
+
+      // 1) Xóa danh sách gửi tin cũ. ma_kh của bảng mapping được dùng làm điều kiện
+      // để PostgREST cho phép DELETE toàn bộ các dòng khách hàng hiện có.
+      const { error: deleteError } = await supabaseClient
+        .from(TABLE_KHACH_HANG_NHANVIEN_GUITIN)
+        .delete()
+        .not("ma_kh", "is", null);
+
+      if (deleteError) {
+        throw new Error("Không xóa được danh sách gửi tin cũ: " + (deleteError.message || JSON.stringify(deleteError)));
+      }
+
+      // 2) Chỉ ghi lại những khách hàng đang được tick.
+      // Bảng kv_khachhang_nhanvien_guitin dùng cùng cặp ma_kh / ma_nv.
+      const rowsToInsert = selectedRows
+        .map(function (row) {
+          return {
+            ma_kh: String(row.ma_kh || "").trim(),
+            ma_nv: row.ma_nv ? String(row.ma_nv).trim() : null
+          };
+        })
+        .filter(function (row) {
+          return !!row.ma_kh;
+        });
+
+      if (rowsToInsert.length === 0) {
+        return;
+      }
+
+      const { error: insertError } = await supabaseClient
+        .from(TABLE_KHACH_HANG_NHANVIEN_GUITIN)
+        .insert(rowsToInsert);
+
+      if (insertError) {
+        throw new Error("Không cập nhật được danh sách gửi tin: " + (insertError.message || JSON.stringify(insertError)));
+      }
+    }
+
     async function runSelectedCustomers() {
       const selectedRows = getSelectedCustomerRows();
       const template = String(runTextInput?.value || "").trim();
@@ -4388,8 +4431,12 @@ const maKh = String(item.ma_kh || "");
 
       try {
         runSelectedBtn.disabled = true;
-        runSelectedBtn.textContent = "Đang mở...";
+        runSelectedBtn.textContent = "Đang cập nhật...";
 
+        // Mỗi lần bấm Chạy: xóa bảng gửi tin cũ rồi ghi lại đúng các dòng đang tick.
+        await syncSelectedCustomersToGuiTin(selectedRows);
+
+        runSelectedBtn.textContent = "Đang mở...";
         await saveCampaignToIndexedDb(campaign);
 
         // Lưu id dự phòng để trang gửi tin biết chiến dịch gần nhất.
