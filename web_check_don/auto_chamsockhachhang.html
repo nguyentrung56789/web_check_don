@@ -54,7 +54,7 @@
 
     .toolbar {
       display: grid;
-      grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.55fr) auto auto minmax(220px, .8fr) auto auto;
+      grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.55fr) auto auto auto;
       gap: 6px;
       margin-bottom: 8px;
       align-items: center;
@@ -129,22 +129,186 @@
       cursor: not-allowed;
     }
 
-    #runTextInput{
-      width:100%; height:34px; padding:6px 10px;
-      border:1px solid #d1d5db; border-radius:7px;
-      font-size:13px; outline:none; background:#fff; color:#111827;
+    .message-composer {
+      flex: 0 0 auto;
+      margin-bottom: 8px;
+      padding: 9px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      background: #fafafa;
     }
-    #runTextInput:focus{
-      border-color:#7c3aed;
-      box-shadow:0 0 0 2px rgba(124,58,237,.12);
+
+    .message-composer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 7px;
+      flex-wrap: wrap;
     }
-    #runSelectedBtn{
-      height:34px; min-width:82px; border:0;
-      background:#7c3aed; color:#fff; padding:0 14px;
-      border-radius:7px; cursor:pointer; font-size:13px;
-      font-weight:700; white-space:nowrap;
+
+    .message-composer-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #111827;
     }
-    #runSelectedBtn:hover{ background:#6d28d9; }
+
+    .message-composer-hint {
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    #runTextInput {
+      width: 100%;
+      min-height: 150px;
+      max-height: 420px;
+      resize: vertical;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 9px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      outline: none;
+      background: #ffffff;
+      color: #111827;
+    }
+
+    #runTextInput:focus {
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 2px rgba(124,58,237,.12);
+    }
+
+    .composer-tools {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 7px;
+      flex-wrap: wrap;
+    }
+
+    .composer-tool-btn,
+    .composer-var-btn,
+    .composer-attach-btn {
+      min-height: 32px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #111827;
+      padding: 6px 9px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      user-select: none;
+    }
+
+    .composer-tool-btn:hover,
+    .composer-var-btn:hover,
+    .composer-attach-btn:hover {
+      background: #f3f4f6;
+      border-color: #9ca3af;
+    }
+
+    .composer-var-btn {
+      color: #6d28d9;
+      border-color: #c4b5fd;
+      background: #f5f3ff;
+    }
+
+    .composer-attach-btn {
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+      background: #eff6ff;
+    }
+
+    #runSelectedBtn {
+      min-height: 34px;
+      border: none;
+      background: #7c3aed;
+      color: #ffffff;
+      padding: 7px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+      margin-left: auto;
+    }
+
+    #runSelectedBtn:hover { background: #6d28d9; }
+
+    #runSelectedBtn:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .composer-attachments {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .composer-file-card {
+      width: 92px;
+      border: 1px solid #d1d5db;
+      border-radius: 9px;
+      background: #ffffff;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .composer-file-preview {
+      width: 92px;
+      height: 72px;
+      object-fit: cover;
+      display: block;
+      background: #111827;
+    }
+
+    .composer-file-video {
+      width: 92px;
+      height: 72px;
+      display: block;
+      background: #111827;
+    }
+
+    .composer-file-name {
+      padding: 5px 6px;
+      font-size: 10px;
+      color: #374151;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .composer-file-remove {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 22px;
+      height: 22px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(17,24,39,.82);
+      color: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 22px;
+      text-align: center;
+      padding: 0;
+    }
+
+    .composer-count {
+      font-size: 11px;
+      color: #6b7280;
+      margin-left: 2px;
+    }
+
     .select-col-cell{
       width:44px; min-width:44px; max-width:44px;
       text-align:center !important; overflow:visible !important;
@@ -1297,13 +1461,58 @@
         <button id="searchBtn">Tìm kiếm</button>
         <button id="refreshBtn" type="button">↻ Làm mới</button>
 
-        <input id="runTextInput" type="text" placeholder="Nhập nội dung chạy..." />
-        <button id="runSelectedBtn" type="button">▶ Chạy</button>
-
         <div class="column-dropdown">
           <button id="columnToggleBtn" type="button">⚙️ Cột</button>
           <div id="columnToggleMenu" class="column-dropdown-menu hidden"></div>
         </div>
+      </div>
+
+      <div class="message-composer">
+        <div class="message-composer-head">
+          <div>
+            <div class="message-composer-title">Nội dung chạy</div>
+            <div class="message-composer-hint">
+              Có thể dùng biến: {{name}}, {{ma_kh}}, {{sdt}}
+            </div>
+          </div>
+          <span id="selectedRowCount" class="composer-count">0 dòng được chọn</span>
+        </div>
+
+        <textarea
+          id="runTextInput"
+          placeholder="Soạn nội dung ở đây...
+
+Ví dụ:
+Xin chào {{name}} 👋
+Mã khách hàng của bạn là {{ma_kh}}.
+Bên em gửi bạn thông tin mới..."
+        ></textarea>
+
+        <div class="composer-tools">
+          <button type="button" class="composer-tool-btn" data-insert-text="😊">😊</button>
+          <button type="button" class="composer-tool-btn" data-insert-text="❤️">❤️</button>
+          <button type="button" class="composer-tool-btn" data-insert-text="👍">👍</button>
+          <button type="button" class="composer-tool-btn" data-insert-text="🎁">🎁</button>
+          <button type="button" class="composer-tool-btn" data-insert-text="🔥">🔥</button>
+
+          <button type="button" class="composer-var-btn" data-insert-text="{{name}}">{{name}}</button>
+          <button type="button" class="composer-var-btn" data-insert-text="{{ma_kh}}">{{ma_kh}}</button>
+          <button type="button" class="composer-var-btn" data-insert-text="{{sdt}}">{{sdt}}</button>
+
+          <label class="composer-attach-btn">
+            📷 Ảnh
+            <input id="composerImageInput" type="file" accept="image/*" multiple hidden>
+          </label>
+
+          <label class="composer-attach-btn">
+            🎬 Video
+            <input id="composerVideoInput" type="file" accept="video/*" multiple hidden>
+          </label>
+
+          <button id="runSelectedBtn" type="button">▶ Chạy</button>
+        </div>
+
+        <div id="composerAttachments" class="composer-attachments"></div>
       </div>
 
       <div class="table-wrap">
@@ -1497,6 +1706,8 @@
     let currentZaloChatRow = null;
     let zaloAttachmentPreviewUrl = "";
     let selectedCustomerKeys = new Set();
+    let composerFiles = [];
+    let composerObjectUrls = [];
 
     // Theo dõi việc tự nhảy tới dòng theo conversation_id Chatwoot
     let chatwootLocateTimer = null;
@@ -1514,6 +1725,10 @@
     const runTextInput = document.getElementById("runTextInput");
     const runSelectedBtn = document.getElementById("runSelectedBtn");
     const selectAllRows = document.getElementById("selectAllRows");
+    const selectedRowCount = document.getElementById("selectedRowCount");
+    const composerImageInput = document.getElementById("composerImageInput");
+    const composerVideoInput = document.getElementById("composerVideoInput");
+    const composerAttachments = document.getElementById("composerAttachments");
     const columnToggleBtn = document.getElementById("columnToggleBtn");
     const columnToggleMenu = document.getElementById("columnToggleMenu");
     const customerBody = document.getElementById("customerBody");
@@ -1560,6 +1775,26 @@
 
     if (runSelectedBtn) {
       runSelectedBtn.addEventListener("click", runSelectedCustomers);
+    }
+
+    document.querySelectorAll("[data-insert-text]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        insertComposerText(button.dataset.insertText || "");
+      });
+    });
+
+    if (composerImageInput) {
+      composerImageInput.addEventListener("change", function () {
+        addComposerFiles(composerImageInput.files);
+        composerImageInput.value = "";
+      });
+    }
+
+    if (composerVideoInput) {
+      composerVideoInput.addEventListener("change", function () {
+        addComposerFiles(composerVideoInput.files);
+        composerVideoInput.value = "";
+      });
     }
 
     initSupabase().then(async function () {
@@ -3781,6 +4016,11 @@ const maKh = String(item.ma_kh || "");
       const checkedCount = boxes.filter(box => box.checked).length;
       selectAllRows.checked = boxes.length > 0 && checkedCount === boxes.length;
       selectAllRows.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
+
+      if (selectedRowCount) {
+        selectedRowCount.textContent =
+          selectedCustomerKeys.size + " dòng được chọn";
+      }
     }
 
     function handleRowSelectionChange(box) {
@@ -3811,25 +4051,145 @@ const maKh = String(item.ma_kh || "");
       });
     }
 
+
+    function insertComposerText(value) {
+      if (!runTextInput) return;
+
+      const start = runTextInput.selectionStart ?? runTextInput.value.length;
+      const end = runTextInput.selectionEnd ?? runTextInput.value.length;
+      const before = runTextInput.value.slice(0, start);
+      const after = runTextInput.value.slice(end);
+
+      runTextInput.value = before + value + after;
+      const nextPos = start + value.length;
+
+      runTextInput.focus();
+      runTextInput.setSelectionRange(nextPos, nextPos);
+    }
+
+    function cleanupComposerObjectUrls() {
+      composerObjectUrls.forEach(function (url) {
+        try { URL.revokeObjectURL(url); } catch {}
+      });
+      composerObjectUrls = [];
+    }
+
+    function renderComposerAttachments() {
+      if (!composerAttachments) return;
+
+      cleanupComposerObjectUrls();
+
+      if (composerFiles.length === 0) {
+        composerAttachments.innerHTML = "";
+        return;
+      }
+
+      composerAttachments.innerHTML = composerFiles.map(function (file, index) {
+        const url = URL.createObjectURL(file);
+        composerObjectUrls.push(url);
+
+        const safeName = escapeHtml(file.name || ("file_" + index));
+
+        if (file.type && file.type.startsWith("image/")) {
+          return `
+            <div class="composer-file-card">
+              <img class="composer-file-preview" src="${url}" alt="${safeName}">
+              <button class="composer-file-remove" type="button"
+                onclick="removeComposerFile(${index})">×</button>
+              <div class="composer-file-name" title="${safeName}">${safeName}</div>
+            </div>
+          `;
+        }
+
+        if (file.type && file.type.startsWith("video/")) {
+          return `
+            <div class="composer-file-card">
+              <video class="composer-file-video" src="${url}" muted></video>
+              <button class="composer-file-remove" type="button"
+                onclick="removeComposerFile(${index})">×</button>
+              <div class="composer-file-name" title="${safeName}">${safeName}</div>
+            </div>
+          `;
+        }
+
+        return "";
+      }).join("");
+    }
+
+    function addComposerFiles(fileList) {
+      Array.from(fileList || []).forEach(function (file) {
+        if (!file || !file.type) return;
+
+        const isImage = file.type.startsWith("image/");
+        const isVideo = file.type.startsWith("video/");
+        if (!isImage && !isVideo) return;
+
+        composerFiles.push(file);
+      });
+
+      renderComposerAttachments();
+    }
+
+    function removeComposerFile(index) {
+      composerFiles.splice(index, 1);
+      renderComposerAttachments();
+    }
+
+    function renderTemplateForCustomer(template, row) {
+      const name = String(row?.ten_kh || "").trim();
+      const maKh = String(row?.ma_kh || "").trim();
+      const sdt = String(row?.sdt || "").trim();
+
+      return String(template || "")
+        .replace(/\{\{\s*name\.?\s*\}\}/gi, name)
+        .replace(/\{\{\s*ten_kh\s*\}\}/gi, name)
+        .replace(/\{\{\s*ma_kh\s*\}\}/gi, maKh)
+        .replace(/\{\{\s*sdt\s*\}\}/gi, sdt);
+    }
+
+    window.removeComposerFile = removeComposerFile;
+
     async function runSelectedCustomers() {
       const selectedRows = getSelectedCustomerRows();
-      const runText = String(runTextInput?.value || "").trim();
+      const template = String(runTextInput?.value || "").trim();
 
       if (selectedRows.length === 0) {
         showNotice("Chưa chọn dòng nào để chạy.", "error", 3000);
         return;
       }
 
-      console.log("▶ DỮ LIỆU NÚT CHẠY:", {
-        text: runText,
-        count: selectedRows.length,
-        rows: selectedRows
+      if (!template && composerFiles.length === 0) {
+        showNotice("Chưa có nội dung, ảnh hoặc video để chạy.", "error", 3000);
+        return;
+      }
+
+      const jobs = selectedRows.map(function (row) {
+        return {
+          ma_kh: row.ma_kh || "",
+          name: row.ten_kh || "",
+          sdt: row.sdt || "",
+          conversation_id: row.conversation_id || null,
+          content: renderTemplateForCustomer(template, row)
+        };
+      });
+
+      console.log("▶ AUTO NUÔI - DỮ LIỆU CHẠY:", {
+        template: template,
+        selected_count: selectedRows.length,
+        attachments: composerFiles.map(function (file) {
+          return {
+            name: file.name,
+            type: file.type,
+            size: file.size
+          };
+        }),
+        jobs: jobs
       });
 
       showNotice(
-        "Đã chọn " + selectedRows.length + " dòng" +
-        (runText ? " | Nội dung: " + runText : "") +
-        ". Dữ liệu đã được ghi ra Console.",
+        "Đã chuẩn bị " + jobs.length + " khách" +
+        (composerFiles.length ? " + " + composerFiles.length + " tệp ảnh/video" : "") +
+        ". Mở Console để xem dữ liệu từng khách.",
         "ok",
         5000
       );
