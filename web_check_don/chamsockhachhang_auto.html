@@ -4328,29 +4328,67 @@ const maKh = String(item.ma_kh || "");
       return "campaign_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
     }
 
-    async function syncSelectedCustomersToGuiTin(selectedRows) {
+    async function syncSelectedCustomersToGuiTin(selectedRows, template) {
       if (!supabaseClient) {
         throw new Error("Supabase chưa sẵn sàng.");
       }
 
-      // 1) Xóa danh sách gửi tin cũ. ma_kh của bảng mapping được dùng làm điều kiện
-      // để PostgREST cho phép DELETE toàn bộ các dòng khách hàng hiện có.
+      const selectedMaKh = selectedRows
+        .map(function (row) { return String(row.ma_kh || "").trim(); })
+        .filter(Boolean);
+
+      if (selectedMaKh.length === 0) {
+        throw new Error("Không có mã khách hàng hợp lệ để cập nhật danh sách gửi tin.");
+      }
+
+      // 1) Đọc lại trực tiếp từ SQL danh sách khách hàng đang dùng trên trang.
+      // TABLE_KHACH_HANG mặc định = sql_khachhang_nhanvien.
+      const { data: customerIdRows, error: customerIdError } = await supabaseClient
+        .from(TABLE_KHACH_HANG)
+        .select("ma_kh, ma_nv, conversation_id, contact_id, ngay_chat_cuoi, uid_from")
+        .in("ma_kh", selectedMaKh);
+
+      if (customerIdError) {
+        console.error("Đọc ID từ sql_khachhang_nhanvien lỗi:", customerIdError);
+        throw new Error(
+          "Không đọc được các cột ID từ sql_khachhang_nhanvien: " +
+          (customerIdError.message || JSON.stringify(customerIdError))
+        );
+      }
+
+      const customerIdMap = new Map();
+      (customerIdRows || []).forEach(function (row) {
+        customerIdMap.set(String(row.ma_kh || "").trim(), row);
+      });
+
+      // 2) Xóa toàn bộ danh sách gửi tin cũ.
       const { error: deleteError } = await supabaseClient
         .from(TABLE_KHACH_HANG_NHANVIEN_GUITIN)
         .delete()
         .not("ma_kh", "is", null);
 
       if (deleteError) {
-        throw new Error("Không xóa được danh sách gửi tin cũ: " + (deleteError.message || JSON.stringify(deleteError)));
+        console.error("DELETE kv_khachhang_nhanvien_guitin lỗi:", deleteError);
+        throw new Error(
+          "Không xóa được kv_khachhang_nhanvien_guitin: " +
+          (deleteError.message || JSON.stringify(deleteError))
+        );
       }
 
-      // 2) Chỉ ghi lại những khách hàng đang được tick.
-      // Bảng kv_khachhang_nhanvien_guitin dùng cùng cặp ma_kh / ma_nv.
+      // 3) Ghép dữ liệu đang tick với dữ liệu vừa đọc từ sql_khachhang_nhanvien.
       const rowsToInsert = selectedRows
         .map(function (row) {
+          const maKh = String(row.ma_kh || "").trim();
+          const idRow = customerIdMap.get(maKh) || {};
+
           return {
-            ma_kh: String(row.ma_kh || "").trim(),
-            ma_nv: row.ma_nv ? String(row.ma_nv).trim() : null
+            ma_kh: maKh,
+            ma_nv: idRow.ma_nv ? String(idRow.ma_nv).trim() : (row.ma_nv ? String(row.ma_nv).trim() : null),
+            conversation_id: idRow.conversation_id ?? row.conversation_id ?? null,
+            contact_id: idRow.contact_id ?? row.contact_id ?? null,
+            ngay_chat_cuoi: idRow.ngay_chat_cuoi ?? row.ngay_chat_cuoi ?? null,
+            uid_from: idRow.uid_from ?? row.uid_from ?? null,
+            content: renderTemplateForCustomer(template || "", row)
           };
         })
         .filter(function (row) {
@@ -4358,16 +4396,29 @@ const maKh = String(item.ma_kh || "");
         });
 
       if (rowsToInsert.length === 0) {
-        return;
+        throw new Error("Không có dòng hợp lệ để ghi vào bảng gửi tin.");
       }
+
+      console.log("Dữ liệu đọc từ sql_khachhang_nhanvien:", customerIdRows);
+      console.log("Dữ liệu chuẩn bị ghi kv_khachhang_nhanvien_guitin:", rowsToInsert);
 
       const { error: insertError } = await supabaseClient
         .from(TABLE_KHACH_HANG_NHANVIEN_GUITIN)
         .insert(rowsToInsert);
 
       if (insertError) {
-        throw new Error("Không cập nhật được danh sách gửi tin: " + (insertError.message || JSON.stringify(insertError)));
+        console.error("INSERT kv_khachhang_nhanvien_guitin lỗi:", insertError);
+        throw new Error(
+          "Không ghi được kv_khachhang_nhanvien_guitin: " +
+          (insertError.message || JSON.stringify(insertError))
+        );
       }
+
+      showNotice(
+        "Đã cập nhật " + rowsToInsert.length + " khách và đầy đủ các cột ID vào danh sách gửi tin.",
+        "success",
+        1500
+      );
     }
 
     async function runSelectedCustomers() {
@@ -4434,7 +4485,7 @@ const maKh = String(item.ma_kh || "");
         runSelectedBtn.textContent = "Đang cập nhật...";
 
         // Mỗi lần bấm Chạy: xóa bảng gửi tin cũ rồi ghi lại đúng các dòng đang tick.
-        await syncSelectedCustomersToGuiTin(selectedRows);
+        await syncSelectedCustomersToGuiTin(selectedRows, template);
 
         runSelectedBtn.textContent = "Đang mở...";
         await saveCampaignToIndexedDb(campaign);
