@@ -1350,44 +1350,90 @@ function enableDraggableForm() {
 
 /* =========================================================
    REALTIME TRẠNG THÁI TỪ SUPABASE
+   Bảng kv_khachhang_nhanvien_guitin đã bật Realtime.
 ========================================================= */
 
 let statusChannel = null;
 
+function normalizeRealtimeKey(value) {
+  return String(value ?? '').trim();
+}
+
+function isDoneStatus(value) {
+  const s = String(value ?? '').trim().toLowerCase();
+
+  return (
+    s === 'đã gửi xong' ||
+    s === 'da gui xong' ||
+    s === 'da_gui_xong' ||
+    s === 'hoàn thành' ||
+    s === 'hoan thanh' ||
+    s === 'hoan_thanh' ||
+    s === 'completed'
+  );
+}
+
 function applyRealtimeStatus(payload) {
+  console.log('[REALTIME UPDATE]', payload);
+
   const newRow = payload?.new;
   if (!newRow) return;
 
-  const conversationId = String(newRow.conversation_id ?? '').trim();
-  const maKh = String(newRow.ma_kh ?? '').trim();
+  const conversationId = normalizeRealtimeKey(newRow.conversation_id);
+  const maKh = normalizeRealtimeKey(newRow.ma_kh);
 
-  const row = rows.find(r => {
+  let changed = false;
+
+  rows.forEach(function (row) {
     const sameConversation =
       conversationId &&
-      String(r.conversation_id ?? '').trim() === conversationId;
+      normalizeRealtimeKey(row.conversation_id) === conversationId;
 
     const sameMaKh =
       maKh &&
-      String(r.ma_kh ?? '').trim() === maKh;
+      normalizeRealtimeKey(row.ma_kh) === maKh;
 
-    return sameConversation || sameMaKh;
+    if (!sameConversation && !sameMaKh) {
+      return;
+    }
+
+    const oldStatus = normalizeRealtimeKey(row.trang_thai);
+    const newStatus = normalizeRealtimeKey(newRow.trang_thai);
+
+    if (oldStatus !== newStatus) {
+      row.trang_thai = newRow.trang_thai ?? '';
+      changed = true;
+    }
   });
 
-  if (!row) return;
+  if (changed) {
+    renderTable();
+  }
 
-  row.trang_thai = newRow.trang_thai ?? null;
+  const doneCount = rows.filter(function (row) {
+    return isDoneStatus(row.trang_thai);
+  }).length;
 
-  renderTable();
+  if (doneCount > 0) {
+    setStatus(
+      'Đã gửi xong ' +
+      doneCount +
+      '/' +
+      rows.length +
+      ' khách.'
+    );
+  }
 
-  const statusText = String(newRow.trang_thai || '').trim().toLowerCase();
+  if (rows.length > 0 && doneCount === rows.length) {
+    isRunning = false;
 
-  if (
-    statusText === 'đã gửi xong' ||
-    statusText === 'da_gui_xong' ||
-    statusText === 'hoan_thanh' ||
-    statusText === 'completed'
-  ) {
-    setStatus('✅ Đã gửi xong');
+    const btnRun = document.getElementById('btnRun');
+    const btnStop = document.getElementById('btnStop');
+
+    if (btnRun) btnRun.disabled = false;
+    if (btnStop) btnStop.disabled = true;
+
+    setStatus('✅ Đã gửi xong ' + rows.length + '/' + rows.length + ' khách.');
   }
 }
 
@@ -1397,12 +1443,14 @@ function subscribeTrangThaiRealtime() {
   if (statusChannel) {
     try {
       sb.removeChannel(statusChannel);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[REALTIME REMOVE CHANNEL]', e);
+    }
     statusChannel = null;
   }
 
   statusChannel = sb
-    .channel('kv_khachhang_nhanvien_guitin_trang_thai')
+    .channel('guitin_trang_thai_' + Date.now())
     .on(
       'postgres_changes',
       {
@@ -1412,10 +1460,30 @@ function subscribeTrangThaiRealtime() {
       },
       applyRealtimeStatus
     )
-    .subscribe((status) => {
-      console.log('[SUPABASE REALTIME STATUS]', status);
+    .subscribe(function (status, err) {
+      console.log('[REALTIME SUBSCRIBE]', status, err || '');
+
+      if (status === 'SUBSCRIBED') {
+        console.log('✅ Đã kết nối Realtime:', TABLE_NAME);
+      }
+
+      if (
+        status === 'CHANNEL_ERROR' ||
+        status === 'TIMED_OUT'
+      ) {
+        console.error('❌ Realtime lỗi:', status, err || '');
+        setStatus('Lỗi kết nối Realtime: ' + status);
+      }
     });
 }
+
+window.addEventListener('beforeunload', function () {
+  if (statusChannel && sb) {
+    try {
+      sb.removeChannel(statusChannel);
+    } catch (e) {}
+  }
+});
 
 
 /* =========================================================
