@@ -54,7 +54,7 @@
 
     .toolbar {
       display: grid;
-      grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.55fr) auto auto auto;
+      grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.55fr) auto auto;
       gap: 6px;
       margin-bottom: 8px;
       align-items: center;
@@ -79,6 +79,16 @@
     .toolbar input:focus {
       border-color: #2563eb;
       box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+    }
+
+    .toolbar-second-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      flex: 0 0 auto;
+      position: relative;
+      z-index: 29;
     }
 
     #searchBtn {
@@ -166,6 +176,7 @@
 
     .column-dropdown {
       position: relative;
+      display: inline-block;
     }
 
     #columnToggleBtn {
@@ -1017,6 +1028,10 @@
         grid-template-columns: 1fr;
       }
 
+      .toolbar-second-row {
+        width: 100%;
+      }
+
       #searchBtn {
         width: 100%;
       }
@@ -1304,6 +1319,10 @@
 
         <button id="searchBtn">Tìm kiếm</button>
         <button id="refreshBtn" type="button">↻ Làm mới</button>
+
+      </div>
+
+      <div class="toolbar-second-row">
         <button id="runSelectedBtn" type="button" class="run-popup-btn">▶ Chạy</button>
 
         <div class="column-dropdown">
@@ -1563,18 +1582,7 @@
         setAllVisibleRowsSelected(selectAllRows.checked);
       });
     }
-document.querySelectorAll("[data-insert-text]").forEach(function (button) {
-      button.addEventListener("click", function () {
-        insertComposerText(button.dataset.insertText || "");
-      });
-    });
-);
-    }
-);
-    }
-
-
-    async function syncSelectedCustomersToGuiTin(selectedRows) {
+async function syncSelectedCustomersToGuiTin(selectedRows) {
       if (!supabaseClient) {
         throw new Error("Supabase chưa sẵn sàng.");
       }
