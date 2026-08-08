@@ -1252,6 +1252,70 @@ async function sendStopWebhook() {
 
 
 /* =========================================================
+   UPDATE STOP TRỰC TIẾP TỪ HTML
+   - Tìm dòng chưa có trạng thái trong Supabase
+   - conversation_id cao nhất trước
+   - Update đúng dòng đó thành "stop"
+========================================================= */
+
+async function markNextRowStopFromHtml() {
+  if (!sb) {
+    throw new Error('Supabase chưa được khởi tạo.');
+  }
+
+  // Đọc TRỰC TIẾP từ Supabase, không dùng rows trên HTML
+  // vì khi bấm Chạy, rows trên HTML đã được đổi cục bộ thành "Đang chạy".
+  const { data, error } = await sb
+    .from(TABLE_NAME)
+    .select('conversation_id, ma_kh, ten_kh, trang_thai')
+    .is('trang_thai', null)
+    .not('conversation_id', 'is', null)
+    .order('conversation_id', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    throw error;
+  }
+
+  const nextRow = Array.isArray(data) && data.length ? data[0] : null;
+
+  if (!nextRow || nextRow.conversation_id === null || nextRow.conversation_id === undefined) {
+    return {
+      updated: false,
+      reason: 'Không còn dòng trang_thai NULL để đánh dấu stop.'
+    };
+  }
+
+  const nextConversationId = nextRow.conversation_id;
+
+  const { data: updatedRows, error: updateError } = await sb
+    .from(TABLE_NAME)
+    .update({
+      trang_thai: 'stop'
+    })
+    .eq('conversation_id', nextConversationId)
+    .select('conversation_id, ma_kh, ten_kh, trang_thai');
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  console.log(
+    '[STOP TỪ HTML] Đã update:',
+    updatedRows
+  );
+
+  return {
+    updated: true,
+    conversation_id: nextConversationId,
+    row: Array.isArray(updatedRows) && updatedRows.length
+      ? updatedRows[0]
+      : nextRow
+  };
+}
+
+
+/* =========================================================
    NÚT DỪNG
 ========================================================= */
 
@@ -1268,7 +1332,18 @@ async function stopRun() {
     btnStop.disabled = true;
     btnStop.textContent = 'Đang dừng...';
 
-    setStatus('Đang gửi lệnh dừng tới n8n...');
+    setStatus('Đang đánh dấu dòng tiếp theo = stop trên Supabase...');
+
+    // 1) HTML tự tìm dòng trang_thai NULL gần nhất theo conversation_id cao -> thấp
+    //    và tự update dòng đó thành stop.
+    const stopResult = await markNextRowStopFromHtml();
+
+    // 2) Vẫn gửi webhook stop cho n8n để giữ cơ chế dừng hiện có.
+    setStatus(
+      stopResult.updated
+        ? 'Đã đặt stop cho conversation_id ' + stopResult.conversation_id + '. Đang báo n8n...'
+        : stopResult.reason + ' Đang báo n8n...'
+    );
 
     await sendStopWebhook();
 
@@ -1278,11 +1353,14 @@ async function stopRun() {
     btnStop.disabled = true;
     btnStop.textContent = '■ Dừng';
 
+    // Realtime sẽ tự cập nhật dòng stop.
+    // Render lại để đảm bảo giao diện nút được cập nhật ngay.
     renderTable();
 
     setStatus(
-      'Đã gửi lệnh DỪNG tới n8n.' +
-      (currentRunId ? ' run_id: ' + currentRunId : '')
+      stopResult.updated
+        ? '⛔ Đã DỪNG. conversation_id ' + stopResult.conversation_id + ' đã được HTML cập nhật thành stop.'
+        : '⛔ Đã gửi lệnh DỪNG. ' + stopResult.reason
     );
 
     currentRunId = null;
