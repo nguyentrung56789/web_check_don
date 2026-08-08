@@ -66,62 +66,6 @@
       margin-left: 5px;
     }
 
-    .run-controls {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .timing-controls {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      flex-wrap: wrap;
-      padding: 7px 9px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      cursor: default;
-    }
-
-    .timing-title {
-      font-size: 12px;
-      font-weight: 800;
-      color: #172033;
-    }
-
-    .timing-option {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 12px;
-      color: #374151;
-      cursor: pointer;
-    }
-
-    .timing-number {
-      width: 72px;
-      height: 30px;
-      padding: 0 7px;
-      border: 1px solid #cbd5e1;
-      border-radius: 7px;
-      background: #fff;
-      font-size: 12px;
-      outline: none;
-    }
-
-    .timing-number:focus {
-      border-color: #7c3aed;
-      box-shadow: 0 0 0 2px rgba(124,58,237,.10);
-    }
-
-    .timing-note {
-      font-size: 11px;
-      color: #64748b;
-    }
-
     .actions {
       display: flex;
       cursor: default;
@@ -284,74 +228,28 @@
       </div>
     </div>
 
-    <div class="run-controls">
+    <div class="actions">
+      <button
+        id="btnReload"
+        class="btn-reload"
+      >
+        ↻ Tải lại
+      </button>
 
-      <div class="timing-controls">
-        <span class="timing-title">⏱ Thời gian:</span>
+      <button
+        id="btnRun"
+        class="btn-run"
+      >
+        ▶ Chạy
+      </button>
 
-        <label class="timing-option">
-          <input id="delayModeFixed" type="radio" name="delayMode" value="fixed">
-          Cố định
-        </label>
-
-        <input
-          id="fixedDelaySeconds"
-          class="timing-number"
-          type="number"
-          min="1"
-          value="120"
-          title="Số giây cố định cho mỗi khách"
-        >
-        <span class="timing-note">giây/khách</span>
-
-        <label class="timing-option">
-          <input id="delayModeRandom" type="radio" name="delayMode" value="random" checked>
-          Ngẫu nhiên
-        </label>
-
-        <span class="timing-note">Từ</span>
-        <input
-          id="randomDelayMin"
-          class="timing-number"
-          type="number"
-          min="1"
-          value="50"
-        >
-        <span class="timing-note">đến</span>
-        <input
-          id="randomDelayMax"
-          class="timing-number"
-          type="number"
-          min="1"
-          value="100"
-        >
-        <span class="timing-note">giây</span>
-      </div>
-
-      <div class="actions">
-        <button
-          id="btnReload"
-          class="btn-reload"
-        >
-          ↻ Tải lại
-        </button>
-
-        <button
-          id="btnRun"
-          class="btn-run"
-        >
-          ▶ Chạy
-        </button>
-
-        <button
-          id="btnStop"
-          class="btn-stop"
-          disabled
-        >
-          ■ Dừng
-        </button>
-      </div>
-
+      <button
+        id="btnStop"
+        class="btn-stop"
+        disabled
+      >
+        ■ Dừng
+      </button>
     </div>
 
   </div>
@@ -409,61 +307,24 @@ const WEBHOOK_URL =
 
 
 /*
-  Thời gian chờ gửi tin được lấy trực tiếp từ các ô cài đặt
-  trên chính form này khi bấm Chạy.
+  Thời gian chờ gửi tin.
+
+  Payload sẽ là:
+
+  {
+    mode: "random",
+    fixed_seconds: null,
+    min_seconds: 100,
+    max_seconds: 200
+  }
 */
 
-function getDelayConfigFromControls() {
-  const delayModeFixed = document.getElementById('delayModeFixed');
-  const fixedDelaySeconds = document.getElementById('fixedDelaySeconds');
-  const randomDelayMin = document.getElementById('randomDelayMin');
-  const randomDelayMax = document.getElementById('randomDelayMax');
-
-  const mode =
-    delayModeFixed && delayModeFixed.checked
-      ? 'fixed'
-      : 'random';
-
-  if (mode === 'fixed') {
-    const seconds = Number(fixedDelaySeconds?.value || 0);
-
-    if (!Number.isFinite(seconds) || seconds < 1) {
-      throw new Error('Thời gian cố định phải lớn hơn 0 giây.');
-    }
-
-    const rounded = Math.round(seconds);
-
-    return {
-      mode: 'fixed',
-      fixed_seconds: rounded,
-      min_seconds: rounded,
-      max_seconds: rounded
-    };
-  }
-
-  const min = Number(randomDelayMin?.value || 0);
-  const max = Number(randomDelayMax?.value || 0);
-
-  if (
-    !Number.isFinite(min) ||
-    !Number.isFinite(max) ||
-    min < 1 ||
-    max < 1
-  ) {
-    throw new Error('Khoảng thời gian ngẫu nhiên phải lớn hơn 0 giây.');
-  }
-
-  if (min > max) {
-    throw new Error('Thời gian Từ không được lớn hơn thời gian Đến.');
-  }
-
-  return {
-    mode: 'random',
-    fixed_seconds: null,
-    min_seconds: Math.round(min),
-    max_seconds: Math.round(max)
-  };
-}
+const DELAY_CONFIG = {
+  mode: 'random',
+  fixed_seconds: null,
+  min_seconds: 100,
+  max_seconds: 200
+};
 
 
 /* =========================================================
@@ -1056,8 +917,6 @@ async function sendRunWebhook() {
         : ('run_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9));
   }
 
-  const delayConfig = getDelayConfigFromControls();
-
   const body = {
 
     action: 'run',
@@ -1073,16 +932,16 @@ async function sendRunWebhook() {
       thoi_gian_cho: {
 
         mode:
-          delayConfig.mode,
+          DELAY_CONFIG.mode,
 
         fixed_seconds:
-          delayConfig.fixed_seconds,
+          DELAY_CONFIG.fixed_seconds,
 
         min_seconds:
-          delayConfig.min_seconds,
+          DELAY_CONFIG.min_seconds,
 
         max_seconds:
-          delayConfig.max_seconds
+          DELAY_CONFIG.max_seconds
 
       }
 
@@ -1283,18 +1142,7 @@ async function startRun() {
       ' khách. ' +
       'ma_nv: ' +
       maNv +
-      ' | ' +
-      (
-        getDelayConfigFromControls().mode === 'fixed'
-          ? 'Chờ cố định ' +
-            getDelayConfigFromControls().fixed_seconds +
-            ' giây/khách.'
-          : 'Chờ ngẫu nhiên ' +
-            getDelayConfigFromControls().min_seconds +
-            ' - ' +
-            getDelayConfigFromControls().max_seconds +
-            ' giây.'
-      )
+      ' | Chờ ngẫu nhiên 100 - 200 giây.'
     );
 
   }
@@ -1346,64 +1194,44 @@ async function startRun() {
 
 /* =========================================================
    UPDATE STOP TRỰC TIẾP TỪ HTML
-   - Tìm dòng chưa có trạng thái trong Supabase
-   - conversation_id cao nhất trước
-   - Update đúng dòng đó thành "stop"
+   - Tìm tất cả dòng trang_thai = NULL
+   - Update toàn bộ các dòng đó thành "stop"
 ========================================================= */
 
-async function markNextRowStopFromHtml() {
+async function markAllNullRowsStopFromHtml() {
   if (!sb) {
     throw new Error('Supabase chưa được khởi tạo.');
   }
 
-  // Đọc TRỰC TIẾP từ Supabase, không dùng rows trên HTML
-  // vì khi bấm Chạy, rows trên HTML đã được đổi cục bộ thành "Đang chạy".
-  const { data, error } = await sb
-    .from(TABLE_NAME)
-    .select('conversation_id, ma_kh, ten_kh, trang_thai')
-    .is('trang_thai', null)
-    .not('conversation_id', 'is', null)
-    .order('conversation_id', { ascending: false })
-    .limit(1);
-
-  if (error) {
-    throw error;
-  }
-
-  const nextRow = Array.isArray(data) && data.length ? data[0] : null;
-
-  if (!nextRow || nextRow.conversation_id === null || nextRow.conversation_id === undefined) {
-    return {
-      updated: false,
-      reason: 'Không còn dòng trang_thai NULL để đánh dấu stop.'
-    };
-  }
-
-  const nextConversationId = nextRow.conversation_id;
-
+  // Update TẤT CẢ dòng còn trang_thai = NULL thành "stop".
+  // Các dòng đã "Đã gửi xong" hoặc trạng thái khác sẽ giữ nguyên.
   const { data: updatedRows, error: updateError } = await sb
     .from(TABLE_NAME)
     .update({
       trang_thai: 'stop'
     })
-    .eq('conversation_id', nextConversationId)
+    .is('trang_thai', null)
+    .not('conversation_id', 'is', null)
     .select('conversation_id, ma_kh, ten_kh, trang_thai');
 
   if (updateError) {
     throw updateError;
   }
 
+  const count = Array.isArray(updatedRows) ? updatedRows.length : 0;
+
   console.log(
-    '[STOP TỪ HTML] Đã update:',
+    '[STOP TỪ HTML] Đã update tất cả dòng NULL thành stop:',
     updatedRows
   );
 
   return {
-    updated: true,
-    conversation_id: nextConversationId,
-    row: Array.isArray(updatedRows) && updatedRows.length
-      ? updatedRows[0]
-      : nextRow
+    updated: count > 0,
+    count: count,
+    rows: updatedRows || [],
+    reason: count > 0
+      ? ''
+      : 'Không còn dòng trang_thai NULL để đánh dấu stop.'
   };
 }
 
@@ -1427,9 +1255,8 @@ async function stopRun() {
 
     setStatus('Đang đánh dấu dòng tiếp theo = stop trên Supabase...');
 
-    // HTML tự tìm dòng trang_thai NULL gần nhất theo conversation_id cao -> thấp
-    // và tự update dòng đó thành stop.
-    const stopResult = await markNextRowStopFromHtml();
+    // HTML tự update TẤT CẢ dòng còn trang_thai NULL thành stop.
+    const stopResult = await markAllNullRowsStopFromHtml();
 
     isRunning = false;
 
@@ -1442,7 +1269,7 @@ async function stopRun() {
 
     setStatus(
       stopResult.updated
-        ? '⛔ Đã DỪNG. conversation_id ' + stopResult.conversation_id + ' đã được HTML cập nhật thành stop.'
+        ? '⛔ Đã DỪNG. Đã cập nhật ' + stopResult.count + ' dòng trang_thai NULL thành stop.'
         : '⛔ ' + stopResult.reason
     );
 
