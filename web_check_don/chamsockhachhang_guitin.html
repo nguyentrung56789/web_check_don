@@ -86,6 +86,22 @@
       color: #fff;
     }
 
+    .btn-run .run-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-right: 7px;
+      border: 2px solid rgba(255,255,255,.45);
+      border-top-color: #fff;
+      border-radius: 50%;
+      vertical-align: -2px;
+      animation: runSpin .8s linear infinite;
+    }
+
+    @keyframes runSpin {
+      to { transform: rotate(360deg); }
+    }
+
     .btn-stop {
       background: #dc2626;
       color: #fff;
@@ -816,7 +832,11 @@ function renderTable() {
           </td>
 
           <td>
-            <span class="cmd">
+            <span class="cmd ${
+              String(r.trang_thai || '').trim().toLowerCase() === 'đang chạy'
+                ? 'running'
+                : ''
+            }">
               ${escapeHtml(
                 String(r.trang_thai || '').trim() || 'Chưa chạy'
               )}
@@ -1006,6 +1026,28 @@ async function sendRunWebhook() {
 }
 
 
+function setRunButtonRunning(running) {
+  const btn = document.getElementById('btnRun');
+  if (!btn) return;
+
+  if (running) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="run-spinner"></span>Đang chạy';
+  } else {
+    btn.disabled = false;
+    btn.textContent = '▶ Chạy';
+  }
+}
+
+function markAllRowsRunningLocal() {
+  rows.forEach(function (row) {
+    row.trang_thai = 'Đang chạy';
+  });
+
+  renderTable();
+}
+
+
 /* =========================================================
    NÚT CHẠY
 ========================================================= */
@@ -1055,11 +1097,12 @@ async function startRun() {
       Khóa nút trong lúc gọi webhook
     */
 
-    document
-      .getElementById('btnRun')
-      .disabled =
-        true;
+    setRunButtonRunning(true);
 
+    // Ngay khi bấm Chạy, tất cả dòng trên giao diện chuyển sang "Đang chạy".
+    // Đây chỉ là trạng thái hiển thị cục bộ; n8n cập nhật Supabase tới đâu
+    // thì Realtime sẽ thay đúng trạng thái từng dòng tới đó.
+    markAllRowsRunningLocal();
 
     setStatus(
       'Đang gửi lệnh chạy tới n8n...'
@@ -1081,10 +1124,7 @@ async function startRun() {
     isRunning = true;
 
 
-    document
-      .getElementById('btnRun')
-      .disabled =
-        true;
+    setRunButtonRunning(true);
 
 
     document
@@ -1118,10 +1158,7 @@ async function startRun() {
     isRunning = false;
 
 
-    document
-      .getElementById('btnRun')
-      .disabled =
-        false;
+    setRunButtonRunning(false);
 
 
     document
@@ -1237,7 +1274,7 @@ async function stopRun() {
 
     isRunning = false;
 
-    btnRun.disabled = false;
+    setRunButtonRunning(false);
     btnStop.disabled = true;
     btnStop.textContent = '■ Dừng';
 
@@ -1430,7 +1467,7 @@ function applyRealtimeStatus(payload) {
     const btnRun = document.getElementById('btnRun');
     const btnStop = document.getElementById('btnStop');
 
-    if (btnRun) btnRun.disabled = false;
+    setRunButtonRunning(false);
     if (btnStop) btnStop.disabled = true;
 
     setStatus('✅ Đã gửi xong ' + rows.length + '/' + rows.length + ' khách.');
