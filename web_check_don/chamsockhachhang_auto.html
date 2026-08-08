@@ -4428,8 +4428,7 @@ const maKh = String(item.ma_kh || "");
         throw new Error("Không lấy được ma_nv của nhân viên đang đăng nhập.");
       }
 
-      const webhookUrl =
-        "https://n8n.clawbot.io.vn/webhook/" + encodeURIComponent(maNv);
+      const webhookUrl = "https://n8n.clawbot.io.vn/webhook/guitin_autozalo";
 
       const body = {
         action: "run",
@@ -4460,7 +4459,7 @@ const maKh = String(item.ma_kh || "");
         try { responseText = await response.text(); } catch {}
 
         throw new Error(
-          "Webhook " + maNv + " lỗi HTTP " + response.status +
+          "Webhook guitin_autozalo lỗi HTTP " + response.status +
           (responseText ? ": " + responseText : "")
         );
       }
@@ -4534,8 +4533,8 @@ const maKh = String(item.ma_kh || "");
         // Mỗi lần bấm Chạy: xóa bảng gửi tin cũ rồi ghi lại đúng các dòng đang tick.
         await syncSelectedCustomersToGuiTin(selectedRows, template);
 
-        // Cập nhật DB xong mới gọi webhook theo ma_nv đang đăng nhập.
-        // Ví dụ ma_nv = 1234 => https://n8n.clawbot.io.vn/webhook/1234
+        // Cập nhật DB xong mới gọi webhook mặc định guitin_autozalo.
+        // ma_nv của người đăng nhập vẫn được gửi trong body.
         runSelectedBtn.textContent = "Đang gửi webhook...";
         await sendRunWebhookByLoggedInStaff(delayConfig);
 
