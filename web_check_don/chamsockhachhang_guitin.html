@@ -254,7 +254,7 @@
             <th>Tên khách hàng</th>
             <th>Tên nhân viên</th>
             <th>conversation_id</th>
-            <th>Lệnh</th>
+            <th>Trạng thái</th>
           </tr>
         </thead>
 
@@ -611,7 +611,8 @@ async function loadData() {
           ma_nv,
           ten_kh,
           ten_nv,
-          conversation_id
+          conversation_id,
+          trang_thai
         `)
         .not(
           'conversation_id',
@@ -815,23 +816,11 @@ function renderTable() {
           </td>
 
           <td>
-
-            <span
-              class="cmd ${
-                isRunning
-                  ? 'running'
-                  : ''
-              }"
-            >
-
-              ${
-                isRunning
-                  ? 'Đang chờ'
-                  : 'Chưa chạy'
-              }
-
+            <span class="cmd">
+              ${escapeHtml(
+                String(r.trang_thai || '').trim() || 'Chưa chạy'
+              )}
             </span>
-
           </td>
 
         </tr>
@@ -1360,6 +1349,76 @@ function enableDraggableForm() {
 
 
 /* =========================================================
+   REALTIME TRẠNG THÁI TỪ SUPABASE
+========================================================= */
+
+let statusChannel = null;
+
+function applyRealtimeStatus(payload) {
+  const newRow = payload?.new;
+  if (!newRow) return;
+
+  const conversationId = String(newRow.conversation_id ?? '').trim();
+  const maKh = String(newRow.ma_kh ?? '').trim();
+
+  const row = rows.find(r => {
+    const sameConversation =
+      conversationId &&
+      String(r.conversation_id ?? '').trim() === conversationId;
+
+    const sameMaKh =
+      maKh &&
+      String(r.ma_kh ?? '').trim() === maKh;
+
+    return sameConversation || sameMaKh;
+  });
+
+  if (!row) return;
+
+  row.trang_thai = newRow.trang_thai ?? null;
+
+  renderTable();
+
+  const statusText = String(newRow.trang_thai || '').trim().toLowerCase();
+
+  if (
+    statusText === 'đã gửi xong' ||
+    statusText === 'da_gui_xong' ||
+    statusText === 'hoan_thanh' ||
+    statusText === 'completed'
+  ) {
+    setStatus('✅ Đã gửi xong');
+  }
+}
+
+function subscribeTrangThaiRealtime() {
+  if (!sb) return;
+
+  if (statusChannel) {
+    try {
+      sb.removeChannel(statusChannel);
+    } catch (e) {}
+    statusChannel = null;
+  }
+
+  statusChannel = sb
+    .channel('kv_khachhang_nhanvien_guitin_trang_thai')
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: TABLE_NAME
+      },
+      applyRealtimeStatus
+    )
+    .subscribe((status) => {
+      console.log('[SUPABASE REALTIME STATUS]', status);
+    });
+}
+
+
+/* =========================================================
    KHỞI TẠO
 ========================================================= */
 
@@ -1384,6 +1443,8 @@ function enableDraggableForm() {
 
 
     await loadData();
+
+    subscribeTrangThaiRealtime();
 
   }
 
