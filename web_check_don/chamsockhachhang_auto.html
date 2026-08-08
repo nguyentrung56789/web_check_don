@@ -4345,7 +4345,7 @@ const maKh = String(item.ma_kh || "");
       // TABLE_KHACH_HANG mặc định = sql_khachhang_nhanvien.
       const { data: customerIdRows, error: customerIdError } = await supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ma_nv, conversation_id, contact_id, ngay_chat_cuoi, uid_from")
+        .select("ma_kh, ten_kh, ma_nv, conversation_id, contact_id, ngay_chat_cuoi, uid_from")
         .in("ma_kh", selectedMaKh);
 
       if (customerIdError) {
@@ -4360,6 +4360,37 @@ const maKh = String(item.ma_kh || "");
       (customerIdRows || []).forEach(function (row) {
         customerIdMap.set(String(row.ma_kh || "").trim(), row);
       });
+
+      // Đọc tên nhân viên từ kv_nhan_vien theo ma_nv để ghi thêm ten_nv.
+      const selectedMaNv = Array.from(new Set(
+        (customerIdRows || [])
+          .map(function (row) { return String(row.ma_nv || "").trim(); })
+          .filter(Boolean)
+      ));
+
+      const staffNameMap = new Map();
+
+      if (selectedMaNv.length > 0) {
+        const { data: staffNameRows, error: staffNameError } = await supabaseClient
+          .from(TABLE_NHAN_VIEN)
+          .select("ma_nv, ten_nv")
+          .in("ma_nv", selectedMaNv);
+
+        if (staffNameError) {
+          console.error("Đọc ten_nv từ kv_nhan_vien lỗi:", staffNameError);
+          throw new Error(
+            "Không đọc được tên nhân viên từ kv_nhan_vien: " +
+            (staffNameError.message || JSON.stringify(staffNameError))
+          );
+        }
+
+        (staffNameRows || []).forEach(function (staff) {
+          staffNameMap.set(
+            String(staff.ma_nv || "").trim(),
+            String(staff.ten_nv || "").trim()
+          );
+        });
+      }
 
       // 2) Xóa toàn bộ danh sách gửi tin cũ.
       const { error: deleteError } = await supabaseClient
@@ -4381,9 +4412,15 @@ const maKh = String(item.ma_kh || "");
           const maKh = String(row.ma_kh || "").trim();
           const idRow = customerIdMap.get(maKh) || {};
 
+          const maNv = idRow.ma_nv
+            ? String(idRow.ma_nv).trim()
+            : (row.ma_nv ? String(row.ma_nv).trim() : null);
+
           return {
             ma_kh: maKh,
-            ma_nv: idRow.ma_nv ? String(idRow.ma_nv).trim() : (row.ma_nv ? String(row.ma_nv).trim() : null),
+            ten_kh: String(idRow.ten_kh ?? row.ten_kh ?? "").trim() || null,
+            ma_nv: maNv,
+            ten_nv: maNv ? (staffNameMap.get(maNv) || null) : null,
             conversation_id: idRow.conversation_id ?? row.conversation_id ?? null,
             contact_id: idRow.contact_id ?? row.contact_id ?? null,
             ngay_chat_cuoi: idRow.ngay_chat_cuoi ?? row.ngay_chat_cuoi ?? null,
@@ -4419,52 +4456,6 @@ const maKh = String(item.ma_kh || "");
         "success",
         1500
       );
-    }
-
-    async function sendRunWebhookByLoggedInStaff(delayConfig) {
-      const maNv = String(currentUser?.ma_nv || "").trim();
-
-      if (!maNv) {
-        throw new Error("Không lấy được ma_nv của nhân viên đang đăng nhập.");
-      }
-
-      const webhookUrl = "https://n8n.clawbot.io.vn/webhook/guitin_autozalo";
-
-      const body = {
-        action: "run",
-        ma_nv: maNv,
-        payload: {
-          thoi_gian_cho: {
-            mode: delayConfig.mode,
-            fixed_seconds: delayConfig.fixed_seconds,
-            min_seconds: delayConfig.min_seconds,
-            max_seconds: delayConfig.max_seconds
-          }
-        }
-      };
-
-      console.log("[RUN WEBHOOK] URL:", webhookUrl);
-      console.log("[RUN WEBHOOK] BODY:", body);
-
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
-      });
-
-      if (!response.ok) {
-        let responseText = "";
-        try { responseText = await response.text(); } catch {}
-
-        throw new Error(
-          "Webhook guitin_autozalo lỗi HTTP " + response.status +
-          (responseText ? ": " + responseText : "")
-        );
-      }
-
-      return true;
     }
 
     async function runSelectedCustomers() {
@@ -4533,11 +4524,7 @@ const maKh = String(item.ma_kh || "");
         // Mỗi lần bấm Chạy: xóa bảng gửi tin cũ rồi ghi lại đúng các dòng đang tick.
         await syncSelectedCustomersToGuiTin(selectedRows, template);
 
-        // Cập nhật DB xong mới gọi webhook mặc định guitin_autozalo.
-        // ma_nv của người đăng nhập vẫn được gửi trong body.
-        runSelectedBtn.textContent = "Đang gửi webhook...";
-        await sendRunWebhookByLoggedInStaff(delayConfig);
-
+        // Không gọi webhook/payload. Sau khi cập nhật Supabase thì mở trang gửi tin.
         runSelectedBtn.textContent = "Đang mở...";
         await saveCampaignToIndexedDb(campaign);
 
