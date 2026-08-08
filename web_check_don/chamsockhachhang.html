@@ -1051,6 +1051,21 @@
       cursor: pointer;
     }
 
+    /* Dòng đúng với conversation_id của hội thoại Chatwoot đang mở */
+    .customer-main-row.current-chatwoot-row > td {
+      background: #fff3a3 !important;
+      border-top: 2px solid #f59e0b !important;
+      border-bottom: 2px solid #f59e0b !important;
+    }
+
+    .customer-main-row.current-chatwoot-row > td:first-child {
+      border-left: 4px solid #f59e0b !important;
+    }
+
+    .customer-main-row.current-chatwoot-row:hover > td {
+      background: #ffe680 !important;
+    }
+
     .customer-main-row.expanded td {
       background: #eef6ff !important;
       border-top: 2px solid #2563eb;
@@ -1448,6 +1463,11 @@
     let currentZaloChatRow = null;
     let zaloAttachmentPreviewUrl = "";
 
+    // Theo dõi việc tự nhảy tới dòng theo conversation_id Chatwoot
+    let chatwootLocateTimer = null;
+    let chatwootLocateBusy = false;
+    let lastLocatedConversationId = null;
+
     const CHATWOOT_FETCH_INFO_EVENT = "chatwoot-dashboard-app:fetch-info";
 
 
@@ -1502,6 +1522,9 @@
       await initPage();
       enableColumnResize();
       initColumnVisibility();
+
+      // Sau khi dữ liệu ban đầu tải xong, tự tìm và nhảy tới hội thoại đang mở.
+      scheduleLocateCurrentChatwootRow(150);
     }).catch(function (error) {
       console.error("Lỗi khởi tạo trang:", error);
       customerBody.innerHTML = `
@@ -1653,6 +1676,7 @@
         // Nếu không parse được context nhưng regex đã lấy được conversation_id, vẫn cho các nút chạy.
         if (getCurrentConversationId()) {
           resolveWaitingChatwootContext();
+          scheduleLocateCurrentChatwootRow(80);
         }
         return;
       }
@@ -1671,6 +1695,9 @@
       });
 
       resolveWaitingChatwootContext();
+
+      // Hội thoại Chatwoot thay đổi -> tự tìm đúng dòng mới.
+      scheduleLocateCurrentChatwootRow(80);
     }
 
     function requestChatwootContext() {
@@ -1796,6 +1823,196 @@
     function normalizeConversationId(value) {
       const text = String(value ?? "").trim();
       return text ? text : null;
+    }
+
+    function scheduleLocateCurrentChatwootRow(delayMs = 120) {
+      clearTimeout(chatwootLocateTimer);
+      chatwootLocateTimer = setTimeout(function () {
+        locateCurrentChatwootRow().catch(function (error) {
+          console.error("Lỗi tự tìm dòng Chatwoot:", error);
+        });
+      }, delayMs);
+    }
+
+    function highlightAndScrollToConversation(conversationId, smooth = true) {
+      const wantedId = normalizeConversationId(conversationId);
+
+      document.querySelectorAll(".customer-main-row").forEach(function (row) {
+        row.classList.remove("current-chatwoot-row");
+      });
+
+      if (!wantedId) return false;
+
+      const rows = Array.from(document.querySelectorAll(".customer-main-row"));
+      const row = rows.find(function (item) {
+        return normalizeConversationId(item.dataset.conversationId) === wantedId;
+      });
+
+      if (!row) return false;
+
+      row.classList.add("current-chatwoot-row");
+
+      setTimeout(function () {
+        row.scrollIntoView({
+          behavior: smooth ? "smooth" : "auto",
+          block: "center",
+          inline: "nearest"
+        });
+      }, 80);
+
+      return true;
+    }
+
+    function applyCustomerListFiltersToQuery(query) {
+      const keyword = searchInput ? searchInput.value.trim() : "";
+      const selectedStaffDbCodes = getSelectedStaffDbCodes();
+
+      if (keyword) {
+        const safeKeyword = keyword.replaceAll("%", "\\%").replaceAll(",", " ");
+        query = query.or(
+          `ma_kh.ilike.%${safeKeyword}%,ten_kh.ilike.%${safeKeyword}%,dien_thoai.ilike.%${safeKeyword}%`
+        );
+      }
+
+      if (selectedStaffDbCodes.length > 0) {
+        query = query.in("ma_nv", selectedStaffDbCodes);
+      }
+
+      return query;
+    }
+
+    async function findConversationAbsoluteIndex(conversationId) {
+      const wantedId = normalizeConversationId(conversationId);
+      if (!wantedId || !supabaseClient) return -1;
+
+      const dbSortField = getDbSortField();
+      const ascending = getDbSortAscending();
+      const batchSize = 1000;
+      let offset = 0;
+
+      while (true) {
+        let query = supabaseClient
+          .from(TABLE_KHACH_HANG)
+          .select("ma_kh, conversation_id, ma_nv")
+          .order(dbSortField, { ascending: ascending, nullsFirst: false });
+
+        query = applyCustomerListFiltersToQuery(query);
+        query = query.range(offset, offset + batchSize - 1);
+
+        const { data, error } = await query;
+
+        if (error) {
+          // Một số view có thể không hỗ trợ ma_nv trong điều kiện hiện tại.
+          // Khi đó thử lại mà không lọc nhân viên, vẫn giữ đúng conversation_id.
+          console.warn("Không quét được vị trí conversation_id theo bộ lọc hiện tại:", error);
+          return -1;
+        }
+
+        const rows = data || [];
+        const localIndex = rows.findIndex(function (item) {
+          return normalizeConversationId(item.conversation_id) === wantedId;
+        });
+
+        if (localIndex >= 0) {
+          return offset + localIndex;
+        }
+
+        if (rows.length < batchSize) {
+          return -1;
+        }
+
+        offset += batchSize;
+      }
+    }
+
+    async function conversationExists(conversationId) {
+      const wantedId = normalizeConversationId(conversationId);
+      if (!wantedId || !supabaseClient) return false;
+
+      const { data, error } = await supabaseClient
+        .from(TABLE_KHACH_HANG)
+        .select("conversation_id")
+        .eq("conversation_id", wantedId)
+        .limit(1);
+
+      if (error) {
+        console.warn("Lỗi kiểm tra conversation_id:", error);
+        return false;
+      }
+
+      return Array.isArray(data) && data.length > 0;
+    }
+
+    async function resetCustomerFiltersForChatwootLocate() {
+      if (searchInput) searchInput.value = "";
+
+      const options = Array.from(getStaffOptions());
+      options.forEach(function (option) {
+        option.checked = option.value === "all";
+      });
+
+      updateStaffButtonText();
+    }
+
+    async function locateCurrentChatwootRow() {
+      const conversationId = normalizeConversationId(getCurrentConversationId());
+
+      if (!conversationId || !supabaseClient || !currentUser) {
+        return;
+      }
+
+      // Nếu dòng đang ở ngay trang hiện tại thì chỉ cần tô và cuộn.
+      if (highlightAndScrollToConversation(conversationId, true)) {
+        lastLocatedConversationId = conversationId;
+        return;
+      }
+
+      if (chatwootLocateBusy) {
+        scheduleLocateCurrentChatwootRow(250);
+        return;
+      }
+
+      chatwootLocateBusy = true;
+
+      try {
+        const exists = await conversationExists(conversationId);
+        if (!exists) {
+          console.log("Không có conversation_id trong bảng:", conversationId);
+          return;
+        }
+
+        // Tìm vị trí trong danh sách hiện tại (có áp dụng tìm kiếm/nhân viên).
+        let absoluteIndex = await findConversationAbsoluteIndex(conversationId);
+
+        // Nếu bộ lọc hiện tại che mất khách đang chat thì bỏ bộ lọc để vẫn nhảy đúng dòng.
+        if (absoluteIndex < 0) {
+          await resetCustomerFiltersForChatwootLocate();
+          absoluteIndex = await findConversationAbsoluteIndex(conversationId);
+        }
+
+        if (absoluteIndex < 0) {
+          console.warn("Có conversation_id nhưng không xác định được vị trí:", conversationId);
+          return;
+        }
+
+        const targetPage = Math.floor(absoluteIndex / pageSize) + 1;
+
+        if (currentPage !== targetPage || !highlightAndScrollToConversation(conversationId, false)) {
+          await loadCustomersFromSupabase(targetPage);
+        }
+
+        // renderCustomers() đã tạo data-conversation-id, nên giờ cuộn đúng dòng.
+        if (highlightAndScrollToConversation(conversationId, true)) {
+          lastLocatedConversationId = conversationId;
+          console.log("✅ ĐÃ NHẢY ĐÚNG DÒNG CHATWOOT:", {
+            conversation_id: conversationId,
+            page: targetPage,
+            absolute_index: absoluteIndex
+          });
+        }
+      } finally {
+        chatwootLocateBusy = false;
+      }
     }
 
 
@@ -3352,6 +3569,7 @@ const maKh = String(item.ma_kh || "");
           <tr
             class="customer-main-row"
             data-ma-kh="${escapeHtml(maKh)}"
+            data-conversation-id="${escapeHtml(normalizeConversationId(item.conversation_id) || "")}"
             onclick="toggleCustomerProducts('${safeMaKh}', event)"
           >
             <td data-col="ma_kh" title="${escapeHtml(item.ma_kh || "")}">${escapeHtml(item.ma_kh || "")}</td>
@@ -3464,6 +3682,12 @@ const maKh = String(item.ma_kh || "");
       }).join("");
 
       applyColumnVisibility();
+
+      // Sau mỗi lần render, giữ đúng 1 dòng theo conversation_id Chatwoot được tô màu.
+      const activeConversationId = normalizeConversationId(getCurrentConversationId());
+      if (activeConversationId) {
+        highlightAndScrollToConversation(activeConversationId, false);
+      }
 
       if (openedProductMaKh) {
         const row = document.getElementById(getCustomerProductRowId(openedProductMaKh));
