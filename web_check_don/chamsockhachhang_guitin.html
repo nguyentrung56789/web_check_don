@@ -600,8 +600,7 @@ async function loadData() {
         .select(`
           ma_kh,
           ma_nv,
-          ten_khachhang,
-          ten_nhanvien,
+          ten_kh,
           conversation_id
         `)
         .not(
@@ -752,13 +751,13 @@ function renderTable() {
 
           <td>
             ${escapeHtml(
-              r.ten_khachhang ?? ''
+              r.ten_kh ?? ''
             )}
           </td>
 
           <td>
             ${escapeHtml(
-              r.ten_nhanvien ?? ''
+              r.ma_nv ?? ''
             )}
           </td>
 
