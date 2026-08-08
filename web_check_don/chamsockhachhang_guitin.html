@@ -1,1 +1,329 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Gửi tin khách hàng</title>
 
+  <script src="./js/internal_key.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Arial,Helvetica,sans-serif;
+      background:#f5f7fb;
+      color:#172033;
+    }
+    .wrap{
+      max-width:1200px;
+      margin:0 auto;
+      padding:18px;
+    }
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      background:#fff;
+      border:1px solid #e6e9ef;
+      border-radius:14px;
+      padding:14px 16px;
+      box-shadow:0 4px 18px rgba(0,0,0,.05);
+      margin-bottom:14px;
+    }
+    .titlebox h1{
+      margin:0 0 4px;
+      font-size:20px;
+    }
+    .count{
+      font-size:14px;
+      color:#5d6677;
+    }
+    #validCount{
+      font-size:20px;
+      font-weight:700;
+      color:#0f766e;
+      margin-left:5px;
+    }
+    .actions{
+      display:flex;
+      gap:8px;
+    }
+    button{
+      border:0;
+      border-radius:9px;
+      padding:10px 15px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    .btn-run{background:#16a34a;color:#fff}
+    .btn-stop{background:#dc2626;color:#fff}
+    .btn-reload{background:#e8edf5;color:#172033}
+    button:disabled{opacity:.5;cursor:not-allowed}
+
+    .status{
+      margin-bottom:12px;
+      padding:10px 12px;
+      background:#fff;
+      border:1px solid #e6e9ef;
+      border-radius:10px;
+      font-size:14px;
+    }
+
+    .table-card{
+      background:#fff;
+      border:1px solid #e6e9ef;
+      border-radius:14px;
+      overflow:hidden;
+      box-shadow:0 4px 18px rgba(0,0,0,.05);
+    }
+    .table-scroll{overflow:auto}
+    table{
+      width:100%;
+      border-collapse:collapse;
+      min-width:720px;
+    }
+    th,td{
+      padding:11px 12px;
+      border-bottom:1px solid #edf0f5;
+      text-align:left;
+      font-size:14px;
+    }
+    th{
+      position:sticky;
+      top:0;
+      background:#f8fafc;
+      z-index:1;
+      font-size:13px;
+      color:#475569;
+    }
+    tbody tr:hover{background:#f8fafc}
+    .cmd{
+      display:inline-block;
+      padding:5px 9px;
+      border-radius:999px;
+      background:#eef2ff;
+      color:#3730a3;
+      font-size:12px;
+      font-weight:700;
+    }
+    .empty{
+      text-align:center;
+      padding:30px;
+      color:#64748b;
+    }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="titlebox">
+      <h1>Danh sách khách hàng gửi tin</h1>
+      <div class="count">
+        Khách hợp lệ (conversation_id khác NULL):
+        <span id="validCount">0</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="btnReload" class="btn-reload">↻ Tải lại</button>
+      <button id="btnRun" class="btn-run">▶ Chạy</button>
+      <button id="btnStop" class="btn-stop" disabled>■ Dừng</button>
+    </div>
+  </div>
+
+  <div id="status" class="status">Đang khởi tạo...</div>
+
+  <div class="table-card">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>ma_kh</th>
+            <th>ma_nv</th>
+            <th>conversation_id</th>
+            <th>Lệnh</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="5" class="empty">Đang tải dữ liệu...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const TABLE_NAME = 'kv_khachhang_nhanvien_guitin';
+
+let sb = null;
+let rows = [];
+let isRunning = false;
+
+function setStatus(text) {
+  document.getElementById('status').textContent = text;
+}
+
+function getInternalKeySafe() {
+  try {
+    if (typeof getInternalKey === 'function') return getInternalKey();
+  } catch(e) {}
+
+  return window.INTERNAL_KEY ||
+         window.COD_INTERNAL_KEY ||
+         window.internalKey ||
+         '';
+}
+
+async function createSupabaseClient() {
+  const internalKey = getInternalKeySafe();
+
+  const res = await fetch('/api/getConfig', {
+    headers: internalKey ? { 'x-internal-key': internalKey } : {}
+  });
+
+  if (!res.ok) {
+    throw new Error('Không lấy được /api/getConfig. HTTP ' + res.status);
+  }
+
+  const cfg = await res.json();
+
+  const url =
+    cfg.url ||
+    cfg.SUPABASE_URL ||
+    cfg.supabaseUrl ||
+    cfg.supabase_url;
+
+  const anon =
+    cfg.anon ||
+    cfg.key ||
+    cfg.SUPABASE_ANON ||
+    cfg.SUPABASE_ANON_KEY ||
+    cfg.supabase_anon_key;
+
+  if (!url || !anon) {
+    throw new Error('Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY');
+  }
+
+  return window.supabase.createClient(url, anon);
+}
+
+async function loadData() {
+  try {
+    setStatus('Đang tải dữ liệu...');
+    document.getElementById('tbody').innerHTML =
+      '<tr><td colspan="5" class="empty">Đang tải dữ liệu...</td></tr>';
+
+    /*
+      Chỉ lấy khách HỢP LỆ:
+      conversation_id IS NOT NULL
+    */
+    const { data, error } = await sb
+      .from(TABLE_NAME)
+      .select('ma_kh,ma_nv,conversation_id')
+      .not('conversation_id', 'is', null)
+      .order('ma_kh', { ascending: true });
+
+    if (error) throw error;
+
+    /*
+      Phòng trường hợp conversation_id là chuỗi rỗng.
+      NULL đã lọc từ Supabase, ở đây lọc thêm "".
+    */
+    rows = (data || []).filter(r =>
+      r.conversation_id !== null &&
+      r.conversation_id !== undefined &&
+      String(r.conversation_id).trim() !== ''
+    );
+
+    document.getElementById('validCount').textContent = rows.length;
+    renderTable();
+
+    setStatus('Đã tải ' + rows.length + ' khách hợp lệ.');
+  } catch (err) {
+    console.error(err);
+    setStatus('Lỗi: ' + (err.message || err));
+    document.getElementById('validCount').textContent = '0';
+    document.getElementById('tbody').innerHTML =
+      '<tr><td colspan="5" class="empty">Không tải được dữ liệu</td></tr>';
+  }
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tbody');
+
+  if (!rows.length) {
+    tbody.innerHTML =
+      '<tr><td colspan="5" class="empty">Không có khách hợp lệ</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map((r, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${escapeHtml(r.ma_kh ?? '')}</td>
+      <td>${escapeHtml(r.ma_nv ?? '')}</td>
+      <td>${escapeHtml(r.conversation_id ?? '')}</td>
+      <td><span class="cmd">${isRunning ? 'Đang chờ' : 'Chưa chạy'}</span></td>
+    </tr>
+  `).join('');
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+/*
+  Hiện tại nút Chạy/Dừng mới quản lý trạng thái trên giao diện.
+  Khi nối webhook n8n, thêm fetch webhook tại đây.
+*/
+function startRun() {
+  if (!rows.length) {
+    alert('Không có khách hợp lệ để chạy.');
+    return;
+  }
+
+  isRunning = true;
+  document.getElementById('btnRun').disabled = true;
+  document.getElementById('btnStop').disabled = false;
+  renderTable();
+  setStatus('Đang chạy ' + rows.length + ' khách...');
+}
+
+function stopRun() {
+  isRunning = false;
+  document.getElementById('btnRun').disabled = false;
+  document.getElementById('btnStop').disabled = true;
+  renderTable();
+  setStatus('Đã dừng.');
+}
+
+document.getElementById('btnReload').addEventListener('click', loadData);
+document.getElementById('btnRun').addEventListener('click', startRun);
+document.getElementById('btnStop').addEventListener('click', stopRun);
+
+(async () => {
+  try {
+    sb = await createSupabaseClient();
+    await loadData();
+  } catch (err) {
+    console.error(err);
+    setStatus('Lỗi khởi tạo: ' + (err.message || err));
+  }
+})();
+</script>
+
+</body>
+</html>
