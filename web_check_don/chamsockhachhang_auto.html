@@ -4407,7 +4407,8 @@ const maKh = String(item.ma_kh || "");
       }
 
       // 3) Ghép dữ liệu đang tick với dữ liệu vừa đọc từ sql_khachhang_nhanvien.
-      const rowsToInsert = selectedRows
+      // Chỉ lấy khách có conversation_id NOT NULL / không rỗng.
+      const mappedRows = selectedRows
         .map(function (row) {
           const maKh = String(row.ma_kh || "").trim();
           const idRow = customerIdMap.get(maKh) || {};
@@ -4416,12 +4417,17 @@ const maKh = String(item.ma_kh || "");
             ? String(idRow.ma_nv).trim()
             : (row.ma_nv ? String(row.ma_nv).trim() : null);
 
+          const rawConversationId = idRow.conversation_id ?? row.conversation_id ?? null;
+          const conversationId = rawConversationId == null
+            ? null
+            : String(rawConversationId).trim();
+
           return {
             ma_kh: maKh,
             ten_kh: String(idRow.ten_kh ?? row.ten_kh ?? "").trim() || null,
             ma_nv: maNv,
             ten_nv: maNv ? (staffNameMap.get(maNv) || null) : null,
-            conversation_id: idRow.conversation_id ?? row.conversation_id ?? null,
+            conversation_id: conversationId || null,
             contact_id: idRow.contact_id ?? row.contact_id ?? null,
             ngay_chat_cuoi: idRow.ngay_chat_cuoi ?? row.ngay_chat_cuoi ?? null,
             uid_from: idRow.uid_from ?? row.uid_from ?? null,
@@ -4429,11 +4435,30 @@ const maKh = String(item.ma_kh || "");
           };
         })
         .filter(function (row) {
-          return !!row.ma_kh;
+          return !!row.ma_kh && row.conversation_id !== null;
         });
 
+      // conversation_id của bảng gửi tin đang UNIQUE.
+      // Nếu dữ liệu nguồn vô tình có conversation_id trùng, chỉ giữ dòng đầu tiên
+      // để tránh lỗi duplicate key khi bấm Chạy.
+      const seenConversationIds = new Set();
+      const rowsToInsert = mappedRows.filter(function (row) {
+        const key = String(row.conversation_id);
+
+        if (seenConversationIds.has(key)) {
+          console.warn("Bỏ dòng trùng conversation_id:", {
+            ma_kh: row.ma_kh,
+            conversation_id: row.conversation_id
+          });
+          return false;
+        }
+
+        seenConversationIds.add(key);
+        return true;
+      });
+
       if (rowsToInsert.length === 0) {
-        throw new Error("Không có dòng hợp lệ để ghi vào bảng gửi tin.");
+        throw new Error("Không có khách nào có conversation_id hợp lệ để ghi vào bảng gửi tin.");
       }
 
       console.log("Dữ liệu đọc từ sql_khachhang_nhanvien:", customerIdRows);
