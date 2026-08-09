@@ -3043,7 +3043,6 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
         customer.id_nv = idNv || null;
         customer.ma_nv = savedCode || null;
         customer.ten_nv = staff ? staff.ten_nv : (savedCode || null);
-        customer.nhan_vien_ids = idNv ? [idNv] : [];
       });
     }
 
@@ -3151,7 +3150,6 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
           found.ma_nv = valueToSave;
           found.id_nv = staff ? normalizeKiotStaffId(staff.id_nv) : valueToSave;
           found.ten_nv = staff ? staff.ten_nv : null;
-          found.nhan_vien_ids = valueToSave ? [found.id_nv] : [];
         }
 
         updateCustomerStaffEditorUI(maKhText);
