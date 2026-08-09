@@ -1,494 +1,30 @@
-<!doctype html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8" />
-  <meta
-    name="viewport"
-    content="width=device-width,initial-scale=1,viewport-fit=cover"
-  />
+from pathlib import Path
 
-  <title>Gửi tin khách hàng</title>
+src = Path("/mnt/data/guitin_autozalo_emoji_insert_caret.html")
+if not src.exists():
+    raise FileNotFoundError("Không tìm thấy file HTML trước đó.")
 
-  <script src="./js/internal_key.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+text = src.read_text(encoding="utf-8")
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+# 1) Replace current composer layout HTML with textarea full width + one toolbar row
+start_marker = '    <div class="message-grid">'
+end_marker = '    <div class="delay-row">'
 
-    body {
-      margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      background: #f5f7fb;
-      color: #172033;
-    }
+start = text.find(start_marker)
+end = text.find(end_marker, start)
 
-    .wrap {
-      max-width: 1300px;
-      margin: 0 auto;
-      padding: 18px;
-      position: relative;
-    }
+if start == -1 or end == -1:
+    raise RuntimeError("Không tìm thấy khối giao diện soạn nội dung.")
 
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
+new_block = r'''    <div>
+      <label class="field-label" for="messageText">Nội dung</label>
+      <textarea
+        id="messageText"
+        class="message-box"
+        placeholder="Ví dụ: Xin chào {{zalo name}}, em là {{ten}}..."
+      ></textarea>
 
-      background: #fff;
-      border: 1px solid #e6e9ef;
-      border-radius: 14px;
-      padding: 14px 16px;
-
-      box-shadow: 0 4px 18px rgba(0,0,0,.05);
-      margin-bottom: 14px;
-      cursor: move;
-      user-select: none;
-    }
-
-    .titlebox h1 {
-      margin: 0 0 4px;
-      font-size: 20px;
-    }
-
-    .count {
-      font-size: 14px;
-      color: #5d6677;
-    }
-
-    #validCount {
-      font-size: 20px;
-      font-weight: 700;
-      color: #0f766e;
-      margin-left: 5px;
-    }
-
-    .actions {
-      display: flex;
-      cursor: default;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    button {
-      border: 0;
-      border-radius: 9px;
-      padding: 10px 15px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .btn-run {
-      background: #16a34a;
-      color: #fff;
-    }
-
-    .btn-run .run-spinner {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      margin-right: 7px;
-      border: 2px solid rgba(255,255,255,.45);
-      border-top-color: #fff;
-      border-radius: 50%;
-      vertical-align: -2px;
-      animation: runSpin .8s linear infinite;
-    }
-
-    @keyframes runSpin {
-      to { transform: rotate(360deg); }
-    }
-
-    .btn-stop {
-      background: #dc2626;
-      color: #fff;
-    }
-
-    .btn-reload {
-      background: #e8edf5;
-      color: #172033;
-    }
-
-    button:disabled {
-      opacity: .5;
-      cursor: not-allowed;
-    }
-
-    .status {
-      margin-bottom: 12px;
-      padding: 10px 12px;
-
-      background: #fff;
-      border: 1px solid #e6e9ef;
-      border-radius: 10px;
-
-      font-size: 14px;
-    }
-
-    .table-card {
-      background: #fff;
-      border: 1px solid #e6e9ef;
-      border-radius: 14px;
-      overflow: hidden;
-
-      box-shadow: 0 4px 18px rgba(0,0,0,.05);
-    }
-
-    .table-scroll {
-      overflow: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 900px;
-    }
-
-    th,
-    td {
-      padding: 11px 12px;
-      border-bottom: 1px solid #edf0f5;
-      text-align: left;
-      font-size: 14px;
-      vertical-align: middle;
-    }
-
-    th {
-      position: sticky;
-      top: 0;
-      background: #f8fafc;
-      z-index: 1;
-
-      font-size: 13px;
-      color: #475569;
-    }
-
-    tbody tr:hover {
-      background: #f8fafc;
-    }
-
-    .cmd {
-      display: inline-block;
-      padding: 5px 9px;
-      border-radius: 999px;
-
-      background: #eef2ff;
-      color: #3730a3;
-
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .cmd.running {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    .empty {
-      text-align: center;
-      padding: 30px;
-      color: #64748b;
-    }
-
-
-    /* ===================== SOẠN NỘI DUNG GỬI ===================== */
-    .message-card {
-      background: #fff;
-      border: 1px solid #e6e9ef;
-      border-radius: 14px;
-      padding: 14px;
-      margin-bottom: 14px;
-      box-shadow: 0 4px 18px rgba(0,0,0,.05);
-    }
-
-    .message-card h2 {
-      margin: 0 0 12px;
-      font-size: 16px;
-    }
-
-    .message-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 220px;
-      gap: 12px;
-    }
-
-    .message-box {
-      width: 100%;
-      min-height: 130px;
-      resize: vertical;
-      border: 1px solid #d8dee9;
-      border-radius: 10px;
-      padding: 12px;
-      font: inherit;
-      outline: none;
-    }
-
-    .message-box:focus,
-    .input-control:focus {
-      border-color: #2563eb;
-      box-shadow: 0 0 0 3px rgba(37,99,235,.10);
-    }
-
-    .variable-row {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-top: 8px;
-    }
-
-    .var-btn {
-      padding: 6px 9px;
-      border-radius: 8px;
-      background: #eef2ff;
-      color: #3730a3;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-
-    .emoji-field {
-      position: relative;
-    }
-
-    .emoji-trigger-wrap {
-      position: relative;
-      display: inline-block;
-    }
-
-    .emoji-trigger {
-      width: 62px;
-      height: 44px;
-      padding: 0 9px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 5px;
-      background: #fff;
-      border: 1px solid #d8dee9;
-      border-radius: 10px;
-      font-size: 24px;
-      line-height: 1;
-      cursor: pointer;
-    }
-
-    .emoji-trigger:hover {
-      background: #f8fafc;
-    }
-
-    .emoji-trigger:focus {
-      outline: none;
-      border-color: #2563eb;
-      box-shadow: 0 0 0 3px rgba(37,99,235,.10);
-    }
-
-    .emoji-trigger-arrow {
-      font-size: 13px;
-      color: #64748b;
-    }
-
-    .emoji-picker-popup {
-      position: absolute;
-      right: 0;
-      top: calc(100% + 8px);
-      width: 330px;
-      max-width: calc(100vw - 40px);
-      padding: 10px;
-      background: #fff;
-      border: 1px solid #d8dee9;
-      border-radius: 12px;
-      box-shadow: 0 12px 35px rgba(15, 23, 42, .18);
-      z-index: 10020;
-    }
-
-    .emoji-picker-title {
-      margin: 0 0 8px;
-      font-size: 13px;
-      font-weight: 700;
-      color: #475569;
-    }
-
-    .emoji-grid {
-      display: grid;
-      grid-template-columns: repeat(8, 1fr);
-      gap: 5px;
-      max-height: 220px;
-      overflow-y: auto;
-    }
-
-    .emoji-btn {
-      width: 34px;
-      height: 34px;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 8px;
-      background: transparent;
-      border: 1px solid transparent;
-      font-size: 21px;
-      line-height: 1;
-      cursor: pointer;
-    }
-
-    .emoji-btn:hover {
-      background: #eef2ff;
-      border-color: #c7d2fe;
-      transform: scale(1.08);
-    }
-
-    .emoji-btn.selected {
-      background: #dbeafe;
-      border-color: #2563eb;
-    }
-
-    .emoji-clear {
-      width: 100%;
-      margin-top: 9px;
-      padding: 8px 10px;
-      background: #f1f5f9;
-      color: #475569;
-      font-size: 12px;
-      border-radius: 8px;
-    }
-
-    .field-label {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 13px;
-      font-weight: 700;
-      color: #475569;
-    }
-
-    .input-control {
-      width: 100%;
-      border: 1px solid #d8dee9;
-      border-radius: 9px;
-      padding: 9px 10px;
-      font: inherit;
-      outline: none;
-      background: #fff;
-    }
-
-    .side-fields {
-      display: grid;
-      gap: 10px;
-      align-content: start;
-    }
-
-    .file-info {
-      margin-top: 5px;
-      font-size: 12px;
-      color: #64748b;
-      word-break: break-all;
-    }
-
-    .delay-row {
-      display: flex;
-      align-items: end;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #edf0f5;
-    }
-
-    .delay-field {
-      width: 150px;
-    }
-
-    .delay-note {
-      padding-bottom: 10px;
-      color: #64748b;
-      font-size: 13px;
-    }
-
-    @media (max-width: 800px) {
-      .message-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .delay-field {
-        width: calc(50% - 5px);
-      }
-    }
-
-    @media (max-width: 700px) {
-      .wrap {
-        padding: 10px;
-      }
-
-      .topbar {
-        align-items: stretch;
-      }
-
-      .actions {
-        width: 100%;
-      }
-
-      .actions button {
-        flex: 1;
-      }
-    }
-  </style>
-</head>
-
-<body>
-
-<div class="wrap">
-
-  <div class="topbar">
-
-    <div class="titlebox">
-      <h1>Danh sách khách hàng gửi tin</h1>
-
-      <div class="count">
-        Khách hợp lệ:
-        <span id="validCount">0</span>
-      </div>
-    </div>
-
-    <div class="actions">
-      <button
-        id="btnReload"
-        class="btn-reload"
-      >
-        ↻ Tải lại
-      </button>
-
-      <button
-        id="btnRun"
-        class="btn-run"
-      >
-        ▶ Chạy
-      </button>
-
-      <button
-        id="btnStop"
-        class="btn-stop"
-        disabled
-      >
-        ■ Dừng
-      </button>
-    </div>
-
-  </div>
-
-
-  <div class="message-card">
-    <h2>Soạn nội dung gửi</h2>
-
-    <div class="message-grid">
-      <div>
-        <label class="field-label" for="messageText">Nội dung</label>
-        <textarea
-          id="messageText"
-          class="message-box"
-          placeholder="Ví dụ: Xin chào {{zalo name}}, em là {{ten}}..."
-        ></textarea>
-
+      <div class="composer-toolbar">
         <div class="variable-row">
           <button type="button" class="var-btn" data-var="{{zalo name}}">{{zalo name}}</button>
           <button type="button" class="var-btn" data-var="{{ten}}">{{ten}}</button>
@@ -496,1726 +32,227 @@
           <button type="button" class="var-btn" data-var="{{ten_nv}}">{{ten_nv}}</button>
           <button type="button" class="var-btn" data-var="{{ma_kh}}">{{ma_kh}}</button>
         </div>
-      </div>
 
-      <div class="side-fields">
-        <div class="emoji-field">
-          <label class="field-label">Icon / Emoji</label>
+        <div class="toolbar-media">
+          <div class="emoji-field toolbar-item">
+            <input
+              id="messageIcon"
+              type="hidden"
+              value=""
+            />
 
-          <input
-            id="messageIcon"
-            type="hidden"
-            value=""
-          />
-
-          <div class="emoji-trigger-wrap">
-            <button
-              type="button"
-              id="emojiTrigger"
-              class="emoji-trigger"
-              aria-expanded="false"
-              title="Chọn icon"
-            >
-              <span id="emojiTriggerIcon">😊</span>
-              <span class="emoji-trigger-arrow">▾</span>
-            </button>
-
-            <div id="emojiPicker" class="emoji-picker-popup" hidden>
-              <div class="emoji-picker-title">Chọn biểu tượng</div>
-
-              <div class="emoji-grid">
-                <button type="button" class="emoji-btn" data-emoji="😀">😀</button>
-                <button type="button" class="emoji-btn" data-emoji="😃">😃</button>
-                <button type="button" class="emoji-btn" data-emoji="😄">😄</button>
-                <button type="button" class="emoji-btn" data-emoji="😁">😁</button>
-                <button type="button" class="emoji-btn" data-emoji="😊">😊</button>
-                <button type="button" class="emoji-btn" data-emoji="😉">😉</button>
-                <button type="button" class="emoji-btn" data-emoji="😍">😍</button>
-                <button type="button" class="emoji-btn" data-emoji="🥰">🥰</button>
-                <button type="button" class="emoji-btn" data-emoji="😘">😘</button>
-                <button type="button" class="emoji-btn" data-emoji="😂">😂</button>
-                <button type="button" class="emoji-btn" data-emoji="🤣">🤣</button>
-                <button type="button" class="emoji-btn" data-emoji="😎">😎</button>
-
-                <button type="button" class="emoji-btn" data-emoji="👋">👋</button>
-                <button type="button" class="emoji-btn" data-emoji="👍">👍</button>
-                <button type="button" class="emoji-btn" data-emoji="👌">👌</button>
-                <button type="button" class="emoji-btn" data-emoji="👏">👏</button>
-                <button type="button" class="emoji-btn" data-emoji="🙏">🙏</button>
-                <button type="button" class="emoji-btn" data-emoji="💪">💪</button>
-                <button type="button" class="emoji-btn" data-emoji="🤝">🤝</button>
-                <button type="button" class="emoji-btn" data-emoji="🤗">🤗</button>
-
-                <button type="button" class="emoji-btn" data-emoji="❤️">❤️</button>
-                <button type="button" class="emoji-btn" data-emoji="💖">💖</button>
-                <button type="button" class="emoji-btn" data-emoji="💕">💕</button>
-                <button type="button" class="emoji-btn" data-emoji="💓">💓</button>
-                <button type="button" class="emoji-btn" data-emoji="💝">💝</button>
-                <button type="button" class="emoji-btn" data-emoji="🌹">🌹</button>
-                <button type="button" class="emoji-btn" data-emoji="🌸">🌸</button>
-                <button type="button" class="emoji-btn" data-emoji="🌷">🌷</button>
-
-                <button type="button" class="emoji-btn" data-emoji="🎉">🎉</button>
-                <button type="button" class="emoji-btn" data-emoji="🎁">🎁</button>
-                <button type="button" class="emoji-btn" data-emoji="✨">✨</button>
-                <button type="button" class="emoji-btn" data-emoji="🔥">🔥</button>
-                <button type="button" class="emoji-btn" data-emoji="⭐">⭐</button>
-                <button type="button" class="emoji-btn" data-emoji="💯">💯</button>
-                <button type="button" class="emoji-btn" data-emoji="✅">✅</button>
-                <button type="button" class="emoji-btn" data-emoji="🎊">🎊</button>
-              </div>
-
-              <button type="button" id="emojiClear" class="emoji-clear">
-                Bỏ chọn icon
+            <div class="emoji-trigger-wrap">
+              <button
+                type="button"
+                id="emojiTrigger"
+                class="toolbar-btn emoji-trigger"
+                aria-expanded="false"
+                title="Chọn icon"
+              >
+                <span id="emojiTriggerIcon">😊</span>
+                <span class="emoji-trigger-arrow">▾</span>
               </button>
+
+              <div id="emojiPicker" class="emoji-picker-popup" hidden>
+                <div class="emoji-picker-title">Chọn biểu tượng</div>
+
+                <div class="emoji-grid">
+                  <button type="button" class="emoji-btn" data-emoji="😀">😀</button>
+                  <button type="button" class="emoji-btn" data-emoji="😃">😃</button>
+                  <button type="button" class="emoji-btn" data-emoji="😄">😄</button>
+                  <button type="button" class="emoji-btn" data-emoji="😁">😁</button>
+                  <button type="button" class="emoji-btn" data-emoji="😊">😊</button>
+                  <button type="button" class="emoji-btn" data-emoji="😉">😉</button>
+                  <button type="button" class="emoji-btn" data-emoji="😍">😍</button>
+                  <button type="button" class="emoji-btn" data-emoji="🥰">🥰</button>
+                  <button type="button" class="emoji-btn" data-emoji="😘">😘</button>
+                  <button type="button" class="emoji-btn" data-emoji="😂">😂</button>
+                  <button type="button" class="emoji-btn" data-emoji="🤣">🤣</button>
+                  <button type="button" class="emoji-btn" data-emoji="😎">😎</button>
+
+                  <button type="button" class="emoji-btn" data-emoji="👋">👋</button>
+                  <button type="button" class="emoji-btn" data-emoji="👍">👍</button>
+                  <button type="button" class="emoji-btn" data-emoji="👌">👌</button>
+                  <button type="button" class="emoji-btn" data-emoji="👏">👏</button>
+                  <button type="button" class="emoji-btn" data-emoji="🙏">🙏</button>
+                  <button type="button" class="emoji-btn" data-emoji="💪">💪</button>
+                  <button type="button" class="emoji-btn" data-emoji="🤝">🤝</button>
+                  <button type="button" class="emoji-btn" data-emoji="🤗">🤗</button>
+
+                  <button type="button" class="emoji-btn" data-emoji="❤️">❤️</button>
+                  <button type="button" class="emoji-btn" data-emoji="💖">💖</button>
+                  <button type="button" class="emoji-btn" data-emoji="💕">💕</button>
+                  <button type="button" class="emoji-btn" data-emoji="💓">💓</button>
+                  <button type="button" class="emoji-btn" data-emoji="💝">💝</button>
+                  <button type="button" class="emoji-btn" data-emoji="🌹">🌹</button>
+                  <button type="button" class="emoji-btn" data-emoji="🌸">🌸</button>
+                  <button type="button" class="emoji-btn" data-emoji="🌷">🌷</button>
+
+                  <button type="button" class="emoji-btn" data-emoji="🎉">🎉</button>
+                  <button type="button" class="emoji-btn" data-emoji="🎁">🎁</button>
+                  <button type="button" class="emoji-btn" data-emoji="✨">✨</button>
+                  <button type="button" class="emoji-btn" data-emoji="🔥">🔥</button>
+                  <button type="button" class="emoji-btn" data-emoji="⭐">⭐</button>
+                  <button type="button" class="emoji-btn" data-emoji="💯">💯</button>
+                  <button type="button" class="emoji-btn" data-emoji="✅">✅</button>
+                  <button type="button" class="emoji-btn" data-emoji="🎊">🎊</button>
+                </div>
+
+                <button type="button" id="emojiClear" class="emoji-clear">
+                  Bỏ chọn icon
+                </button>
+              </div>
             </div>
           </div>
 
-          <div id="selectedEmojiText" class="file-info">
-            Chưa chọn icon
-          </div>
-        </div>
+          <label class="toolbar-btn file-toolbar-btn" title="Chọn ảnh">
+            🖼️ Ảnh
+            <input
+              id="imageFile"
+              type="file"
+              accept="image/*"
+              hidden
+            />
+          </label>
 
-        <div>
-          <label class="field-label" for="imageFile">File ảnh</label>
-          <input
-            id="imageFile"
-            class="input-control"
-            type="file"
-            accept="image/*"
-          />
-          <div id="imageFileInfo" class="file-info">Chưa chọn ảnh</div>
+          <label class="toolbar-btn file-toolbar-btn" title="Chọn video">
+            🎬 Video
+            <input
+              id="videoFile"
+              type="file"
+              accept="video/*"
+              hidden
+            />
+          </label>
         </div>
+      </div>
 
-        <div>
-          <label class="field-label" for="videoFile">File video</label>
-          <input
-            id="videoFile"
-            class="input-control"
-            type="file"
-            accept="video/*"
-          />
-          <div id="videoFileInfo" class="file-info">Chưa chọn video</div>
-        </div>
+      <div class="selected-files-row">
+        <span id="selectedEmojiText" class="file-info">Chưa chọn icon</span>
+        <span id="imageFileInfo" class="file-info">Chưa chọn ảnh</span>
+        <span id="videoFileInfo" class="file-info">Chưa chọn video</span>
       </div>
     </div>
 
-    <div class="delay-row">
-      <div class="delay-field">
-        <label class="field-label" for="delayMin">Thời gian từ (giây)</label>
-        <input
-          id="delayMin"
-          class="input-control"
-          type="number"
-          min="1"
-          value="50"
-        />
-      </div>
+'''
 
-      <div class="delay-field">
-        <label class="field-label" for="delayMax">Đến (giây)</label>
-        <input
-          id="delayMax"
-          class="input-control"
-          type="number"
-          min="1"
-          value="100"
-        />
-      </div>
+text = text[:start] + new_block + text[end:]
 
-      <div class="delay-note">
-        Mỗi khách sẽ chờ ngẫu nhiên trong khoảng này.
-      </div>
-    </div>
-  </div>
+# 2) Replace/add CSS for layout
+css_anchor = "    .message-grid {"
+css_start = text.find(css_anchor)
+css_end = text.find("    .message-box {", css_start)
 
-  <div id="status" class="status">
-    Đang khởi tạo...
-  </div>
-
-  <div class="table-card">
-    <div class="table-scroll">
-
-      <table>
-
-        <thead>
-          <tr>
-            <th>STT</th>
-            <th>Mã KH</th>
-            <th>Tên khách hàng</th>
-            <th>Tên nhân viên</th>
-            <th>conversation_id</th>
-            <th>Trạng thái</th>
-          </tr>
-        </thead>
-
-        <tbody id="tbody">
-          <tr>
-            <td colspan="6" class="empty">
-              Đang tải dữ liệu...
-            </td>
-          </tr>
-        </tbody>
-
-      </table>
-
-    </div>
-  </div>
-
-</div>
-
-
-<script>
-
-/* =========================================================
-   CẤU HÌNH
-========================================================= */
-
-const TABLE_NAME =
-  'kv_khachhang_nhanvien_guitin';
-
-const TABLE_NHAN_VIEN =
-  'kv_nhan_vien';
-
-const WEBHOOK_URL =
-  'https://n8n.clawbot.io.vn/webhook/guitin_autozalo';
-
-
-/*
-  Thời gian chờ gửi tin.
-
-  Payload sẽ là:
-
-  {
-    mode: "random",
-    fixed_seconds: null,
-    min_seconds: 50,
-    max_seconds: 100
-  }
-*/
-
-const DELAY_CONFIG = {
-  mode: 'random',
-  fixed_seconds: null,
-  min_seconds: 50,
-  max_seconds: 100
-};
-
-
-/* =========================================================
-   BIẾN
-========================================================= */
-
-let sb = null;
-
-let rows = [];
-
-let isRunning = false;
-
-let currentRunId = null;
-
-
-/* =========================================================
-   STATUS
-========================================================= */
-
-function setStatus(text) {
-
-  document
-    .getElementById('status')
-    .textContent = text;
-
-}
-
-
-/* =========================================================
-   INTERNAL KEY
-========================================================= */
-
-function getInternalKeySafe() {
-
-  try {
-
-    if (typeof getInternalKey === 'function') {
-
-      return getInternalKey();
-
+if css_start != -1 and css_end != -1:
+    replacement = r'''    .message-grid {
+      display: block;
     }
 
-  } catch (e) {}
-
-  return (
-    window.INTERNAL_KEY ||
-    window.COD_INTERNAL_KEY ||
-    window.internalKey ||
-    ''
-  );
-
-}
-
-
-/* =========================================================
-   TẠO SUPABASE CLIENT
-========================================================= */
-
-async function createSupabaseClient() {
-
-  const internalKey =
-    getInternalKeySafe();
-
-  const res =
-    await fetch('/api/getConfig', {
-
-      headers: internalKey
-        ? {
-            'x-internal-key': internalKey
-          }
-        : {}
-
-    });
-
-
-  if (!res.ok) {
-
-    throw new Error(
-      'Không lấy được /api/getConfig. HTTP ' +
-      res.status
-    );
-
-  }
-
-
-  const cfg =
-    await res.json();
-
-
-  const url =
-    cfg.url ||
-    cfg.SUPABASE_URL ||
-    cfg.supabaseUrl ||
-    cfg.supabase_url;
-
-
-  const anon =
-    cfg.anon ||
-    cfg.key ||
-    cfg.SUPABASE_ANON ||
-    cfg.SUPABASE_ANON_KEY ||
-    cfg.supabase_anon_key;
-
-
-  if (!url || !anon) {
-
-    throw new Error(
-      'Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY'
-    );
-
-  }
-
-
-  return window.supabase.createClient(
-    url,
-    anon
-  );
-
-}
-
-
-/* =========================================================
-   LẤY NHÂN VIÊN ĐANG ĐĂNG NHẬP
-========================================================= */
-
-function getCurrentUser() {
-
-  /*
-    1. Thử lấy từ localStorage "nv"
-  */
-
-  try {
-
-    const nv =
-      JSON.parse(
-        localStorage.getItem('nv') || 'null'
-      );
-
-    if (nv && nv.ma_nv) {
-
-      return nv;
-
+    .composer-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
     }
 
-  } catch (e) {}
-
-
-  /*
-    2. Thử kiểu đăng nhập Chatwoot cũ
-  */
-
-  try {
-
-    const nv =
-      JSON.parse(
-        localStorage.getItem(
-          'chatwoot_crm_user'
-        ) || 'null'
-      );
-
-    if (nv && nv.ma_nv) {
-
-      return nv;
-
+    .composer-toolbar .variable-row {
+      margin-top: 0;
+      flex: 1 1 auto;
     }
 
-  } catch (e) {}
-
-
-  /*
-    3. last_ma_nv
-  */
-
-  const lastMaNv =
-    String(
-      localStorage.getItem('last_ma_nv') ||
-      ''
-    ).trim();
-
-  if (lastMaNv) {
-
-    return {
-      ma_nv: lastMaNv
-    };
-
-  }
-
-
-  /*
-    4. URL ?ma_nv=...
-  */
-
-  const params =
-    new URLSearchParams(
-      window.location.search
-    );
-
-  const maNvUrl =
-    String(
-      params.get('ma_nv') || ''
-    ).trim();
-
-  if (maNvUrl) {
-
-    return {
-      ma_nv: maNvUrl
-    };
-
-  }
-
-
-  /*
-    5. Nếu trang này được mở bằng popup
-       thử lấy user từ trang cha.
-  */
-
-  try {
-
-    if (
-      window.opener &&
-      window.opener.currentUser &&
-      window.opener.currentUser.ma_nv
-    ) {
-
-      return window.opener.currentUser;
-
+    .toolbar-media {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
     }
 
-  } catch (e) {}
-
-
-  return null;
-
-}
-
-
-/* =========================================================
-   LẤY MA_NV ĐANG ĐĂNG NHẬP
-========================================================= */
-
-function getLoggedInMaNv() {
-
-  const currentUser =
-    getCurrentUser();
-
-  return String(
-    currentUser?.ma_nv || ''
-  ).trim();
-
-}
-
-
-/* =========================================================
-   TẢI DỮ LIỆU
-========================================================= */
-
-async function loadData() {
-
-  try {
-
-    setStatus(
-      'Đang tải dữ liệu...'
-    );
-
-
-    document
-      .getElementById('tbody')
-      .innerHTML =
-        `
-        <tr>
-          <td
-            colspan="6"
-            class="empty"
-          >
-            Đang tải dữ liệu...
-          </td>
-        </tr>
-        `;
-
-
-    /*
-      Lấy thêm:
-      - ten_khachhang
-      - ten_nhanvien
-
-      ma_nv vẫn được lấy,
-      nhưng KHÔNG HIỂN THỊ ra bảng.
-
-      ma_nv cần giữ lại để xử lý bên trong.
-    */
-
-    const {
-      data,
-      error
-    } =
-      await sb
-        .from(TABLE_NAME)
-        .select(`
-          ma_kh,
-          ma_nv,
-          ten_kh,
-          ten_nv,
-          conversation_id,
-          trang_thai
-        `)
-        .not(
-          'conversation_id',
-          'is',
-          null
-        )
-        .order(
-          'conversation_id',
-          {
-            ascending: false
-          }
-        );
-
-
-    if (error) {
-
-      throw error;
-
+    .toolbar-item {
+      display: inline-flex;
+      align-items: center;
     }
 
-
-    /*
-      Lọc thêm trường hợp
-      conversation_id = ""
-    */
-
-    /*
-      Nếu ten_nv trong bảng gửi tin đang NULL/rỗng,
-      đọc lại kv_nhan_vien theo ma_nv để bổ sung tên nhân viên.
-    */
-    const validData = (data || []).filter(r => {
-      return (
-        r.conversation_id !== null &&
-        r.conversation_id !== undefined &&
-        String(r.conversation_id).trim() !== ''
-      );
-    });
-
-    const maNvList = Array.from(
-      new Set(
-        validData
-          .map(r => String(r.ma_nv || '').trim())
-          .filter(Boolean)
-      )
-    );
-
-    const tenNvMap = new Map();
-
-    if (maNvList.length > 0) {
-      const { data: nvData, error: nvError } = await sb
-        .from(TABLE_NHAN_VIEN)
-        .select('ma_nv, ten_nv')
-        .in('ma_nv', maNvList);
-
-      if (nvError) {
-        console.warn('[LOAD TEN_NV WARNING]', nvError);
-      } else {
-        (nvData || []).forEach(nv => {
-          tenNvMap.set(
-            String(nv.ma_nv || '').trim(),
-            String(nv.ten_nv || '').trim()
-          );
-        });
-      }
+    .toolbar-btn {
+      min-height: 38px;
+      padding: 7px 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      border: 1px solid #d8dee9;
+      border-radius: 9px;
+      background: #fff;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
     }
 
-    rows = validData.map(r => {
-      const maNv = String(r.ma_nv || '').trim();
-      const tenNvTrongBangGuiTin = String(r.ten_nv || '').trim();
-
-      return {
-        ...r,
-        ten_nv: tenNvTrongBangGuiTin || tenNvMap.get(maNv) || ''
-      };
-    });
-
-
-    document
-      .getElementById('validCount')
-      .textContent =
-        rows.length;
-
-
-    renderTable();
-
-
-    setStatus(
-      'Đã tải ' +
-      rows.length +
-      ' khách hợp lệ.'
-    );
-
-  }
-
-  catch (err) {
-
-    console.error(
-      '[LOAD DATA ERROR]',
-      err
-    );
-
-
-    rows = [];
-
-
-    document
-      .getElementById('validCount')
-      .textContent =
-        '0';
-
-
-    document
-      .getElementById('tbody')
-      .innerHTML =
-        `
-        <tr>
-          <td
-            colspan="6"
-            class="empty"
-          >
-            Không tải được dữ liệu
-          </td>
-        </tr>
-        `;
-
-
-    setStatus(
-      'Lỗi tải dữ liệu: ' +
-      (
-        err.message ||
-        err
-      )
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   HIỂN THỊ BẢNG
-========================================================= */
-
-function renderTable() {
-
-  const tbody =
-    document.getElementById('tbody');
-
-
-  if (!rows.length) {
-
-    tbody.innerHTML =
-      `
-      <tr>
-        <td
-          colspan="6"
-          class="empty"
-        >
-          Không có khách hợp lệ
-        </td>
-      </tr>
-      `;
-
-    return;
-
-  }
-
-
-  tbody.innerHTML =
-    rows.map(
-      (r, i) => `
-
-        <tr>
-
-          <td>
-            ${i + 1}
-          </td>
-
-          <td>
-            ${escapeHtml(
-              r.ma_kh ?? ''
-            )}
-          </td>
-
-          <td>
-            ${escapeHtml(
-              r.ten_kh ?? ''
-            )}
-          </td>
-
-          <td>
-            ${escapeHtml(
-              r.ten_nv ?? ''
-            )}
-          </td>
-
-          <td>
-            ${escapeHtml(
-              r.conversation_id ?? ''
-            )}
-          </td>
-
-          <td>
-            <span class="cmd ${
-              String(r.trang_thai || '').trim().toLowerCase() === 'đang chạy'
-                ? 'running'
-                : ''
-            }">
-              ${escapeHtml(
-                String(r.trang_thai || '').trim() || 'Chưa chạy'
-              )}
-            </span>
-          </td>
-
-        </tr>
-
-      `
-    ).join('');
-
-}
-
-
-/* =========================================================
-   CHỐNG HTML
-========================================================= */
-
-function escapeHtml(value) {
-
-  return String(value)
-
-    .replaceAll(
-      '&',
-      '&amp;'
-    )
-
-    .replaceAll(
-      '<',
-      '&lt;'
-    )
-
-    .replaceAll(
-      '>',
-      '&gt;'
-    )
-
-    .replaceAll(
-      '"',
-      '&quot;'
-    )
-
-    .replaceAll(
-      "'",
-      '&#039;'
-    );
-
-}
-
-
-
-/* =========================================================
-   NỘI DUNG / FILE / THỜI GIAN GỬI
-========================================================= */
-
-function insertMessageVariable(variableText) {
-  const textarea = document.getElementById('messageText');
-  if (!textarea) return;
-
-  const start = textarea.selectionStart ?? textarea.value.length;
-  const end = textarea.selectionEnd ?? textarea.value.length;
-
-  textarea.value =
-    textarea.value.slice(0, start) +
-    variableText +
-    textarea.value.slice(end);
-
-  const nextPos = start + variableText.length;
-  textarea.focus();
-  textarea.setSelectionRange(nextPos, nextPos);
-}
-
-function getDelayConfigFromForm() {
-  const min = Number(document.getElementById('delayMin')?.value || 50);
-  const max = Number(document.getElementById('delayMax')?.value || 100);
-
-  if (!Number.isFinite(min) || !Number.isFinite(max) || min < 1 || max < 1) {
-    throw new Error('Thời gian chờ phải lớn hơn 0.');
-  }
-
-  if (min > max) {
-    throw new Error('Thời gian "Từ" không được lớn hơn thời gian "Đến".');
-  }
-
-  return {
-    mode: 'random',
-    fixed_seconds: null,
-    min_seconds: Math.floor(min),
-    max_seconds: Math.floor(max)
-  };
-}
-
-function fileToBase64Payload(file) {
-  return new Promise((resolve, reject) => {
-    if (!file) {
-      resolve(null);
-      return;
+    .toolbar-btn:hover {
+      background: #f8fafc;
+      border-color: #b8c2d1;
     }
 
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      const result = String(reader.result || '');
-      const commaIndex = result.indexOf(',');
-      const base64 = commaIndex >= 0 ? result.slice(commaIndex + 1) : result;
-
-      resolve({
-        name: file.name,
-        type: file.type || '',
-        size: file.size,
-        base64: base64
-      });
-    };
-
-    reader.onerror = () => {
-      reject(new Error('Không đọc được file: ' + file.name));
-    };
-
-    reader.readAsDataURL(file);
-  });
-}
-
-
-let messageCaretStart = 0;
-let messageCaretEnd = 0;
-
-function saveMessageCaret() {
-  const textarea = document.getElementById('messageText');
-  if (!textarea) return;
-
-  messageCaretStart = textarea.selectionStart ?? textarea.value.length;
-  messageCaretEnd = textarea.selectionEnd ?? messageCaretStart;
-}
-
-function insertAtSavedCaret(textToInsert) {
-  const textarea = document.getElementById('messageText');
-  if (!textarea) return;
-
-  const start = Number.isInteger(messageCaretStart)
-    ? messageCaretStart
-    : textarea.value.length;
-
-  const end = Number.isInteger(messageCaretEnd)
-    ? messageCaretEnd
-    : start;
-
-  textarea.value =
-    textarea.value.slice(0, start) +
-    textToInsert +
-    textarea.value.slice(end);
-
-  const nextPos = start + textToInsert.length;
-
-  textarea.focus();
-  textarea.setSelectionRange(nextPos, nextPos);
-
-  messageCaretStart = nextPos;
-  messageCaretEnd = nextPos;
-
-  textarea.dispatchEvent(new Event('input', { bubbles: true }));
-}
-
-function bindComposerEvents() {
-  const messageTextarea = document.getElementById('messageText');
-
-  if (messageTextarea) {
-    ['click', 'keyup', 'select', 'input', 'focus'].forEach(eventName => {
-      messageTextarea.addEventListener(eventName, saveMessageCaret);
-    });
-
-    saveMessageCaret();
-  }
-
-  document.querySelectorAll('.var-btn').forEach(btn => {
-    btn.addEventListener('click', function () {
-      insertMessageVariable(this.dataset.var || '');
-    });
-  });
-
-  const emojiTrigger = document.getElementById('emojiTrigger');
-  const emojiPicker = document.getElementById('emojiPicker');
-  const emojiTriggerIcon = document.getElementById('emojiTriggerIcon');
-  const emojiHiddenInput = document.getElementById('messageIcon');
-  const selectedEmojiText = document.getElementById('selectedEmojiText');
-  const emojiClear = document.getElementById('emojiClear');
-
-  function closeEmojiPicker() {
-    if (!emojiPicker || !emojiTrigger) return;
-    emojiPicker.hidden = true;
-    emojiTrigger.setAttribute('aria-expanded', 'false');
-  }
-
-  function openEmojiPicker() {
-    if (!emojiPicker || !emojiTrigger) return;
-    emojiPicker.hidden = false;
-    emojiTrigger.setAttribute('aria-expanded', 'true');
-  }
-
-  emojiTrigger?.addEventListener('mousedown', function () {
-    saveMessageCaret();
-  });
-
-  emojiTrigger?.addEventListener('click', function (event) {
-    event.stopPropagation();
-
-    if (emojiPicker?.hidden) {
-      openEmojiPicker();
-    } else {
-      closeEmojiPicker();
+    .file-toolbar-btn {
+      user-select: none;
     }
-  });
 
-  document.querySelectorAll('.emoji-btn').forEach(btn => {
-    btn.addEventListener('mousedown', function (event) {
-      event.preventDefault();
-    });
+    .selected-files-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
 
-    btn.addEventListener('click', function (event) {
-      event.stopPropagation();
+'''
+    text = text[:css_start] + replacement + text[css_end:]
 
-      const emoji = this.dataset.emoji || '';
+# Adjust emoji trigger dimensions so it fits toolbar
+text = text.replace(
+"""    .emoji-trigger {
+      width: 62px;
+      height: 44px;
+      padding: 0 9px;""",
+"""    .emoji-trigger {
+      width: auto;
+      min-width: 54px;
+      height: 38px;
+      padding: 0 9px;"""
+)
 
-      document.querySelectorAll('.emoji-btn').forEach(x => {
-        x.classList.remove('selected');
-      });
+# Fix popup alignment for toolbar
+text = text.replace("      right: 0;\n      top: calc(100% + 8px);", "      left: 0;\n      top: calc(100% + 8px);")
 
-      this.classList.add('selected');
-
-      if (emojiHiddenInput) {
-        emojiHiddenInput.value = emoji;
+# Make mobile toolbar wrap nicely
+mobile_anchor = """    @media (max-width: 800px) {
+      .message-grid {
+        grid-template-columns: 1fr;
       }
 
-      if (emojiTriggerIcon) {
-        emojiTriggerIcon.textContent = emoji || '😊';
+      .delay-field {"""
+mobile_repl = """    @media (max-width: 800px) {
+      .composer-toolbar {
+        align-items: flex-start;
       }
 
-      if (selectedEmojiText) {
-        selectedEmojiText.textContent = emoji
-          ? 'Đã chèn: ' + emoji
-          : 'Chưa chọn icon';
+      .toolbar-media {
+        width: 100%;
+        justify-content: flex-start;
       }
 
-      // Chèn emoji đúng vị trí con trỏ nhấp nháy trong ô nội dung.
-      insertAtSavedCaret(emoji);
-
-      closeEmojiPicker();
-    });
-  });
-
-  emojiClear?.addEventListener('click', function (event) {
-    event.stopPropagation();
-
-    document.querySelectorAll('.emoji-btn').forEach(x => {
-      x.classList.remove('selected');
-    });
-
-    if (emojiHiddenInput) {
-      emojiHiddenInput.value = '';
-    }
-
-    if (emojiTriggerIcon) {
-      emojiTriggerIcon.textContent = '😊';
-    }
-
-    if (selectedEmojiText) {
-      selectedEmojiText.textContent = 'Chưa chọn icon';
-    }
-
-    closeEmojiPicker();
-  });
-
-  document.addEventListener('click', function (event) {
-    if (!event.target.closest('.emoji-trigger-wrap')) {
-      closeEmojiPicker();
-    }
-  });
-
-  const imageFile = document.getElementById('imageFile');
-  const videoFile = document.getElementById('videoFile');
-
-  imageFile?.addEventListener('change', function () {
-    const file = this.files?.[0];
-    document.getElementById('imageFileInfo').textContent =
-      file ? `${file.name} (${Math.round(file.size / 1024)} KB)` : 'Chưa chọn ảnh';
-  });
-
-  videoFile?.addEventListener('change', function () {
-    const file = this.files?.[0];
-    document.getElementById('videoFileInfo').textContent =
-      file ? `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)` : 'Chưa chọn video';
-  });
-}
-
-
-/* =========================================================
-   GỬI WEBHOOK CHẠY
-========================================================= */
-
-async function sendRunWebhook() {
-
-  const maNv =
-    getLoggedInMaNv();
-
-
-  if (!maNv) {
-
-    throw new Error(
-      'Không lấy được ma_nv của nhân viên đang đăng nhập.'
-    );
-
-  }
-
-
-  /*
-    LẤY NỘI DUNG SOẠN + FILE + THỜI GIAN TỪ FORM
-  */
-
-  const noiDung =
-    String(
-      document.getElementById('messageText')?.value || ''
-    ).trim();
-
-  const icon =
-    String(
-      document.getElementById('messageIcon')?.value || ''
-    ).trim();
-
-  const imageFile =
-    document.getElementById('imageFile')?.files?.[0] || null;
-
-  const videoFile =
-    document.getElementById('videoFile')?.files?.[0] || null;
-
-  const delayConfig =
-    getDelayConfigFromForm();
-
-  /*
-    File được chuyển thành base64 để gửi chung trong JSON.
-    n8n nhận tại:
-      $json.body.payload.file_anh.base64
-      $json.body.payload.file_video.base64
-  */
-
-  const [
-    fileAnhPayload,
-    fileVideoPayload
-  ] = await Promise.all([
-    fileToBase64Payload(imageFile),
-    fileToBase64Payload(videoFile)
-  ]);
-
-  if (!currentRunId) {
-    currentRunId =
-      (window.crypto && typeof window.crypto.randomUUID === 'function')
-        ? window.crypto.randomUUID()
-        : ('run_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9));
-  }
-
-  const body = {
-
-    action: 'run',
-
-    ma_nv: maNv,
-
-    payload: {
-
-      run_id: currentRunId,
-
-      so_khach_hop_le: rows.length,
-
-      noi_dung: noiDung,
-
-      icon: icon,
-
-      file_anh: fileAnhPayload,
-
-      file_video: fileVideoPayload,
-
-      thoi_gian_cho: delayConfig
-
-    }
-
-  };
-
-
-  console.log(
-    '[GUITIN_AUTOZALO] URL:',
-    WEBHOOK_URL
-  );
-
-
-  console.log(
-    '[GUITIN_AUTOZALO] BODY:',
-    body
-  );
-
-
-  const response =
-    await fetch(
-      WEBHOOK_URL,
-      {
-
-        method: 'POST',
-
-        headers: {
-          'Content-Type':
-            'application/json'
-        },
-
-        body:
-          JSON.stringify(body)
-
-      }
-    );
-
-
-  /*
-    Lấy response n8n để debug
-  */
-
-  let responseText = '';
-
-  try {
-
-    responseText =
-      await response.text();
-
-  } catch (e) {}
-
-
-  console.log(
-    '[GUITIN_AUTOZALO] RESPONSE:',
-    response.status,
-    responseText
-  );
-
-
-  if (!response.ok) {
-
-    throw new Error(
-      'Webhook lỗi HTTP ' +
-      response.status +
-      (
-        responseText
-          ? ': ' + responseText
-          : ''
-      )
-    );
-
-  }
-
-
-  return {
-    ok: true,
-    status: response.status,
-    responseText
-  };
-
-}
-
-
-function setRunButtonRunning(running) {
-  const btn = document.getElementById('btnRun');
-  if (!btn) return;
-
-  if (running) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="run-spinner"></span>Đang chạy';
-  } else {
-    btn.disabled = false;
-    btn.textContent = '▶ Chạy';
-  }
-}
-
-function markAllRowsRunningLocal() {
-  rows.forEach(function (row) {
-    row.trang_thai = 'Đang chạy';
-  });
-
-  renderTable();
-}
-
-
-/* =========================================================
-   NÚT CHẠY
-========================================================= */
-
-async function startRun() {
-
-  if (isRunning) {
-
-    return;
-
-  }
-
-
-  if (!rows.length) {
-
-    alert(
-      'Không có khách hợp lệ để chạy.'
-    );
-
-    return;
-
-  }
-
-
-  /*
-    Kiểm tra ma_nv trước khi chạy
-  */
-
-  const maNv =
-    getLoggedInMaNv();
-
-
-  if (!maNv) {
-
-    alert(
-      'Không lấy được mã nhân viên đang đăng nhập.'
-    );
-
-    return;
-
-  }
-
-
-  try {
-
-    /*
-      Khóa nút trong lúc gọi webhook
-    */
-
-    setRunButtonRunning(true);
-
-    // Ngay khi bấm Chạy, tất cả dòng trên giao diện chuyển sang "Đang chạy".
-    // Đây chỉ là trạng thái hiển thị cục bộ; n8n cập nhật Supabase tới đâu
-    // thì Realtime sẽ thay đúng trạng thái từng dòng tới đó.
-    markAllRowsRunningLocal();
-
-    setStatus(
-      'Đang gửi lệnh chạy tới n8n...'
-    );
-
-
-    /*
-      GỬI WEBHOOK
-    */
-
-    await sendRunWebhook();
-
-
-    /*
-      Chỉ chuyển sang chạy
-      nếu webhook thành công
-    */
-
-    isRunning = true;
-
-
-    setRunButtonRunning(true);
-
-
-    document
-      .getElementById('btnStop')
-      .disabled =
-        false;
-
-
-    renderTable();
-
-
-    const delayConfig = getDelayConfigFromForm();
-
-    setStatus(
-      'Đã gửi lệnh chạy ' +
-      rows.length +
-      ' khách. ' +
-      'ma_nv: ' +
-      maNv +
-      ' | Chờ ngẫu nhiên ' +
-      delayConfig.min_seconds +
-      ' - ' +
-      delayConfig.max_seconds +
-      ' giây.'
-    );
-
-  }
-
-  catch (err) {
-
-    console.error(
-      '[RUN ERROR]',
-      err
-    );
-
-
-    isRunning = false;
-
-
-    setRunButtonRunning(false);
-
-
-    document
-      .getElementById('btnStop')
-      .disabled =
-        true;
-
-
-    renderTable();
-
-
-    setStatus(
-      'Lỗi chạy: ' +
-      (
-        err.message ||
-        err
-      )
-    );
-
-
-    alert(
-      'Không chạy được.\n\n' +
-      (
-        err.message ||
-        err
-      )
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   UPDATE STOP TRỰC TIẾP TỪ HTML
-   - Tìm tất cả dòng trang_thai = NULL
-   - Update toàn bộ các dòng đó thành "stop"
-========================================================= */
-
-async function markAllNullRowsStopFromHtml() {
-  if (!sb) {
-    throw new Error('Supabase chưa được khởi tạo.');
-  }
-
-  // Update TẤT CẢ dòng còn trang_thai = NULL thành "stop".
-  // Các dòng đã "Đã gửi xong" hoặc trạng thái khác sẽ giữ nguyên.
-  const { data: updatedRows, error: updateError } = await sb
-    .from(TABLE_NAME)
-    .update({
-      trang_thai: 'stop'
-    })
-    .is('trang_thai', null)
-    .not('conversation_id', 'is', null)
-    .select('conversation_id, ma_kh, ten_kh, trang_thai');
-
-  if (updateError) {
-    throw updateError;
-  }
-
-  const count = Array.isArray(updatedRows) ? updatedRows.length : 0;
-
-  console.log(
-    '[STOP TỪ HTML] Đã update tất cả dòng NULL thành stop:',
-    updatedRows
-  );
-
-  return {
-    updated: count > 0,
-    count: count,
-    rows: updatedRows || [],
-    reason: count > 0
-      ? ''
-      : 'Không còn dòng trang_thai NULL để đánh dấu stop.'
-  };
-}
-
-
-/* =========================================================
-   NÚT DỪNG
-========================================================= */
-
-async function stopRun() {
-
-  if (!isRunning) {
-    return;
-  }
-
-  const btnStop = document.getElementById('btnStop');
-  const btnRun = document.getElementById('btnRun');
-
-  try {
-    btnStop.disabled = true;
-    btnStop.textContent = 'Đang dừng...';
-
-    setStatus('Đang đánh dấu dòng tiếp theo = stop trên Supabase...');
-
-    // HTML tự update TẤT CẢ dòng còn trang_thai NULL thành stop.
-    const stopResult = await markAllNullRowsStopFromHtml();
-
-    isRunning = false;
-
-    setRunButtonRunning(false);
-    btnStop.disabled = true;
-    btnStop.textContent = '■ Dừng';
-
-    // Realtime sẽ tự cập nhật dòng stop.
-    renderTable();
-
-    setStatus(
-      stopResult.updated
-        ? '⛔ Đã DỪNG. Đã cập nhật ' + stopResult.count + ' dòng trang_thai NULL thành stop.'
-        : '⛔ ' + stopResult.reason
-    );
-
-    currentRunId = null;
-
-  } catch (err) {
-    console.error('[STOP ERROR]', err);
-
-    btnStop.disabled = false;
-    btnStop.textContent = '■ Dừng';
-
-    setStatus('Lỗi gửi lệnh dừng: ' + (err.message || err));
-
-    alert(
-      'Không gửi được lệnh dừng.\n\n' +
-      (err.message || err)
-    );
-  }
-}
-
-
-/* =========================================================
-   EVENT
-========================================================= */
-
-document
-  .getElementById('btnReload')
-  .addEventListener(
-    'click',
-    loadData
-  );
-
-
-document
-  .getElementById('btnRun')
-  .addEventListener(
-    'click',
-    startRun
-  );
-
-
-document
-  .getElementById('btnStop')
-  .addEventListener(
-    'click',
-    stopRun
-  );
-
-
-/* =========================================================
-   KÉO / DI CHUYỂN FORM
-========================================================= */
-
-function enableDraggableForm() {
-  const wrap = document.querySelector('.wrap');
-  const handle = document.querySelector('.topbar');
-
-  if (!wrap || !handle) return;
-
-  let dragging = false;
-  let offsetX = 0;
-  let offsetY = 0;
-
-  handle.addEventListener('mousedown', function (event) {
-    if (event.button !== 0) return;
-    if (event.target.closest('button, input, select, textarea, a')) return;
-
-    const rect = wrap.getBoundingClientRect();
-
-    wrap.style.position = 'fixed';
-    wrap.style.margin = '0';
-    wrap.style.width = rect.width + 'px';
-    wrap.style.maxWidth = 'calc(100vw - 12px)';
-    wrap.style.left = rect.left + 'px';
-    wrap.style.top = rect.top + 'px';
-    wrap.style.zIndex = '9999';
-
-    offsetX = event.clientX - rect.left;
-    offsetY = event.clientY - rect.top;
-    dragging = true;
-
-    event.preventDefault();
-  });
-
-  document.addEventListener('mousemove', function (event) {
-    if (!dragging) return;
-
-    const maxLeft = Math.max(0, window.innerWidth - wrap.offsetWidth);
-    const maxTop = Math.max(0, window.innerHeight - 60);
-
-    const left = Math.min(Math.max(0, event.clientX - offsetX), maxLeft);
-    const top = Math.min(Math.max(0, event.clientY - offsetY), maxTop);
-
-    wrap.style.left = left + 'px';
-    wrap.style.top = top + 'px';
-  });
-
-  document.addEventListener('mouseup', function () {
-    dragging = false;
-  });
-}
-
-
-/* =========================================================
-   REALTIME TRẠNG THÁI TỪ SUPABASE
-   Bảng kv_khachhang_nhanvien_guitin đã bật Realtime.
-========================================================= */
-
-let statusChannel = null;
-
-function normalizeRealtimeKey(value) {
-  return String(value ?? '').trim();
-}
-
-function isDoneStatus(value) {
-  const s = String(value ?? '').trim().toLowerCase();
-
-  return (
-    s === 'đã gửi xong' ||
-    s === 'da gui xong' ||
-    s === 'da_gui_xong' ||
-    s === 'hoàn thành' ||
-    s === 'hoan thanh' ||
-    s === 'hoan_thanh' ||
-    s === 'completed'
-  );
-}
-
-function applyRealtimeStatus(payload) {
-  console.log('[REALTIME UPDATE]', payload);
-
-  const newRow = payload?.new;
-  if (!newRow) return;
-
-  const conversationId = normalizeRealtimeKey(newRow.conversation_id);
-  const maKh = normalizeRealtimeKey(newRow.ma_kh);
-
-  let changed = false;
-
-  rows.forEach(function (row) {
-    const sameConversation =
-      conversationId &&
-      normalizeRealtimeKey(row.conversation_id) === conversationId;
-
-    const sameMaKh =
-      maKh &&
-      normalizeRealtimeKey(row.ma_kh) === maKh;
-
-    if (!sameConversation && !sameMaKh) {
-      return;
-    }
-
-    const oldStatus = normalizeRealtimeKey(row.trang_thai);
-    const newStatus = normalizeRealtimeKey(newRow.trang_thai);
-
-    if (oldStatus !== newStatus) {
-      row.trang_thai = newRow.trang_thai ?? '';
-      changed = true;
-    }
-  });
-
-  if (changed) {
-    renderTable();
-  }
-
-  const doneCount = rows.filter(function (row) {
-    return isDoneStatus(row.trang_thai);
-  }).length;
-
-  if (doneCount > 0) {
-    setStatus(
-      'Đã gửi xong ' +
-      doneCount +
-      '/' +
-      rows.length +
-      ' khách.'
-    );
-  }
-
-  if (rows.length > 0 && doneCount === rows.length) {
-    isRunning = false;
-
-    const btnRun = document.getElementById('btnRun');
-    const btnStop = document.getElementById('btnStop');
-
-    setRunButtonRunning(false);
-    if (btnStop) btnStop.disabled = true;
-
-    setStatus('✅ Đã gửi xong ' + rows.length + '/' + rows.length + ' khách.');
-  }
-}
-
-function subscribeTrangThaiRealtime() {
-  if (!sb) return;
-
-  if (statusChannel) {
-    try {
-      sb.removeChannel(statusChannel);
-    } catch (e) {
-      console.warn('[REALTIME REMOVE CHANNEL]', e);
-    }
-    statusChannel = null;
-  }
-
-  statusChannel = sb
-    .channel('guitin_trang_thai_' + Date.now())
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: TABLE_NAME
-      },
-      applyRealtimeStatus
-    )
-    .subscribe(function (status, err) {
-      console.log('[REALTIME SUBSCRIBE]', status, err || '');
-
-      if (status === 'SUBSCRIBED') {
-        console.log('✅ Đã kết nối Realtime:', TABLE_NAME);
+      .selected-files-row {
+        justify-content: flex-start;
       }
 
-      if (
-        status === 'CHANNEL_ERROR' ||
-        status === 'TIMED_OUT'
-      ) {
-        console.error('❌ Realtime lỗi:', status, err || '');
-        setStatus('Lỗi kết nối Realtime: ' + status);
-      }
-    });
-}
+      .delay-field {"""
+text = text.replace(mobile_anchor, mobile_repl, 1)
 
-window.addEventListener('beforeunload', function () {
-  if (statusChannel && sb) {
-    try {
-      sb.removeChannel(statusChannel);
-    } catch (e) {}
-  }
-});
+out = Path("/mnt/data/guitin_autozalo_toolbar_cung_dong.html")
+out.write_text(text, encoding="utf-8")
 
-
-/* =========================================================
-   KHỞI TẠO
-========================================================= */
-
-(async () => {
-
-  try {
-
-    enableDraggableForm();
-    bindComposerEvents();
-
-    sb =
-      await createSupabaseClient();
-
-
-    const maNv =
-      getLoggedInMaNv();
-
-
-    console.log(
-      '[NHÂN VIÊN ĐĂNG NHẬP]',
-      maNv
-    );
-
-
-    await loadData();
-
-    subscribeTrangThaiRealtime();
-
-  }
-
-  catch (err) {
-
-    console.error(
-      '[INIT ERROR]',
-      err
-    );
-
-
-    setStatus(
-      'Lỗi khởi tạo: ' +
-      (
-        err.message ||
-        err
-      )
-    );
-
-  }
-
-})();
-
-</script>
-
-</body>
-</html>
+print(f"Đã tạo: {out}")
