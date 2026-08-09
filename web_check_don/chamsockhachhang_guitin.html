@@ -248,6 +248,112 @@
       font-weight: 700;
     }
 
+
+    .emoji-field {
+      position: relative;
+    }
+
+    .emoji-trigger-wrap {
+      position: relative;
+      display: inline-block;
+    }
+
+    .emoji-trigger {
+      width: 62px;
+      height: 44px;
+      padding: 0 9px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 5px;
+      background: #fff;
+      border: 1px solid #d8dee9;
+      border-radius: 10px;
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .emoji-trigger:hover {
+      background: #f8fafc;
+    }
+
+    .emoji-trigger:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.10);
+    }
+
+    .emoji-trigger-arrow {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .emoji-picker-popup {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 8px);
+      width: 330px;
+      max-width: calc(100vw - 40px);
+      padding: 10px;
+      background: #fff;
+      border: 1px solid #d8dee9;
+      border-radius: 12px;
+      box-shadow: 0 12px 35px rgba(15, 23, 42, .18);
+      z-index: 10020;
+    }
+
+    .emoji-picker-title {
+      margin: 0 0 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    .emoji-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 5px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .emoji-btn {
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: transparent;
+      border: 1px solid transparent;
+      font-size: 21px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .emoji-btn:hover {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+      transform: scale(1.08);
+    }
+
+    .emoji-btn.selected {
+      background: #dbeafe;
+      border-color: #2563eb;
+    }
+
+    .emoji-clear {
+      width: 100%;
+      margin-top: 9px;
+      padding: 8px 10px;
+      background: #f1f5f9;
+      color: #475569;
+      font-size: 12px;
+      border-radius: 8px;
+    }
+
     .field-label {
       display: block;
       margin-bottom: 6px;
@@ -393,14 +499,81 @@
       </div>
 
       <div class="side-fields">
-        <div>
-          <label class="field-label" for="messageIcon">Icon / Emoji</label>
+        <div class="emoji-field">
+          <label class="field-label">Icon / Emoji</label>
+
           <input
             id="messageIcon"
-            class="input-control"
-            type="text"
-            placeholder="Ví dụ: 👋 😊 ❤️"
+            type="hidden"
+            value=""
           />
+
+          <div class="emoji-trigger-wrap">
+            <button
+              type="button"
+              id="emojiTrigger"
+              class="emoji-trigger"
+              aria-expanded="false"
+              title="Chọn icon"
+            >
+              <span id="emojiTriggerIcon">😊</span>
+              <span class="emoji-trigger-arrow">▾</span>
+            </button>
+
+            <div id="emojiPicker" class="emoji-picker-popup" hidden>
+              <div class="emoji-picker-title">Chọn biểu tượng</div>
+
+              <div class="emoji-grid">
+                <button type="button" class="emoji-btn" data-emoji="😀">😀</button>
+                <button type="button" class="emoji-btn" data-emoji="😃">😃</button>
+                <button type="button" class="emoji-btn" data-emoji="😄">😄</button>
+                <button type="button" class="emoji-btn" data-emoji="😁">😁</button>
+                <button type="button" class="emoji-btn" data-emoji="😊">😊</button>
+                <button type="button" class="emoji-btn" data-emoji="😉">😉</button>
+                <button type="button" class="emoji-btn" data-emoji="😍">😍</button>
+                <button type="button" class="emoji-btn" data-emoji="🥰">🥰</button>
+                <button type="button" class="emoji-btn" data-emoji="😘">😘</button>
+                <button type="button" class="emoji-btn" data-emoji="😂">😂</button>
+                <button type="button" class="emoji-btn" data-emoji="🤣">🤣</button>
+                <button type="button" class="emoji-btn" data-emoji="😎">😎</button>
+
+                <button type="button" class="emoji-btn" data-emoji="👋">👋</button>
+                <button type="button" class="emoji-btn" data-emoji="👍">👍</button>
+                <button type="button" class="emoji-btn" data-emoji="👌">👌</button>
+                <button type="button" class="emoji-btn" data-emoji="👏">👏</button>
+                <button type="button" class="emoji-btn" data-emoji="🙏">🙏</button>
+                <button type="button" class="emoji-btn" data-emoji="💪">💪</button>
+                <button type="button" class="emoji-btn" data-emoji="🤝">🤝</button>
+                <button type="button" class="emoji-btn" data-emoji="🤗">🤗</button>
+
+                <button type="button" class="emoji-btn" data-emoji="❤️">❤️</button>
+                <button type="button" class="emoji-btn" data-emoji="💖">💖</button>
+                <button type="button" class="emoji-btn" data-emoji="💕">💕</button>
+                <button type="button" class="emoji-btn" data-emoji="💓">💓</button>
+                <button type="button" class="emoji-btn" data-emoji="💝">💝</button>
+                <button type="button" class="emoji-btn" data-emoji="🌹">🌹</button>
+                <button type="button" class="emoji-btn" data-emoji="🌸">🌸</button>
+                <button type="button" class="emoji-btn" data-emoji="🌷">🌷</button>
+
+                <button type="button" class="emoji-btn" data-emoji="🎉">🎉</button>
+                <button type="button" class="emoji-btn" data-emoji="🎁">🎁</button>
+                <button type="button" class="emoji-btn" data-emoji="✨">✨</button>
+                <button type="button" class="emoji-btn" data-emoji="🔥">🔥</button>
+                <button type="button" class="emoji-btn" data-emoji="⭐">⭐</button>
+                <button type="button" class="emoji-btn" data-emoji="💯">💯</button>
+                <button type="button" class="emoji-btn" data-emoji="✅">✅</button>
+                <button type="button" class="emoji-btn" data-emoji="🎊">🎊</button>
+              </div>
+
+              <button type="button" id="emojiClear" class="emoji-clear">
+                Bỏ chọn icon
+              </button>
+            </div>
+          </div>
+
+          <div id="selectedEmojiText" class="file-info">
+            Chưa chọn icon
+          </div>
         </div>
 
         <div>
@@ -1166,6 +1339,93 @@ function bindComposerEvents() {
     btn.addEventListener('click', function () {
       insertMessageVariable(this.dataset.var || '');
     });
+  });
+
+  const emojiTrigger = document.getElementById('emojiTrigger');
+  const emojiPicker = document.getElementById('emojiPicker');
+  const emojiTriggerIcon = document.getElementById('emojiTriggerIcon');
+  const emojiHiddenInput = document.getElementById('messageIcon');
+  const selectedEmojiText = document.getElementById('selectedEmojiText');
+  const emojiClear = document.getElementById('emojiClear');
+
+  function closeEmojiPicker() {
+    if (!emojiPicker || !emojiTrigger) return;
+    emojiPicker.hidden = true;
+    emojiTrigger.setAttribute('aria-expanded', 'false');
+  }
+
+  function openEmojiPicker() {
+    if (!emojiPicker || !emojiTrigger) return;
+    emojiPicker.hidden = false;
+    emojiTrigger.setAttribute('aria-expanded', 'true');
+  }
+
+  emojiTrigger?.addEventListener('click', function (event) {
+    event.stopPropagation();
+
+    if (emojiPicker?.hidden) {
+      openEmojiPicker();
+    } else {
+      closeEmojiPicker();
+    }
+  });
+
+  document.querySelectorAll('.emoji-btn').forEach(btn => {
+    btn.addEventListener('click', function (event) {
+      event.stopPropagation();
+
+      const emoji = this.dataset.emoji || '';
+
+      document.querySelectorAll('.emoji-btn').forEach(x => {
+        x.classList.remove('selected');
+      });
+
+      this.classList.add('selected');
+
+      if (emojiHiddenInput) {
+        emojiHiddenInput.value = emoji;
+      }
+
+      if (emojiTriggerIcon) {
+        emojiTriggerIcon.textContent = emoji || '😊';
+      }
+
+      if (selectedEmojiText) {
+        selectedEmojiText.textContent = emoji
+          ? 'Đã chọn: ' + emoji
+          : 'Chưa chọn icon';
+      }
+
+      closeEmojiPicker();
+    });
+  });
+
+  emojiClear?.addEventListener('click', function (event) {
+    event.stopPropagation();
+
+    document.querySelectorAll('.emoji-btn').forEach(x => {
+      x.classList.remove('selected');
+    });
+
+    if (emojiHiddenInput) {
+      emojiHiddenInput.value = '';
+    }
+
+    if (emojiTriggerIcon) {
+      emojiTriggerIcon.textContent = '😊';
+    }
+
+    if (selectedEmojiText) {
+      selectedEmojiText.textContent = 'Chưa chọn icon';
+    }
+
+    closeEmojiPicker();
+  });
+
+  document.addEventListener('click', function (event) {
+    if (!event.target.closest('.emoji-trigger-wrap')) {
+      closeEmojiPicker();
+    }
   });
 
   const imageFile = document.getElementById('imageFile');
