@@ -1371,76 +1371,6 @@ function getDelayConfigFromForm() {
   };
 }
 
-function fileToBase64Payload(file) {
-  return new Promise((resolve, reject) => {
-    if (!file) {
-      resolve(null);
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      const result = String(reader.result || '');
-      const commaIndex = result.indexOf(',');
-      const base64 = commaIndex >= 0 ? result.slice(commaIndex + 1) : result;
-
-      resolve({
-        name: file.name,
-        type: file.type || '',
-        size: file.size,
-        base64: base64
-      });
-    };
-
-    reader.onerror = () => {
-      reject(new Error('Không đọc được file: ' + file.name));
-    };
-
-    reader.readAsDataURL(file);
-  });
-}
-
-
-let messageCaretStart = 0;
-let messageCaretEnd = 0;
-
-function saveMessageCaret() {
-  const textarea = document.getElementById('messageText');
-  if (!textarea) return;
-
-  messageCaretStart = textarea.selectionStart ?? textarea.value.length;
-  messageCaretEnd = textarea.selectionEnd ?? messageCaretStart;
-}
-
-function insertAtSavedCaret(textToInsert) {
-  const textarea = document.getElementById('messageText');
-  if (!textarea) return;
-
-  const start = Number.isInteger(messageCaretStart)
-    ? messageCaretStart
-    : textarea.value.length;
-
-  const end = Number.isInteger(messageCaretEnd)
-    ? messageCaretEnd
-    : start;
-
-  textarea.value =
-    textarea.value.slice(0, start) +
-    textToInsert +
-    textarea.value.slice(end);
-
-  const nextPos = start + textToInsert.length;
-
-  textarea.focus();
-  textarea.setSelectionRange(nextPos, nextPos);
-
-  messageCaretStart = nextPos;
-  messageCaretEnd = nextPos;
-
-  textarea.dispatchEvent(new Event('input', { bubbles: true }));
-}
-
 function bindComposerEvents() {
   const messageTextarea = document.getElementById('messageText');
 
@@ -1593,7 +1523,7 @@ async function sendRunWebhook() {
 
 
   /*
-    LẤY NỘI DUNG SOẠN + FILE + THỜI GIAN TỪ FORM
+    LẤY NỘI DUNG + FILE + THỜI GIAN TỪ FORM
   */
 
   const noiDung =
@@ -1615,21 +1545,6 @@ async function sendRunWebhook() {
   const delayConfig =
     getDelayConfigFromForm();
 
-  /*
-    File được chuyển thành base64 để gửi chung trong JSON.
-    n8n nhận tại:
-      $json.body.payload.file_anh.base64
-      $json.body.payload.file_video.base64
-  */
-
-  const [
-    fileAnhPayload,
-    fileVideoPayload
-  ] = await Promise.all([
-    fileToBase64Payload(imageFile),
-    fileToBase64Payload(videoFile)
-  ]);
-
   if (!currentRunId) {
     currentRunId =
       (window.crypto && typeof window.crypto.randomUUID === 'function')
@@ -1637,32 +1552,61 @@ async function sendRunWebhook() {
         : ('run_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9));
   }
 
-  const body = {
-
-    action: 'run',
-
-    ma_nv: maNv,
-
-    payload: {
-
-      run_id: currentRunId,
-
-      so_khach_hop_le: rows.length,
-
-      noi_dung: noiDung,
-
-      icon: icon,
-
-      file_anh: fileAnhPayload,
-
-      file_video: fileVideoPayload,
-
-      thoi_gian_cho: delayConfig
-
-    }
-
+  /*
+    PAYLOAD TEXT:
+    n8n nhận body.payload là chuỗi JSON.
+    Parse trong n8n bằng:
+      JSON.parse($json.body.payload)
+  */
+  const payloadData = {
+    run_id: currentRunId,
+    so_khach_hop_le: rows.length,
+    noi_dung: noiDung,
+    icon: icon,
+    thoi_gian_cho: delayConfig
   };
 
+  /*
+    MULTIPART/FORM-DATA
+    - Không convert ảnh/video sang Base64.
+    - Browser tự đặt Content-Type + boundary.
+    - n8n nhận file trong binary:
+        $binary.file_anh
+        $binary.file_video
+  */
+  const formData = new FormData();
+
+  formData.append('action', 'run');
+  formData.append('ma_nv', maNv);
+  formData.append('payload', JSON.stringify(payloadData));
+
+  if (imageFile) {
+    formData.append('file_anh', imageFile, imageFile.name);
+  }
+
+  if (videoFile) {
+    formData.append('file_video', videoFile, videoFile.name);
+  }
+
+  const bodyDebug = {
+    action: 'run',
+    ma_nv: maNv,
+    payload: payloadData,
+    file_anh: imageFile
+      ? {
+          name: imageFile.name,
+          type: imageFile.type,
+          size: imageFile.size
+        }
+      : null,
+    file_video: videoFile
+      ? {
+          name: videoFile.name,
+          type: videoFile.type,
+          size: videoFile.size
+        }
+      : null
+  };
 
   console.log(
     '[GUITIN_AUTOZALO] URL:',
@@ -1671,8 +1615,8 @@ async function sendRunWebhook() {
 
 
   console.log(
-    '[GUITIN_AUTOZALO] BODY:',
-    body
+    '[GUITIN_AUTOZALO] MULTIPART:',
+    bodyDebug
   );
 
 
@@ -1680,17 +1624,14 @@ async function sendRunWebhook() {
     await fetch(
       WEBHOOK_URL,
       {
-
         method: 'POST',
 
-        headers: {
-          'Content-Type':
-            'application/json'
-        },
-
-        body:
-          JSON.stringify(body)
-
+        /*
+          KHÔNG tự set Content-Type ở đây.
+          Browser sẽ tự tạo:
+          multipart/form-data; boundary=...
+        */
+        body: formData
       }
     );
 
