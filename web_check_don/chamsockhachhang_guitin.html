@@ -1371,6 +1371,60 @@ function getDelayConfigFromForm() {
   };
 }
 
+
+let messageCaretStart = 0;
+let messageCaretEnd = 0;
+
+function saveMessageCaret() {
+  const textarea = document.getElementById('messageText');
+  if (!textarea) return;
+
+  messageCaretStart =
+    textarea.selectionStart ?? textarea.value.length;
+
+  messageCaretEnd =
+    textarea.selectionEnd ?? messageCaretStart;
+}
+
+function insertAtSavedCaret(textToInsert) {
+  const textarea = document.getElementById('messageText');
+  if (!textarea) return;
+
+  const start =
+    Number.isInteger(messageCaretStart)
+      ? messageCaretStart
+      : textarea.value.length;
+
+  const end =
+    Number.isInteger(messageCaretEnd)
+      ? messageCaretEnd
+      : start;
+
+  textarea.value =
+    textarea.value.slice(0, start) +
+    textToInsert +
+    textarea.value.slice(end);
+
+  const nextPos =
+    start + textToInsert.length;
+
+  textarea.focus();
+  textarea.setSelectionRange(
+    nextPos,
+    nextPos
+  );
+
+  messageCaretStart = nextPos;
+  messageCaretEnd = nextPos;
+
+  textarea.dispatchEvent(
+    new Event(
+      'input',
+      { bubbles: true }
+    )
+  );
+}
+
 function bindComposerEvents() {
   const messageTextarea = document.getElementById('messageText');
 
