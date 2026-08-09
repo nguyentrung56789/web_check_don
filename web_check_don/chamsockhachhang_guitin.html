@@ -1613,24 +1613,6 @@ async function sendRunWebhook() {
     Parse trong n8n bằng:
       $json.body
   */
-  const danhSachKhach = rows.map(function (r) {
-    return {
-      ma_kh: r.ma_kh ?? null,
-      ten_kh: r.ten_kh ?? null,
-      ma_nv: r.ma_nv ?? null,
-      ten_nv: r.ten_nv ?? null,
-
-      // Giữ đúng tên bạn yêu cầu là uid_form.
-      // Dữ liệu thực tế lấy từ cột uid_from trong Supabase.
-      uid_form: r.uid_from ?? null,
-
-      // Giữ thêm uid_from để n8n có thể dùng đúng tên cột gốc nếu cần.
-      uid_from: r.uid_from ?? null,
-
-      conversation_id: r.conversation_id ?? null
-    };
-  });
-
   /*
     MULTIPART/FORM-DATA
     - Không convert ảnh/video sang Base64.
@@ -1676,17 +1658,6 @@ async function sendRunWebhook() {
     'max_seconds',
     String(delayConfig.max_seconds)
   );
-
-  /*
-    Danh sách khách vẫn là JSON string vì có nhiều khách.
-    n8n parse:
-      JSON.parse($json.body.danh_sach_khach || '[]')
-  */
-  formData.append(
-    'danh_sach_khach',
-    JSON.stringify(danhSachKhach)
-  );
-
   if (imageFile) {
     formData.append('file_anh', imageFile, imageFile.name);
   }
@@ -1706,9 +1677,7 @@ async function sendRunWebhook() {
     fixed_seconds: delayConfig.fixed_seconds,
     min_seconds: delayConfig.min_seconds,
     max_seconds: delayConfig.max_seconds,
-    danh_sach_khach: danhSachKhach,
-
-    file_anh: imageFile
+file_anh: imageFile
       ? {
           name: imageFile.name,
           type: imageFile.type,
