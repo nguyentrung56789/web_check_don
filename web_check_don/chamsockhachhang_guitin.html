@@ -1617,9 +1617,10 @@ async function sendRunWebhook() {
     MULTIPART/FORM-DATA
     - Không convert ảnh/video sang Base64.
     - Browser tự đặt Content-Type + boundary.
-    - n8n nhận file trong binary:
-        $binary.file_anh
-        $binary.file_video
+    - n8n nhận file trong binary với field chung:
+        $binary.data
+      Nếu gửi đồng thời nhiều file cùng tên field "data",
+      n8n có thể đánh số field tiếp theo tùy cách Webhook parse multipart.
   */
   const formData = new FormData();
 
@@ -1658,12 +1659,13 @@ async function sendRunWebhook() {
     'max_seconds',
     String(delayConfig.max_seconds)
   );
+  // Ảnh và video đều gửi với field multipart tên "data"
   if (imageFile) {
-    formData.append('file_anh', imageFile, imageFile.name);
+    formData.append('data', imageFile, imageFile.name);
   }
 
   if (videoFile) {
-    formData.append('file_video', videoFile, videoFile.name);
+    formData.append('data', videoFile, videoFile.name);
   }
 
   const bodyDebug = {
@@ -1677,16 +1679,18 @@ async function sendRunWebhook() {
     fixed_seconds: delayConfig.fixed_seconds,
     min_seconds: delayConfig.min_seconds,
     max_seconds: delayConfig.max_seconds,
-file_anh: imageFile
+data_anh: imageFile
       ? {
+          field: 'data',
           name: imageFile.name,
           type: imageFile.type,
           size: imageFile.size
         }
       : null,
 
-    file_video: videoFile
+    data_video: videoFile
       ? {
+          field: 'data',
           name: videoFile.name,
           type: videoFile.type,
           size: videoFile.size
