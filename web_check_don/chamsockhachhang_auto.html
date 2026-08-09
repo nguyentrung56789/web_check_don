@@ -1669,9 +1669,30 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
           - Sau này view thêm cột mới, HTML không cần sửa lại.
           - Các field bên dưới được override để bảo đảm dữ liệu chuẩn.
         */
-        return {
+        /*
+          COPY ĐỘNG TOÀN BỘ CỘT TỪ SQL/VIEW,
+          nhưng loại bỏ các field giao diện không tồn tại ở bảng đích.
+        */
+        const copiedRow = {
           ...row,
-          ...idRow,
+          ...idRow
+        };
+
+        /*
+          UI đang dùng tên cong_no để hiển thị,
+          còn Supabase/table thật dùng tên congno.
+          Không được gửi cong_no sang bảng đích.
+        */
+        const congNoValue =
+          idRow.congno ??
+          row.congno ??
+          row.cong_no ??
+          null;
+
+        delete copiedRow.cong_no;
+
+        return {
+          ...copiedRow,
 
           ma_kh: maKh,
 
@@ -1683,6 +1704,9 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
           ten_nv: maNv
             ? (staffNameMap.get(maNv) || String(idRow.ten_nv ?? row.ten_nv ?? "").trim() || null)
             : null,
+
+          // Tên cột thật trong Supabase
+          congno: congNoValue,
 
           conversation_id: conversationId || null,
 
