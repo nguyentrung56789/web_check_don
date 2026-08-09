@@ -1611,7 +1611,7 @@ async function sendRunWebhook() {
     PAYLOAD TEXT:
     n8n nhận body.payload là chuỗi JSON.
     Parse trong n8n bằng:
-      JSON.parse($json.body.payload)
+      $json.body
   */
   const danhSachKhach = rows.map(function (r) {
     return {
@@ -1631,21 +1631,6 @@ async function sendRunWebhook() {
     };
   });
 
-  const payloadData = {
-    run_id: currentRunId,
-    so_khach_hop_le: rows.length,
-    noi_dung: noiDung,
-    icon: icon,
-
-    thoi_gian_cho: delayConfig,
-
-    /*
-      Danh sách từng khách để n8n Loop trực tiếp.
-      Mỗi item có uid_form + conversation_id.
-    */
-    danh_sach_khach: danhSachKhach
-  };
-
   /*
     MULTIPART/FORM-DATA
     - Không convert ảnh/video sang Base64.
@@ -1656,21 +1641,51 @@ async function sendRunWebhook() {
   */
   const formData = new FormData();
 
+  /*
+    KHÔNG CÒN payload.
+    Tất cả field được gửi thẳng vào body webhook.
+  */
+
   formData.append('action', 'run');
   formData.append('ma_nv', maNv);
 
-  // Payload đầy đủ dưới dạng JSON string.
-  // Trong n8n parse 1 lần: JSON.parse($json.body.payload)
-  formData.append('payload', JSON.stringify(payloadData));
-
-  // Gửi thêm các field rời để debug / dùng nhanh trong n8n nếu cần.
   formData.append('run_id', currentRunId);
   formData.append('so_khach_hop_le', String(rows.length));
+
   formData.append('noi_dung', noiDung);
   formData.append('icon', icon);
-  formData.append('min_seconds', String(delayConfig.min_seconds));
-  formData.append('max_seconds', String(delayConfig.max_seconds));
-  formData.append('danh_sach_khach', JSON.stringify(danhSachKhach));
+
+  formData.append(
+    'delay_mode',
+    String(delayConfig.mode ?? 'random')
+  );
+
+  formData.append(
+    'fixed_seconds',
+    delayConfig.fixed_seconds == null
+      ? ''
+      : String(delayConfig.fixed_seconds)
+  );
+
+  formData.append(
+    'min_seconds',
+    String(delayConfig.min_seconds)
+  );
+
+  formData.append(
+    'max_seconds',
+    String(delayConfig.max_seconds)
+  );
+
+  /*
+    Danh sách khách vẫn là JSON string vì có nhiều khách.
+    n8n parse:
+      JSON.parse($json.body.danh_sach_khach || '[]')
+  */
+  formData.append(
+    'danh_sach_khach',
+    JSON.stringify(danhSachKhach)
+  );
 
   if (imageFile) {
     formData.append('file_anh', imageFile, imageFile.name);
@@ -1683,7 +1698,16 @@ async function sendRunWebhook() {
   const bodyDebug = {
     action: 'run',
     ma_nv: maNv,
-    payload: payloadData,
+    run_id: currentRunId,
+    so_khach_hop_le: rows.length,
+    noi_dung: noiDung,
+    icon: icon,
+    delay_mode: delayConfig.mode,
+    fixed_seconds: delayConfig.fixed_seconds,
+    min_seconds: delayConfig.min_seconds,
+    max_seconds: delayConfig.max_seconds,
+    danh_sach_khach: danhSachKhach,
+
     file_anh: imageFile
       ? {
           name: imageFile.name,
@@ -1691,6 +1715,7 @@ async function sendRunWebhook() {
           size: imageFile.size
         }
       : null,
+
     file_video: videoFile
       ? {
           name: videoFile.name,
