@@ -1334,7 +1334,57 @@ function fileToBase64Payload(file) {
   });
 }
 
+
+let messageCaretStart = 0;
+let messageCaretEnd = 0;
+
+function saveMessageCaret() {
+  const textarea = document.getElementById('messageText');
+  if (!textarea) return;
+
+  messageCaretStart = textarea.selectionStart ?? textarea.value.length;
+  messageCaretEnd = textarea.selectionEnd ?? messageCaretStart;
+}
+
+function insertAtSavedCaret(textToInsert) {
+  const textarea = document.getElementById('messageText');
+  if (!textarea) return;
+
+  const start = Number.isInteger(messageCaretStart)
+    ? messageCaretStart
+    : textarea.value.length;
+
+  const end = Number.isInteger(messageCaretEnd)
+    ? messageCaretEnd
+    : start;
+
+  textarea.value =
+    textarea.value.slice(0, start) +
+    textToInsert +
+    textarea.value.slice(end);
+
+  const nextPos = start + textToInsert.length;
+
+  textarea.focus();
+  textarea.setSelectionRange(nextPos, nextPos);
+
+  messageCaretStart = nextPos;
+  messageCaretEnd = nextPos;
+
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 function bindComposerEvents() {
+  const messageTextarea = document.getElementById('messageText');
+
+  if (messageTextarea) {
+    ['click', 'keyup', 'select', 'input', 'focus'].forEach(eventName => {
+      messageTextarea.addEventListener(eventName, saveMessageCaret);
+    });
+
+    saveMessageCaret();
+  }
+
   document.querySelectorAll('.var-btn').forEach(btn => {
     btn.addEventListener('click', function () {
       insertMessageVariable(this.dataset.var || '');
@@ -1360,6 +1410,10 @@ function bindComposerEvents() {
     emojiTrigger.setAttribute('aria-expanded', 'true');
   }
 
+  emojiTrigger?.addEventListener('mousedown', function () {
+    saveMessageCaret();
+  });
+
   emojiTrigger?.addEventListener('click', function (event) {
     event.stopPropagation();
 
@@ -1371,6 +1425,10 @@ function bindComposerEvents() {
   });
 
   document.querySelectorAll('.emoji-btn').forEach(btn => {
+    btn.addEventListener('mousedown', function (event) {
+      event.preventDefault();
+    });
+
     btn.addEventListener('click', function (event) {
       event.stopPropagation();
 
@@ -1392,9 +1450,12 @@ function bindComposerEvents() {
 
       if (selectedEmojiText) {
         selectedEmojiText.textContent = emoji
-          ? 'Đã chọn: ' + emoji
+          ? 'Đã chèn: ' + emoji
           : 'Chưa chọn icon';
       }
+
+      // Chèn emoji đúng vị trí con trỏ nhấp nháy trong ô nội dung.
+      insertAtSavedCaret(emoji);
 
       closeEmojiPicker();
     });
