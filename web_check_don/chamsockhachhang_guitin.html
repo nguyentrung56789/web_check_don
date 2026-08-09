@@ -501,6 +501,88 @@
         flex: 1;
       }
     }
+
+
+    /* ===================== THU GỌN / MỞ RỘNG SOẠN NỘI DUNG ===================== */
+    .composer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .composer-head h2 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .toggle-composer-btn {
+      min-height: 36px;
+      padding: 7px 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: 1px solid #d8dee9;
+      border-radius: 9px;
+      background: #fff;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .toggle-composer-btn:hover {
+      background: #f8fafc;
+      border-color: #b8c2d1;
+    }
+
+    .toggle-arrow {
+      display: inline-block;
+      min-width: 14px;
+      text-align: center;
+      color: #64748b;
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .message-card.collapsed .composer-body {
+      display: none;
+    }
+
+    .message-card.collapsed .composer-head {
+      margin-bottom: 0;
+    }
+
+    /* ===================== KHUNG GIỜ ĐƯỢC PHÉP GỬI ===================== */
+    .send-window-row {
+      display: flex;
+      align-items: end;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #edf0f5;
+    }
+
+    .send-window-field {
+      width: 170px;
+    }
+
+    .send-window-note {
+      padding-bottom: 10px;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    @media (max-width: 800px) {
+      .send-window-field {
+        width: calc(50% - 5px);
+      }
+    }
+
   </style>
 </head>
 
@@ -546,154 +628,171 @@
   </div>
 
 
-  <div class="message-card">
-    <h2>Soạn nội dung gửi</h2>
+  <div id="messageCard" class="message-card">
+    <div class="composer-head">
+      <h2>Soạn nội dung gửi</h2>
 
-    <div>
-      <label class="field-label" for="messageText">Nội dung</label>
-      <textarea
-        id="messageText"
-        class="message-box"
-        placeholder="Ví dụ: Xin chào {{zalo name}}, em là {{ten}}..."
-      ></textarea>
-
-      <div class="composer-toolbar">
-        <div class="variable-row">
-          <button type="button" class="var-btn" data-var="{{zalo name}}">{{zalo name}}</button>
-          <button type="button" class="var-btn" data-var="{{ten}}">{{ten}}</button>
-          <button type="button" class="var-btn" data-var="{{ten_kh}}">{{ten_kh}}</button>
-          <button type="button" class="var-btn" data-var="{{ten_nv}}">{{ten_nv}}</button>
-          <button type="button" class="var-btn" data-var="{{ma_kh}}">{{ma_kh}}</button>
-          <button type="button" class="var-btn" data-var="{{dia_chi}}">{{dia_chi}}</button>
-          <button type="button" class="var-btn" data-var="{{dien_thoai}}">{{dien_thoai}}</button>
-        </div>
-
-        <div class="toolbar-media">
-          <div class="emoji-field toolbar-item">
-            <input
-              id="messageIcon"
-              type="hidden"
-              value=""
-            />
-
-            <div class="emoji-trigger-wrap">
-              <button
-                type="button"
-                id="emojiTrigger"
-                class="toolbar-btn emoji-trigger"
-                aria-expanded="false"
-                title="Chọn icon"
-              >
-                <span id="emojiTriggerIcon">😊</span>
-                <span class="emoji-trigger-arrow">▾</span>
-              </button>
-
-              <div id="emojiPicker" class="emoji-picker-popup" hidden>
-                <div class="emoji-picker-title">Chọn biểu tượng</div>
-
-                <div class="emoji-grid">
-                  <button type="button" class="emoji-btn" data-emoji="😀">😀</button>
-                  <button type="button" class="emoji-btn" data-emoji="😃">😃</button>
-                  <button type="button" class="emoji-btn" data-emoji="😄">😄</button>
-                  <button type="button" class="emoji-btn" data-emoji="😁">😁</button>
-                  <button type="button" class="emoji-btn" data-emoji="😊">😊</button>
-                  <button type="button" class="emoji-btn" data-emoji="😉">😉</button>
-                  <button type="button" class="emoji-btn" data-emoji="😍">😍</button>
-                  <button type="button" class="emoji-btn" data-emoji="🥰">🥰</button>
-                  <button type="button" class="emoji-btn" data-emoji="😘">😘</button>
-                  <button type="button" class="emoji-btn" data-emoji="😂">😂</button>
-                  <button type="button" class="emoji-btn" data-emoji="🤣">🤣</button>
-                  <button type="button" class="emoji-btn" data-emoji="😎">😎</button>
-
-                  <button type="button" class="emoji-btn" data-emoji="👋">👋</button>
-                  <button type="button" class="emoji-btn" data-emoji="👍">👍</button>
-                  <button type="button" class="emoji-btn" data-emoji="👌">👌</button>
-                  <button type="button" class="emoji-btn" data-emoji="👏">👏</button>
-                  <button type="button" class="emoji-btn" data-emoji="🙏">🙏</button>
-                  <button type="button" class="emoji-btn" data-emoji="💪">💪</button>
-                  <button type="button" class="emoji-btn" data-emoji="🤝">🤝</button>
-                  <button type="button" class="emoji-btn" data-emoji="🤗">🤗</button>
-
-                  <button type="button" class="emoji-btn" data-emoji="❤️">❤️</button>
-                  <button type="button" class="emoji-btn" data-emoji="💖">💖</button>
-                  <button type="button" class="emoji-btn" data-emoji="💕">💕</button>
-                  <button type="button" class="emoji-btn" data-emoji="💓">💓</button>
-                  <button type="button" class="emoji-btn" data-emoji="💝">💝</button>
-                  <button type="button" class="emoji-btn" data-emoji="🌹">🌹</button>
-                  <button type="button" class="emoji-btn" data-emoji="🌸">🌸</button>
-                  <button type="button" class="emoji-btn" data-emoji="🌷">🌷</button>
-
-                  <button type="button" class="emoji-btn" data-emoji="🎉">🎉</button>
-                  <button type="button" class="emoji-btn" data-emoji="🎁">🎁</button>
-                  <button type="button" class="emoji-btn" data-emoji="✨">✨</button>
-                  <button type="button" class="emoji-btn" data-emoji="🔥">🔥</button>
-                  <button type="button" class="emoji-btn" data-emoji="⭐">⭐</button>
-                  <button type="button" class="emoji-btn" data-emoji="💯">💯</button>
-                  <button type="button" class="emoji-btn" data-emoji="✅">✅</button>
-                  <button type="button" class="emoji-btn" data-emoji="🎊">🎊</button>
-                </div>
-
-                <button type="button" id="emojiClear" class="emoji-clear">
-                  Bỏ chọn icon
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <label class="toolbar-btn file-toolbar-btn" title="Chọn ảnh">
-            🖼️ Ảnh
-            <input
-              id="imageFile"
-              type="file"
-              accept="image/*"
-              hidden
-            />
-          </label>
-
-          <label class="toolbar-btn file-toolbar-btn" title="Chọn video">
-            🎬 Video
-            <input
-              id="videoFile"
-              type="file"
-              accept="video/*"
-              hidden
-            />
-          </label>
-        </div>
-      </div>
-
-      <div class="selected-files-row">
-        <span id="selectedEmojiText" class="file-info">Chưa chọn icon</span>
-        <span id="imageFileInfo" class="file-info">Chưa chọn ảnh</span>
-        <span id="videoFileInfo" class="file-info">Chưa chọn video</span>
-      </div>
+      <button
+        type="button"
+        id="toggleComposerBtn"
+        class="toggle-composer-btn"
+        aria-expanded="true"
+        title="Thu gọn / mở rộng"
+      >
+        <span id="toggleComposerText">Thu gọn</span>
+        <span id="toggleComposerArrow" class="toggle-arrow">▾</span>
+      </button>
     </div>
 
-    <div class="delay-row">
-      <div class="delay-field">
-        <label class="field-label" for="delayMin">Thời gian từ (giây)</label>
-        <input
-          id="delayMin"
-          class="input-control"
-          type="number"
-          min="1"
-          value="50"
-        />
+    <div id="composerBody" class="composer-body">
+      <div>
+        <label class="field-label" for="messageText">Nội dung</label>
+        <textarea
+          id="messageText"
+          class="message-box"
+          placeholder="Ví dụ: Xin chào {{zalo name}}, em là {{ten}}..."
+        ></textarea>
+
+        <div class="composer-toolbar">
+          <div class="variable-row">
+            <button type="button" class="var-btn" data-var="{{zalo name}}">{{zalo name}}</button>
+            <button type="button" class="var-btn" data-var="{{ten}}">{{ten}}</button>
+            <button type="button" class="var-btn" data-var="{{ten_kh}}">{{ten_kh}}</button>
+            <button type="button" class="var-btn" data-var="{{ten_nv}}">{{ten_nv}}</button>
+            <button type="button" class="var-btn" data-var="{{ma_kh}}">{{ma_kh}}</button>
+            <button type="button" class="var-btn" data-var="{{dia_chi}}">{{dia_chi}}</button>
+            <button type="button" class="var-btn" data-var="{{dien_thoai}}">{{dien_thoai}}</button>
+          </div>
+
+          <div class="toolbar-media">
+            <div class="emoji-field toolbar-item">
+              <input id="messageIcon" type="hidden" value="" />
+
+              <div class="emoji-trigger-wrap">
+                <button
+                  type="button"
+                  id="emojiTrigger"
+                  class="toolbar-btn emoji-trigger"
+                  aria-expanded="false"
+                  title="Chọn icon"
+                >
+                  <span id="emojiTriggerIcon">😊</span>
+                  <span class="emoji-trigger-arrow">▾</span>
+                </button>
+
+                <div id="emojiPicker" class="emoji-picker-popup" hidden>
+                  <div class="emoji-picker-title">Chọn biểu tượng</div>
+
+                  <div class="emoji-grid">
+                    <button type="button" class="emoji-btn" data-emoji="😀">😀</button>
+                    <button type="button" class="emoji-btn" data-emoji="😃">😃</button>
+                    <button type="button" class="emoji-btn" data-emoji="😄">😄</button>
+                    <button type="button" class="emoji-btn" data-emoji="😁">😁</button>
+                    <button type="button" class="emoji-btn" data-emoji="😊">😊</button>
+                    <button type="button" class="emoji-btn" data-emoji="😉">😉</button>
+                    <button type="button" class="emoji-btn" data-emoji="😍">😍</button>
+                    <button type="button" class="emoji-btn" data-emoji="🥰">🥰</button>
+                    <button type="button" class="emoji-btn" data-emoji="😘">😘</button>
+                    <button type="button" class="emoji-btn" data-emoji="😂">😂</button>
+                    <button type="button" class="emoji-btn" data-emoji="🤣">🤣</button>
+                    <button type="button" class="emoji-btn" data-emoji="😎">😎</button>
+
+                    <button type="button" class="emoji-btn" data-emoji="👋">👋</button>
+                    <button type="button" class="emoji-btn" data-emoji="👍">👍</button>
+                    <button type="button" class="emoji-btn" data-emoji="👌">👌</button>
+                    <button type="button" class="emoji-btn" data-emoji="👏">👏</button>
+                    <button type="button" class="emoji-btn" data-emoji="🙏">🙏</button>
+                    <button type="button" class="emoji-btn" data-emoji="💪">💪</button>
+                    <button type="button" class="emoji-btn" data-emoji="🤝">🤝</button>
+                    <button type="button" class="emoji-btn" data-emoji="🤗">🤗</button>
+
+                    <button type="button" class="emoji-btn" data-emoji="❤️">❤️</button>
+                    <button type="button" class="emoji-btn" data-emoji="💖">💖</button>
+                    <button type="button" class="emoji-btn" data-emoji="💕">💕</button>
+                    <button type="button" class="emoji-btn" data-emoji="💓">💓</button>
+                    <button type="button" class="emoji-btn" data-emoji="💝">💝</button>
+                    <button type="button" class="emoji-btn" data-emoji="🌹">🌹</button>
+                    <button type="button" class="emoji-btn" data-emoji="🌸">🌸</button>
+                    <button type="button" class="emoji-btn" data-emoji="🌷">🌷</button>
+
+                    <button type="button" class="emoji-btn" data-emoji="🎉">🎉</button>
+                    <button type="button" class="emoji-btn" data-emoji="🎁">🎁</button>
+                    <button type="button" class="emoji-btn" data-emoji="✨">✨</button>
+                    <button type="button" class="emoji-btn" data-emoji="🔥">🔥</button>
+                    <button type="button" class="emoji-btn" data-emoji="⭐">⭐</button>
+                    <button type="button" class="emoji-btn" data-emoji="💯">💯</button>
+                    <button type="button" class="emoji-btn" data-emoji="✅">✅</button>
+                    <button type="button" class="emoji-btn" data-emoji="🎊">🎊</button>
+                  </div>
+
+                  <button type="button" id="emojiClear" class="emoji-clear">
+                    Bỏ chọn icon
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <label class="toolbar-btn file-toolbar-btn" title="Chọn ảnh">
+              🖼️ Ảnh
+              <input id="imageFile" type="file" accept="image/*" hidden />
+            </label>
+
+            <label class="toolbar-btn file-toolbar-btn" title="Chọn video">
+              🎬 Video
+              <input id="videoFile" type="file" accept="video/*" hidden />
+            </label>
+          </div>
+        </div>
+
+        <div class="selected-files-row">
+          <span id="selectedEmojiText" class="file-info">Chưa chọn icon</span>
+          <span id="imageFileInfo" class="file-info">Chưa chọn ảnh</span>
+          <span id="videoFileInfo" class="file-info">Chưa chọn video</span>
+        </div>
       </div>
 
-      <div class="delay-field">
-        <label class="field-label" for="delayMax">Đến (giây)</label>
-        <input
-          id="delayMax"
-          class="input-control"
-          type="number"
-          min="1"
-          value="100"
-        />
+      <div class="delay-row">
+        <div class="delay-field">
+          <label class="field-label" for="delayMin">Thời gian từ (giây)</label>
+          <input id="delayMin" class="input-control" type="number" min="1" value="50" />
+        </div>
+
+        <div class="delay-field">
+          <label class="field-label" for="delayMax">Đến (giây)</label>
+          <input id="delayMax" class="input-control" type="number" min="1" value="100" />
+        </div>
+
+        <div class="delay-note">
+          Mỗi khách sẽ chờ ngẫu nhiên trong khoảng này.
+        </div>
       </div>
 
-      <div class="delay-note">
-        Mỗi khách sẽ chờ ngẫu nhiên trong khoảng này.
+      <div class="send-window-row">
+        <div class="send-window-field">
+          <label class="field-label" for="sendTimeFrom">Thời gian gửi từ</label>
+          <input
+            id="sendTimeFrom"
+            class="input-control"
+            type="time"
+            value="09:00"
+            step="60"
+          />
+        </div>
+
+        <div class="send-window-field">
+          <label class="field-label" for="sendTimeTo">Đến</label>
+          <input
+            id="sendTimeTo"
+            class="input-control"
+            type="time"
+            value="20:00"
+            step="60"
+          />
+        </div>
+
+        <div class="send-window-note">
+          Chỉ gửi trong khung giờ này. Ngoài giờ n8n có thể Wait tới giờ bắt đầu.
+        </div>
       </div>
     </div>
   </div>
@@ -1374,6 +1473,70 @@ function getDelayConfigFromForm() {
   };
 }
 
+function getSendWindowFromForm() {
+  const from = String(
+    document.getElementById('sendTimeFrom')?.value || '09:00'
+  ).trim();
+
+  const to = String(
+    document.getElementById('sendTimeTo')?.value || '20:00'
+  ).trim();
+
+  const hmPattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+  if (!hmPattern.test(from) || !hmPattern.test(to)) {
+    throw new Error('Thời gian gửi phải đúng định dạng HH:mm.');
+  }
+
+  if (from === to) {
+    throw new Error('Thời gian gửi "Từ" và "Đến" không được giống nhau.');
+  }
+
+  const [fromHour, fromMinute] = from.split(':').map(Number);
+  const [toHour, toMinute] = to.split(':').map(Number);
+
+  const fromTotal = fromHour * 60 + fromMinute;
+  const toTotal = toHour * 60 + toMinute;
+
+  if (fromTotal > toTotal) {
+    throw new Error('Thời gian gửi "Từ" không được lớn hơn thời gian gửi "Đến".');
+  }
+
+  return {
+    gio_gui_tu: from,
+    gio_gui_den: to
+  };
+}
+
+function bindComposerToggle() {
+  const messageCard = document.getElementById('messageCard');
+  const toggleBtn = document.getElementById('toggleComposerBtn');
+  const toggleText = document.getElementById('toggleComposerText');
+  const toggleArrow = document.getElementById('toggleComposerArrow');
+
+  if (!messageCard || !toggleBtn) return;
+
+  function setCollapsed(collapsed) {
+    messageCard.classList.toggle('collapsed', collapsed);
+    toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+
+    if (toggleText) {
+      toggleText.textContent = collapsed ? 'Mở rộng' : 'Thu gọn';
+    }
+
+    if (toggleArrow) {
+      toggleArrow.textContent = collapsed ? '▸' : '▾';
+    }
+  }
+
+  toggleBtn.addEventListener('click', function () {
+    setCollapsed(!messageCard.classList.contains('collapsed'));
+  });
+
+  setCollapsed(false);
+}
+
+
 
 let messageCaretStart = 0;
 let messageCaretEnd = 0;
@@ -1602,6 +1765,9 @@ async function sendRunWebhook() {
   const delayConfig =
     getDelayConfigFromForm();
 
+  const sendWindow =
+    getSendWindowFromForm();
+
   if (!currentRunId) {
     currentRunId =
       (window.crypto && typeof window.crypto.randomUUID === 'function')
@@ -1661,6 +1827,24 @@ async function sendRunWebhook() {
     'max_seconds',
     String(delayConfig.max_seconds)
   );
+
+  // Khung giờ được phép gửi - n8n nhận trực tiếp trong body webhook
+  formData.append(
+    'gio_gui_tu',
+    sendWindow.gio_gui_tu
+  );
+
+  formData.append(
+    'gio_gui_den',
+    sendWindow.gio_gui_den
+  );
+
+  // Chuỗi hiển thị tiện dùng/debug trong n8n
+  formData.append(
+    'khung_gio_gui',
+    sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den
+  );
+
   // Ảnh và video đều gửi với field multipart tên "data"
   if (imageFile) {
     formData.append('data', imageFile, imageFile.name);
@@ -1681,7 +1865,10 @@ async function sendRunWebhook() {
     fixed_seconds: delayConfig.fixed_seconds,
     min_seconds: delayConfig.min_seconds,
     max_seconds: delayConfig.max_seconds,
-data_anh: imageFile
+    gio_gui_tu: sendWindow.gio_gui_tu,
+    gio_gui_den: sendWindow.gio_gui_den,
+    khung_gio_gui: sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den,
+    data_anh: imageFile
       ? {
           field: 'data',
           name: imageFile.name,
@@ -1884,6 +2071,7 @@ async function startRun() {
 
 
     const delayConfig = getDelayConfigFromForm();
+    const sendWindow = getSendWindowFromForm();
 
     setStatus(
       'Đã gửi lệnh chạy ' +
@@ -1895,7 +2083,12 @@ async function startRun() {
       delayConfig.min_seconds +
       ' - ' +
       delayConfig.max_seconds +
-      ' giây.'
+      ' giây.' +
+      ' | Khung giờ gửi: ' +
+      sendWindow.gio_gui_tu +
+      ' - ' +
+      sendWindow.gio_gui_den +
+      '.'
     );
 
   }
@@ -2274,6 +2467,7 @@ window.addEventListener('beforeunload', function () {
 
     enableDraggableForm();
     bindComposerEvents();
+    bindComposerToggle();
 
     sb =
       await createSupabaseClient();
