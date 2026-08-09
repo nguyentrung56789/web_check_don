@@ -1597,7 +1597,7 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
 
       const { data: customerIdRows, error: customerIdError } = await supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, ma_nv, conversation_id, contact_id, ngay_chat_cuoi, uid_from")
+        .select("*")
         .in("ma_kh", selectedMaKh);
 
       if (customerIdError) {
@@ -1663,17 +1663,38 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
             ? null
             : String(rawConversationId).trim();
 
+        /*
+          COPY ĐỘNG TOÀN BỘ CỘT:
+          - Có cột gì từ TABLE_KHACH_HANG / sql_khachhang_nhanvien thì copy cột đó.
+          - Sau này view thêm cột mới, HTML không cần sửa lại.
+          - Các field bên dưới được override để bảo đảm dữ liệu chuẩn.
+        */
         return {
+          ...row,
+          ...idRow,
+
           ma_kh: maKh,
-          ten_kh: String(idRow.ten_kh ?? row.ten_kh ?? "").trim() || null,
+
+          ten_kh:
+            String(idRow.ten_kh ?? row.ten_kh ?? "").trim() || null,
+
           ma_nv: maNv,
+
           ten_nv: maNv
-            ? (staffNameMap.get(maNv) || String(row.ten_nv || "").trim() || null)
+            ? (staffNameMap.get(maNv) || String(idRow.ten_nv ?? row.ten_nv ?? "").trim() || null)
             : null,
+
           conversation_id: conversationId || null,
-          contact_id: idRow.contact_id ?? row.contact_id ?? null,
-          ngay_chat_cuoi: idRow.ngay_chat_cuoi ?? row.ngay_chat_cuoi ?? null,
-          uid_from: idRow.uid_from ?? row.uid_from ?? null,
+
+          contact_id:
+            idRow.contact_id ?? row.contact_id ?? null,
+
+          ngay_chat_cuoi:
+            idRow.ngay_chat_cuoi ?? row.ngay_chat_cuoi ?? null,
+
+          uid_from:
+            idRow.uid_from ?? row.uid_from ?? null,
+
           trang_thai: null
         };
       }).filter(function (row) {
@@ -1696,6 +1717,11 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
         throw new Error("Không có khách nào có conversation_id hợp lệ.");
       }
 
+      /*
+        rowsToInsert hiện chứa toàn bộ cột lấy được từ nguồn SQL/view.
+        LƯU Ý: bảng đích kv_khachhang_nhanvien_guitin phải có các cột tương ứng.
+        Nếu view có thêm cột nhưng bảng đích chưa có cột đó, Supabase sẽ báo lỗi insert.
+      */
       const { error: insertError } = await supabaseClient
         .from(TABLE_KHACH_HANG_NHANVIEN_GUITIN)
         .insert(rowsToInsert);
