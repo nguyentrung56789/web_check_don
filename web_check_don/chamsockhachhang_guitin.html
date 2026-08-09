@@ -193,6 +193,122 @@
       color: #64748b;
     }
 
+
+    /* ===================== SOẠN NỘI DUNG GỬI ===================== */
+    .message-card {
+      background: #fff;
+      border: 1px solid #e6e9ef;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,.05);
+    }
+
+    .message-card h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+
+    .message-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      gap: 12px;
+    }
+
+    .message-box {
+      width: 100%;
+      min-height: 130px;
+      resize: vertical;
+      border: 1px solid #d8dee9;
+      border-radius: 10px;
+      padding: 12px;
+      font: inherit;
+      outline: none;
+    }
+
+    .message-box:focus,
+    .input-control:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.10);
+    }
+
+    .variable-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .var-btn {
+      padding: 6px 9px;
+      border-radius: 8px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .field-label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    .input-control {
+      width: 100%;
+      border: 1px solid #d8dee9;
+      border-radius: 9px;
+      padding: 9px 10px;
+      font: inherit;
+      outline: none;
+      background: #fff;
+    }
+
+    .side-fields {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .file-info {
+      margin-top: 5px;
+      font-size: 12px;
+      color: #64748b;
+      word-break: break-all;
+    }
+
+    .delay-row {
+      display: flex;
+      align-items: end;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #edf0f5;
+    }
+
+    .delay-field {
+      width: 150px;
+    }
+
+    .delay-note {
+      padding-bottom: 10px;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    @media (max-width: 800px) {
+      .message-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .delay-field {
+        width: calc(50% - 5px);
+      }
+    }
+
     @media (max-width: 700px) {
       .wrap {
         padding: 10px;
@@ -252,6 +368,92 @@
       </button>
     </div>
 
+  </div>
+
+
+  <div class="message-card">
+    <h2>Soạn nội dung gửi</h2>
+
+    <div class="message-grid">
+      <div>
+        <label class="field-label" for="messageText">Nội dung</label>
+        <textarea
+          id="messageText"
+          class="message-box"
+          placeholder="Ví dụ: Xin chào {{zalo name}}, em là {{ten}}..."
+        ></textarea>
+
+        <div class="variable-row">
+          <button type="button" class="var-btn" data-var="{{zalo name}}">{{zalo name}}</button>
+          <button type="button" class="var-btn" data-var="{{ten}}">{{ten}}</button>
+          <button type="button" class="var-btn" data-var="{{ten_kh}}">{{ten_kh}}</button>
+          <button type="button" class="var-btn" data-var="{{ten_nv}}">{{ten_nv}}</button>
+          <button type="button" class="var-btn" data-var="{{ma_kh}}">{{ma_kh}}</button>
+        </div>
+      </div>
+
+      <div class="side-fields">
+        <div>
+          <label class="field-label" for="messageIcon">Icon / Emoji</label>
+          <input
+            id="messageIcon"
+            class="input-control"
+            type="text"
+            placeholder="Ví dụ: 👋 😊 ❤️"
+          />
+        </div>
+
+        <div>
+          <label class="field-label" for="imageFile">File ảnh</label>
+          <input
+            id="imageFile"
+            class="input-control"
+            type="file"
+            accept="image/*"
+          />
+          <div id="imageFileInfo" class="file-info">Chưa chọn ảnh</div>
+        </div>
+
+        <div>
+          <label class="field-label" for="videoFile">File video</label>
+          <input
+            id="videoFile"
+            class="input-control"
+            type="file"
+            accept="video/*"
+          />
+          <div id="videoFileInfo" class="file-info">Chưa chọn video</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="delay-row">
+      <div class="delay-field">
+        <label class="field-label" for="delayMin">Thời gian từ (giây)</label>
+        <input
+          id="delayMin"
+          class="input-control"
+          type="number"
+          min="1"
+          value="50"
+        />
+      </div>
+
+      <div class="delay-field">
+        <label class="field-label" for="delayMax">Đến (giây)</label>
+        <input
+          id="delayMax"
+          class="input-control"
+          type="number"
+          min="1"
+          value="100"
+        />
+      </div>
+
+      <div class="delay-note">
+        Mỗi khách sẽ chờ ngẫu nhiên trong khoảng này.
+      </div>
+    </div>
   </div>
 
   <div id="status" class="status">
@@ -314,16 +516,16 @@ const WEBHOOK_URL =
   {
     mode: "random",
     fixed_seconds: null,
-    min_seconds: 100,
-    max_seconds: 200
+    min_seconds: 50,
+    max_seconds: 100
   }
 */
 
 const DELAY_CONFIG = {
   mode: 'random',
   fixed_seconds: null,
-  min_seconds: 100,
-  max_seconds: 200
+  min_seconds: 50,
+  max_seconds: 100
 };
 
 
@@ -887,6 +1089,102 @@ function escapeHtml(value) {
 }
 
 
+
+/* =========================================================
+   NỘI DUNG / FILE / THỜI GIAN GỬI
+========================================================= */
+
+function insertMessageVariable(variableText) {
+  const textarea = document.getElementById('messageText');
+  if (!textarea) return;
+
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? textarea.value.length;
+
+  textarea.value =
+    textarea.value.slice(0, start) +
+    variableText +
+    textarea.value.slice(end);
+
+  const nextPos = start + variableText.length;
+  textarea.focus();
+  textarea.setSelectionRange(nextPos, nextPos);
+}
+
+function getDelayConfigFromForm() {
+  const min = Number(document.getElementById('delayMin')?.value || 50);
+  const max = Number(document.getElementById('delayMax')?.value || 100);
+
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min < 1 || max < 1) {
+    throw new Error('Thời gian chờ phải lớn hơn 0.');
+  }
+
+  if (min > max) {
+    throw new Error('Thời gian "Từ" không được lớn hơn thời gian "Đến".');
+  }
+
+  return {
+    mode: 'random',
+    fixed_seconds: null,
+    min_seconds: Math.floor(min),
+    max_seconds: Math.floor(max)
+  };
+}
+
+function fileToBase64Payload(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      resolve(null);
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      const commaIndex = result.indexOf(',');
+      const base64 = commaIndex >= 0 ? result.slice(commaIndex + 1) : result;
+
+      resolve({
+        name: file.name,
+        type: file.type || '',
+        size: file.size,
+        base64: base64
+      });
+    };
+
+    reader.onerror = () => {
+      reject(new Error('Không đọc được file: ' + file.name));
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+function bindComposerEvents() {
+  document.querySelectorAll('.var-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      insertMessageVariable(this.dataset.var || '');
+    });
+  });
+
+  const imageFile = document.getElementById('imageFile');
+  const videoFile = document.getElementById('videoFile');
+
+  imageFile?.addEventListener('change', function () {
+    const file = this.files?.[0];
+    document.getElementById('imageFileInfo').textContent =
+      file ? `${file.name} (${Math.round(file.size / 1024)} KB)` : 'Chưa chọn ảnh';
+  });
+
+  videoFile?.addEventListener('change', function () {
+    const file = this.files?.[0];
+    document.getElementById('videoFileInfo').textContent =
+      file ? `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)` : 'Chưa chọn video';
+  });
+}
+
+
 /* =========================================================
    GỬI WEBHOOK CHẠY
 ========================================================= */
@@ -907,8 +1205,42 @@ async function sendRunWebhook() {
 
 
   /*
-    BODY ĐÚNG NHƯ ẢNH BẠN GỬI
+    LẤY NỘI DUNG SOẠN + FILE + THỜI GIAN TỪ FORM
   */
+
+  const noiDung =
+    String(
+      document.getElementById('messageText')?.value || ''
+    ).trim();
+
+  const icon =
+    String(
+      document.getElementById('messageIcon')?.value || ''
+    ).trim();
+
+  const imageFile =
+    document.getElementById('imageFile')?.files?.[0] || null;
+
+  const videoFile =
+    document.getElementById('videoFile')?.files?.[0] || null;
+
+  const delayConfig =
+    getDelayConfigFromForm();
+
+  /*
+    File được chuyển thành base64 để gửi chung trong JSON.
+    n8n nhận tại:
+      $json.body.payload.file_anh.base64
+      $json.body.payload.file_video.base64
+  */
+
+  const [
+    fileAnhPayload,
+    fileVideoPayload
+  ] = await Promise.all([
+    fileToBase64Payload(imageFile),
+    fileToBase64Payload(videoFile)
+  ]);
 
   if (!currentRunId) {
     currentRunId =
@@ -929,21 +1261,15 @@ async function sendRunWebhook() {
 
       so_khach_hop_le: rows.length,
 
-      thoi_gian_cho: {
+      noi_dung: noiDung,
 
-        mode:
-          DELAY_CONFIG.mode,
+      icon: icon,
 
-        fixed_seconds:
-          DELAY_CONFIG.fixed_seconds,
+      file_anh: fileAnhPayload,
 
-        min_seconds:
-          DELAY_CONFIG.min_seconds,
+      file_video: fileVideoPayload,
 
-        max_seconds:
-          DELAY_CONFIG.max_seconds
-
-      }
+      thoi_gian_cho: delayConfig
 
     }
 
@@ -1136,13 +1462,19 @@ async function startRun() {
     renderTable();
 
 
+    const delayConfig = getDelayConfigFromForm();
+
     setStatus(
       'Đã gửi lệnh chạy ' +
       rows.length +
       ' khách. ' +
       'ma_nv: ' +
       maNv +
-      ' | Chờ ngẫu nhiên 100 - 200 giây.'
+      ' | Chờ ngẫu nhiên ' +
+      delayConfig.min_seconds +
+      ' - ' +
+      delayConfig.max_seconds +
+      ' giây.'
     );
 
   }
@@ -1520,6 +1852,7 @@ window.addEventListener('beforeunload', function () {
   try {
 
     enableDraggableForm();
+    bindComposerEvents();
 
     sb =
       await createSupabaseClient();
