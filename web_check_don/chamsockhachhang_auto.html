@@ -155,6 +155,20 @@
       cursor: not-allowed;
     }
 
+    #selectedCountText {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 0 11px;
+      border-radius: 7px;
+      background: #eef2ff;
+      color: #4338ca;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
     #refreshBtn.loading,
     #refreshBtn:disabled {
       opacity: 0.65;
@@ -1324,6 +1338,7 @@
 
       <div class="toolbar-second-row">
         <button id="runSelectedBtn" type="button" class="run-popup-btn">▶ Chạy</button>
+        <span id="selectedCountText">Đã chọn: 0</span>
 
         <div class="column-dropdown">
           <button id="columnToggleBtn" type="button">⚙️ Cột</button>
@@ -1340,6 +1355,7 @@
             <col data-col="sdt" style="width: 150px;">
             <col data-col="cong_no" style="width: 130px;">
             <col data-col="ma_nv" style="width: 160px;">
+            <col data-col="conversation_id" style="width: 150px;">
             <col data-col="ngay_chat_cuoi" style="width: 160px;">
             <col data-col="action" style="width: 190px;">
           </colgroup>
@@ -1349,36 +1365,41 @@
               <th class="select-col-cell" data-col="select">
                 <input id="selectAllRows" type="checkbox" title="Chọn tất cả dòng đang hiển thị">
               </th>
-              <th class="sortable resizable" data-col="ma_kh" data-sort="ma_kh" data-col-index="0">
+              <th class="sortable resizable" data-col="ma_kh" data-sort="ma_kh" data-col-index="1">
                 Mã KH <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="ten_kh" data-sort="ten_kh" data-col-index="1">
+              <th class="sortable resizable" data-col="ten_kh" data-sort="ten_kh" data-col-index="2">
                 Tên khách hàng <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="sdt" data-sort="sdt" data-col-index="2">
+              <th class="sortable resizable" data-col="sdt" data-sort="sdt" data-col-index="3">
                 Số điện thoại <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="cong_no" data-sort="cong_no" data-col-index="3">
+              <th class="sortable resizable" data-col="cong_no" data-sort="cong_no" data-col-index="4">
                 Công nợ <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="ma_nv" data-sort="ma_nv" data-col-index="4">
+              <th class="sortable resizable" data-col="ma_nv" data-sort="ma_nv" data-col-index="5">
                 Nhân viên <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
               
-              <th class="sortable resizable" data-col="ngay_chat_cuoi" data-sort="ngay_chat_cuoi" data-col-index="5">
+              <th class="sortable resizable" data-col="conversation_id" data-sort="conversation_id" data-col-index="6">
+                conversation_id <span class="sort-icon"></span>
+                <span class="col-resizer"></span>
+              </th>
+
+              <th class="sortable resizable" data-col="ngay_chat_cuoi" data-sort="ngay_chat_cuoi" data-col-index="7">
                 Ngày <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
-<th class="resizable" data-col="action" data-col-index="7">
+              <th class="resizable" data-col="action" data-col-index="8">
                 Thao tác
                 <span class="col-resizer"></span>
               </th>
@@ -1387,7 +1408,7 @@
 
           <tbody id="customerBody">
             <tr>
-              <td colspan="8">Đang tải dữ liệu...</td>
+              <td colspan="9">Đang tải dữ liệu...</td>
             </tr>
           </tbody>
         </table>
@@ -1495,6 +1516,7 @@
       { key: "sdt", label: "Số điện thoại" },
       { key: "cong_no", label: "Công nợ" },
       { key: "ma_nv", label: "Nhân viên" },
+      { key: "conversation_id", label: "conversation_id" },
       { key: "ngay_chat_cuoi", label: "Ngày" },
       { key: "action", label: "Thao tác", required: true }
     ];
@@ -1538,6 +1560,7 @@
     const searchBtn = document.getElementById("searchBtn");
     const refreshBtn = document.getElementById("refreshBtn");
     const runSelectedBtn = document.getElementById("runSelectedBtn");
+    const selectedCountText = document.getElementById("selectedCountText");
     const selectAllRows = document.getElementById("selectAllRows");
     const columnToggleBtn = document.getElementById("columnToggleBtn");
     const columnToggleMenu = document.getElementById("columnToggleMenu");
@@ -1587,9 +1610,11 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
         throw new Error("Supabase chưa sẵn sàng.");
       }
 
-      const selectedMaKh = (selectedRows || [])
-        .map(function (row) { return String(row.ma_kh || "").trim(); })
-        .filter(Boolean);
+      const selectedMaKh = Array.from(new Set(
+        (selectedRows || [])
+          .map(function (row) { return String(row.ma_kh || "").trim(); })
+          .filter(Boolean)
+      ));
 
       if (selectedMaKh.length === 0) {
         throw new Error("Chưa chọn khách hàng nào.");
@@ -1656,7 +1681,7 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
           : (row.ma_nv ? String(row.ma_nv).trim() : null);
 
         const rawConversationId =
-          idRow.conversation_id ?? row.conversation_id ?? null;
+          row.conversation_id ?? idRow.conversation_id ?? null;
 
         const conversationId =
           rawConversationId == null
@@ -1810,7 +1835,7 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
       console.error("Lỗi khởi tạo trang:", error);
       customerBody.innerHTML = `
         <tr>
-          <td colspan="8">Lỗi khởi tạo: ${escapeHtml(error.message || String(error))}</td>
+          <td colspan="9">Lỗi khởi tạo: ${escapeHtml(error.message || String(error))}</td>
         </tr>
       `;
     });
@@ -3294,7 +3319,7 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
       if (!supabaseClient) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="8">Supabase chưa sẵn sàng.</td>
+            <td colspan="9">Supabase chưa sẵn sàng.</td>
           </tr>
         `;
         return;
@@ -3340,7 +3365,7 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
 
         customerBody.innerHTML = `
           <tr>
-            <td colspan="8">
+            <td colspan="9">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -3405,7 +3430,7 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
       if (error) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="8">
+            <td colspan="9">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -3809,19 +3834,24 @@ logoutBtn.addEventListener("click", function () {
       }
 
       const staffList = getSelectedStaffList();
-      let list = customers;
+      const list = customers;
 
+      // Lọc theo CHÍNH DÒNG hiện tại.
+      // Không lookup lại bằng ma_kh vì một ma_kh có thể có nhiều conversation_id,
+      // nếu lookup bằng ma_kh sẽ luôn lấy dòng đầu và làm sai bộ lọc.
       const filtered = list.filter(function (item) {
-        const assignedId = getCustomerStaffIds(item.ma_kh)[0] || "";
-        const assignedIdLower = normalizeKiotStaffId(assignedId).toLowerCase();
+        if (staffList.length === 0) {
+          return true;
+        }
 
-        const matchStaff =
-          staffList.length === 0 ||
-          staffList.some(function (staffIdNv) {
-            return assignedIdLower === normalizeKiotStaffId(staffIdNv).toLowerCase();
-          });
+        const itemStaff = getStaffByAnyCode(item.id_nv || item.ma_nv);
+        const itemIdNv = normalizeKiotStaffId(
+          itemStaff ? itemStaff.id_nv : (item.id_nv || item.ma_nv)
+        ).toLowerCase();
 
-        return matchStaff;
+        return staffList.some(function (staffIdNv) {
+          return itemIdNv === normalizeKiotStaffId(staffIdNv).toLowerCase();
+        });
       });
 
       // Không sort cục bộ ở đây.
@@ -3830,17 +3860,25 @@ logoutBtn.addEventListener("click", function () {
       if (filtered.length === 0) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="8">Không có dữ liệu.</td>
+            <td colspan="9">Không có dữ liệu.</td>
           </tr>
         `;
         return;
       }
 
       customerBody.innerHTML = filtered.map(function (item) {
-        const rowStaff = getCustomerStaffRows(item.ma_kh || "")[0] || null;
-        const staffTitle = rowStaff ? (rowStaff.ten_nv || rowStaff.id_nv || "") : "";
+        const rowStaff = getStaffByAnyCode(item.id_nv || item.ma_nv);
+        const staffTitle = String(
+          item.ten_nv ||
+          (rowStaff ? rowStaff.ten_nv : "") ||
+          item.ma_nv ||
+          item.id_nv ||
+          ""
+        ).trim();
+
         const hasZaloUid = true;
-const maKh = String(item.ma_kh || "");
+        const maKh = String(item.ma_kh || "");
+        const selectionKey = getCustomerSelectionKey(item);
         const safeMaKh = escapeJs(maKh);
         const productRowId = getCustomerProductRowId(maKh);
 
@@ -3856,7 +3894,8 @@ const maKh = String(item.ma_kh || "");
                 class="row-select-checkbox"
                 type="checkbox"
                 data-ma-kh="${escapeHtml(maKh)}"
-                ${selectedCustomerKeys.has(maKh) ? "checked" : ""}
+                data-selection-key="${escapeHtml(selectionKey)}"
+                ${selectedCustomerKeys.has(selectionKey) ? "checked" : ""}
                 onchange="handleRowSelectionChange(this)"
                 onclick="event.stopPropagation()"
               >
@@ -3867,6 +3906,9 @@ const maKh = String(item.ma_kh || "");
             <td data-col="cong_no" title="${formatMoney(item.cong_no)}">${formatMoney(item.cong_no)}</td>
             <td data-col="ma_nv" title="${escapeHtml(staffTitle)}">
               ${escapeHtml(staffTitle || "")}
+            </td>
+            <td data-col="conversation_id" title="${escapeHtml(item.conversation_id || "")}">
+              ${escapeHtml(item.conversation_id || "")}
             </td>
             <td data-col="ngay_chat_cuoi" title="${escapeHtml(formatDateOnlySafe(item.ngay_chat_cuoi))}">
               ${escapeHtml(formatDateOnlySafe(item.ngay_chat_cuoi))}
@@ -3891,7 +3933,7 @@ const maKh = String(item.ma_kh || "");
             class="customer-product-row hidden"
             data-product-for="${escapeHtml(maKh)}"
           >
-            <td colspan="8">
+            <td colspan="9">
               <div class="customer-product-box">
                 <div class="customer-product-head">
                   <div>
@@ -3996,41 +4038,92 @@ const maKh = String(item.ma_kh || "");
       return Array.from(document.querySelectorAll("#customerBody .row-select-checkbox"));
     }
 
+    // Mỗi dòng phải có khóa riêng.
+    // Ưu tiên conversation_id để các dòng cùng ma_kh không bị chọn dính nhau.
+    function getCustomerSelectionKey(item) {
+      const conversationId = normalizeConversationId(item?.conversation_id);
+
+      if (conversationId) {
+        return "conversation:" + conversationId;
+      }
+
+      const maKh = String(item?.ma_kh || "").trim();
+      const maNv = String(item?.ma_nv || item?.id_nv || "").trim();
+      const uidFrom = String(item?.uid_from || "").trim();
+
+      return "customer:" + maKh + "|staff:" + maNv + "|uid:" + uidFrom;
+    }
+
+    function getCheckboxSelectionKey(box) {
+      return String(
+        box?.dataset?.selectionKey ||
+        ("customer:" + String(box?.dataset?.maKh || "").trim())
+      ).trim();
+    }
+
+    function updateSelectedCountText() {
+      const count = selectedCustomerKeys.size;
+
+      if (selectedCountText) {
+        selectedCountText.textContent = "Đã chọn: " + count;
+      }
+
+      if (runSelectedBtn) {
+        runSelectedBtn.textContent = count > 0
+          ? "▶ Chạy (" + count + ")"
+          : "▶ Chạy";
+      }
+    }
+
     function syncSelectionUi() {
       const boxes = getVisibleCustomerCheckboxes();
 
       boxes.forEach(function (box) {
-        const maKh = String(box.dataset.maKh || "").trim();
-        box.checked = selectedCustomerKeys.has(maKh);
+        const selectionKey = getCheckboxSelectionKey(box);
+        box.checked = selectedCustomerKeys.has(selectionKey);
 
         const row = box.closest(".customer-main-row");
         if (row) row.classList.toggle("row-selected", box.checked);
       });
 
-      if (!selectAllRows) return;
+      const checkedCount = boxes.filter(function (box) {
+        return box.checked;
+      }).length;
 
-      const checkedCount = boxes.filter(box => box.checked).length;
-      selectAllRows.checked = boxes.length > 0 && checkedCount === boxes.length;
-      selectAllRows.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
-}
+      if (selectAllRows) {
+        selectAllRows.checked =
+          boxes.length > 0 && checkedCount === boxes.length;
+
+        selectAllRows.indeterminate =
+          checkedCount > 0 && checkedCount < boxes.length;
+      }
+
+      updateSelectedCountText();
+    }
 
     function handleRowSelectionChange(box) {
-      const maKh = String(box?.dataset?.maKh || "").trim();
-      if (!maKh) return;
+      const selectionKey = getCheckboxSelectionKey(box);
+      if (!selectionKey) return;
 
-      if (box.checked) selectedCustomerKeys.add(maKh);
-      else selectedCustomerKeys.delete(maKh);
+      if (box.checked) {
+        selectedCustomerKeys.add(selectionKey);
+      } else {
+        selectedCustomerKeys.delete(selectionKey);
+      }
 
       syncSelectionUi();
     }
 
     function setAllVisibleRowsSelected(checked) {
       getVisibleCustomerCheckboxes().forEach(function (box) {
-        const maKh = String(box.dataset.maKh || "").trim();
-        if (!maKh) return;
+        const selectionKey = getCheckboxSelectionKey(box);
+        if (!selectionKey) return;
 
-        if (checked) selectedCustomerKeys.add(maKh);
-        else selectedCustomerKeys.delete(maKh);
+        if (checked) {
+          selectedCustomerKeys.add(selectionKey);
+        } else {
+          selectedCustomerKeys.delete(selectionKey);
+        }
       });
 
       syncSelectionUi();
@@ -4038,7 +4131,7 @@ const maKh = String(item.ma_kh || "");
 
     function getSelectedCustomerRows() {
       return customers.filter(function (item) {
-        return selectedCustomerKeys.has(String(item.ma_kh || ""));
+        return selectedCustomerKeys.has(getCustomerSelectionKey(item));
       });
     }
 
@@ -4544,7 +4637,7 @@ const maKh = String(item.ma_kh || "");
       const storageKey = "chatwoot_crm_customer_table_widths";
       const colList = Array.from(table.querySelectorAll("col"));
       const thList = Array.from(table.querySelectorAll("th.resizable"));
-      const defaultWidths = [130, 240, 150, 130, 160, 160, 130, 190];
+      const defaultWidths = [44, 130, 240, 150, 130, 160, 150, 160, 190];
 
       function getColWidth(index) {
         const col = colList[index];
