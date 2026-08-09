@@ -1318,7 +1318,7 @@
   <div class="app">
     <main class="content">
       <div class="toolbar">
-        <input id="searchInput" type="text" placeholder="Tìm mã KH, tên KH, số điện thoại..." />
+        <input id="searchInput" type="text" placeholder="Tìm tất cả các cột..." />
 
         <div class="staff-dropdown">
           <button id="staffDropdownBtn" type="button">Tất cả nhân viên</button>
@@ -1352,6 +1352,7 @@
             <col data-col="select" style="width:44px;">
             <col data-col="ma_kh" style="width: 130px;">
             <col data-col="ten_kh" style="width: 240px;">
+            <col data-col="alias_name" style="width: 220px;">
             <col data-col="sdt" style="width: 150px;">
             <col data-col="cong_no" style="width: 130px;">
             <col data-col="ma_nv" style="width: 160px;">
@@ -1375,31 +1376,36 @@
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="sdt" data-sort="sdt" data-col-index="3">
+              <th class="sortable resizable" data-col="alias_name" data-sort="alias_name" data-col-index="3">
+                Alias name <span class="sort-icon"></span>
+                <span class="col-resizer"></span>
+              </th>
+
+              <th class="sortable resizable" data-col="sdt" data-sort="sdt" data-col-index="4">
                 Số điện thoại <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="cong_no" data-sort="cong_no" data-col-index="4">
+              <th class="sortable resizable" data-col="cong_no" data-sort="cong_no" data-col-index="5">
                 Công nợ <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="ma_nv" data-sort="ma_nv" data-col-index="5">
+              <th class="sortable resizable" data-col="ma_nv" data-sort="ma_nv" data-col-index="6">
                 Nhân viên <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
               
-              <th class="sortable resizable" data-col="conversation_id" data-sort="conversation_id" data-col-index="6">
+              <th class="sortable resizable" data-col="conversation_id" data-sort="conversation_id" data-col-index="7">
                 conversation_id <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="ngay_chat_cuoi" data-sort="ngay_chat_cuoi" data-col-index="7">
+              <th class="sortable resizable" data-col="ngay_chat_cuoi" data-sort="ngay_chat_cuoi" data-col-index="8">
                 Ngày <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
-              <th class="resizable" data-col="action" data-col-index="8">
+              <th class="resizable" data-col="action" data-col-index="9">
                 Thao tác
                 <span class="col-resizer"></span>
               </th>
@@ -1408,7 +1414,7 @@
 
           <tbody id="customerBody">
             <tr>
-              <td colspan="9">Đang tải dữ liệu...</td>
+              <td colspan="10">Đang tải dữ liệu...</td>
             </tr>
           </tbody>
         </table>
@@ -1513,6 +1519,7 @@
     const CUSTOMER_TABLE_COLUMNS = [
       { key: "ma_kh", label: "Mã KH", required: true },
       { key: "ten_kh", label: "Tên khách hàng", required: true },
+      { key: "alias_name", label: "Alias name" },
       { key: "sdt", label: "Số điện thoại" },
       { key: "cong_no", label: "Công nợ" },
       { key: "ma_nv", label: "Nhân viên" },
@@ -1835,7 +1842,7 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
       console.error("Lỗi khởi tạo trang:", error);
       customerBody.innerHTML = `
         <tr>
-          <td colspan="9">Lỗi khởi tạo: ${escapeHtml(error.message || String(error))}</td>
+          <td colspan="10">Lỗi khởi tạo: ${escapeHtml(error.message || String(error))}</td>
         </tr>
       `;
     });
@@ -2169,16 +2176,87 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
       return true;
     }
 
+    function escapePostgrestSearchValue(value) {
+      return String(value || "")
+        .trim()
+        .replaceAll("\\", "\\\\")
+        .replaceAll("%", "\\%")
+        .replaceAll("*", "\\*")
+        .replaceAll(",", " ");
+    }
+
+    function applySearchAllColumns(query, rawKeyword) {
+      const keyword = String(rawKeyword || "").trim();
+      if (!keyword) return query;
+
+      const safeKeyword = escapePostgrestSearchValue(keyword);
+      const filters = [];
+
+      // Các cột TEXT trong sql_khachhang_nhanvien.
+      // ilike giúp tìm gần đúng và không phân biệt hoa/thường.
+      [
+        "ma_kh",
+        "ten_kh",
+        "alias_name",
+        "dia_chi",
+        "khu_vuc",
+        "phuong_xa",
+        "dien_thoai",
+        "ma_nv",
+        "ten_nv",
+        "uid_from",
+        "content",
+        "zalo_name",
+        "nguoi_goi",
+        "zalo_kh"
+      ].forEach(function (column) {
+        filters.push(`${column}.ilike.%${safeKeyword}%`);
+      });
+
+      // Các cột số/ID: nếu người dùng nhập số thì tìm chính xác.
+      if (/^-?\d+(?:\.\d+)?$/.test(keyword)) {
+        [
+          "id",
+          "congno",
+          "conversation_id",
+          "contact_id",
+          "id_nv"
+        ].forEach(function (column) {
+          filters.push(`${column}.eq.${keyword}`);
+        });
+      }
+
+      // Ngày dạng YYYY-MM-DD.
+      if (/^\d{4}-\d{2}-\d{2}$/.test(keyword)) {
+        filters.push(`ngay_goi.eq.${keyword}`);
+
+        const start = new Date(keyword + "T00:00:00");
+        if (!Number.isNaN(start.getTime())) {
+          const next = new Date(start);
+          next.setDate(next.getDate() + 1);
+          const nextDate = [
+            next.getFullYear(),
+            String(next.getMonth() + 1).padStart(2, "0"),
+            String(next.getDate()).padStart(2, "0")
+          ].join("-");
+
+          filters.push(`and(ngay_chat_cuoi.gte.${keyword}T00:00:00,ngay_chat_cuoi.lt.${nextDate}T00:00:00)`);
+        }
+      }
+
+      // Giờ dạng HH:mm hoặc HH:mm:ss.
+      if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(keyword)) {
+        filters.push(`tg_goi.eq.${keyword}`);
+      }
+
+      return query.or(filters.join(","));
+    }
+
     function applyCustomerListFiltersToQuery(query) {
       const keyword = searchInput ? searchInput.value.trim() : "";
       const selectedStaffDbCodes = getSelectedStaffDbCodes();
 
-      if (keyword) {
-        const safeKeyword = keyword.replaceAll("%", "\\%").replaceAll(",", " ");
-        query = query.or(
-          `ma_kh.ilike.%${safeKeyword}%,ten_kh.ilike.%${safeKeyword}%,dien_thoai.ilike.%${safeKeyword}%`
-        );
-      }
+      query = applySearchAllColumns(query, keyword);
 
       if (selectedStaffDbCodes.length > 0) {
         query = query.in("ma_nv", selectedStaffDbCodes);
@@ -3235,6 +3313,7 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
       if (sortField === "ma_nv") return "ma_nv";
       if (sortField === "ngay_chat_cuoi") return "ngay_chat_cuoi";
       if (sortField === "conversation_id") return "conversation_id";
+      if (sortField === "alias_name") return "alias_name";
       if (sortField === "ten_kh") return "ten_kh";
       if (sortField === "ma_kh") return "ma_kh";
 
@@ -3319,7 +3398,7 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
       if (!supabaseClient) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="9">Supabase chưa sẵn sàng.</td>
+            <td colspan="10">Supabase chưa sẵn sàng.</td>
           </tr>
         `;
         return;
@@ -3339,15 +3418,10 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from", { count: "exact" })
+        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false });
 
-      if (keyword) {
-        const safeKeyword = keyword.replaceAll("%", "\\%").replaceAll(",", " ");
-        query = query.or(
-          `ma_kh.ilike.%${safeKeyword}%,ten_kh.ilike.%${safeKeyword}%,dien_thoai.ilike.%${safeKeyword}%`
-        );
-      }
+      query = applySearchAllColumns(query, keyword);
 
       if (selectedStaffDbCodes.length > 0) {
         query = query.in("ma_nv", selectedStaffDbCodes);
@@ -3365,7 +3439,7 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
 
         customerBody.innerHTML = `
           <tr>
-            <td colspan="9">
+            <td colspan="10">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -3381,6 +3455,7 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
         return {
           ma_kh: item.ma_kh || "",
           ten_kh: item.ten_kh || "",
+          alias_name: item.alias_name || "",
           sdt: item.dien_thoai || "",
           cong_no: item.congno || 0,
           ma_nv: normalizeNullableMaNv(item.ma_nv),
@@ -3414,23 +3489,18 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, dien_thoai, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from", { count: "exact" })
+        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false })
         .range(from, to);
 
-      if (keyword) {
-        const safeKeyword = keyword.replaceAll("%", "\\%").replaceAll(",", " ");
-        query = query.or(
-          `ma_kh.ilike.%${safeKeyword}%,ten_kh.ilike.%${safeKeyword}%,dien_thoai.ilike.%${safeKeyword}%`
-        );
-      }
+      query = applySearchAllColumns(query, keyword);
 
       const { data, error, count } = await query;
 
       if (error) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="9">
+            <td colspan="10">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -3446,6 +3516,7 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
         return {
           ma_kh: item.ma_kh || "",
           ten_kh: item.ten_kh || "",
+          alias_name: item.alias_name || "",
           sdt: item.dien_thoai || "",
           cong_no: item.congno || 0,
           ma_nv: "",
@@ -3860,7 +3931,7 @@ logoutBtn.addEventListener("click", function () {
       if (filtered.length === 0) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="9">Không có dữ liệu.</td>
+            <td colspan="10">Không có dữ liệu.</td>
           </tr>
         `;
         return;
@@ -3902,6 +3973,7 @@ logoutBtn.addEventListener("click", function () {
             </td>
             <td data-col="ma_kh" title="${escapeHtml(item.ma_kh || "")}">${escapeHtml(item.ma_kh || "")}</td>
             <td data-col="ten_kh" title="${escapeHtml(item.ten_kh || "")}">${escapeHtml(item.ten_kh || "")}</td>
+            <td data-col="alias_name" title="${escapeHtml(item.alias_name || "")}">${escapeHtml(item.alias_name || "")}</td>
             <td data-col="sdt" title="${escapeHtml(item.sdt || "")}">${escapeHtml(item.sdt || "")}</td>
             <td data-col="cong_no" title="${formatMoney(item.cong_no)}">${formatMoney(item.cong_no)}</td>
             <td data-col="ma_nv" title="${escapeHtml(staffTitle)}">
@@ -3933,7 +4005,7 @@ logoutBtn.addEventListener("click", function () {
             class="customer-product-row hidden"
             data-product-for="${escapeHtml(maKh)}"
           >
-            <td colspan="9">
+            <td colspan="10">
               <div class="customer-product-box">
                 <div class="customer-product-head">
                   <div>
