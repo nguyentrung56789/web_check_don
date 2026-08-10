@@ -604,13 +604,21 @@
                   </div>
                 </div>
                 <div class="row-body">
-                  <div><div class="perm-col-title">Xem</div>${checkboxHtml(fn,'duoc_xem','Cho phép xem')}</div>
-                  <div><div class="perm-col-title">Tạo</div>${checkboxHtml(fn,'duoc_them','Cho phép tạo')}</div>
-                  <div><div class="perm-col-title">Chỉnh sửa</div>${checkboxHtml(fn,'duoc_sua','Cho phép sửa')}</div>
-                  <div><div class="perm-col-title">Xóa</div>${checkboxHtml(fn,'duoc_xoa','Cho phép xóa')}</div>
-                  ${String(fn.duong_dan||'').trim().toLowerCase()==='chamsockhachhang.html'
-                    ? `<div><div class="perm-col-title">Lọc nhân viên</div>${checkboxHtml(fn,'loc_theo_nhan_vien','Cho phép lọc theo nhân viên')}</div>`
-                    : ''}
+                  ${
+                    String(fn.nhom_chucnang||'').trim().toLowerCase()==='kinh_doanh'
+                      ? `<div><div class="perm-col-title">Xem</div>${checkboxHtml(fn,'duoc_xem','Cho phép xem')}</div>`
+                      : String(fn.duong_dan||'').trim().toLowerCase()==='chamsockhachhang.html'
+                        ? `
+                          <div><div class="perm-col-title">Xem</div>${checkboxHtml(fn,'duoc_xem','Cho phép xem')}</div>
+                          <div><div class="perm-col-title">Lọc nhân viên</div>${checkboxHtml(fn,'loc_theo_nhan_vien','Cho phép lọc theo nhân viên')}</div>
+                        `
+                        : `
+                          <div><div class="perm-col-title">Xem</div>${checkboxHtml(fn,'duoc_xem','Cho phép xem')}</div>
+                          <div><div class="perm-col-title">Tạo</div>${checkboxHtml(fn,'duoc_them','Cho phép tạo')}</div>
+                          <div><div class="perm-col-title">Chỉnh sửa</div>${checkboxHtml(fn,'duoc_sua','Cho phép sửa')}</div>
+                          <div><div class="perm-col-title">Xóa</div>${checkboxHtml(fn,'duoc_xoa','Cho phép xóa')}</div>
+                        `
+                  }
                 </div>
               </article>`).join('')}
           </div>
