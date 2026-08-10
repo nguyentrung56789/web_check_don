@@ -1686,9 +1686,9 @@
       // Theo yêu cầu: khi không có quyền lọc thì hiện id_nv hiện tại
       // và khóa ô, không cho đổi sang nhân viên khác.
       staffDropdownBtn.textContent =
-        normalizeKiotStaffId(currentStaff.id_nv) ||
         currentStaff.ten_nv ||
-        currentStaff.ma_nv;
+        currentStaff.ma_nv ||
+        normalizeKiotStaffId(currentStaff.id_nv);
 
       staffDropdownBtn.disabled = true;
       staffDropdownBtn.dataset.locTheoNhanVien = "false";
@@ -1702,9 +1702,9 @@
       // updateStaffButtonText() thường đổi sang tên NV.
       // Gán lại id_nv đúng theo yêu cầu của bạn.
       staffDropdownBtn.textContent =
-        normalizeKiotStaffId(currentStaff.id_nv) ||
         currentStaff.ten_nv ||
-        currentStaff.ma_nv;
+        currentStaff.ma_nv ||
+        normalizeKiotStaffId(currentStaff.id_nv);
     }
 
     function enableStaffFilterPermission() {
