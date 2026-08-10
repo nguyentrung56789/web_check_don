@@ -1646,28 +1646,31 @@
     function forceStaffFilterToCurrentUser() {
       const currentStaff = findCurrentStaffForPermission();
 
-      // Bỏ chọn toàn bộ trước.
       Array.from(getStaffOptions()).forEach(function (option) {
         option.checked = false;
       });
 
       if (!currentStaff) {
         console.warn(
-          "[PHÂN QUYỀN] Không tìm thấy id_nv của nhân viên đăng nhập:",
+          "[PHÂN QUYỀN] Không tìm thấy nhân viên đăng nhập trong kv_nhan_vien:",
           currentUser
         );
 
+        // Không hiện mã/id ra giao diện.
         staffDropdownBtn.textContent =
-          normalizeKiotStaffId(currentUser?.id_nv || "") ||
-          String(currentUser?.ma_nv || "").trim() ||
+          String(currentUser?.ten_nv || "").trim() ||
           "Nhân viên hiện tại";
 
         staffDropdownBtn.disabled = true;
+        staffDropdownBtn.dataset.locTheoNhanVien = "false";
+        staffDropdownBtn.title =
+          "Bạn không có quyền lọc theo nhân viên khác.";
         staffDropdownMenu.classList.add("hidden");
         return;
       }
 
-      const wantedIdNv = normalizeKiotStaffId(currentStaff.id_nv).toLowerCase();
+      const wantedIdNv =
+        normalizeKiotStaffId(currentStaff.id_nv).toLowerCase();
 
       const ownOption = Array.from(getStaffOptions()).find(function (option) {
         if (option.value === "all") return false;
@@ -1683,28 +1686,16 @@
         ownOption.checked = true;
       }
 
-      // Theo yêu cầu: khi không có quyền lọc thì hiện id_nv hiện tại
-      // và khóa ô, không cho đổi sang nhân viên khác.
-      staffDropdownBtn.textContent =
-        currentStaff.ten_nv ||
-        currentStaff.ma_nv ||
-        normalizeKiotStaffId(currentStaff.id_nv);
-
       staffDropdownBtn.disabled = true;
       staffDropdownBtn.dataset.locTheoNhanVien = "false";
       staffDropdownBtn.title =
         "Bạn không có quyền lọc theo nhân viên khác.";
-
       staffDropdownMenu.classList.add("hidden");
 
-      updateStaffButtonText();
-
-      // updateStaffButtonText() thường đổi sang tên NV.
-      // Gán lại id_nv đúng theo yêu cầu của bạn.
+      // Giao diện chỉ hiện TÊN NHÂN VIÊN.
       staffDropdownBtn.textContent =
-        currentStaff.ten_nv ||
-        currentStaff.ma_nv ||
-        normalizeKiotStaffId(currentStaff.id_nv);
+        String(currentStaff.ten_nv || currentUser?.ten_nv || "").trim() ||
+        "Nhân viên hiện tại";
     }
 
     function enableStaffFilterPermission() {
@@ -1712,9 +1703,8 @@
 
       staffDropdownBtn.disabled = false;
       staffDropdownBtn.dataset.locTheoNhanVien = "true";
-      staffDropdownBtn.title = "";
+      staffDropdownBtn.title = "Chọn nhân viên để lọc";
 
-      // Có quyền thì mặc định trả về "Tất cả nhân viên".
       const allOption = document.querySelector(
         '.staff-option[value="all"]'
       );
@@ -1727,22 +1717,27 @@
         allOption.checked = true;
       }
 
-      updateStaffButtonText();
+      // Có quyền: trên nút hiện chữ, không hiện mã/id.
+      staffDropdownBtn.textContent = "Tất cả nhân viên";
     }
 
     function permissionValueIsTrue(value) {
-      return value === true ||
-        value === 1 ||
-        String(value ?? "").trim().toLowerCase() === "true" ||
-        String(value ?? "").trim() === "1";
+      if (value === true || value === 1) return true;
+
+      const normalized = String(value ?? "")
+        .trim()
+        .toLowerCase();
+
+      return normalized === "true" ||
+             normalized === "1" ||
+             normalized === "t" ||
+             normalized === "yes";
     }
 
     async function apDungQuyenLocTheoNhanVien() {
       duocLocTheoNhanVien = false;
 
       try {
-        // Dùng cùng nguồn phân quyền như main.html.
-        // Quyền lọc nhân viên lấy ĐÚNG theo id_chucnang = staffDropdownBtn.
         const permissionModule = await import("./js/phan_quyen.js");
         const layDanhSachQuyenTrang =
           permissionModule.layDanhSachQuyenTrang;
@@ -1758,22 +1753,24 @@
             batBuocTaiLai: true
           });
 
+        // QUYỀN RIÊNG CỦA NÚT LỌC NHÂN VIÊN.
+        // Không lấy quyền của chamsockhachhang nữa.
         const quyenLocNhanVien =
           (danhSachQuyen || []).find(function (item) {
-            return String(item?.id_chucnang || "").trim() === "staffDropdownBtn";
+            return normalizePermissionText(item?.id_chucnang) ===
+                   normalizePermissionText("staffDropdownBtn");
           }) || null;
 
-        // Ô "Xem" (duoc_xem) của staffDropdownBtn chính là quyền lọc nhân viên.
-        // Có quyền  -> được chọn Tất cả / nhiều nhân viên.
-        // Không quyền -> khóa bộ lọc và chỉ xem khách của NV đăng nhập.
+        // Ô "Xem" của dòng staffDropdownBtn chính là quyền cho phép lọc NV.
         duocLocTheoNhanVien =
           permissionValueIsTrue(quyenLocNhanVien?.duoc_xem);
 
         console.log("[PHÂN QUYỀN LỌC NHÂN VIÊN]", {
-          ma_nv: currentUser?.ma_nv || "",
-          id_nv: currentUser?.id_nv || "",
+          ma_nv_dang_nhap: currentUser?.ma_nv || "",
+          id_nv_dang_nhap: currentUser?.id_nv || "",
+          ten_nv_dang_nhap: currentUser?.ten_nv || "",
           id_chucnang: "staffDropdownBtn",
-          quyen: quyenLocNhanVien,
+          dong_quyen: quyenLocNhanVien,
           duoc_xem: quyenLocNhanVien?.duoc_xem,
           duoc_loc_nhan_vien: duocLocTheoNhanVien
         });
@@ -1783,7 +1780,7 @@
           error
         );
 
-        // An toàn: lỗi đọc quyền thì KHÔNG cho lọc nhân viên khác.
+        // Có lỗi thì không cho lọc sang NV khác.
         duocLocTheoNhanVien = false;
       }
 
@@ -2525,12 +2522,17 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
     async function resetCustomerFiltersForChatwootLocate() {
       if (searchInput) searchInput.value = "";
 
-      const options = Array.from(getStaffOptions());
-      options.forEach(function (option) {
-        option.checked = option.value === "all";
-      });
+      // Không được bypass quyền lọc NV khi tự tìm conversation_id.
+      if (duocLocTheoNhanVien) {
+        const options = Array.from(getStaffOptions());
+        options.forEach(function (option) {
+          option.checked = option.value === "all";
+        });
 
-      updateStaffButtonText();
+        updateStaffButtonText();
+      } else {
+        forceStaffFilterToCurrentUser();
+      }
     }
 
     async function locateCurrentChatwootRow() {
@@ -3838,11 +3840,10 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
       showUserInfo();
       await loadStaffFromSupabase();
 
-      // Phân quyền staffDropdownBtn trước khi tải khách hàng.
-      // Dòng quyền: id_chucnang = "staffDropdownBtn".
-      // duoc_xem = true  -> được lọc nhân viên.
-      // duoc_xem = false -> tự chọn NV đăng nhập, khóa dropdown,
-      //                     và query khách hàng theo chính nhân viên đó.
+      // Phân quyền nút lọc NV trước khi tải khách hàng.
+      // id_chucnang = staffDropdownBtn
+      // duoc_xem = true  -> được chọn/lọc nhân viên.
+      // duoc_xem = false -> khóa lọc và chỉ xem NV đang đăng nhập.
       await apDungQuyenLocTheoNhanVien();
 
       await loadCustomersFromSupabase(1);
@@ -4101,11 +4102,30 @@ logoutBtn.addEventListener("click", function () {
         return;
       }
 
-      const selectedNames = selectedOptions.map(function (option) {
-        return option.dataset.name || getStaffNameByCode(option.value);
-      });
+      const selectedNames = selectedOptions
+        .map(function (option) {
+          const nameFromData =
+            String(option.dataset.name || "").trim();
 
-      staffDropdownBtn.textContent = selectedNames.join(", ");
+          if (nameFromData) {
+            return nameFromData;
+          }
+
+          const staff =
+            getStaffByIdNv(option.dataset.idNv || option.value) ||
+            getStaffByAnyCode(option.dataset.maNv || option.value);
+
+          return staff
+            ? String(staff.ten_nv || "").trim()
+            : "";
+        })
+        .filter(Boolean);
+
+      // Không bao giờ lấy ma_nv / id_nv làm chữ hiển thị.
+      staffDropdownBtn.textContent =
+        selectedNames.length > 0
+          ? selectedNames.join(", ")
+          : "Nhân viên";
     }
     function renderCustomers() {
       if (!currentUser) {
