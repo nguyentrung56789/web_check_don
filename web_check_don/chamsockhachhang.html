@@ -278,6 +278,14 @@
       border-color: #2563eb;
     }
 
+    #staffDropdownBtn:disabled {
+      opacity: 1;
+      cursor: not-allowed;
+      background: #f3f4f6;
+      color: #374151;
+      border-color: #d1d5db;
+    }
+
     .staff-dropdown-menu {
       position: absolute;
       top: 38px;
@@ -1553,6 +1561,11 @@
     let zaloAttachmentPreviewUrl = "";
     let selectedCustomerKeys = new Set();
 
+    // Quyền lọc nhân viên của trang Chăm sóc khách hàng.
+    // true  = được chọn/lọc nhiều nhân viên.
+    // false = chỉ được xem khách của chính nhân viên đang đăng nhập.
+    let duocLocTheoNhanVien = false;
+
     // Theo dõi việc tự nhảy tới dòng theo conversation_id Chatwoot
     let chatwootLocateTimer = null;
     let chatwootLocateBusy = false;
@@ -1603,6 +1616,198 @@
 
     function getStaffOptions() {
       return document.querySelectorAll(".staff-option");
+    }
+
+    function normalizePermissionText(value) {
+      return String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .toLowerCase();
+    }
+
+    function findCurrentStaffForPermission() {
+      const idNvLogin = normalizeKiotStaffId(currentUser?.id_nv || "");
+      const maNvLogin = String(currentUser?.ma_nv || "").trim();
+
+      if (idNvLogin) {
+        const byId = getStaffByIdNv(idNvLogin);
+        if (byId) return byId;
+      }
+
+      if (maNvLogin) {
+        const byMa = getStaffByAnyCode(maNvLogin);
+        if (byMa) return byMa;
+      }
+
+      return null;
+    }
+
+    function forceStaffFilterToCurrentUser() {
+      const currentStaff = findCurrentStaffForPermission();
+
+      // Bỏ chọn toàn bộ trước.
+      Array.from(getStaffOptions()).forEach(function (option) {
+        option.checked = false;
+      });
+
+      if (!currentStaff) {
+        console.warn(
+          "[PHÂN QUYỀN] Không tìm thấy id_nv của nhân viên đăng nhập:",
+          currentUser
+        );
+
+        staffDropdownBtn.textContent =
+          normalizeKiotStaffId(currentUser?.id_nv || "") ||
+          String(currentUser?.ma_nv || "").trim() ||
+          "Nhân viên hiện tại";
+
+        staffDropdownBtn.disabled = true;
+        staffDropdownMenu.classList.add("hidden");
+        return;
+      }
+
+      const wantedIdNv = normalizeKiotStaffId(currentStaff.id_nv).toLowerCase();
+
+      const ownOption = Array.from(getStaffOptions()).find(function (option) {
+        if (option.value === "all") return false;
+
+        const optionIdNv = normalizeKiotStaffId(
+          option.dataset.idNv || option.value
+        ).toLowerCase();
+
+        return optionIdNv === wantedIdNv;
+      });
+
+      if (ownOption) {
+        ownOption.checked = true;
+      }
+
+      // Theo yêu cầu: khi không có quyền lọc thì hiện id_nv hiện tại
+      // và khóa ô, không cho đổi sang nhân viên khác.
+      staffDropdownBtn.textContent =
+        normalizeKiotStaffId(currentStaff.id_nv) ||
+        currentStaff.ten_nv ||
+        currentStaff.ma_nv;
+
+      staffDropdownBtn.disabled = true;
+      staffDropdownBtn.dataset.locTheoNhanVien = "false";
+      staffDropdownBtn.title =
+        "Bạn không có quyền lọc theo nhân viên khác.";
+
+      staffDropdownMenu.classList.add("hidden");
+
+      updateStaffButtonText();
+
+      // updateStaffButtonText() thường đổi sang tên NV.
+      // Gán lại id_nv đúng theo yêu cầu của bạn.
+      staffDropdownBtn.textContent =
+        normalizeKiotStaffId(currentStaff.id_nv) ||
+        currentStaff.ten_nv ||
+        currentStaff.ma_nv;
+    }
+
+    function enableStaffFilterPermission() {
+      duocLocTheoNhanVien = true;
+
+      staffDropdownBtn.disabled = false;
+      staffDropdownBtn.dataset.locTheoNhanVien = "true";
+      staffDropdownBtn.title = "";
+
+      // Có quyền thì mặc định trả về "Tất cả nhân viên".
+      const allOption = document.querySelector(
+        '.staff-option[value="all"]'
+      );
+
+      Array.from(getStaffOptions()).forEach(function (option) {
+        option.checked = false;
+      });
+
+      if (allOption) {
+        allOption.checked = true;
+      }
+
+      updateStaffButtonText();
+    }
+
+    async function apDungQuyenLocTheoNhanVien() {
+      duocLocTheoNhanVien = false;
+
+      try {
+        // Dùng cùng nguồn phân quyền như main.html
+        const permissionModule = await import("./js/phan_quyen.js");
+        const layDanhSachQuyenTrang =
+          permissionModule.layDanhSachQuyenTrang;
+
+        if (typeof layDanhSachQuyenTrang !== "function") {
+          throw new Error(
+            "phan_quyen.js không có hàm layDanhSachQuyenTrang"
+          );
+        }
+
+        const danhSachQuyen =
+          await layDanhSachQuyenTrang({
+            batBuocTaiLai: true
+          });
+
+        const currentFile =
+          String(
+            window.location.pathname.split("/").pop() || ""
+          )
+            .trim()
+            .toLowerCase();
+
+        const quyenTrang =
+          (danhSachQuyen || []).find(function (item) {
+            const idChucNang =
+              normalizePermissionText(item?.id_chucnang);
+
+            const tenChucNang =
+              normalizePermissionText(item?.ten_chucnang);
+
+            const duongDan =
+              String(item?.duong_dan || "")
+                .trim()
+                .split("?")[0]
+                .split("#")[0]
+                .split("/")
+                .pop()
+                .toLowerCase();
+
+            return (
+              idChucNang === "chamsockhachhang" ||
+              idChucNang === "cham-soc-khach-hang" ||
+              tenChucNang === "cham soc khach hang" ||
+              (currentFile && duongDan === currentFile)
+            );
+          }) || null;
+
+        duocLocTheoNhanVien =
+          quyenTrang?.loc_theo_nhan_vien === true;
+
+        console.log("[PHÂN QUYỀN LỌC NHÂN VIÊN]", {
+          ma_nv: currentUser?.ma_nv || "",
+          id_nv: currentUser?.id_nv || "",
+          quyen: quyenTrang,
+          loc_theo_nhan_vien: duocLocTheoNhanVien
+        });
+      } catch (error) {
+        console.error(
+          "[PHÂN QUYỀN] Không đọc được loc_theo_nhan_vien:",
+          error
+        );
+
+        // An toàn: lỗi đọc quyền thì KHÔNG cho lọc nhân viên khác.
+        duocLocTheoNhanVien = false;
+      }
+
+      if (duocLocTheoNhanVien) {
+        enableStaffFilterPermission();
+      } else {
+        forceStaffFilterToCurrentUser();
+      }
+
+      return duocLocTheoNhanVien;
     }
 
     window.addEventListener("message", handleChatwootMessage);
@@ -3646,6 +3851,14 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
 
       showUserInfo();
       await loadStaffFromSupabase();
+
+      // Phân quyền staffDropdownBtn trước khi tải khách hàng.
+      // Nếu loc_theo_nhan_vien = false:
+      // - tự chọn id_nv của người đăng nhập
+      // - khóa dropdown
+      // - query khách hàng theo chính nhân viên đó
+      await apDungQuyenLocTheoNhanVien();
+
       await loadCustomersFromSupabase(1);
     }
 
@@ -3757,6 +3970,11 @@ logoutBtn.addEventListener("click", function () {
     });
 
     staffDropdownBtn.addEventListener("click", function () {
+      if (!duocLocTheoNhanVien || staffDropdownBtn.disabled) {
+        staffDropdownMenu.classList.add("hidden");
+        return;
+      }
+
       staffDropdownMenu.classList.toggle("hidden");
     });
 
