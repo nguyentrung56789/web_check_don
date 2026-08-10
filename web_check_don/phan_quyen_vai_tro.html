@@ -128,7 +128,7 @@
     .row-body{
       padding:18px 20px 20px;
       display:grid;
-      grid-template-columns:repeat(4,minmax(130px,1fr));
+      grid-template-columns:repeat(5,minmax(130px,1fr));
       gap:16px 22px;
     }
     .perm-col-title{font-weight:800;margin-bottom:10px}
@@ -252,7 +252,7 @@
     .main-menu-list{padding:4px 10px}.main-menu-item{min-height:44px;padding:8px 6px;grid-template-columns:minmax(0,1fr) auto}
     .main-menu-name{font-size:14px}.main-menu-path{font-size:11px}.main-menu-toggle{font-size:13px}
     .main-menu-toggle span{min-width:68px}.main-menu-toggle input{width:18px;height:18px}
-    .permission-row .row-head{min-height:44px;padding:9px 12px}.row-name{font-size:14px}.row-body{padding:10px 12px;grid-template-columns:repeat(4,minmax(115px,1fr))}
+    .permission-row .row-head{min-height:44px;padding:9px 12px}.row-name{font-size:14px}.row-body{padding:10px 12px;grid-template-columns:repeat(5,minmax(115px,1fr))}
     .sidebar{top:92px;padding-left:14px}.side-title{font-size:12px;margin-bottom:8px}.side-nav{gap:6px}
     .nav-group{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
     .nav-group-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;border:0;background:#f8fafc;color:#253145;font-weight:750;cursor:pointer;text-align:left}
@@ -486,7 +486,8 @@
           duoc_xem,
           duoc_them,
           duoc_sua,
-          duoc_xoa
+          duoc_xoa,
+          loc_theo_nhan_vien
         `)
         .eq('vai_tro_id',roleId);
 
@@ -500,7 +501,8 @@
           duoc_xem:row.duoc_xem===true,
           duoc_them:row.duoc_them===true,
           duoc_sua:row.duoc_sua===true,
-          duoc_xoa:row.duoc_xoa===true
+          duoc_xoa:row.duoc_xoa===true,
+          loc_theo_nhan_vien:row.loc_theo_nhan_vien===true
         });
       }
 
@@ -606,6 +608,9 @@
                   <div><div class="perm-col-title">Tạo</div>${checkboxHtml(fn,'duoc_them','Cho phép tạo')}</div>
                   <div><div class="perm-col-title">Chỉnh sửa</div>${checkboxHtml(fn,'duoc_sua','Cho phép sửa')}</div>
                   <div><div class="perm-col-title">Xóa</div>${checkboxHtml(fn,'duoc_xoa','Cho phép xóa')}</div>
+                  ${String(fn.ten_chucnang||'').trim().toLowerCase()==='chăm sóc khách hàng'
+                    ? `<div><div class="perm-col-title">Lọc nhân viên</div>${checkboxHtml(fn,'loc_theo_nhan_vien','Cho phép lọc theo nhân viên')}</div>`
+                    : ''}
                 </div>
               </article>`).join('')}
           </div>
@@ -725,7 +730,11 @@
       for(const fn of functions){
         map.set(String(fn.id),{
           chucnang_id:fn.id,
-          duoc_xem:false,duoc_them:false,duoc_sua:false,duoc_xoa:false
+          duoc_xem:false,
+          duoc_them:false,
+          duoc_sua:false,
+          duoc_xoa:false,
+          loc_theo_nhan_vien:false
         });
       }
       document.querySelectorAll('[data-function-id][data-permission]').forEach(input=>{
@@ -794,7 +803,8 @@
           duoc_xem:item.duoc_xem,
           duoc_them:item.duoc_them,
           duoc_sua:item.duoc_sua,
-          duoc_xoa:item.duoc_xoa
+          duoc_xoa:item.duoc_xoa,
+          loc_theo_nhan_vien:item.loc_theo_nhan_vien
         }));
 
         const {error:permissionError}=await supabaseClient
