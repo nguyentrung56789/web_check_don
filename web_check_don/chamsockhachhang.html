@@ -1730,11 +1730,19 @@
       updateStaffButtonText();
     }
 
+    function permissionValueIsTrue(value) {
+      return value === true ||
+        value === 1 ||
+        String(value ?? "").trim().toLowerCase() === "true" ||
+        String(value ?? "").trim() === "1";
+    }
+
     async function apDungQuyenLocTheoNhanVien() {
       duocLocTheoNhanVien = false;
 
       try {
-        // Dùng cùng nguồn phân quyền như main.html
+        // Dùng cùng nguồn phân quyền như main.html.
+        // Quyền lọc nhân viên lấy ĐÚNG theo id_chucnang = staffDropdownBtn.
         const permissionModule = await import("./js/phan_quyen.js");
         const layDanhSachQuyenTrang =
           permissionModule.layDanhSachQuyenTrang;
@@ -1750,50 +1758,28 @@
             batBuocTaiLai: true
           });
 
-        const currentFile =
-          String(
-            window.location.pathname.split("/").pop() || ""
-          )
-            .trim()
-            .toLowerCase();
-
-        const quyenTrang =
+        const quyenLocNhanVien =
           (danhSachQuyen || []).find(function (item) {
-            const idChucNang =
-              normalizePermissionText(item?.id_chucnang);
-
-            const tenChucNang =
-              normalizePermissionText(item?.ten_chucnang);
-
-            const duongDan =
-              String(item?.duong_dan || "")
-                .trim()
-                .split("?")[0]
-                .split("#")[0]
-                .split("/")
-                .pop()
-                .toLowerCase();
-
-            return (
-              idChucNang === "chamsockhachhang" ||
-              idChucNang === "cham-soc-khach-hang" ||
-              tenChucNang === "cham soc khach hang" ||
-              (currentFile && duongDan === currentFile)
-            );
+            return String(item?.id_chucnang || "").trim() === "staffDropdownBtn";
           }) || null;
 
+        // Ô "Xem" (duoc_xem) của staffDropdownBtn chính là quyền lọc nhân viên.
+        // Có quyền  -> được chọn Tất cả / nhiều nhân viên.
+        // Không quyền -> khóa bộ lọc và chỉ xem khách của NV đăng nhập.
         duocLocTheoNhanVien =
-          quyenTrang?.loc_theo_nhan_vien === true;
+          permissionValueIsTrue(quyenLocNhanVien?.duoc_xem);
 
         console.log("[PHÂN QUYỀN LỌC NHÂN VIÊN]", {
           ma_nv: currentUser?.ma_nv || "",
           id_nv: currentUser?.id_nv || "",
-          quyen: quyenTrang,
-          loc_theo_nhan_vien: duocLocTheoNhanVien
+          id_chucnang: "staffDropdownBtn",
+          quyen: quyenLocNhanVien,
+          duoc_xem: quyenLocNhanVien?.duoc_xem,
+          duoc_loc_nhan_vien: duocLocTheoNhanVien
         });
       } catch (error) {
         console.error(
-          "[PHÂN QUYỀN] Không đọc được loc_theo_nhan_vien:",
+          "[PHÂN QUYỀN] Không đọc được quyền staffDropdownBtn:",
           error
         );
 
@@ -3853,10 +3839,10 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
       await loadStaffFromSupabase();
 
       // Phân quyền staffDropdownBtn trước khi tải khách hàng.
-      // Nếu loc_theo_nhan_vien = false:
-      // - tự chọn id_nv của người đăng nhập
-      // - khóa dropdown
-      // - query khách hàng theo chính nhân viên đó
+      // Dòng quyền: id_chucnang = "staffDropdownBtn".
+      // duoc_xem = true  -> được lọc nhân viên.
+      // duoc_xem = false -> tự chọn NV đăng nhập, khóa dropdown,
+      //                     và query khách hàng theo chính nhân viên đó.
       await apDungQuyenLocTheoNhanVien();
 
       await loadCustomersFromSupabase(1);
