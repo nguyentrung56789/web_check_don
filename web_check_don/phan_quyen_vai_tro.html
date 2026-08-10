@@ -588,7 +588,32 @@
             <span class="group-chevron">⌄</span>
           </button>
           <div class="group-content">
-            ${items.map(fn=>`
+            ${items.map(fn=>{
+              const isKinhDoanh = String(fn.nhom_chucnang||'').trim().toLowerCase()==='kinh_doanh';
+              const isLocNhanVien = String(fn.duong_dan||'').trim().toLowerCase()==='chamsockhachhang.html';
+
+              if(isKinhDoanh){
+                const state=currentPermissions.get(String(fn.id));
+                const checked=state?.duoc_xem===true?'checked':'';
+                return `
+                  <article class="permission-row permission-row-single" data-function-row="${escapeHtml(fn.id)}">
+                    <div class="row-head row-head-single">
+                      <div>
+                        <div class="row-name">${escapeHtml(fn.icon||'')} ${escapeHtml(fn.ten_chucnang)}</div>
+                        <div class="row-path">${escapeHtml(fn.duong_dan||'Không có đường dẫn')}</div>
+                      </div>
+                      <label class="row-master-wrap single-view-wrap" title="Cho phép xem chức năng này">
+                        <input type="checkbox"
+                          data-function-id="${escapeHtml(fn.id)}"
+                          data-permission="duoc_xem"
+                          ${checked} />
+                        <span>Xem</span>
+                      </label>
+                    </div>
+                  </article>`;
+              }
+
+              return `
               <article class="permission-row collapsed" data-function-row="${escapeHtml(fn.id)}">
                 <div class="row-head">
                   <div>
@@ -605,14 +630,12 @@
                 </div>
                 <div class="row-body">
                   ${
-                    String(fn.nhom_chucnang||'').trim().toLowerCase()==='kinh_doanh'
-                      ? `<div><div class="perm-col-title">Xem</div>${checkboxHtml(fn,'duoc_xem','Cho phép xem')}</div>`
-                      : String(fn.duong_dan||'').trim().toLowerCase()==='chamsockhachhang.html'
-                        ? `
+                    isLocNhanVien
+                      ? `
                           <div><div class="perm-col-title">Xem</div>${checkboxHtml(fn,'duoc_xem','Cho phép xem')}</div>
                           <div><div class="perm-col-title">Lọc nhân viên</div>${checkboxHtml(fn,'loc_theo_nhan_vien','Cho phép lọc theo nhân viên')}</div>
                         `
-                        : `
+                      : `
                           <div><div class="perm-col-title">Xem</div>${checkboxHtml(fn,'duoc_xem','Cho phép xem')}</div>
                           <div><div class="perm-col-title">Tạo</div>${checkboxHtml(fn,'duoc_them','Cho phép tạo')}</div>
                           <div><div class="perm-col-title">Chỉnh sửa</div>${checkboxHtml(fn,'duoc_sua','Cho phép sửa')}</div>
@@ -620,7 +643,8 @@
                         `
                   }
                 </div>
-              </article>`).join('')}
+              </article>`;
+            }).join('')}
           </div>
         </div>
       </section>`;
@@ -700,8 +724,10 @@
 
       document.querySelectorAll('.row-head').forEach(head=>{
         head.addEventListener('click',event=>{
+          const row=head.closest('.permission-row');
+          if(row?.classList.contains('permission-row-single')) return;
           if(event.target.closest('.row-master-wrap')) return;
-          head.closest('.permission-row').classList.toggle('collapsed');
+          row?.classList.toggle('collapsed');
         });
       });
       document.querySelectorAll('.row-master').forEach(master=>{
