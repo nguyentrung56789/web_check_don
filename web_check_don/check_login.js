@@ -1,49 +1,37 @@
 // ======================================================
 // check_login.js
-// Kiểm tra đăng nhập mỗi khi mở HTML
-// Điều kiện:
-// - Có dữ liệu đăng nhập trong localStorage
-// - ma_nv đúng
-// - mat_khau đúng
-// - hoat_dong = true
-// Sai -> xóa đăng nhập và chuyển về login.html
+// Mỗi khi mở HTML:
+// - kiểm tra nv trong localStorage
+// - kiểm tra ma_nv + mat_khau + hoat_dong trong kv_nhan_vien
+// - sai -> về login.html ngay
+// - đúng -> báo LOGIN_CHECKED = true
 // ======================================================
 
 (async function checkLogin() {
   const LOGIN_STORAGE_KEY = 'nv';
 
-  // Không kiểm tra tại trang login
-  const page = location.pathname
-    .split('/')
-    .pop()
-    .toLowerCase();
-
-  if (page === 'login.html' || page === 'login') {
-    return;
-  }
-
-  // ======================================================
-  // HÀM ĐĂNG XUẤT
-  // ======================================================
-
-  function logout(reason = '') {
+  function veLogin(reason = '') {
     console.warn('[CHECK LOGIN]', reason);
 
-    localStorage.removeItem(LOGIN_STORAGE_KEY);
-    localStorage.removeItem('last_ma_nv');
+    try {
+      localStorage.removeItem('nv');
+      localStorage.removeItem('chatwoot_crm_user');
+      localStorage.removeItem('last_ma_nv');
+    } catch {}
+
+    window.LOGIN_CHECKED = false;
 
     location.replace('./login.html');
   }
 
   try {
-    // ======================================================
-    // 1. LẤY THÔNG TIN ĐĂNG NHẬP ĐÃ LƯU
-    // ======================================================
-
+    // ============================
+    // 1. KIỂM TRA LOCAL STORAGE
+    // ============================
     const raw = localStorage.getItem(LOGIN_STORAGE_KEY);
 
     if (!raw) {
-      logout('Chưa đăng nhập');
+      veLogin('Chưa đăng nhập');
       return;
     }
 
@@ -51,150 +39,138 @@
 
     try {
       loginData = JSON.parse(raw);
-    } catch (err) {
-      logout('Dữ liệu đăng nhập không hợp lệ');
+    } catch {
+      veLogin('Dữ liệu đăng nhập bị lỗi');
       return;
     }
 
-    const ma_nv = String(loginData?.ma_nv || '').trim();
-    const mat_khau = String(loginData?.mat_khau || '');
+    const ma_nv =
+      String(loginData?.ma_nv || '').trim();
+
+    const mat_khau =
+      String(loginData?.mat_khau || '');
 
     if (!ma_nv || !mat_khau) {
-      logout('Thiếu mã nhân viên hoặc mật khẩu');
+      veLogin('Thiếu mã nhân viên hoặc mật khẩu');
       return;
     }
 
-    // ======================================================
+    // ============================
     // 2. LẤY INTERNAL KEY
-    // ======================================================
-
+    // ============================
     let internalKey = '';
 
-    if (typeof getInternalKey === 'function') {
-      internalKey = getInternalKey() || '';
+    if (typeof window.getInternalKey === 'function') {
+      internalKey =
+        window.getInternalKey() || '';
     }
 
-    if (
-      !internalKey &&
-      typeof INTERNAL_KEY !== 'undefined'
-    ) {
-      internalKey = INTERNAL_KEY || '';
-    }
-
-    if (
-      !internalKey &&
-      typeof COD_INTERNAL_KEY !== 'undefined'
-    ) {
-      internalKey = COD_INTERNAL_KEY || '';
-    }
-
-    // ======================================================
+    // ============================
     // 3. LẤY CONFIG SUPABASE
-    // ======================================================
-
-    const headers = {};
-
-    if (internalKey) {
-      headers['x-internal-key'] = internalKey;
-    }
-
-    const response = await fetch('/api/getConfig', {
-      method: 'GET',
-      headers
-    });
+    // ============================
+    const response = await fetch(
+      '/api/getConfig',
+      {
+        method: 'GET',
+        headers: {
+          'x-internal-key': internalKey
+        },
+        cache: 'no-store'
+      }
+    );
 
     if (!response.ok) {
       throw new Error(
-        `Không lấy được cấu hình: HTTP ${response.status}`
+        `Không lấy được config: HTTP ${response.status}`
       );
     }
 
     const cfg = await response.json();
 
-    const SUPABASE_URL =
+    const url =
       cfg.url ||
       cfg.SUPABASE_URL ||
       cfg.supabaseUrl ||
       cfg.supabase_url;
 
-    const SUPABASE_ANON_KEY =
+    const anon =
       cfg.anon ||
       cfg.key ||
       cfg.SUPABASE_ANON ||
       cfg.SUPABASE_ANON_KEY ||
       cfg.supabase_anon_key;
 
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    if (!url || !anon) {
       throw new Error(
-        'Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY'
+        'Thiếu cấu hình Supabase'
       );
     }
 
-    // ======================================================
-    // 4. KIỂM TRA THƯ VIỆN SUPABASE
-    // ======================================================
-
+    // ============================
+    // 4. KIỂM TRA SUPABASE
+    // ============================
     if (
       !window.supabase ||
       typeof window.supabase.createClient !== 'function'
     ) {
       throw new Error(
-        'Chưa load thư viện Supabase'
+        'Chưa tải thư viện Supabase'
       );
     }
 
-    const db = window.supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_ANON_KEY
-    );
+    const db =
+      window.supabase.createClient(
+        url,
+        anon
+      );
 
-    // ======================================================
-    // 5. CHECK ma_nv + mat_khau
-    // ======================================================
-
-    const { data, error } = await db
-      .from('kv_nhan_vien')
-      .select(`
-        ma_nv,
-        ten_nv,
-        mat_khau,
-        hoat_dong
-      `)
-      .eq('ma_nv', ma_nv)
-      .eq('mat_khau', mat_khau)
-      .maybeSingle();
+    // ============================
+    // 5. CHECK TÀI KHOẢN THẬT
+    // ============================
+    const { data, error } =
+      await db
+        .from('kv_nhan_vien')
+        .select(`
+          ma_nv,
+          ten_nv,
+          mat_khau,
+          hoat_dong
+        `)
+        .eq('ma_nv', ma_nv)
+        .eq('mat_khau', mat_khau)
+        .maybeSingle();
 
     if (error) {
-      console.error('[CHECK LOGIN] Supabase:', error);
-      logout('Lỗi kiểm tra tài khoản');
+      console.error(
+        '[CHECK LOGIN] Supabase:',
+        error
+      );
+
+      veLogin('Lỗi kiểm tra tài khoản');
       return;
     }
 
-    // ======================================================
-    // 6. KHÔNG TÌM THẤY
-    // ======================================================
-
+    // Không đúng ma_nv + mật khẩu
     if (!data) {
-      logout('Sai mã nhân viên hoặc mật khẩu đã thay đổi');
+      veLogin(
+        'Sai mã nhân viên hoặc mật khẩu'
+      );
       return;
     }
 
-    // ======================================================
-    // 7. KIỂM TRA HOẠT ĐỘNG
-    // ======================================================
-
+    // Tài khoản đã khóa
     if (data.hoat_dong !== true) {
-      logout('Tài khoản đã bị khóa hoặc ngừng hoạt động');
+      veLogin(
+        'Tài khoản đã ngừng hoạt động'
+      );
       return;
     }
 
-    // ======================================================
-    // 8. CẬP NHẬT LẠI THÔNG TIN NHÂN VIÊN
-    // ======================================================
-
-    const newLoginData = {
+    // ============================
+    // 6. ĐÚNG
+    // ============================
+    const user = {
       ...loginData,
-
       ma_nv: data.ma_nv,
       ten_nv: data.ten_nv,
       mat_khau: mat_khau
@@ -202,36 +178,37 @@
 
     localStorage.setItem(
       LOGIN_STORAGE_KEY,
-      JSON.stringify(newLoginData)
+      JSON.stringify(user)
     );
 
-    localStorage.setItem(
-      'last_ma_nv',
-      data.ma_nv
-    );
+    window.LOGIN_USER = user;
+    window.LOGIN_CHECKED = true;
 
     console.log(
       '[CHECK LOGIN] OK:',
-      data.ma_nv,
-      data.ten_nv
+      user.ma_nv,
+      user.ten_nv
     );
-
-    // Cho các JS khác biết check login đã hoàn thành
-    window.LOGIN_CHECKED = true;
-    window.LOGIN_USER = newLoginData;
 
     window.dispatchEvent(
-      new CustomEvent('loginChecked', {
-        detail: newLoginData
-      })
+      new CustomEvent(
+        'loginChecked',
+        {
+          detail: user
+        }
+      )
     );
 
-  } catch (err) {
-    console.error('[CHECK LOGIN] ERROR:', err);
+  } catch (error) {
+    console.error(
+      '[CHECK LOGIN] ERROR:',
+      error
+    );
 
-    logout(
-      err?.message ||
-      'Không thể kiểm tra đăng nhập'
+    // BẤT KỲ LỖI NÀO CŨNG VỀ LOGIN
+    veLogin(
+      error?.message ||
+      'Không kiểm tra được đăng nhập'
     );
   }
 })();
