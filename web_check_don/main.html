@@ -13,10 +13,10 @@
   <!-- Token và cấu hình hệ thống -->
   <script src="./js/internal_key.js"></script>
   <script src="./js/cod_config.js"></script>
-  <script src="./js/auth_token.js"></script>
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/check_login.js"></script>
 
   <style>
     :root {
@@ -617,33 +617,8 @@
       return null;
     }
 
-    function getToken() {
-      return (
-        sessionStorage.getItem(
-          'APP_ACCESS'
-        ) ||
-        new URLSearchParams(
-          location.search
-        ).get('token') ||
-        ''
-      );
-    }
-
     function goWithToken(url) {
-      const target =
-        new URL(url, location.href);
-
-      const token = getToken();
-
-      if (token) {
-        target.searchParams.set(
-          'token',
-          token
-        );
-      }
-
-      location.href =
-        target.toString();
+      location.href = new URL(url, location.href).toString();
     }
 
     function anTatCaNut() {
@@ -919,12 +894,6 @@
           'click',
           () => {
             try {
-              sessionStorage.removeItem(
-                'APP_ACCESS'
-              );
-            } catch {}
-
-            try {
               localStorage.removeItem(
                 'nv'
               );
@@ -941,21 +910,32 @@
         );
     }
 
-    function xoaPhienVaVeDangNhap() {
-      try {
-        sessionStorage.removeItem('APP_ACCESS');
-      } catch (error) {
-        console.warn('Không xóa được APP_ACCESS:', error);
+    async function doiCheckDangNhap() {
+      if (window.LOGIN_CHECKED === true) {
+        return true;
       }
 
-      try {
-        localStorage.removeItem('nv');
-        localStorage.removeItem('chatwoot_crm_user');
-      } catch (error) {
-        console.warn('Không xóa được tài khoản đăng nhập cũ:', error);
-      }
+      return await new Promise(resolve => {
+        let done = false;
 
-      location.replace('./login.html');
+        const finish = value => {
+          if (done) return;
+          done = true;
+          resolve(value);
+        };
+
+        window.addEventListener(
+          'loginChecked',
+          () => finish(true),
+          { once: true }
+        );
+
+        // check_login.js tự chuyển về login.html khi đăng nhập sai.
+        // Timeout chỉ tránh treo giao diện nếu file check_login.js không chạy.
+        setTimeout(() => {
+          finish(window.LOGIN_CHECKED === true);
+        }, 5000);
+      });
     }
 
     document.addEventListener(
@@ -963,36 +943,30 @@
       async () => {
         try {
           /*
-           * 1) Kiểm tra tài khoản đăng nhập trước.
-           * Nếu chưa có tài khoản thì khoiTaoTaiKhoan()
-           * sẽ tự chuyển về login.html.
+           * 1) Chờ check_login.js xác thực thật:
+           * ma_nv + mat_khau + hoat_dong.
+           */
+          const loginOk = await doiCheckDangNhap();
+
+          if (!loginOk) {
+            console.error(
+              'CHECK_LOGIN_ERROR: check_login.js chưa xác nhận đăng nhập.'
+            );
+
+            location.replace('./login.html');
+            return;
+          }
+
+          /*
+           * 2) Giữ nguyên kiểm tra tài khoản local hiện có.
            */
           if (!khoiTaoTaiKhoan()) {
             return;
           }
 
           /*
-           * 2) Sau đó mới kiểm tra token/quyền truy cập hệ thống.
-           * Nếu token cũ, hết hạn hoặc không hợp lệ thì xóa sạch phiên
-           * để login.html không đọc lại tài khoản/token cũ rồi quay vòng.
+           * 3) Đăng nhập hợp lệ thì tải menu phân quyền như cũ.
            */
-          if (typeof window.checkAccess === 'function') {
-            let accessOk = false;
-
-            try {
-              accessOk = window.checkAccess() === true;
-            } catch (accessError) {
-              console.error('CHECK_ACCESS_ERROR:', accessError);
-              accessOk = false;
-            }
-
-            if (!accessOk) {
-              xoaPhienVaVeDangNhap();
-              return;
-            }
-          }
-
-          /* 3) Tài khoản + access hợp lệ thì mới tải menu phân quyền. */
           khoiTaoMenuTaiKhoan();
           ganSuKienNut();
 
