@@ -13,7 +13,9 @@
   <script src="./js/internal_key.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./js/cod_config.js"></script>
-  <script src="./js/auth_token.js"></script>
+
+  <!-- CHECK ĐĂNG NHẬP -->
+  <script src="./js/check_login.js"></script>
 
   <style>
     :root {
@@ -261,42 +263,13 @@
           new Date().getFullYear();
       }
 
-      function getTokenFromAnywhere() {
-        const params =
-          new URLSearchParams(window.location.search);
-
-        return (
-          params.get('token') ||
-          params.get('access_token') ||
-          params.get('t') ||
-          localStorage.getItem('token') ||
-          localStorage.getItem('access_token') ||
-          localStorage.getItem('cod_token') ||
-          sessionStorage.getItem('token') ||
-          sessionStorage.getItem('access_token') ||
-          sessionStorage.getItem('cod_token') ||
-          ''
-        );
-      }
+      // ============================
+      // TẠO URL KHÔNG CÒN TOKEN
+      // ============================
 
       function buildUrl(fileName) {
         const url =
           new URL(fileName, window.location.href);
-
-        const currentParams =
-          new URLSearchParams(window.location.search);
-
-        currentParams.forEach((value, key) => {
-          if (key !== '_v') {
-            url.searchParams.set(key, value);
-          }
-        });
-
-        const token = getTokenFromAnywhere();
-
-        if (token) {
-          url.searchParams.set('token', token);
-        }
 
         url.searchParams.set(
           '_v',
