@@ -1,17 +1,22 @@
 // ======================================================
 // check_login.js
-// Mỗi khi mở HTML:
-// - kiểm tra nv trong localStorage
-// - kiểm tra ma_nv + mat_khau + hoat_dong trong kv_nhan_vien
-// - sai -> về login.html ngay
-// - đúng -> báo LOGIN_CHECKED = true
+// Check đăng nhập thật bằng:
+// ma_nv + mat_khau + hoat_dong
 // ======================================================
 
-(async function checkLogin() {
-  const LOGIN_STORAGE_KEY = 'nv';
+(async function () {
+  'use strict';
+
+  window.LOGIN_CHECKED = false;
+  window.LOGIN_USER = null;
+  window.AUTH_ABORTED = false;
 
   function veLogin(reason = '') {
-    console.warn('[CHECK LOGIN]', reason);
+    console.warn('[CHECK LOGIN] FAIL:', reason);
+
+    window.AUTH_ABORTED = true;
+    window.LOGIN_CHECKED = false;
+    window.LOGIN_USER = null;
 
     try {
       localStorage.removeItem('nv');
@@ -19,56 +24,62 @@
       localStorage.removeItem('last_ma_nv');
     } catch {}
 
-    window.LOGIN_CHECKED = false;
+    // Dừng hiển thị trang hiện tại
+    document.documentElement.style.display = 'none';
 
+    // Sang login
     location.replace('./login.html');
+
+    return false;
   }
 
   try {
-    // ============================
-    // 1. KIỂM TRA LOCAL STORAGE
-    // ============================
-    const raw = localStorage.getItem(LOGIN_STORAGE_KEY);
+    // ==========================
+    // 1. ĐỌC TÀI KHOẢN ĐÃ LƯU
+    // ==========================
+    const raw = localStorage.getItem('nv');
 
     if (!raw) {
-      veLogin('Chưa đăng nhập');
+      veLogin('Không có phiên đăng nhập');
       return;
     }
 
-    let loginData;
+    let login;
 
     try {
-      loginData = JSON.parse(raw);
+      login = JSON.parse(raw);
     } catch {
-      veLogin('Dữ liệu đăng nhập bị lỗi');
+      veLogin('Dữ liệu đăng nhập không hợp lệ');
       return;
     }
 
     const ma_nv =
-      String(loginData?.ma_nv || '').trim();
+      String(login?.ma_nv || '').trim();
 
     const mat_khau =
-      String(loginData?.mat_khau || '');
+      String(login?.mat_khau || '');
 
     if (!ma_nv || !mat_khau) {
-      veLogin('Thiếu mã nhân viên hoặc mật khẩu');
+      veLogin('Thiếu ma_nv hoặc mat_khau');
       return;
     }
 
-    // ============================
+    // ==========================
     // 2. LẤY INTERNAL KEY
-    // ============================
+    // ==========================
     let internalKey = '';
 
-    if (typeof window.getInternalKey === 'function') {
+    if (
+      typeof window.getInternalKey === 'function'
+    ) {
       internalKey =
         window.getInternalKey() || '';
     }
 
-    // ============================
+    // ==========================
     // 3. LẤY CONFIG SUPABASE
-    // ============================
-    const response = await fetch(
+    // ==========================
+    const res = await fetch(
       '/api/getConfig',
       {
         method: 'GET',
@@ -79,13 +90,13 @@
       }
     );
 
-    if (!response.ok) {
+    if (!res.ok) {
       throw new Error(
-        `Không lấy được config: HTTP ${response.status}`
+        `Không lấy được config: ${res.status}`
       );
     }
 
-    const cfg = await response.json();
+    const cfg = await res.json();
 
     const url =
       cfg.url ||
@@ -93,40 +104,40 @@
       cfg.supabaseUrl ||
       cfg.supabase_url;
 
-    const anon =
+    const key =
       cfg.anon ||
       cfg.key ||
       cfg.SUPABASE_ANON ||
       cfg.SUPABASE_ANON_KEY ||
       cfg.supabase_anon_key;
 
-    if (!url || !anon) {
+    if (!url || !key) {
       throw new Error(
         'Thiếu cấu hình Supabase'
       );
     }
 
-    // ============================
-    // 4. KIỂM TRA SUPABASE
-    // ============================
+    // ==========================
+    // 4. TẠO SUPABASE CLIENT
+    // ==========================
     if (
       !window.supabase ||
       typeof window.supabase.createClient !== 'function'
     ) {
       throw new Error(
-        'Chưa tải thư viện Supabase'
+        'Supabase chưa được load'
       );
     }
 
     const db =
       window.supabase.createClient(
         url,
-        anon
+        key
       );
 
-    // ============================
-    // 5. CHECK TÀI KHOẢN THẬT
-    // ============================
+    // ==========================
+    // 5. CHECK TÀI KHOẢN
+    // ==========================
     const { data, error } =
       await db
         .from('kv_nhan_vien')
@@ -141,16 +152,10 @@
         .maybeSingle();
 
     if (error) {
-      console.error(
-        '[CHECK LOGIN] Supabase:',
-        error
-      );
-
-      veLogin('Lỗi kiểm tra tài khoản');
-      return;
+      throw error;
     }
 
-    // Không đúng ma_nv + mật khẩu
+    // Không tìm thấy ma_nv + mật khẩu
     if (!data) {
       veLogin(
         'Sai mã nhân viên hoặc mật khẩu'
@@ -158,31 +163,32 @@
       return;
     }
 
-    // Tài khoản đã khóa
+    // Tài khoản bị khóa
     if (data.hoat_dong !== true) {
       veLogin(
-        'Tài khoản đã ngừng hoạt động'
+        'Tài khoản ngừng hoạt động'
       );
       return;
     }
 
-    // ============================
-    // 6. ĐÚNG
-    // ============================
+    // ==========================
+    // 6. LOGIN HỢP LỆ
+    // ==========================
     const user = {
-      ...loginData,
+      ...login,
       ma_nv: data.ma_nv,
       ten_nv: data.ten_nv,
-      mat_khau: mat_khau
+      mat_khau
     };
 
     localStorage.setItem(
-      LOGIN_STORAGE_KEY,
+      'nv',
       JSON.stringify(user)
     );
 
     window.LOGIN_USER = user;
     window.LOGIN_CHECKED = true;
+    window.AUTH_ABORTED = false;
 
     console.log(
       '[CHECK LOGIN] OK:',
@@ -205,7 +211,6 @@
       error
     );
 
-    // BẤT KỲ LỖI NÀO CŨNG VỀ LOGIN
     veLogin(
       error?.message ||
       'Không kiểm tra được đăng nhập'
