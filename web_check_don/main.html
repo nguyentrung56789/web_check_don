@@ -38,7 +38,7 @@
     }
 
     body {
-      visibility: visible;
+      visibility: hidden;
       min-height: 100vh;
       padding:
         max(22px, env(safe-area-inset-top))
@@ -941,16 +941,36 @@
     document.addEventListener(
       'DOMContentLoaded',
       async () => {
+        /*
+         * QUAN TRỌNG:
+         * Nếu check_login.js đã xác định đăng nhập sai
+         * thì dừng toàn bộ main ngay lập tức.
+         */
+        if (window.AUTH_ABORTED === true) {
+          return;
+        }
+
         try {
           /*
-           * 1) Chờ check_login.js xác thực thật:
+           * 1) Chờ check_login.js xác thực:
            * ma_nv + mat_khau + hoat_dong.
            */
           const loginOk = await doiCheckDangNhap();
 
-          if (!loginOk) {
+          /*
+           * Đăng nhập không hợp lệ:
+           * - KHÔNG tải tài khoản
+           * - KHÔNG tải phân quyền
+           * - KHÔNG hiện main
+           * - chuyển thẳng về login
+           */
+          if (
+            loginOk !== true ||
+            window.AUTH_ABORTED === true ||
+            window.LOGIN_CHECKED !== true
+          ) {
             console.error(
-              'CHECK_LOGIN_ERROR: check_login.js chưa xác nhận đăng nhập.'
+              'CHECK_LOGIN_ERROR: đăng nhập không hợp lệ.'
             );
 
             location.replace('./login.html');
@@ -958,40 +978,58 @@
           }
 
           /*
-           * 2) Giữ nguyên kiểm tra tài khoản local hiện có.
+           * 2) Chỉ từ đây trở xuống mới được chạy khi login hợp lệ.
            */
           if (!khoiTaoTaiKhoan()) {
             return;
           }
 
           /*
-           * 3) Đăng nhập hợp lệ thì tải menu phân quyền như cũ.
+           * Login đã hợp lệ -> mới cho hiện giao diện main.
+           */
+          document.body.classList.add('ready');
+
+          /*
+           * 3) Sau đó mới tải menu và phân quyền.
            */
           khoiTaoMenuTaiKhoan();
           ganSuKienNut();
 
           await apDungQuyen();
+
         } catch (error) {
+          /*
+           * Nếu trong lúc xử lý mà check_login đã yêu cầu thoát,
+           * không chạy thêm bất kỳ lệnh nào của main.
+           */
+          if (window.AUTH_ABORTED === true) {
+            return;
+          }
+
           console.error(
             'MAIN_INIT_ERROR:',
             error
           );
 
-          errorNote.style.display =
-            'block';
+          /*
+           * Login hợp lệ nhưng lỗi phân quyền thì vẫn hiện trang
+           * để có thể xem lỗi.
+           */
+          if (window.LOGIN_CHECKED === true) {
+            document.body.classList.add('ready');
 
-          errorNote.textContent =
-            [
-              'Không thể tải phân quyền.',
-              '',
-              error?.message || String(error),
-              '',
-              'Mở F12 → Console để xem chi tiết.'
-            ].join('\n');
-        } finally {
-          document.body.classList.add(
-            'ready'
-          );
+            errorNote.style.display =
+              'block';
+
+            errorNote.textContent =
+              [
+                'Không thể tải phân quyền.',
+                '',
+                error?.message || String(error),
+                '',
+                'Mở F12 → Console để xem chi tiết.'
+              ].join('\n');
+          }
         }
       }
     );
