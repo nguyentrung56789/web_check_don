@@ -13,10 +13,10 @@
   <!-- Token và cấu hình hệ thống -->
   <script src="./js/internal_key.js"></script>
   <script src="./js/cod_config.js"></script>
+  <script src="./js/auth_token.js"></script>
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./js/check_login.js"></script>
 
   <style>
     :root {
@@ -38,7 +38,7 @@
     }
 
     body {
-      visibility: hidden;
+      visibility: visible;
       min-height: 100vh;
       padding:
         max(22px, env(safe-area-inset-top))
@@ -617,8 +617,33 @@
       return null;
     }
 
+    function getToken() {
+      return (
+        sessionStorage.getItem(
+          'APP_ACCESS'
+        ) ||
+        new URLSearchParams(
+          location.search
+        ).get('token') ||
+        ''
+      );
+    }
+
     function goWithToken(url) {
-      location.href = new URL(url, location.href).toString();
+      const target =
+        new URL(url, location.href);
+
+      const token = getToken();
+
+      if (token) {
+        target.searchParams.set(
+          'token',
+          token
+        );
+      }
+
+      location.href =
+        target.toString();
     }
 
     function anTatCaNut() {
@@ -894,6 +919,12 @@
           'click',
           () => {
             try {
+              sessionStorage.removeItem(
+                'APP_ACCESS'
+              );
+            } catch {}
+
+            try {
               localStorage.removeItem(
                 'nv'
               );
@@ -910,126 +941,83 @@
         );
     }
 
-    async function doiCheckDangNhap() {
-      if (window.LOGIN_CHECKED === true) {
-        return true;
+    function xoaPhienVaVeDangNhap() {
+      try {
+        sessionStorage.removeItem('APP_ACCESS');
+      } catch (error) {
+        console.warn('Không xóa được APP_ACCESS:', error);
       }
 
-      return await new Promise(resolve => {
-        let done = false;
+      try {
+        localStorage.removeItem('nv');
+        localStorage.removeItem('chatwoot_crm_user');
+      } catch (error) {
+        console.warn('Không xóa được tài khoản đăng nhập cũ:', error);
+      }
 
-        const finish = value => {
-          if (done) return;
-          done = true;
-          resolve(value);
-        };
-
-        window.addEventListener(
-          'loginChecked',
-          () => finish(true),
-          { once: true }
-        );
-
-        // check_login.js tự chuyển về login.html khi đăng nhập sai.
-        // Timeout chỉ tránh treo giao diện nếu file check_login.js không chạy.
-        setTimeout(() => {
-          finish(window.LOGIN_CHECKED === true);
-        }, 5000);
-      });
+      location.replace('./login.html');
     }
 
     document.addEventListener(
       'DOMContentLoaded',
       async () => {
-        /*
-         * QUAN TRỌNG:
-         * Nếu check_login.js đã xác định đăng nhập sai
-         * thì dừng toàn bộ main ngay lập tức.
-         */
-        if (window.AUTH_ABORTED === true) {
-          return;
-        }
-
         try {
           /*
-           * 1) Chờ check_login.js xác thực:
-           * ma_nv + mat_khau + hoat_dong.
-           */
-          const loginOk = await doiCheckDangNhap();
-
-          /*
-           * Đăng nhập không hợp lệ:
-           * - KHÔNG tải tài khoản
-           * - KHÔNG tải phân quyền
-           * - KHÔNG hiện main
-           * - chuyển thẳng về login
-           */
-          if (
-            loginOk !== true ||
-            window.AUTH_ABORTED === true ||
-            window.LOGIN_CHECKED !== true
-          ) {
-            console.error(
-              'CHECK_LOGIN_ERROR: đăng nhập không hợp lệ.'
-            );
-
-            location.replace('./login.html');
-            return;
-          }
-
-          /*
-           * 2) Chỉ từ đây trở xuống mới được chạy khi login hợp lệ.
+           * 1) Kiểm tra tài khoản đăng nhập trước.
+           * Nếu chưa có tài khoản thì khoiTaoTaiKhoan()
+           * sẽ tự chuyển về login.html.
            */
           if (!khoiTaoTaiKhoan()) {
             return;
           }
 
           /*
-           * Login đã hợp lệ -> mới cho hiện giao diện main.
+           * 2) Sau đó mới kiểm tra token/quyền truy cập hệ thống.
+           * Nếu token cũ, hết hạn hoặc không hợp lệ thì xóa sạch phiên
+           * để login.html không đọc lại tài khoản/token cũ rồi quay vòng.
            */
-          document.body.classList.add('ready');
+          if (typeof window.checkAccess === 'function') {
+            let accessOk = false;
 
-          /*
-           * 3) Sau đó mới tải menu và phân quyền.
-           */
+            try {
+              accessOk = window.checkAccess() === true;
+            } catch (accessError) {
+              console.error('CHECK_ACCESS_ERROR:', accessError);
+              accessOk = false;
+            }
+
+            if (!accessOk) {
+              xoaPhienVaVeDangNhap();
+              return;
+            }
+          }
+
+          /* 3) Tài khoản + access hợp lệ thì mới tải menu phân quyền. */
           khoiTaoMenuTaiKhoan();
           ganSuKienNut();
 
           await apDungQuyen();
-
         } catch (error) {
-          /*
-           * Nếu trong lúc xử lý mà check_login đã yêu cầu thoát,
-           * không chạy thêm bất kỳ lệnh nào của main.
-           */
-          if (window.AUTH_ABORTED === true) {
-            return;
-          }
-
           console.error(
             'MAIN_INIT_ERROR:',
             error
           );
 
-          /*
-           * Login hợp lệ nhưng lỗi phân quyền thì vẫn hiện trang
-           * để có thể xem lỗi.
-           */
-          if (window.LOGIN_CHECKED === true) {
-            document.body.classList.add('ready');
+          errorNote.style.display =
+            'block';
 
-            errorNote.style.display =
-              'block';
-
-            errorNote.textContent =
-              [
-                'Không thể tải phân quyền.',
-                '',
-                error?.message || String(error),
-                '',
-                'Mở F12 → Console để xem chi tiết.'
-              ].join('\n');
-          }
+          errorNote.textContent =
+            [
+              'Không thể tải phân quyền.',
+              '',
+              error?.message || String(error),
+              '',
+              'Mở F12 → Console để xem chi tiết.'
+            ].join('\n');
+        } finally {
+          document.body.classList.add(
+            'ready'
+          );
         }
       }
     );
