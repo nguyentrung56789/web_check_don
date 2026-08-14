@@ -5,15 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Kiểm tra đơn hàng (don_hang)</title>
 
-<script src="./js/auth_token.js"></script>
-<script>checkAccess();</script>
-
 <script src="./js/internal_key.js"></script>
+<script src="./js/cod_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
+<script src="./js/check_login.js"></script>
 
 <link rel="stylesheet" href="./css/check_don.css" />
 
 <style>
+  body{
+    visibility:hidden;
+  }
+
+  body.ready{
+    visibility:visible;
+  }
+
   #userBar{
     position:fixed; top:8px; right:16px;
     display:flex; align-items:center; gap:10px; z-index:2000;
@@ -299,7 +306,69 @@
 })();
 </script>
 
-<script src="./js/check_don.js"></script>
+<!-- check_don.js sẽ chỉ được nạp sau khi đăng nhập hợp lệ -->
+
+<script>
+(async function protectedInit(){
+  let daXacThuc = false;
+
+  try{
+    if(typeof window.checkLogin !== 'function'){
+      throw new Error('Không tìm thấy check_login.js');
+    }
+
+    const loginOk = await window.checkLogin();
+
+    if(!loginOk){
+      return;
+    }
+
+    daXacThuc = true;
+
+    console.log(
+      '[CHECK_DON] LOGIN OK:',
+      loginOk.ma_nv,
+      loginOk.ten_nv || ''
+    );
+
+    // Chỉ hiện trang khi đăng nhập hợp lệ.
+    document.body.classList.add('ready');
+
+    // Chỉ nạp JS chính sau khi xác thực xong.
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = './js/check_don.js';
+      script.onload = resolve;
+      script.onerror = () => reject(
+        new Error('Không tải được ./js/check_don.js')
+      );
+      document.body.appendChild(script);
+    });
+
+  }catch(error){
+    console.error('[CHECK_DON] INIT ERROR:', error);
+
+    if(!daXacThuc){
+      if(typeof window.logoutCheck === 'function'){
+        window.logoutCheck(
+          error?.message || 'Không kiểm tra được đăng nhập'
+        );
+      }else{
+        location.replace('./login.html');
+      }
+      return;
+    }
+
+    document.body.classList.add('ready');
+
+    const sbMsg = document.getElementById('sbMsg');
+    if(sbMsg){
+      sbMsg.textContent =
+        'Lỗi khởi tạo: ' + (error?.message || error);
+    }
+  }
+})();
+</script>
 
 <script>
 (function paginationBridge(){
