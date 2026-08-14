@@ -1,40 +1,59 @@
-from pathlib import Path
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
 
-src = Path("/mnt/data/Văn bản đã dán (1)(20260814-070957).txt")
-text = src.read_text(encoding="utf-8")
+  <title>Danh sách quyền</title>
 
-# 1) Chuẩn hóa thứ tự script giống main.html
-old_head = """  <script src="./js/internal_key.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/internal_key.js"></script>
   <script src="./js/cod_config.js"></script>
-  <script src="./js/check_login.js"></script>"""
-
-new_head = """  <script src="./js/internal_key.js"></script>
-  <script src="./js/cod_config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./js/check_login.js"></script>"""
+  <script src="./js/check_login.js"></script>
 
-text = text.replace(old_head, new_head)
+  <style>
+    :root {
+      --bg: #f3f6fa;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #6b7280;
+      --line: #dde3ea;
+      --head: #f8fafc;
+      --primary: #087af5;
+      --primary-soft: #e8f2ff;
+      --danger: #dc3545;
+      --success: #087443;
+      --shadow: 0 10px 32px rgba(15, 23, 42, 0.09);
+    }
 
-# 2) Ẩn giao diện cho tới khi check login xong
-old_body = """    body {
-      margin: 0;
-      background: var(--bg);"""
+    * {
+      box-sizing: border-box;
+    }
 
-new_body = """    body {
+    html,
+    body {
+      min-height: 100%;
+    }
+
+    body {
       margin: 0;
       visibility: hidden;
-      background: var(--bg);"""
+      background: var(--bg);
+      color: var(--text);
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
+    }
 
-text = text.replace(old_body, new_body)
-
-anchor = """    button,
-    input,
-    select {
-      font: inherit;
-    }"""
-
-replacement = """    body.ready {
+    body.ready {
       visibility: visible;
     }
 
@@ -42,86 +61,1428 @@ replacement = """    body.ready {
     input,
     select {
       font: inherit;
-    }"""
+    }
 
-text = text.replace(anchor, replacement)
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 66px;
+      padding: 12px 22px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 3px 14px rgba(15, 23, 42, 0.06);
+    }
 
-# 3) Bỏ buildUrl vì không còn token/query cần truyền
-old_build = """      function buildUrl(fileName) {
-        const url =
-          new URL(
-            fileName,
-            window.location.href
-          );
+    .topbar-title {
+      font-size: 21px;
+      font-weight: 800;
+    }
 
-        url.searchParams.set(
-          '_v',
-          Date.now().toString()
-        );
+    .back-btn {
+      border: 0;
+      background: transparent;
+      color: var(--danger);
+      font-weight: 750;
+      cursor: pointer;
+    }
 
-        return url.href;
+    .page {
+      width: min(1500px, calc(100% - 28px));
+      margin: 20px auto 34px;
+    }
+
+    .panel {
+      overflow: hidden;
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 22px 26px 14px;
+    }
+
+    .panel-head h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .panel-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) minmax(220px, 320px) auto auto auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 26px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .field {
+      width: 100%;
+      min-height: 44px;
+      padding: 9px 12px;
+      border: 1px solid #cfd7e2;
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+    }
+
+    .field:focus {
+      border-color: #80b9fa;
+      box-shadow: 0 0 0 3px rgba(8, 122, 245, 0.12);
+    }
+
+    .btn {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 15px;
+      border: 1px solid #cfd7e2;
+      border-radius: 10px;
+      background: #fff;
+      color: #273244;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      background: #f8fafc;
+    }
+
+    .btn-primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #006ee6;
+    }
+
+    .table-wrap {
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 1120px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 15px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--head);
+      color: #111827;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    tbody tr:hover {
+      background: #fbfdff;
+    }
+
+    .code {
+      font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Consolas,
+        monospace;
+      font-size: 13px;
+    }
+
+    .path {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 8px;
+      border-radius: 7px;
+      background: var(--primary-soft);
+      color: #0767c9;
+      font-weight: 700;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 8px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .status.on {
+      background: #e6f7ef;
+      color: var(--success);
+    }
+
+    .status.off {
+      background: #ffe8eb;
+      color: #a51d2d;
+    }
+
+    .empty,
+    .loading {
+      padding: 36px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 26px 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 100;
+      display: none;
+      max-width: min(430px, calc(100vw - 36px));
+      padding: 13px 16px;
+      border-radius: 11px;
+      background: #172033;
+      color: #fff;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+    }
+
+    .toast.show {
+      display: block;
+    }
+
+    .toast.err {
+      background: #b42318;
+    }
+
+
+    .action-btn {
+      width: 38px;
+      height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: #344054;
+      font-size: 19px;
+      cursor: pointer;
+    }
+
+    .action-btn:hover {
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+
+    .action-btn.delete:hover {
+      background: #fff0f1;
+      color: var(--danger);
+    }
+
+    .action-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(15, 23, 42, 0.48);
+    }
+
+    .modal-backdrop.show {
+      display: flex;
+    }
+
+    .modal {
+      width: min(680px, 100%);
+      max-height: 92vh;
+      overflow: auto;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-head h2 {
+      margin: 0;
+      font-size: 21px;
+    }
+
+    .close-btn {
+      width: 38px;
+      height: 38px;
+      border: 0;
+      border-radius: 9px;
+      background: #f1f4f7;
+      color: #344054;
+      font-size: 22px;
+      cursor: pointer;
+    }
+
+    .modal-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      padding: 22px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      color: #566174;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .form-group.full {
+      grid-column: 1 / -1;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+    }
+
+    .check-row input {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+
+    .modal-foot {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 0 22px 22px;
+    }
+
+    @media (max-width: 860px) {
+      .page {
+        width: 100%;
+        margin: 0;
       }
 
-"""
-text = text.replace(old_build, "")
+      .panel {
+        border-radius: 0;
+      }
 
-# 4) Nút quay lại về thẳng admin.html
-old_back = """      $('btnBack').addEventListener(
-        'click',
-        () => {
-          if (
-            document.referrer &&
-            window.history.length > 1
-          ) {
-            window.history.back();
-            return;
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .panel-head,
+      .toolbar,
+      .footer {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+
+      .topbar {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="topbar-title">🛡️ Danh sách quyền</div>
+
+    <button
+      id="btnBack"
+      class="back-btn"
+      type="button"
+    >
+      ← Quay lại
+    </button>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h1>Danh mục chức năng</h1>
+          <p>
+            Danh sách lấy từ bảng
+            <strong>kv_chucnang</strong>.
+          </p>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <input
+          id="searchInput"
+          class="field"
+          type="search"
+          placeholder="Tìm ID, tên chức năng, nhóm..."
+        />
+
+        <select
+          id="pathFilter"
+          class="field"
+        >
+          <option value="">Tất cả đường dẫn</option>
+        </select>
+
+        <button
+          id="btnClear"
+          class="btn"
+          type="button"
+        >
+          Xóa lọc
+        </button>
+
+        <button
+          id="btnAdd"
+          class="btn btn-primary"
+          type="button"
+        >
+          ＋ Thêm mới
+        </button>
+
+        <button
+          id="btnReload"
+          class="btn"
+          type="button"
+        >
+          ⟳ Tải lại
+        </button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:70px">STT</th>
+              <th>ID chức năng</th>
+              <th>Tên chức năng</th>
+              <th>Đường dẫn</th>
+              <th>Nhóm chức năng</th>
+              <th>Icon</th>
+              <th style="width:100px">Thứ tự</th>
+              <th style="width:140px">Trạng thái</th>
+              <th style="width:90px">Thao tác</th>
+            </tr>
+          </thead>
+
+          <tbody id="tableBody">
+            <tr>
+              <td
+                colspan="9"
+                class="loading"
+              >
+                Đang tải dữ liệu...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="footer">
+        <div id="filterText">Tất cả đường dẫn</div>
+        <div id="countText">0 chức năng</div>
+      </div>
+    </section>
+  </main>
+
+
+  <div
+    id="functionModal"
+    class="modal-backdrop"
+  >
+    <section
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="modal-head">
+        <h2 id="modalTitle">Thêm chức năng</h2>
+
+        <button
+          id="btnCloseModal"
+          class="close-btn"
+          type="button"
+        >
+          ×
+        </button>
+      </div>
+
+      <form id="functionForm">
+        <div class="modal-body">
+          <input
+            id="formId"
+            type="hidden"
+          />
+
+          <div class="form-group">
+            <label for="formIdChucNang">
+              ID chức năng *
+            </label>
+
+            <input
+              id="formIdChucNang"
+              class="field"
+              placeholder="Ví dụ: quanlynhanvien"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="formTenChucNang">
+              Tên chức năng *
+            </label>
+
+            <input
+              id="formTenChucNang"
+              class="field"
+              placeholder="Ví dụ: Quản lý nhân viên"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="formDuongDan">
+              Đường dẫn *
+            </label>
+
+            <input
+              id="formDuongDan"
+              class="field"
+              list="pathSuggestions"
+              placeholder="Ví dụ: admin.html"
+              required
+            />
+
+            <datalist id="pathSuggestions"></datalist>
+          </div>
+
+          <div class="form-group">
+            <label for="formNhomChucNang">
+              Nhóm chức năng
+            </label>
+
+            <input
+              id="formNhomChucNang"
+              class="field"
+              placeholder="Ví dụ: admin"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="formIcon">
+              Icon
+            </label>
+
+            <input
+              id="formIcon"
+              class="field"
+              placeholder="Ví dụ: 👥"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="formThuTu">
+              Thứ tự
+            </label>
+
+            <input
+              id="formThuTu"
+              class="field"
+              type="number"
+              step="1"
+              min="0"
+            />
+          </div>
+
+          <div class="form-group full">
+            <label>Trạng thái</label>
+
+            <div class="check-row">
+              <input
+                id="formTrangThai"
+                type="checkbox"
+                checked
+              />
+
+              <span>Đang hoạt động</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <button
+            id="btnCancel"
+            class="btn"
+            type="button"
+          >
+            Hủy
+          </button>
+
+          <button
+            id="btnSave"
+            class="btn btn-primary"
+            type="submit"
+          >
+            Lưu
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div
+    id="toast"
+    class="toast"
+  ></div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const TABLE_NAME = 'kv_chucnang';
+      const CFG_CACHE_KEY = 'cod_cfg_cache_v2';
+
+      let supabaseClient = null;
+      let allRows = [];
+
+      const $ = id =>
+        document.getElementById(id);
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;');
+      }
+
+      function showToast(message, type = '') {
+        const toast = $('toast');
+
+        toast.textContent = message;
+        toast.className =
+          `toast show ${type}`.trim();
+
+        clearTimeout(showToast.timer);
+
+        showToast.timer = setTimeout(() => {
+          toast.className = 'toast';
+        }, 3200);
+      }
+
+      async function ensureInternalKeyLoaded() {
+        if (
+          typeof window.getInternalKey ===
+          'function'
+        ) {
+          return window.getInternalKey() || '';
+        }
+
+        await new Promise(resolve => {
+          const script =
+            document.createElement('script');
+
+          script.src = './js/internal_key.js';
+          script.onload = resolve;
+          script.onerror = resolve;
+
+          document.head.appendChild(script);
+        });
+
+        return (
+          typeof window.getInternalKey ===
+          'function'
+            ? window.getInternalKey() || ''
+            : ''
+        );
+      }
+
+      function normalizeSupabaseConfig(cfg) {
+        if (
+          !cfg ||
+          typeof cfg !== 'object'
+        ) {
+          return null;
+        }
+
+        const url =
+          cfg.url ||
+          cfg.SUPABASE_URL ||
+          cfg.supabaseUrl ||
+          cfg.supabase_url ||
+          '';
+
+        const key =
+          cfg.anon ||
+          cfg.key ||
+          cfg.SUPABASE_ANON ||
+          cfg.SUPABASE_ANON_KEY ||
+          cfg.supabaseAnon ||
+          cfg.supabaseKey ||
+          cfg.supabase_anon_key ||
+          '';
+
+        if (!url || !key) {
+          return null;
+        }
+
+        return {
+          url: String(url).trim(),
+          key: String(key).trim()
+        };
+      }
+
+      async function getSupabaseConfig() {
+        try {
+          const internalKey =
+            await ensureInternalKeyLoaded();
+
+          const response = await fetch(
+            '/api/getConfig',
+            {
+              headers: {
+                'x-internal-key':
+                  internalKey || ''
+              },
+              cache: 'no-store'
+            }
+          );
+
+          if (response.ok) {
+            const config =
+              normalizeSupabaseConfig(
+                await response.json()
+              );
+
+            if (config) {
+              localStorage.setItem(
+                CFG_CACHE_KEY,
+                JSON.stringify(config)
+              );
+
+              return config;
+            }
           }
-
-          window.location.assign(
-            buildUrl('./admin.html')
+        } catch (error) {
+          console.warn(
+            'Không lấy được config API:',
+            error
           );
         }
-      );"""
 
-new_back = """      $('btnBack').addEventListener(
+        try {
+          const raw =
+            localStorage.getItem(
+              CFG_CACHE_KEY
+            );
+
+          const cached = raw
+            ? normalizeSupabaseConfig(
+                JSON.parse(raw)
+              )
+            : null;
+
+          if (cached) {
+            return cached;
+          }
+        } catch (error) {}
+
+        const configs = [
+          window.COD_CONFIG,
+          window.codConfig,
+          window.APP_CONFIG,
+          window.CONFIG
+        ];
+
+        for (const cfg of configs) {
+          const config =
+            normalizeSupabaseConfig(cfg);
+
+          if (config) {
+            return config;
+          }
+        }
+
+        if (
+          typeof window.getConfig ===
+          'function'
+        ) {
+          const config =
+            normalizeSupabaseConfig(
+              await window.getConfig()
+            );
+
+          if (config) {
+            return config;
+          }
+        }
+
+        throw new Error(
+          'Không lấy được cấu hình Supabase.'
+        );
+      }
+
+      async function initSupabase() {
+        const config =
+          await getSupabaseConfig();
+
+        supabaseClient =
+          window.supabase.createClient(
+            config.url,
+            config.key
+          );
+      }
+
+      async function loadData() {
+        $('tableBody').innerHTML = `
+          <tr>
+            <td colspan="9" class="loading">
+              Đang tải dữ liệu...
+            </td>
+          </tr>
+        `;
+
+        const { data, error } =
+          await supabaseClient
+            .from(TABLE_NAME)
+            .select(`
+              id,
+              id_chucnang,
+              ten_chucnang,
+              duong_dan,
+              nhom_chucnang,
+              icon,
+              thu_tu,
+              trang_thai
+            `)
+            .order(
+              'duong_dan',
+              { ascending: true }
+            )
+            .order(
+              'thu_tu',
+              {
+                ascending: true,
+                nullsFirst: false
+              }
+            )
+            .order(
+              'ten_chucnang',
+              { ascending: true }
+            );
+
+        if (error) {
+          throw error;
+        }
+
+        allRows = data || [];
+
+        renderPathOptions();
+        renderTable();
+      }
+
+      function renderPathOptions() {
+        const currentValue =
+          $('pathFilter').value;
+
+        const paths = [
+          ...new Set(
+            allRows
+              .map(row =>
+                String(
+                  row.duong_dan || ''
+                ).trim()
+              )
+              .filter(Boolean)
+          )
+        ].sort((a, b) =>
+          a.localeCompare(b, 'vi')
+        );
+
+        $('pathFilter').innerHTML =
+          '<option value="">Tất cả đường dẫn</option>' +
+          paths
+            .map(path => `
+              <option value="${escapeHtml(path)}">
+                ${escapeHtml(path)}
+              </option>
+            `)
+            .join('');
+
+        if (paths.includes(currentValue)) {
+          $('pathFilter').value =
+            currentValue;
+        }
+      }
+
+      function getFilteredRows() {
+        const keyword =
+          $('searchInput')
+            .value
+            .trim()
+            .toLowerCase();
+
+        const selectedPath =
+          $('pathFilter').value.trim();
+
+        return allRows.filter(row => {
+          const matchesPath =
+            !selectedPath ||
+            String(
+              row.duong_dan || ''
+            ).trim() === selectedPath;
+
+          if (!matchesPath) {
+            return false;
+          }
+
+          if (!keyword) {
+            return true;
+          }
+
+          const content = [
+            row.id_chucnang,
+            row.ten_chucnang,
+            row.duong_dan,
+            row.nhom_chucnang,
+            row.icon
+          ]
+            .map(value =>
+              String(value || '')
+                .toLowerCase()
+            )
+            .join(' ');
+
+          return content.includes(keyword);
+        });
+      }
+
+      function renderTable() {
+        const rows = getFilteredRows();
+        const selectedPath =
+          $('pathFilter').value.trim();
+
+        $('filterText').textContent =
+          selectedPath
+            ? `Đường dẫn: ${selectedPath}`
+            : 'Tất cả đường dẫn';
+
+        $('countText').textContent =
+          `${rows.length} chức năng`;
+
+        if (!rows.length) {
+          $('tableBody').innerHTML = `
+            <tr>
+              <td colspan="9" class="empty">
+                Không có chức năng phù hợp.
+              </td>
+            </tr>
+          `;
+
+          return;
+        }
+
+        $('tableBody').innerHTML =
+          rows
+            .map((row, index) => {
+              const active =
+                row.trang_thai !== false;
+
+              return `
+                <tr>
+                  <td>${index + 1}</td>
+
+                  <td class="code">
+                    ${escapeHtml(
+                      row.id_chucnang || '—'
+                    )}
+                  </td>
+
+                  <td>
+                    ${escapeHtml(
+                      row.ten_chucnang || '—'
+                    )}
+                  </td>
+
+                  <td>
+                    <span class="path">
+                      ${escapeHtml(
+                        row.duong_dan || '—'
+                      )}
+                    </span>
+                  </td>
+
+                  <td>
+                    ${escapeHtml(
+                      row.nhom_chucnang || '—'
+                    )}
+                  </td>
+
+                  <td>
+                    ${escapeHtml(
+                      row.icon || '—'
+                    )}
+                  </td>
+
+                  <td>
+                    ${escapeHtml(
+                      row.thu_tu ?? '—'
+                    )}
+                  </td>
+
+                  <td>
+                    <span
+                      class="status ${
+                        active ? 'on' : 'off'
+                      }"
+                    >
+                      ${
+                        active
+                          ? 'Đang hoạt động'
+                          : 'Ngừng hoạt động'
+                      }
+                    </span>
+                  </td>
+
+                  <td>
+                    <div class="action-group">
+                      <button
+                        class="action-btn edit-row"
+                        type="button"
+                        data-id="${escapeHtml(row.id)}"
+                        title="Sửa"
+                        aria-label="Sửa chức năng"
+                      >
+                        ✎
+                      </button>
+
+                      <button
+                        class="action-btn delete delete-row"
+                        type="button"
+                        data-id="${escapeHtml(row.id)}"
+                        title="Xóa"
+                        aria-label="Xóa chức năng"
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            })
+            .join('');
+
+        document
+          .querySelectorAll('.edit-row')
+          .forEach(button => {
+            button.addEventListener(
+              'click',
+              () => openEditModal(
+                button.dataset.id
+              )
+            );
+          });
+
+        document
+          .querySelectorAll('.delete-row')
+          .forEach(button => {
+            button.addEventListener(
+              'click',
+              () => deleteFunction(
+                button.dataset.id
+              )
+            );
+          });
+      }
+
+      function renderPathSuggestions() {
+        const paths = [
+          ...new Set(
+            allRows
+              .map(row =>
+                String(row.duong_dan || '').trim()
+              )
+              .filter(Boolean)
+          )
+        ].sort((a, b) =>
+          a.localeCompare(b, 'vi')
+        );
+
+        $('pathSuggestions').innerHTML =
+          paths
+            .map(path => `
+              <option value="${escapeHtml(path)}"></option>
+            `)
+            .join('');
+      }
+
+      function openModal() {
+        $('functionModal').classList.add('show');
+      }
+
+      function closeModal() {
+        $('functionModal').classList.remove('show');
+      }
+
+      function openAddModal() {
+        $('modalTitle').textContent =
+          'Thêm chức năng';
+
+        $('functionForm').reset();
+        $('formId').value = '';
+        $('formTrangThai').checked = true;
+
+        renderPathSuggestions();
+        openModal();
+        $('formIdChucNang').focus();
+      }
+
+      function openEditModal(id) {
+        const row = allRows.find(
+          item => String(item.id) === String(id)
+        );
+
+        if (!row) {
+          showToast(
+            'Không tìm thấy chức năng cần sửa.',
+            'err'
+          );
+          return;
+        }
+
+        $('modalTitle').textContent =
+          `Sửa chức năng: ${
+            row.ten_chucnang || row.id_chucnang
+          }`;
+
+        $('formId').value = row.id || '';
+        $('formIdChucNang').value =
+          row.id_chucnang || '';
+        $('formTenChucNang').value =
+          row.ten_chucnang || '';
+        $('formDuongDan').value =
+          row.duong_dan || '';
+        $('formNhomChucNang').value =
+          row.nhom_chucnang || '';
+        $('formIcon').value =
+          row.icon || '';
+        $('formThuTu').value =
+          row.thu_tu ?? '';
+        $('formTrangThai').checked =
+          row.trang_thai !== false;
+
+        renderPathSuggestions();
+        openModal();
+      }
+
+      async function saveFunction(event) {
+        event.preventDefault();
+
+        const id = $('formId').value.trim();
+        const idChucNang =
+          $('formIdChucNang').value.trim();
+        const tenChucNang =
+          $('formTenChucNang').value.trim();
+        const duongDan =
+          $('formDuongDan').value.trim();
+
+        if (
+          !idChucNang ||
+          !tenChucNang ||
+          !duongDan
+        ) {
+          showToast(
+            'Vui lòng nhập đủ ID, tên và đường dẫn.',
+            'err'
+          );
+          return;
+        }
+
+        const payload = {
+          id_chucnang: idChucNang,
+          ten_chucnang: tenChucNang,
+          duong_dan: duongDan,
+          nhom_chucnang:
+            $('formNhomChucNang').value.trim() ||
+            null,
+          icon:
+            $('formIcon').value.trim() ||
+            null,
+          thu_tu:
+            $('formThuTu').value === ''
+              ? 0
+              : Number($('formThuTu').value),
+          trang_thai:
+            $('formTrangThai').checked
+        };
+
+        $('btnSave').disabled = true;
+        $('btnSave').textContent =
+          id ? 'Đang cập nhật...' : 'Đang thêm...';
+
+        try {
+          const result = id
+            ? await supabaseClient
+                .from(TABLE_NAME)
+                .update(payload)
+                .eq('id', id)
+                .select()
+                .single()
+            : await supabaseClient
+                .from(TABLE_NAME)
+                .insert(payload)
+                .select()
+                .single();
+
+          if (result.error) {
+            throw result.error;
+          }
+
+          closeModal();
+
+          showToast(
+            id
+              ? 'Đã cập nhật chức năng.'
+              : 'Đã thêm chức năng.'
+          );
+
+          await loadData();
+        } catch (error) {
+          console.error(
+            'Lỗi lưu chức năng:',
+            error
+          );
+
+          showToast(
+            `Không lưu được: ${
+              error.message || error
+            }`,
+            'err'
+          );
+        } finally {
+          $('btnSave').disabled = false;
+          $('btnSave').textContent = 'Lưu';
+        }
+      }
+
+      async function deleteFunction(id) {
+        const row = allRows.find(
+          item => String(item.id) === String(id)
+        );
+
+        if (!row) {
+          showToast(
+            'Không tìm thấy chức năng cần xóa.',
+            'err'
+          );
+          return;
+        }
+
+        const name =
+          row.ten_chucnang ||
+          row.id_chucnang ||
+          id;
+
+        const confirmed = window.confirm(
+          `Bạn có chắc muốn xóa chức năng "${name}"?\n\n` +
+          `Các quyền của chức năng này trong bảng kv_vai_tro_quyen cũng sẽ bị xóa.`
+        );
+
+        if (!confirmed) {
+          return;
+        }
+
+        try {
+          /*
+           * Xóa quyền liên quan trước để tránh lỗi khóa ngoại.
+           */
+          const {
+            error: permissionDeleteError
+          } = await supabaseClient
+            .from('kv_vai_tro_quyen')
+            .delete()
+            .eq('chucnang_id', row.id);
+
+          if (permissionDeleteError) {
+            throw permissionDeleteError;
+          }
+
+          const {
+            error: functionDeleteError
+          } = await supabaseClient
+            .from(TABLE_NAME)
+            .delete()
+            .eq('id', row.id);
+
+          if (functionDeleteError) {
+            throw functionDeleteError;
+          }
+
+          showToast(
+            `Đã xóa chức năng "${name}".`
+          );
+
+          await loadData();
+        } catch (error) {
+          console.error(
+            'Lỗi xóa chức năng:',
+            error
+          );
+
+          showToast(
+            `Không xóa được: ${
+              error.message || error
+            }`,
+            'err'
+          );
+        }
+      }
+
+      $('searchInput').addEventListener(
+        'input',
+        renderTable
+      );
+
+      $('pathFilter').addEventListener(
+        'change',
+        renderTable
+      );
+
+      $('btnClear').addEventListener(
+        'click',
+        () => {
+          $('searchInput').value = '';
+          $('pathFilter').value = '';
+          renderTable();
+        }
+      );
+
+      $('btnAdd').addEventListener(
+        'click',
+        openAddModal
+      );
+
+      $('btnCloseModal').addEventListener(
+        'click',
+        closeModal
+      );
+
+      $('btnCancel').addEventListener(
+        'click',
+        closeModal
+      );
+
+      $('functionForm').addEventListener(
+        'submit',
+        saveFunction
+      );
+
+      $('functionModal').addEventListener(
+        'click',
+        event => {
+          if (
+            event.target ===
+            $('functionModal')
+          ) {
+            closeModal();
+          }
+        }
+      );
+
+      document.addEventListener(
+        'keydown',
+        event => {
+          if (event.key === 'Escape') {
+            closeModal();
+          }
+        }
+      );
+
+      $('btnReload').addEventListener(
+        'click',
+        async () => {
+          try {
+            await loadData();
+            showToast(
+              'Đã tải lại danh sách quyền.'
+            );
+          } catch (error) {
+            console.error(error);
+
+            showToast(
+              `Không tải được dữ liệu: ${
+                error.message
+              }`,
+              'err'
+            );
+          }
+        }
+      );
+
+      $('btnBack').addEventListener(
         'click',
         () => {
           window.location.assign(
             './admin.html'
           );
         }
-      );"""
+      );
 
-text = text.replace(old_back, new_back)
-
-# 5) Check login trước khi khởi tạo Supabase và tải dữ liệu
-old_start = """      (async function start() {
-        try {
-          await initSupabase();
-          await loadData();
-        } catch (error) {
-          console.error(error);
-
-          $('tableBody').innerHTML = `
-            <tr>
-              <td colspan="9" class="empty">
-                ${escapeHtml(
-                  error.message || error
-                )}
-              </td>
-            </tr>
-          `;
-
-          showToast(
-            `Lỗi: ${
-              error.message || error
-            }`,
-            'err'
-          );
-        }
-      })();"""
-
-new_start = """      (async function start() {
+      (async function start() {
         let daXacThuc = false;
 
         try {
@@ -212,20 +1573,8 @@ new_start = """      (async function start() {
             'err'
           );
         }
-      })();"""
-
-text = text.replace(old_start, new_start)
-
-# Sanity checks
-assert 'auth_token.js' not in text
-assert "buildUrl(" not in text
-assert "check_login.js" in text
-assert "window.checkLogin" in text
-assert "body.ready" in text
-
-out = Path("/mnt/data/danh_sach_quyen_check_login.html")
-out.write_text(text, encoding="utf-8")
-
-print("Đã tạo file HTML đã chỉnh:")
-print(out)
-print("Đã giữ nguyên chức năng quản lý kv_chucnang và thêm check đăng nhập trước khi hiện trang.")
+      })();
+    })();
+  </script>
+</body>
+</html>
