@@ -811,8 +811,8 @@
             <th>STT</th>
             <th>Mã KH</th>
             <th>Tên khách hàng</th>
-            <th>alias_name</th>
             <th>Tên nhân viên</th>
+            <th>alias_name</th>
             <th>Trạng thái</th>
           </tr>
         </thead>
@@ -1366,13 +1366,13 @@ function renderTable() {
 
           <td>
             ${escapeHtml(
-              r.alias_name ?? ''
+              r.ten_nv ?? ''
             )}
           </td>
 
           <td>
             ${escapeHtml(
-              r.ten_nv ?? ''
+              r.alias_name ?? ''
             )}
           </td>
 
@@ -2321,7 +2321,7 @@ function enableDraggableForm() {
 
 
 /* =========================================================
-   REALTIME TRẠNG THÁI TỪ SUPABASE
+   REALTIME TRẠNG THÁI + ALIAS_NAME TỪ SUPABASE
    Bảng kv_khachhang_nhanvien_guitin đã bật Realtime.
 ========================================================= */
 
@@ -2369,12 +2369,25 @@ function applyRealtimeStatus(payload) {
       return;
     }
 
+    // Cập nhật trạng thái theo Realtime
     const oldStatus = normalizeRealtimeKey(row.trang_thai);
     const newStatus = normalizeRealtimeKey(newRow.trang_thai);
 
     if (oldStatus !== newStatus) {
       row.trang_thai = newRow.trang_thai ?? '';
       changed = true;
+    }
+
+    // Cập nhật alias_name theo Realtime giống như trạng thái.
+    // Chỉ cập nhật khi payload UPDATE có trường alias_name.
+    if (Object.prototype.hasOwnProperty.call(newRow, 'alias_name')) {
+      const oldAlias = normalizeRealtimeKey(row.alias_name);
+      const newAlias = normalizeRealtimeKey(newRow.alias_name);
+
+      if (oldAlias !== newAlias) {
+        row.alias_name = newRow.alias_name ?? '';
+        changed = true;
+      }
     }
   });
 
