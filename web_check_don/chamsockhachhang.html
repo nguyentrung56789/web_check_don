@@ -1569,6 +1569,12 @@
     let zaloAttachmentPreviewUrl = "";
     let selectedCustomerKeys = new Set();
 
+    // =========================
+    // REALTIME KHÁCH HÀNG / ALIAS
+    // =========================
+    let customerRealtimeChannel = null;
+    let customerRealtimeRefreshTimer = null;
+
     // Quyền lọc nhân viên của trang Chăm sóc khách hàng.
     // true  = được chọn/lọc nhiều nhân viên.
     // false = chỉ được xem khách của chính nhân viên đang đăng nhập.
@@ -3894,6 +3900,223 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
       };
     }
 
+
+    // =========================================================
+    // REALTIME: CẬP NHẬT NGAY KHI kv_khachhang_nhanvien THAY ĐỔI
+    // - Dùng conversation_id làm khóa chính để tìm đúng dòng.
+    // - Nếu không có conversation_id thì fallback theo ma_kh.
+    // - Sau event, đọc lại TABLE_KHACH_HANG để lấy dữ liệu hợp nhất mới nhất.
+    // =========================================================
+    function normalizeRealtimeText(value) {
+      return String(value ?? "").trim();
+    }
+
+    function findCustomerIndexForRealtime(row) {
+      const conversationId = normalizeConversationId(row?.conversation_id);
+
+      if (conversationId) {
+        const byConversation = customers.findIndex(function (item) {
+          return normalizeConversationId(item?.conversation_id) === conversationId;
+        });
+
+        if (byConversation >= 0) {
+          return byConversation;
+        }
+      }
+
+      const maKh = normalizeRealtimeText(row?.ma_kh).toUpperCase();
+
+      if (maKh) {
+        return customers.findIndex(function (item) {
+          return normalizeRealtimeText(item?.ma_kh).toUpperCase() === maKh;
+        });
+      }
+
+      return -1;
+    }
+
+    async function fetchLatestCustomerForRealtime(row) {
+      if (!supabaseClient) return null;
+
+      const conversationId = normalizeConversationId(row?.conversation_id);
+      const maKh = normalizeRealtimeText(row?.ma_kh);
+
+      let query = supabaseClient
+        .from(TABLE_KHACH_HANG)
+        .select(
+          "ma_kh, ten_kh, alias_name, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from"
+        )
+        .limit(1);
+
+      if (conversationId) {
+        query = query.eq("conversation_id", conversationId);
+      } else if (maKh) {
+        query = query.eq("ma_kh", maKh);
+      } else {
+        return null;
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.warn("[REALTIME KH] Không đọc lại được dòng mới nhất:", error);
+        return null;
+      }
+
+      const item = Array.isArray(data) ? data[0] : null;
+      if (!item) return null;
+
+      return {
+        ma_kh: item.ma_kh || "",
+        ten_kh: item.ten_kh || "",
+        alias_name: item.alias_name || "",
+        sdt: item.dien_thoai || "",
+        cong_no: item.congno || 0,
+        ma_nv: normalizeNullableMaNv(item.ma_nv),
+        ngay_chat_cuoi: item.ngay_chat_cuoi || null,
+        conversation_id: item.conversation_id || null,
+        contact_id: item.contact_id || null,
+        uid_from: item.uid_from || null
+      };
+    }
+
+    async function applyCustomerRealtimeChange(payload) {
+      const eventType = String(payload?.eventType || "").toUpperCase();
+      const newRow = payload?.new || {};
+      const oldRow = payload?.old || {};
+      const lookupRow =
+        eventType === "DELETE"
+          ? oldRow
+          : newRow;
+
+      console.log("[REALTIME KH]", eventType, lookupRow);
+
+      if (eventType === "DELETE") {
+        const index = findCustomerIndexForRealtime(lookupRow);
+
+        if (index >= 0) {
+          customers.splice(index, 1);
+          totalRows = Math.max(0, totalRows - 1);
+          renderCustomers();
+          updatePagination();
+        }
+
+        return;
+      }
+
+      // Patch alias ngay từ payload trước để giao diện phản ứng tức thì,
+      // sau đó đọc lại view để đồng bộ đầy đủ dữ liệu.
+      const currentIndex = findCustomerIndexForRealtime(lookupRow);
+
+      if (currentIndex >= 0) {
+        let changed = false;
+
+        if (Object.prototype.hasOwnProperty.call(newRow, "alias_name")) {
+          const oldAlias = normalizeRealtimeText(customers[currentIndex]?.alias_name);
+          const newAlias = normalizeRealtimeText(newRow.alias_name);
+
+          if (oldAlias !== newAlias) {
+            customers[currentIndex].alias_name = newRow.alias_name ?? "";
+            changed = true;
+          }
+        }
+
+        if (Object.prototype.hasOwnProperty.call(newRow, "ngay_chat_cuoi")) {
+          customers[currentIndex].ngay_chat_cuoi = newRow.ngay_chat_cuoi || null;
+          changed = true;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(newRow, "contact_id")) {
+          customers[currentIndex].contact_id = newRow.contact_id || null;
+          changed = true;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(newRow, "uid_from")) {
+          customers[currentIndex].uid_from = newRow.uid_from || null;
+          changed = true;
+        }
+
+        if (changed) {
+          renderCustomers();
+        }
+      }
+
+      const latest = await fetchLatestCustomerForRealtime(lookupRow);
+
+      if (latest) {
+        const latestIndex = findCustomerIndexForRealtime(latest);
+
+        if (latestIndex >= 0) {
+          // Giữ các field nhân viên đã được bổ sung ở client nếu view chưa trả về.
+          const current = customers[latestIndex] || {};
+          customers[latestIndex] = {
+            ...current,
+            ...latest,
+            id_nv: current.id_nv || latest.id_nv || null,
+            ten_nv: current.ten_nv || latest.ten_nv || null
+          };
+
+          renderCustomers();
+          return;
+        }
+      }
+
+      // Nếu đây là dòng mới / dòng hiện chưa có trên trang,
+      // debounce tải lại trang hiện tại để đúng bộ lọc, sort và phân trang.
+      clearTimeout(customerRealtimeRefreshTimer);
+      customerRealtimeRefreshTimer = setTimeout(function () {
+        if (!isLoadingCustomers) {
+          loadCustomersFromSupabase(currentPage).catch(function (error) {
+            console.warn("[REALTIME KH] Không tải lại được danh sách:", error);
+          });
+        }
+      }, 250);
+    }
+
+    function subscribeCustomerRealtime() {
+      if (!supabaseClient) {
+        console.warn("[REALTIME KH] Supabase chưa sẵn sàng.");
+        return;
+      }
+
+      // Tránh subscribe trùng khi init lại.
+      if (customerRealtimeChannel) {
+        try {
+          supabaseClient.removeChannel(customerRealtimeChannel);
+        } catch (error) {
+          console.warn("[REALTIME KH] Không remove được channel cũ:", error);
+        }
+
+        customerRealtimeChannel = null;
+      }
+
+      customerRealtimeChannel = supabaseClient
+        .channel("realtime_kv_khachhang_nhanvien")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: TABLE_KHACH_HANG_NHANVIEN
+          },
+          function (payload) {
+            applyCustomerRealtimeChange(payload).catch(function (error) {
+              console.error("[REALTIME KH] Lỗi xử lý event:", error);
+            });
+          }
+        )
+        .subscribe(function (status, error) {
+          console.log("[REALTIME KH SUBSCRIBE]", status, error || "");
+
+          if (status === "SUBSCRIBED") {
+            console.log(
+              "✅ Đã kết nối Realtime:",
+              TABLE_KHACH_HANG_NHANVIEN
+            );
+          }
+        });
+    }
+
     async function initPage() {
       if (!currentUser || !currentUser.ma_nv) {
         alert("Không tìm thấy tài khoản đăng nhập.");
@@ -3911,6 +4134,11 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
       await apDungQuyenLocTheoNhanVien();
 
       await loadCustomersFromSupabase(1);
+
+      // Bắt thay đổi từ kv_khachhang_nhanvien ngay lập tức.
+      // Khi alias_name / conversation_id / dữ liệu chat thay đổi,
+      // giao diện tự cập nhật mà không cần bấm Làm mới.
+      subscribeCustomerRealtime();
     }
 
     function showUserInfo() {
@@ -5145,6 +5373,15 @@ logoutBtn.addEventListener("click", function () {
         localStorage.setItem(storageKey, JSON.stringify(widths));
       }
     }
+
+    window.addEventListener("beforeunload", function () {
+      if (supabaseClient && customerRealtimeChannel) {
+        try {
+          supabaseClient.removeChannel(customerRealtimeChannel);
+        } catch (error) {}
+      }
+    });
+
   </script>
 </body>
 </html>
