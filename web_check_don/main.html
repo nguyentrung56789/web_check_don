@@ -10,13 +10,11 @@
 
   <title>Chọn nhóm quyền</title>
 
-  <!-- Token và cấu hình hệ thống -->
+  <!-- Cấu hình hệ thống + Supabase + kiểm tra đăng nhập -->
   <script src="./js/internal_key.js"></script>
   <script src="./js/cod_config.js"></script>
-  <script src="./js/auth_token.js"></script>
-
-  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/check_login.js"></script>
 
   <style>
     :root {
@@ -38,7 +36,7 @@
     }
 
     body {
-      visibility: visible;
+      visibility: hidden;
       min-height: 100vh;
       padding:
         max(22px, env(safe-area-inset-top))
@@ -617,33 +615,9 @@
       return null;
     }
 
-    function getToken() {
-      return (
-        sessionStorage.getItem(
-          'APP_ACCESS'
-        ) ||
-        new URLSearchParams(
-          location.search
-        ).get('token') ||
-        ''
-      );
-    }
-
-    function goWithToken(url) {
-      const target =
-        new URL(url, location.href);
-
-      const token = getToken();
-
-      if (token) {
-        target.searchParams.set(
-          'token',
-          token
-        );
-      }
-
-      location.href =
-        target.toString();
+    function goPage(url) {
+      const target = new URL(url, location.href);
+      location.href = target.toString();
     }
 
     function anTatCaNut() {
@@ -818,7 +792,7 @@
               return;
             }
 
-            goWithToken(url);
+            goPage(url);
           }
         );
       }
@@ -919,12 +893,6 @@
           'click',
           () => {
             try {
-              sessionStorage.removeItem(
-                'APP_ACCESS'
-              );
-            } catch {}
-
-            try {
               localStorage.removeItem(
                 'nv'
               );
@@ -943,16 +911,11 @@
 
     function xoaPhienVaVeDangNhap() {
       try {
-        sessionStorage.removeItem('APP_ACCESS');
-      } catch (error) {
-        console.warn('Không xóa được APP_ACCESS:', error);
-      }
-
-      try {
         localStorage.removeItem('nv');
         localStorage.removeItem('chatwoot_crm_user');
+        sessionStorage.removeItem('nv_ctx');
       } catch (error) {
-        console.warn('Không xóa được tài khoản đăng nhập cũ:', error);
+        console.warn('Không xóa được phiên đăng nhập:', error);
       }
 
       location.replace('./login.html');
@@ -961,38 +924,35 @@
     document.addEventListener(
       'DOMContentLoaded',
       async () => {
+        let daXacThuc = false;
+
         try {
           /*
-           * 1) Kiểm tra tài khoản đăng nhập trước.
-           * Nếu chưa có tài khoản thì khoiTaoTaiKhoan()
-           * sẽ tự chuyển về login.html.
+           * 1) CHECK LOGIN TRƯỚC KHI HIỆN FORM.
+           * check_login.js sẽ đối chiếu:
+           *   - ma_nv
+           *   - mat_khau
+           *   - hoat_dong = true
+           * với bảng kv_nhan_vien trên Supabase.
            */
+          if (typeof window.checkLogin !== 'function') {
+            throw new Error('Không tìm thấy check_login.js');
+          }
+
+          const loginOk = await window.checkLogin();
+
+          if (!loginOk) {
+            return;
+          }
+
+          daXacThuc = true;
+
+          /* 2) Sau khi đăng nhập hợp lệ mới khởi tạo tài khoản trên giao diện. */
           if (!khoiTaoTaiKhoan()) {
             return;
           }
 
-          /*
-           * 2) Sau đó mới kiểm tra token/quyền truy cập hệ thống.
-           * Nếu token cũ, hết hạn hoặc không hợp lệ thì xóa sạch phiên
-           * để login.html không đọc lại tài khoản/token cũ rồi quay vòng.
-           */
-          if (typeof window.checkAccess === 'function') {
-            let accessOk = false;
-
-            try {
-              accessOk = window.checkAccess() === true;
-            } catch (accessError) {
-              console.error('CHECK_ACCESS_ERROR:', accessError);
-              accessOk = false;
-            }
-
-            if (!accessOk) {
-              xoaPhienVaVeDangNhap();
-              return;
-            }
-          }
-
-          /* 3) Tài khoản + access hợp lệ thì mới tải menu phân quyền. */
+          /* 3) Sau đó mới tải menu phân quyền. */
           khoiTaoMenuTaiKhoan();
           ganSuKienNut();
 
@@ -1015,9 +975,12 @@
               'Mở F12 → Console để xem chi tiết.'
             ].join('\n');
         } finally {
-          document.body.classList.add(
-            'ready'
-          );
+          // Chỉ hiện giao diện sau khi check login đã hợp lệ.
+          if (daXacThuc) {
+            document.body.classList.add(
+              'ready'
+            );
+          }
         }
       }
     );
