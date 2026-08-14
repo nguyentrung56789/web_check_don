@@ -1799,6 +1799,7 @@ async function sendRunWebhook() {
   */
 
   formData.append('action', 'run');
+  formData.append('nguon', 'auto_tinnhan');
   formData.append('ma_nv', maNv);
 
   formData.append('run_id', currentRunId);
@@ -1857,6 +1858,7 @@ async function sendRunWebhook() {
 
   const bodyDebug = {
     action: 'run',
+    nguon: 'auto_tinnhan',
     ma_nv: maNv,
     run_id: currentRunId,
     so_khach_hop_le: rows.length,
