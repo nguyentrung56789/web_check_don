@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Admin — Tính doanh số</title>
 
+  <script src="./js/internal_key.js"></script>
+  <script src="./js/cod_config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/check_login.js"></script>
+
   <style>
     :root {
       --bg:#0f172a;
@@ -22,6 +27,7 @@
 
     body {
       margin:0;
+      visibility:hidden;
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
       background:linear-gradient(120deg,#0b1220,#0a0f1a);
       color:var(--txt);
@@ -30,6 +36,10 @@
       align-items:center;
       justify-content:center;
       padding:24px;
+    }
+
+    body.ready {
+      visibility:visible;
     }
 
     .card {
@@ -110,6 +120,13 @@
       margin-top:14px;
       background:var(--view);
       color:#041923;
+    }
+
+    .btn-back {
+      width:100%;
+      margin-top:10px;
+      background:#334155;
+      color:#fff;
     }
 
     .hint {
@@ -204,191 +221,299 @@
       📊 Xem doanh số
     </button>
 
+    <button id="btnBack" type="button" class="btn-back">
+      ← Quay lại
+    </button>
+
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
   </div>
 
   <script>
-    // =========================
-    // CẤU HÌNH
-    // =========================
-    const WEBHOOK_TINH_DOANH_SO = 'https://n8n.clawbot.io.vn/webhook/tinh_doanh_so';
-    const FORM_XEM_DOANH_SO = 'doanh_so_nhan_vien.html';
+    (() => {
+      'use strict';
 
-    // =========================
-    // ELEMENTS
-    // =========================
-    const btn = document.getElementById('btn');
-    const ymInp = document.getElementById('ym');
-    const toast = document.getElementById('toast');
-    const spin = document.getElementById('spin');
-    const btnXemDoanhSo = document.getElementById('btnXemDoanhSo');
+      // =========================
+      // CẤU HÌNH
+      // =========================
+      const WEBHOOK_TINH_DOANH_SO =
+        'https://n8n.clawbot.io.vn/webhook/tinh_doanh_so';
 
-    // =========================
-    // MẶC ĐỊNH THÁNG HIỆN TẠI
-    // =========================
-    (function setDefaultMonth() {
-      const d = new Date();
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      ymInp.value = `${y}-${m}`;
-    })();
+      const FORM_XEM_DOANH_SO =
+        './doanh_so_nhan_vien.html';
 
-    // =========================
-    // UI HELPER
-    // =========================
-    function showToast(msg, ok = false) {
-      toast.textContent = msg;
-      toast.className = 'toast ' + (ok ? 'ok' : 'err');
-      toast.style.display = 'block';
-    }
+      const FORM_QUAY_LAI =
+        './kinh_doanh.html';
 
-    function hideToast() {
-      toast.style.display = 'none';
-      toast.textContent = '';
-    }
+      // =========================
+      // ELEMENTS
+      // =========================
+      const btn =
+        document.getElementById('btn');
 
-    function setLoading(isLoading) {
-      btn.disabled = isLoading;
-      spin.style.display = isLoading ? 'inline-block' : 'none';
-    }
+      const ymInp =
+        document.getElementById('ym');
 
-    // =========================
-    // VALIDATE
-    // =========================
-    function validateMonth(v) {
-      return /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
-    }
+      const toast =
+        document.getElementById('toast');
 
-    // =========================
-    // LÀM SẠCH PHẢN HỒI N8N
-    // =========================
-    function cleanWebhookResponse(text) {
-      return String(text || '')
-        .trim()
-        .replace(/^=\s*/, '')
-        .replace(/<\/?div[^>]*>/gi, '')
-        .replace(/<\/?h[1-6][^>]*>/gi, '')
-        .replace(/<\/?p[^>]*>/gi, '')
-        .replace(/<\/?b[^>]*>/gi, '')
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/&nbsp;/gi, ' ')
-        .replace(/&lt;/gi, '<')
-        .replace(/&gt;/gi, '>')
-        .replace(/&amp;/gi, '&')
-        .replace(/\s+\n/g, '\n')
-        .replace(/\n\s+/g, '\n')
-        .replace(/[ \t]{2,}/g, ' ')
-        .trim();
-    }
+      const spin =
+        document.getElementById('spin');
 
-    // =========================
-    // MỞ FORM KÈM TOKEN
-    // =========================
-    function getTokenFromAnywhere() {
-      const currentParams = new URLSearchParams(window.location.search);
+      const btnXemDoanhSo =
+        document.getElementById('btnXemDoanhSo');
 
-      return (
-        currentParams.get('token') ||
-        currentParams.get('access_token') ||
-        currentParams.get('t') ||
-        localStorage.getItem('token') ||
-        localStorage.getItem('access_token') ||
-        localStorage.getItem('cod_token') ||
-        sessionStorage.getItem('token') ||
-        sessionStorage.getItem('access_token') ||
-        sessionStorage.getItem('cod_token') ||
-        ''
-      );
-    }
+      const btnBack =
+        document.getElementById('btnBack');
 
-    function openPageWithToken(path) {
-      const currentParams = new URLSearchParams(window.location.search);
-      const url = new URL(path, window.location.href);
-
-      currentParams.forEach((value, key) => {
-        url.searchParams.set(key, value);
-      });
-
-      const token = getTokenFromAnywhere();
-
-      if (token && !url.searchParams.get('token')) {
-        url.searchParams.set('token', token);
+      // =========================
+      // UI HELPER
+      // =========================
+      function showToast(msg, ok = false) {
+        toast.textContent = msg;
+        toast.className =
+          'toast ' + (ok ? 'ok' : 'err');
+        toast.style.display = 'block';
       }
 
-      window.location.href = url.href;
-    }
-
-    // =========================
-    // GỌI WEBHOOK N8N
-    // Dùng form POST để tránh CORS preflight
-    // =========================
-    async function callWebhook(month) {
-      const formData = new URLSearchParams();
-      formData.append('month', month);
-
-      const resp = await fetch(WEBHOOK_TINH_DOANH_SO, {
-        method: 'POST',
-        body: formData
-      });
-
-      let detail = '';
-
-      try {
-        detail = await resp.text();
-      } catch (e) {}
-
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status} — ${detail || 'Gọi webhook thất bại'}`);
+      function hideToast() {
+        toast.style.display = 'none';
+        toast.textContent = '';
       }
 
-      return detail;
-    }
-
-    // =========================
-    // EVENTS
-    // =========================
-    btn.addEventListener('click', async () => {
-      hideToast();
-
-      const month = (ymInp.value || '').trim();
-
-      if (!validateMonth(month)) {
-        showToast('❌ Lỗi tháng! Vui lòng chọn đúng định dạng YYYY-MM.', false);
-        ymInp.focus();
-        return;
+      function setLoading(isLoading) {
+        btn.disabled = isLoading;
+        spin.style.display =
+          isLoading ? 'inline-block' : 'none';
       }
 
-      setLoading(true);
+      function openPage(path) {
+        window.location.assign(path);
+      }
 
-      // Trạng thái đang chạy
-      showToast(`⏳ Đang tính doanh số tháng ${month}...`, true);
+      // =========================
+      // MẶC ĐỊNH THÁNG HIỆN TẠI
+      // =========================
+      function setDefaultMonth() {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m =
+          String(d.getMonth() + 1).padStart(2, '0');
 
-      try {
-        const resultText = await callWebhook(month);
-        const cleanText = cleanWebhookResponse(resultText);
+        ymInp.value = `${y}-${m}`;
+      }
 
-        // Khi chạy xong: thay thế thông báo đang chạy bằng phản hồi cuối
-        showToast(
-          cleanText || `✅ Đã tính doanh số xong tháng ${month}`,
-          true
+      // =========================
+      // VALIDATE
+      // =========================
+      function validateMonth(v) {
+        return /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
+      }
+
+      // =========================
+      // LÀM SẠCH PHẢN HỒI N8N
+      // =========================
+      function cleanWebhookResponse(text) {
+        return String(text || '')
+          .trim()
+          .replace(/^=\s*/, '')
+          .replace(/<\/?div[^>]*>/gi, '')
+          .replace(/<\/?h[1-6][^>]*>/gi, '')
+          .replace(/<\/?p[^>]*>/gi, '')
+          .replace(/<\/?b[^>]*>/gi, '')
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/&nbsp;/gi, ' ')
+          .replace(/&lt;/gi, '<')
+          .replace(/&gt;/gi, '>')
+          .replace(/&amp;/gi, '&')
+          .replace(/\s+\n/g, '\n')
+          .replace(/\n\s+/g, '\n')
+          .replace(/[ \t]{2,}/g, ' ')
+          .trim();
+      }
+
+      // =========================
+      // GỌI WEBHOOK N8N
+      // =========================
+      async function callWebhook(month) {
+        const formData =
+          new URLSearchParams();
+
+        formData.append(
+          'month',
+          month
         );
 
-      } catch (err) {
-        showToast(`❌ Gọi webhook lỗi: ${err.message}`, false);
-      } finally {
-        setLoading(false);
-      }
-    });
+        const resp =
+          await fetch(
+            WEBHOOK_TINH_DOANH_SO,
+            {
+              method: 'POST',
+              body: formData
+            }
+          );
 
-    btnXemDoanhSo.addEventListener('click', () => {
-      openPageWithToken(FORM_XEM_DOANH_SO);
-    });
+        let detail = '';
 
-    ymInp.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        btn.click();
+        try {
+          detail =
+            await resp.text();
+        } catch {}
+
+        if (!resp.ok) {
+          throw new Error(
+            `HTTP ${resp.status} — ${
+              detail ||
+              'Gọi webhook thất bại'
+            }`
+          );
+        }
+
+        return detail;
       }
-    });
+
+      // =========================
+      // EVENTS
+      // =========================
+      function bindEvents() {
+        btn.addEventListener(
+          'click',
+          async () => {
+            hideToast();
+
+            const month =
+              (ymInp.value || '').trim();
+
+            if (!validateMonth(month)) {
+              showToast(
+                '❌ Lỗi tháng! Vui lòng chọn đúng định dạng YYYY-MM.',
+                false
+              );
+
+              ymInp.focus();
+              return;
+            }
+
+            setLoading(true);
+
+            showToast(
+              `⏳ Đang tính doanh số tháng ${month}...`,
+              true
+            );
+
+            try {
+              const resultText =
+                await callWebhook(month);
+
+              const cleanText =
+                cleanWebhookResponse(
+                  resultText
+                );
+
+              showToast(
+                cleanText ||
+                `✅ Đã tính doanh số xong tháng ${month}`,
+                true
+              );
+
+            } catch (err) {
+              showToast(
+                `❌ Gọi webhook lỗi: ${err.message}`,
+                false
+              );
+
+            } finally {
+              setLoading(false);
+            }
+          }
+        );
+
+        btnXemDoanhSo.addEventListener(
+          'click',
+          () => {
+            openPage(
+              FORM_XEM_DOANH_SO
+            );
+          }
+        );
+
+        btnBack.addEventListener(
+          'click',
+          () => {
+            openPage(
+              FORM_QUAY_LAI
+            );
+          }
+        );
+
+        ymInp.addEventListener(
+          'keydown',
+          e => {
+            if (e.key === 'Enter') {
+              btn.click();
+            }
+          }
+        );
+      }
+
+      // =========================
+      // KHỞI TẠO
+      // =========================
+      document.addEventListener(
+        'DOMContentLoaded',
+        async () => {
+          try {
+            if (
+              typeof window.checkLogin !==
+              'function'
+            ) {
+              throw new Error(
+                'Không tìm thấy check_login.js'
+              );
+            }
+
+            const loginOk =
+              await window.checkLogin();
+
+            if (!loginOk) {
+              return;
+            }
+
+            console.log(
+              '[TINH_DOANH_SO] LOGIN OK:',
+              loginOk.ma_nv,
+              loginOk.ten_nv || ''
+            );
+
+            setDefaultMonth();
+            bindEvents();
+
+            document.body.classList.add(
+              'ready'
+            );
+
+          } catch (error) {
+            console.error(
+              '[TINH_DOANH_SO] ERROR:',
+              error
+            );
+
+            if (
+              typeof window.logoutCheck ===
+              'function'
+            ) {
+              window.logoutCheck(
+                error?.message ||
+                'Không kiểm tra được đăng nhập'
+              );
+            } else {
+              window.location.replace(
+                './login.html'
+              );
+            }
+          }
+        }
+      );
+    })();
   </script>
 </body>
 </html>
