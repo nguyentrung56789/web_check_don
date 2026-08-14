@@ -7,9 +7,9 @@
   <title>Danh sách khách hàng</title>
 
   <script src="./js/internal_key.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./js/cod_config.js"></script>
-  <script src="./js/auth_token.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/check_login.js"></script>
 
   <style>
     * {
@@ -26,6 +26,14 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
+    }
+
+    body {
+      visibility: hidden;
+    }
+
+    body.ready {
+      visibility: visible;
     }
 
     .hidden {
@@ -2015,25 +2023,88 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
       runSelectedBtn.addEventListener("click", runSelectedCustomers);
     }
 
-    initSupabase().then(async function () {
-      requestChatwootContext();
-      setTimeout(requestChatwootContext, 500);
-      setTimeout(requestChatwootContext, 1200);
+    (async function startPage() {
+      let daXacThuc = false;
 
-      await initPage();
-      enableColumnResize();
-      initColumnVisibility();
+      try {
+        /* =========================
+           1. CHECK ĐĂNG NHẬP
+              check_login.js kiểm tra:
+              - ma_nv
+              - mat_khau
+        ========================= */
+        if (typeof window.checkLogin !== "function") {
+          throw new Error("Không tìm thấy check_login.js");
+        }
 
-      // Sau khi dữ liệu ban đầu tải xong, tự tìm và nhảy tới hội thoại đang mở.
-      scheduleLocateCurrentChatwootRow(150);
-    }).catch(function (error) {
-      console.error("Lỗi khởi tạo trang:", error);
-      customerBody.innerHTML = `
-        <tr>
-          <td colspan="10">Lỗi khởi tạo: ${escapeHtml(error.message || String(error))}</td>
-        </tr>
-      `;
-    });
+        const loginOk = await window.checkLogin();
+
+        if (!loginOk) {
+          return;
+        }
+
+        daXacThuc = true;
+
+        // Dùng chính tài khoản vừa được check Supabase.
+        currentUser = loginOk;
+
+        console.log(
+          "[CHAM_SOC_KHACH_HANG] LOGIN OK:",
+          loginOk.ma_nv,
+          loginOk.ten_nv || ""
+        );
+
+        /* Chỉ hiện trang sau khi xác thực hợp lệ */
+        document.body.classList.add("ready");
+
+        /* =========================
+           2. KHỞI TẠO SUPABASE
+        ========================= */
+        await initSupabase();
+
+        /* =========================
+           3. KHỞI TẠO CHATWOOT + TRANG
+        ========================= */
+        requestChatwootContext();
+        setTimeout(requestChatwootContext, 500);
+        setTimeout(requestChatwootContext, 1200);
+
+        await initPage();
+        enableColumnResize();
+        initColumnVisibility();
+
+        // Sau khi dữ liệu ban đầu tải xong, tự tìm và nhảy tới hội thoại đang mở.
+        scheduleLocateCurrentChatwootRow(150);
+
+      } catch (error) {
+        console.error(
+          "[CHAM_SOC_KHACH_HANG] Lỗi khởi tạo trang:",
+          error
+        );
+
+        if (!daXacThuc) {
+          if (typeof window.logoutCheck === "function") {
+            window.logoutCheck(
+              error?.message || "Không kiểm tra được đăng nhập"
+            );
+          } else {
+            window.location.replace("./login.html");
+          }
+
+          return;
+        }
+
+        document.body.classList.add("ready");
+
+        customerBody.innerHTML = `
+          <tr>
+            <td colspan="10">
+              Lỗi khởi tạo: ${escapeHtml(error.message || String(error))}
+            </td>
+          </tr>
+        `;
+      }
+    })();
 
 
     function getQueryParam(name) {
@@ -3803,19 +3874,14 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
     }
 
     function getLoginUser() {
-      const params = new URLSearchParams(window.location.search);
-
       const nv =
         safeParseStorage("nv", localStorage) ||
         safeParseStorage("chatwoot_crm_user", localStorage) ||
         safeParseStorage("nv_ctx", sessionStorage) ||
         null;
 
-      const maNvUrl = String(params.get("ma_nv") || "").trim();
-      const tenNvUrl = String(params.get("ten_nv") || "").trim();
-
-      const maNv = maNvUrl || String(nv?.ma_nv || "").trim();
-      const tenNv = tenNvUrl || String(nv?.ten_nv || "").trim();
+      const maNv = String(nv?.ma_nv || "").trim();
+      const tenNv = String(nv?.ten_nv || "").trim();
 
       if (!maNv) {
         return null;
@@ -3829,11 +3895,9 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
     }
 
     async function initPage() {
-      currentUser = getLoginUser();
-
       if (!currentUser || !currentUser.ma_nv) {
-        alert("Không tìm thấy mã nhân viên. Vui lòng vào từ Trang chính.");
-        window.location.replace("./main.html");
+        alert("Không tìm thấy tài khoản đăng nhập.");
+        window.location.replace("./login.html");
         return;
       }
 
@@ -3853,10 +3917,7 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
       userInfo.textContent = `${currentUser.ten_nv || currentUser.ma_nv} - ${currentUser.ma_nv}`;
     }
 logoutBtn.addEventListener("click", function () {
-      const target = new URL("./main.html", window.location.href);
-      const token = new URLSearchParams(window.location.search).get("token");
-      if (token) target.searchParams.set("token", token);
-      window.location.assign(target.toString());
+      window.location.assign("./main.html");
     });
 
     searchBtn.addEventListener("click", function () {
