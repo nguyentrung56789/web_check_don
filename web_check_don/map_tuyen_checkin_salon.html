@@ -9,7 +9,9 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script src="./js/internal_key.js"></script>
+  <script src="./js/cod_config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/check_login.js"></script>
 
   <style>
     html,body{
@@ -17,6 +19,14 @@
       height:100%;
       overflow:hidden;
       font-family:system-ui;
+    }
+
+    body{
+      visibility:hidden;
+    }
+
+    body.ready{
+      visibility:visible;
     }
     #map{
       position:fixed;
@@ -239,50 +249,37 @@
 <script>
 (async function(){
 
-  const params = new URLSearchParams(location.search);
-  let currentMaNV = String(params.get("ma_nv") || "").trim();
-  let currentTenNV = String(params.get("ten_nv") || "").trim();
-
-  function safeParseStorage(key, storage){
-    try { return JSON.parse(storage.getItem(key) || "null"); }
-    catch { return null; }
+  /* =========================
+     CHECK ĐĂNG NHẬP
+     Chỉ đối chiếu:
+     - ma_nv
+     - mat_khau
+  ========================= */
+  if (typeof window.checkLogin !== "function") {
+    throw new Error("Không tìm thấy check_login.js");
   }
 
-  function getLoggedNV(){
-    const nv = safeParseStorage("nv", localStorage);
-    if (nv && nv.ma_nv) return nv;
+  const loginOk = await window.checkLogin();
 
-    const ctx = safeParseStorage("nv_ctx", sessionStorage);
-    if (ctx && ctx.ma_nv) return ctx;
-
-    return null;
-  }
-
-  const loggedNV = getLoggedNV();
-
-  if (!loggedNV || !loggedNV.ma_nv || loggedNV.hoat_dong === false) {
-    try { alert("Bạn chưa đăng nhập."); } catch {}
-    location.replace("./login.html");
+  if (!loginOk) {
     throw new Error("Not logged in");
   }
 
+  const currentMaNV = String(loginOk.ma_nv || "").trim();
+  const currentTenNV = String(loginOk.ten_nv || "").trim();
+
   if (!currentMaNV) {
-    currentMaNV = String(loggedNV.ma_nv || "").trim();
-    currentTenNV = currentTenNV || String(loggedNV.ten_nv || "").trim();
-
-    try {
-      const nextUrl = new URL(location.href);
-      nextUrl.searchParams.set("ma_nv", currentMaNV);
-      if (currentTenNV) nextUrl.searchParams.set("ten_nv", currentTenNV);
-      history.replaceState(null, "", nextUrl.toString());
-    } catch {}
+    throw new Error("Missing ma_nv");
   }
 
-  if (String(loggedNV.ma_nv) !== String(currentMaNV)) {
-    try { alert("Mã nhân viên không khớp tài khoản đăng nhập."); } catch {}
-    location.replace("./main.html");
-    throw new Error("ma_nv mismatch");
-  }
+  console.log(
+    "[MAP_CHECKIN] LOGIN OK:",
+    currentMaNV,
+    currentTenNV
+  );
+
+  /* Chỉ hiện trang sau khi xác thực hợp lệ */
+  document.body.classList.add("ready");
 
   // Chờ internal_key.js nạp xong cấu hình từ /api/getConfig
   if (!window.configReady) {
@@ -891,9 +888,13 @@
 
 })().catch(err => {
   const msg = err && err.message ? err.message : "";
-  if (msg === "Missing ma_nv" || msg === "Not logged in" || msg === "ma_nv mismatch") {
+
+  if (msg === "Missing ma_nv" || msg === "Not logged in") {
     return;
   }
+
+  document.body.classList.add("ready");
+
   alert("Lỗi tải bản đồ: " + (err.message || err));
   console.error(err);
 });
