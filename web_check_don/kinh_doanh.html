@@ -10,8 +10,8 @@
 
   <script src="./js/internal_key.js"></script>
   <script src="./js/cod_config.js"></script>
-  <script src="./js/auth_token.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/check_login.js"></script>
 
   <style>
     * {
@@ -26,6 +26,7 @@
 
     body {
       min-height: 100vh;
+      visibility: hidden;
       padding: 24px;
       font-family:
         system-ui,
@@ -42,6 +43,10 @@
           transparent 38%
         ),
         #07101f;
+    }
+
+    body.ready {
+      visibility: visible;
     }
 
     .page {
@@ -322,38 +327,8 @@
         '#errorNote'
       );
 
-    function getToken() {
-      return (
-        new URLSearchParams(
-          window.location.search
-        ).get('token') ||
-        sessionStorage.getItem(
-          'APP_ACCESS'
-        ) ||
-        ''
-      );
-    }
-
-    function openWithToken(url) {
-      const target =
-        new URL(
-          url,
-          window.location.href
-        );
-
-      const token =
-        getToken();
-
-      if (token) {
-        target.searchParams.set(
-          'token',
-          token
-        );
-      }
-
-      window.location.assign(
-        target.toString()
-      );
+    function openPage(url) {
+      window.location.assign(url);
     }
 
     function hideAllButtons() {
@@ -540,7 +515,7 @@
               return;
             }
 
-            openWithToken(url);
+            openPage(url);
           }
         );
       }
@@ -551,15 +526,7 @@
       .addEventListener(
         'click',
         () => {
-          if (
-            document.referrer &&
-            window.history.length > 1
-          ) {
-            window.history.back();
-            return;
-          }
-
-          openWithToken(
+          openPage(
             './main.html'
           );
         }
@@ -568,17 +535,82 @@
     document.addEventListener(
       'DOMContentLoaded',
       async () => {
+        let daXacThuc = false;
+
         try {
+          /* =========================
+             1. CHECK ĐĂNG NHẬP
+                check_login.js kiểm tra:
+                - ma_nv
+                - mat_khau
+          ========================= */
+          if (
+            typeof window.checkLogin !==
+            'function'
+          ) {
+            throw new Error(
+              'Không tìm thấy check_login.js'
+            );
+          }
+
+          const loginOk =
+            await window.checkLogin();
+
+          if (!loginOk) {
+            return;
+          }
+
+          daXacThuc = true;
+
+          console.log(
+            '[KINH_DOANH] LOGIN OK:',
+            loginOk.ma_nv,
+            loginOk.ten_nv || ''
+          );
+
+          /* Chỉ hiện giao diện sau khi login hợp lệ */
+          document.body.classList.add(
+            'ready'
+          );
+
+          /* =========================
+             2. GẮN SỰ KIỆN
+             3. TẢI TÊN NHÂN VIÊN
+             4. TẢI PHÂN QUYỀN
+          ========================= */
           bindButtons();
 
           await Promise.all([
             loadEmployeeName(),
             applyPermissions()
           ]);
+
         } catch (error) {
           console.error(
             '[KINH_DOANH_INIT]',
             error
+          );
+
+          if (!daXacThuc) {
+            if (
+              typeof window.logoutCheck ===
+              'function'
+            ) {
+              window.logoutCheck(
+                error?.message ||
+                'Không kiểm tra được đăng nhập'
+              );
+            } else {
+              location.replace(
+                './login.html'
+              );
+            }
+
+            return;
+          }
+
+          document.body.classList.add(
+            'ready'
           );
 
           permissionMenu.classList.add(
