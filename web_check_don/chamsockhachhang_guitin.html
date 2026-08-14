@@ -1805,13 +1805,19 @@ async function sendRunWebhook() {
   formData.append('run_id', currentRunId);
   formData.append('so_khach_hop_le', String(rows.length));
 
-  // Danh sách conversation_id của toàn bộ khách hợp lệ.
-  // Gửi dưới dạng chuỗi JSON để n8n có thể JSON.parse().
-  const conversationIds = rows
-    .map(r => r.conversation_id)
-    .filter(v => v !== null && v !== undefined && String(v).trim() !== '');
+  // conversation_id gửi trực tiếp, KHÔNG có dấu []
+  // Nếu đang có 1 khách hợp lệ thì n8n sẽ nhận ví dụ: 13546
+  const conversationId =
+    rows.find(r =>
+      r.conversation_id !== null &&
+      r.conversation_id !== undefined &&
+      String(r.conversation_id).trim() !== ''
+    )?.conversation_id ?? '';
 
-  formData.append('conversation_id', JSON.stringify(conversationIds));
+  formData.append('conversation_id', String(conversationId));
+
+  // Loại tin nhắn Chatwoot
+  formData.append('message_type', 'outgoing');
 
   formData.append('noi_dung', noiDung);
   formData.append('icon', icon);
@@ -1870,9 +1876,8 @@ async function sendRunWebhook() {
     ma_nv: maNv,
     run_id: currentRunId,
     so_khach_hop_le: rows.length,
-    conversation_id: rows
-      .map(r => r.conversation_id)
-      .filter(v => v !== null && v !== undefined && String(v).trim() !== ''),
+    conversation_id: String(conversationId),
+    message_type: 'outgoing',
     noi_dung: noiDung,
     icon: icon,
     delay_mode: delayConfig.mode,
