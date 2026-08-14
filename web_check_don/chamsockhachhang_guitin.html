@@ -1805,6 +1805,14 @@ async function sendRunWebhook() {
   formData.append('run_id', currentRunId);
   formData.append('so_khach_hop_le', String(rows.length));
 
+  // Danh sách conversation_id của toàn bộ khách hợp lệ.
+  // Gửi dưới dạng chuỗi JSON để n8n có thể JSON.parse().
+  const conversationIds = rows
+    .map(r => r.conversation_id)
+    .filter(v => v !== null && v !== undefined && String(v).trim() !== '');
+
+  formData.append('conversation_id', JSON.stringify(conversationIds));
+
   formData.append('noi_dung', noiDung);
   formData.append('icon', icon);
 
@@ -1862,6 +1870,9 @@ async function sendRunWebhook() {
     ma_nv: maNv,
     run_id: currentRunId,
     so_khach_hop_le: rows.length,
+    conversation_id: rows
+      .map(r => r.conversation_id)
+      .filter(v => v !== null && v !== undefined && String(v).trim() !== ''),
     noi_dung: noiDung,
     icon: icon,
     delay_mode: delayConfig.mode,
