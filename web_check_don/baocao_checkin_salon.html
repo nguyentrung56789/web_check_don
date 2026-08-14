@@ -6,7 +6,9 @@
   <title>Báo cáo check-in khách hàng</title>
 
   <script src="./js/internal_key.js"></script>
+  <script src="./js/cod_config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/check_login.js"></script>
 
   <style>
     :root{
@@ -30,6 +32,14 @@
       background:var(--bg);
       color:var(--text);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    }
+
+    body{
+      visibility:hidden;
+    }
+
+    body.ready{
+      visibility:visible;
     }
 
     .wrap{
@@ -608,53 +618,34 @@
     const btnNextPage = $('#btnNextPage');
     const pageInfo    = $('#pageInfo');
 
-    const params = new URLSearchParams(location.search);
+    let currentMaNV = '';
+    let currentTenNV = '';
 
-    function safeParseStorage(key, storage){
-      try { return JSON.parse(storage.getItem(key) || 'null'); }
-      catch { return null; }
-    }
+    async function checkCurrentLogin(){
+      if(typeof window.checkLogin !== 'function'){
+        throw new Error('Không tìm thấy check_login.js');
+      }
 
-    function getLoggedNV(){
-      const nv = safeParseStorage('nv', localStorage);
-      if(nv && nv.ma_nv) return nv;
+      const loginOk = await window.checkLogin();
 
-      const ctx = safeParseStorage('nv_ctx', sessionStorage);
-      if(ctx && ctx.ma_nv) return ctx;
+      if(!loginOk){
+        throw new Error('Not logged in');
+      }
 
-      return null;
-    }
+      currentMaNV = String(loginOk.ma_nv || '').trim();
+      currentTenNV = String(loginOk.ten_nv || '').trim();
 
-    const loggedNV = getLoggedNV();
+      if(!currentMaNV){
+        throw new Error('Missing ma_nv');
+      }
 
-    const currentMaNV = String(
-      params.get('ma_nv') ||
-      loggedNV?.ma_nv ||
-      ''
-    ).trim();
+      console.log(
+        '[BAO_CAO_CHECKIN] LOGIN OK:',
+        currentMaNV,
+        currentTenNV
+      );
 
-    const currentTenNV = String(
-      params.get('ten_nv') ||
-      loggedNV?.ten_nv ||
-      ''
-    ).trim();
-
-    if(!currentMaNV){
-      try { alert('Thiếu mã nhân viên. Vui lòng đăng nhập lại.'); } catch {}
-      location.replace('./login.html');
-      throw new Error('Missing ma_nv');
-    }
-
-    if(!loggedNV || !loggedNV.ma_nv || loggedNV.hoat_dong === false){
-      try { alert('Bạn chưa đăng nhập.'); } catch {}
-      location.replace('./login.html');
-      throw new Error('Not logged in');
-    }
-
-    if(String(loggedNV.ma_nv) !== String(currentMaNV)){
-      try { alert('Mã nhân viên không khớp tài khoản đăng nhập.'); } catch {}
-      location.replace('./main.html');
-      throw new Error('ma_nv mismatch');
+      return loginOk;
     }
 
     function setStatus(text, mode){
@@ -1167,11 +1158,38 @@
     }
 
     async function init(){
+      let daXacThuc = false;
+
       try{
+        const loginOk = await checkCurrentLogin();
+
+        if(!loginOk){
+          return;
+        }
+
+        daXacThuc = true;
+
+        document.body.classList.add('ready');
+
         await ensureSupa();
         setStatus('✅ Supabase sẵn sàng.', 'ok');
+
       }catch(e){
-        console.error(e);
+        console.error('[BAO_CAO_CHECKIN] INIT ERROR:', e);
+
+        if(!daXacThuc){
+          if(typeof window.logoutCheck === 'function'){
+            window.logoutCheck(
+              e?.message || 'Không kiểm tra được đăng nhập'
+            );
+          }else{
+            location.replace('./login.html');
+          }
+
+          return;
+        }
+
+        document.body.classList.add('ready');
         setStatus('❌ Không thể kết nối Supabase: ' + (e.message || e), 'err');
         return;
       }
@@ -1226,10 +1244,7 @@
 
       btnMap.addEventListener('click', () => {
         saveFilters();
-        const url = new URL('bando_checkin.html', location.href);
-        url.searchParams.set('ma_nv', currentMaNV);
-        url.searchParams.set('ten_nv', currentTenNV || loggedNV.ten_nv || '');
-        location.href = url.toString();
+        location.href = './bando_checkin.html';
       });
 
       await fetchData();
