@@ -1,316 +1,57 @@
-// ===================== login.js =====================
-
-const $ = id => document.getElementById(id);
-const STORAGE = localStorage;
-
-let supabase;
-
-// Cố định đúng bảng đăng nhập
-const TABLE_NV = 'kv_nhan_vien';
-
-
-/* =====================================================
-   CHUYỂN SANG MAIN
-   KHÔNG DÙNG TOKEN
-===================================================== */
-function goIndex() {
-  location.replace('./main.html');
-}
-
-
-/* =====================================================
-   PARSE JSON
-===================================================== */
-function safeParse(json, fallback = null) {
-  try {
-    return JSON.parse(json);
-  } catch {
-    return fallback;
-  }
-}
-
-
-/* =====================================================
-   INIT SUPABASE
-===================================================== */
-async function initSupabase() {
-
-  const note = $('cfgNote');
-
-  try {
-
-    let url;
-    let anon;
-
-    // 1. Lấy config từ API
-    try {
-
-      const r = await fetch('/api/getConfig', {
-        headers: {
-          'x-internal-key': window.getInternalKey?.() || ''
-        },
-        cache: 'no-store'
-      });
-
-      if (r.ok) {
-
-        const j = await r.json();
-
-        url = j?.url;
-        anon = j?.anon;
-
-      }
-
-    } catch (e) {
-
-      console.warn(
-        '[LOGIN] /api/getConfig lỗi:',
-        e
-      );
-
-    }
-
-
-    // 2. fallback getConfig
-    if (!url || !anon) {
-
-      try {
-
-        if (typeof window.getConfig === 'function') {
-
-          const u1 = window.getConfig('url');
-          const a1 = window.getConfig('anon');
-
-          if (
-            typeof u1 === 'string' &&
-            typeof a1 === 'string'
-          ) {
-            url = u1;
-            anon = a1;
-          }
-
-        }
-
-      } catch {}
-
-
-
-      try {
-
-        if (
-          (!url || !anon) &&
-          typeof window.getConfig === 'function'
-        ) {
-
-          const obj = window.getConfig();
-
-          if (obj?.url && obj?.anon) {
-            url = obj.url;
-            anon = obj.anon;
-          }
-
-        }
-
-      } catch {}
-
-
-
-      if (!url || !anon) {
-
-        url =
-          window.COD_BASE?.url ||
-          url;
-
-        anon =
-          window.COD_BASE?.anon ||
-          anon;
-
-      }
-
-    }
-
-
-    if (!url || !anon) {
-
-      throw new Error(
-        'Thiếu cấu hình Supabase (url/anon)'
-      );
-
-    }
-
-
-    if (!window.supabase?.createClient) {
-
-      throw new Error(
-        'Chưa tải thư viện Supabase'
-      );
-
-    }
-
-
-    supabase =
-      window.supabase.createClient(
-        url,
-        anon
-      );
-
-
-    if (note) {
-
-      note.textContent =
-        'Đã sẵn sàng. Vui lòng đăng nhập.';
-
-    }
-
-
-    console.log(
-      '[LOGIN] Supabase ready'
-    );
-
-  } catch (e) {
-
-    $('msg').textContent =
-      'Lỗi cấu hình: ' +
-      e.message;
-
-
-    if (note) {
-
-      note.textContent =
-        'Không khởi tạo được Supabase.';
-
-    }
-
-
-    console.error(
-      '[LOGIN] initSupabase ERROR:',
-      e
-    );
-
-  }
-
-}
-
-
-/* =====================================================
-   UI LOADING
-===================================================== */
-function setLoading(v = true) {
-
-  const b = $('btnLogin');
-
-  if (!b) return;
-
-  b.disabled = v;
-
-  b.textContent =
-    v
-      ? 'Đang xử lý…'
-      : 'Đăng nhập';
-
-}
-
-
-/* =====================================================
-   ĐĂNG NHẬP
-===================================================== */
 async function login() {
 
   if (!supabase) {
-
-    $('msg').textContent =
-      'Đang khởi tạo, thử lại…';
-
+    $('msg').textContent = 'Đang khởi tạo, thử lại…';
     return;
-
   }
 
-
-  const ma =
-    String(
-      $('ma_nv')?.value || ''
-    ).trim();
-
-
-  const mk =
-    String(
-      $('mat_khau')?.value || ''
-    ).trim();
-
+  const ma = String($('ma_nv')?.value || '').trim();
+  const mk = String($('mat_khau')?.value || '').trim();
 
   if (!ma || !mk) {
-
-    $('msg').textContent =
-      'Vui lòng nhập đủ thông tin';
-
+    $('msg').textContent = 'Vui lòng nhập đủ thông tin';
     return;
-
   }
 
-
   setLoading(true);
-
   $('msg').textContent = '';
-
 
   try {
 
-    console.log(
-      '========== LOGIN =========='
-    );
+    console.log('========================');
+    console.log('[LOGIN] TABLE =', TABLE_NV);
+    console.log('[LOGIN] MA_NV =', ma);
 
-    console.log(
-      '[LOGIN] TABLE:',
-      TABLE_NV
-    );
-
-    console.log(
-      '[LOGIN] MA_NV:',
-      ma
-    );
-
+    // ==================================================
+    // BƯỚC 1: CHỈ TÌM MÃ NHÂN VIÊN
+    // ==================================================
 
     const {
       data,
       error
-    } =
-      await supabase
+    } = await supabase
+      .from(TABLE_NV)
+      .select(`
+        ma_nv,
+        mat_khau,
+        ten_nv,
+        admin,
+        dong_hang,
+        check_don,
+        map,
+        hoat_dong
+      `)
+      .eq('ma_nv', ma)
+      .limit(1)
+      .maybeSingle();
 
-        .from(TABLE_NV)
+    console.log('[LOGIN] DATA =', data);
+    console.log('[LOGIN] ERROR =', error);
 
-        .select(
-          'ma_nv, ten_nv, admin, dong_hang, check_don, map, hoat_dong'
-        )
+    // ==================================================
+    // SUPABASE LỖI
+    // ==================================================
 
-        .eq(
-          'ma_nv',
-          ma
-        )
-
-        .eq(
-          'mat_khau',
-          mk.toString()
-        )
-
-        .limit(1)
-
-        .maybeSingle();
-
-
-    console.log(
-      '[LOGIN] DATA:',
-      data
-    );
-
-    console.log(
-      '[LOGIN] ERROR:',
-      error
-    );
-
-
-    // =========================================
-    // LỖI SUPABASE
-    // =========================================
     if (error) {
 
       console.error(
@@ -318,211 +59,123 @@ async function login() {
         error
       );
 
-
       $('msg').textContent =
         'Lỗi Supabase: ' +
-        (
-          error.message ||
-          error.code ||
-          'Không xác định'
-        );
-
+        (error.message || error.code || '');
 
       return;
-
     }
 
+    // ==================================================
+    // KHÔNG TÌM THẤY MÃ NHÂN VIÊN
+    // ==================================================
 
-    // =========================================
-    // KHÔNG KHỚP MA_NV + MAT_KHAU
-    // =========================================
     if (!data) {
 
       $('msg').textContent =
-        'Sai mã hoặc mật khẩu';
+        `Không tìm thấy mã nhân viên ${ma}`;
 
       return;
-
     }
 
+    // ==================================================
+    // SO SÁNH MẬT KHẨU
+    // ==================================================
 
-    // =========================================
-    // TÀI KHOẢN KHÓA
-    // =========================================
+    const mkTrongDatabase =
+      String(data.mat_khau ?? '').trim();
+
+    console.log(
+      '[LOGIN] TÌM THẤY NHÂN VIÊN:',
+      data.ma_nv,
+      data.ten_nv
+    );
+
+    console.log(
+      '[LOGIN] Độ dài MK nhập:',
+      mk.length
+    );
+
+    console.log(
+      '[LOGIN] Độ dài MK DB:',
+      mkTrongDatabase.length
+    );
+
+    if (mk !== mkTrongDatabase) {
+
+      $('msg').textContent =
+        'Mã nhân viên đúng nhưng mật khẩu không khớp';
+
+      return;
+    }
+
+    // ==================================================
+    // CHECK HOẠT ĐỘNG
+    // ==================================================
+
     if (data.hoat_dong !== true) {
 
-      try {
-
-        STORAGE.removeItem('nv');
-
-        sessionStorage.removeItem(
-          'nv_ctx'
-        );
-
-      } catch {}
-
+      localStorage.removeItem('nv');
+      sessionStorage.removeItem('nv_ctx');
 
       $('msg').textContent =
         'Tài khoản đã bị dừng hoạt động.';
 
       return;
-
     }
 
+    // ==================================================
+    // ĐĂNG NHẬP THÀNH CÔNG
+    // ==================================================
 
-    // =========================================
-    // LƯU LOGIN
-    // Có thêm mat_khau để check_login.js dùng
-    // =========================================
     const loginData = {
-      ...data,
+      ma_nv: data.ma_nv,
+      ten_nv: data.ten_nv,
+      admin: data.admin,
+      dong_hang: data.dong_hang,
+      check_don: data.check_don,
+      map: data.map,
+      hoat_dong: data.hoat_dong,
+
+      // để check_login.js kiểm tra lại
       mat_khau: mk
     };
 
+    localStorage.setItem(
+      'nv',
+      JSON.stringify(loginData)
+    );
 
-    try {
+    localStorage.setItem(
+      'last_ma_nv',
+      ma
+    );
 
-      STORAGE.setItem(
-        'nv',
-        JSON.stringify(
-          loginData
-        )
-      );
-
-
-      STORAGE.setItem(
-        'last_ma_nv',
-        ma
-      );
-
-
-      if (!STORAGE.getItem('nv')) {
-
-        throw new Error(
-          'localStorage bị chặn'
-        );
-
-      }
-
-    } catch (e) {
-
-      $('msg').textContent =
-        'Không thể lưu phiên đăng nhập.';
-
-      console.error(e);
-
-      return;
-
-    }
-
-
-    // =========================================
-    // SESSION CONTEXT
-    // =========================================
     sessionStorage.setItem(
       'nv_ctx',
       JSON.stringify({
-        ma_nv:
-          data.ma_nv || '',
-
-        ten_nv:
-          data.ten_nv || '',
-
-        ts:
-          Date.now()
+        ma_nv: data.ma_nv || '',
+        ten_nv: data.ten_nv || '',
+        ts: Date.now()
       })
     );
 
-
     console.log(
-      '[LOGIN] ĐĂNG NHẬP THÀNH CÔNG:',
-      data
+      '[LOGIN] ĐĂNG NHẬP THÀNH CÔNG'
     );
 
-
-    if (navigator.vibrate) {
-
-      navigator.vibrate(60);
-
-    }
-
-
-    goIndex();
-
+    location.replace('./main.html');
 
   } catch (e) {
 
-    console.error(
-      '[LOGIN] ERROR:',
-      e
-    );
-
+    console.error('[LOGIN] ERROR:', e);
 
     $('msg').textContent =
       'Lỗi: ' +
-      (
-        e?.message ||
-        String(e)
-      );
-
+      (e?.message || String(e));
 
   } finally {
 
     setLoading(false);
-
   }
-
 }
-
-
-/* =====================================================
-   EVENTS
-===================================================== */
-
-$('btnLogin')
-  ?.addEventListener(
-    'click',
-    login
-  );
-
-
-$('mat_khau')
-  ?.addEventListener(
-    'keydown',
-    e => {
-
-      if (e.key === 'Enter') {
-
-        login();
-
-      }
-
-    }
-  );
-
-
-/* =====================================================
-   AUTOFILL MA_NV
-===================================================== */
-
-(function autofill() {
-
-  const el = $('ma_nv');
-
-  if (el) {
-
-    el.value =
-      STORAGE.getItem(
-        'last_ma_nv'
-      ) || '';
-
-  }
-
-})();
-
-
-/* =====================================================
-   START
-===================================================== */
-
-initSupabase();
