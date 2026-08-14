@@ -811,8 +811,8 @@
             <th>STT</th>
             <th>Mã KH</th>
             <th>Tên khách hàng</th>
+            <th>alias_name</th>
             <th>Tên nhân viên</th>
-            <th>conversation_id</th>
             <th>Trạng thái</th>
           </tr>
         </thead>
@@ -1169,6 +1169,7 @@ async function loadData() {
           ma_kh,
           ma_nv,
           ten_kh,
+          alias_name,
           ten_nv,
           uid_from,
           conversation_id,
@@ -1365,13 +1366,13 @@ function renderTable() {
 
           <td>
             ${escapeHtml(
-              r.ten_nv ?? ''
+              r.alias_name ?? ''
             )}
           </td>
 
           <td>
             ${escapeHtml(
-              r.conversation_id ?? ''
+              r.ten_nv ?? ''
             )}
           </td>
 
