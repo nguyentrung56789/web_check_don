@@ -10,10 +10,13 @@
 
   <title>Trang quản trị</title>
 
+  <!-- =========================
+       CẤU HÌNH + SUPABASE + LOGIN
+  ========================== -->
   <script src="./js/internal_key.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./js/cod_config.js"></script>
-  <script src="./js/auth_token.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/check_login.js"></script>
 
   <style>
     :root {
@@ -41,8 +44,19 @@
 
     body {
       margin: 0;
-      background: linear-gradient(135deg, #0b1220, #111a2f);
+
+      /* Ẩn trang cho tới khi check login thành công */
+      visibility: hidden;
+
+      background:
+        linear-gradient(
+          135deg,
+          #0b1220,
+          #111a2f
+        );
+
       color: var(--text);
+
       font-family:
         system-ui,
         -apple-system,
@@ -51,6 +65,10 @@
         Roboto,
         Arial,
         sans-serif;
+    }
+
+    body.ready {
+      visibility: visible;
     }
 
     button,
@@ -64,16 +82,34 @@
       right: 0;
       left: 0;
       z-index: 10;
+
       display: flex;
       align-items: center;
       justify-content: space-between;
+
       gap: 14px;
+
       min-height: 64px;
+
       padding: 12px 18px;
-      background: rgba(15, 24, 48, 0.98);
-      border-bottom: 1px solid var(--line);
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-      backdrop-filter: blur(10px);
+
+      background:
+        rgba(
+          15,
+          24,
+          48,
+          0.98
+        );
+
+      border-bottom:
+        1px solid var(--line);
+
+      box-shadow:
+        0 4px 14px
+        rgba(0, 0, 0, 0.25);
+
+      backdrop-filter:
+        blur(10px);
     }
 
     .title {
@@ -83,11 +119,16 @@
 
     .back-btn {
       border: 0;
+
       padding: 8px 4px;
+
       background: transparent;
+
       color: var(--danger);
+
       font-size: 15px;
       font-weight: 750;
+
       cursor: pointer;
     }
 
@@ -102,10 +143,23 @@
 
     .card {
       padding: 24px;
-      border: 1px solid var(--line);
+
+      border:
+        1px solid var(--line);
+
       border-radius: 18px;
-      background: rgba(15, 24, 48, 0.98);
-      box-shadow: 0 14px 38px rgba(0, 0, 0, 0.3);
+
+      background:
+        rgba(
+          15,
+          24,
+          48,
+          0.98
+        );
+
+      box-shadow:
+        0 14px 38px
+        rgba(0, 0, 0, 0.3);
     }
 
     h1 {
@@ -115,7 +169,9 @@
 
     .desc {
       margin: 0 0 22px;
+
       color: var(--muted);
+
       font-size: 14px;
       line-height: 1.5;
     }
@@ -128,20 +184,32 @@
     .menu-btn {
       width: 100%;
       min-height: 60px;
+
       display: flex;
       align-items: center;
       justify-content: center;
+
       gap: 10px;
+
       border: 0;
       border-radius: 14px;
+
       padding: 14px 18px;
-      background: var(--primary);
-      color: var(--primary-text);
+
+      background:
+        var(--primary);
+
+      color:
+        var(--primary-text);
+
       font-size: 18px;
       font-weight: 850;
+
       text-align: center;
       text-decoration: none;
+
       cursor: pointer;
+
       transition:
         transform 0.15s ease,
         background 0.15s ease,
@@ -149,55 +217,82 @@
     }
 
     .menu-btn:hover {
-      transform: translateY(-1px);
-      background: var(--primary-hover);
-      filter: brightness(1.03);
+      transform:
+        translateY(-1px);
+
+      background:
+        var(--primary-hover);
+
+      filter:
+        brightness(1.03);
     }
 
     .menu-btn:active {
-      transform: translateY(0);
+      transform:
+        translateY(0);
     }
 
     #linkDanhSachQuyen {
-      background: var(--secondary);
+      background:
+        var(--secondary);
+
       color: #071a34;
     }
 
     #linkDanhSachQuyen:hover {
-      background: var(--secondary-hover);
+      background:
+        var(--secondary-hover);
     }
 
     footer {
-      padding: 0 16px 24px;
-      color: var(--muted);
+      padding:
+        0 16px 24px;
+
+      color:
+        var(--muted);
+
       font-size: 12px;
+
       text-align: center;
     }
 
     @media (max-width: 520px) {
       .topbar {
-        padding: 12px 14px;
+        padding:
+          12px 14px;
       }
 
       .wrap {
-        margin-top: 92px;
+        margin-top:
+          92px;
       }
 
       .card {
-        padding: 20px;
+        padding:
+          20px;
       }
 
       .menu-btn {
-        min-height: 56px;
-        font-size: 17px;
+        min-height:
+          56px;
+
+        font-size:
+          17px;
       }
     }
   </style>
 </head>
 
 <body>
+
+  <!-- =========================
+       THANH TRÊN
+  ========================== -->
   <header class="topbar">
-    <div class="title">⚙️ Trang quản trị</div>
+
+    <div class="title">
+      ⚙️ Trang quản trị
+    </div>
 
     <button
       id="btnBack"
@@ -206,17 +301,29 @@
     >
       ← Quay lại
     </button>
+
   </header>
 
+
+  <!-- =========================
+       NỘI DUNG
+  ========================== -->
   <main class="wrap">
+
     <section class="card">
-      <h1>Admin</h1>
+
+      <h1>
+        Admin
+      </h1>
 
       <p class="desc">
         Chọn chức năng quản trị bên dưới.
       </p>
 
+
       <div class="menu">
+
+        <!-- QUẢN LÝ NHÂN VIÊN -->
         <a
           id="linkQuanLyNhanVien"
           class="menu-btn"
@@ -225,6 +332,8 @@
           👥 Quản lý nhân viên
         </a>
 
+
+        <!-- DANH SÁCH QUYỀN -->
         <a
           id="linkDanhSachQuyen"
           class="menu-btn"
@@ -232,120 +341,261 @@
         >
           🛡️ Danh sách quyền
         </a>
+
       </div>
+
     </section>
+
   </main>
 
+
+  <!-- =========================
+       FOOTER
+  ========================== -->
   <footer>
     © <span id="year"></span> COD Internal
   </footer>
 
+
+  <!-- =========================
+       SCRIPT
+  ========================== -->
   <script>
     (() => {
+
       'use strict';
 
+
+      /* =========================
+         ELEMENT
+      ========================= */
+
       const yearElement =
-        document.getElementById('year');
+        document.getElementById(
+          'year'
+        );
 
       const linkQuanLyNhanVien =
-        document.getElementById('linkQuanLyNhanVien');
+        document.getElementById(
+          'linkQuanLyNhanVien'
+        );
 
       const linkDanhSachQuyen =
-        document.getElementById('linkDanhSachQuyen');
+        document.getElementById(
+          'linkDanhSachQuyen'
+        );
 
       const btnBack =
-        document.getElementById('btnBack');
-
-      if (yearElement) {
-        yearElement.textContent =
-          new Date().getFullYear();
-      }
-
-      function getTokenFromAnywhere() {
-        const params =
-          new URLSearchParams(window.location.search);
-
-        return (
-          params.get('token') ||
-          params.get('access_token') ||
-          params.get('t') ||
-          localStorage.getItem('token') ||
-          localStorage.getItem('access_token') ||
-          localStorage.getItem('cod_token') ||
-          sessionStorage.getItem('token') ||
-          sessionStorage.getItem('access_token') ||
-          sessionStorage.getItem('cod_token') ||
-          ''
+        document.getElementById(
+          'btnBack'
         );
+
+
+      /* =========================
+         CHUYỂN TRANG
+         KHÔNG TOKEN
+      ========================= */
+
+      function goPage(url) {
+
+        window.location.assign(
+          url
+        );
+
       }
 
-      function buildUrl(fileName) {
-        const url =
-          new URL(fileName, window.location.href);
 
-        const currentParams =
-          new URLSearchParams(window.location.search);
+      /* =========================
+         KHỞI TẠO TRANG
+      ========================= */
 
-        currentParams.forEach((value, key) => {
-          if (key !== '_v') {
-            url.searchParams.set(key, value);
+      document.addEventListener(
+        'DOMContentLoaded',
+        async () => {
+
+          try {
+
+
+            /* =========================
+               1. KIỂM TRA LOGIN
+
+               check_login.js
+               sẽ kiểm tra:
+               - ma_nv
+               - mat_khau
+            ========================= */
+
+            if (
+              typeof window.checkLogin !==
+              'function'
+            ) {
+
+              throw new Error(
+                'Không tìm thấy check_login.js'
+              );
+
+            }
+
+
+            const loginOk =
+              await window.checkLogin();
+
+
+            /* =========================
+               2. LOGIN SAI
+            ========================= */
+
+            if (!loginOk) {
+
+              return;
+
+            }
+
+
+            console.log(
+              '[ADMIN] LOGIN OK:',
+              loginOk.ma_nv,
+              loginOk.ten_nv || ''
+            );
+
+
+            /* =========================
+               3. LOGIN ĐÚNG
+               MỚI HIỆN TRANG
+            ========================= */
+
+            document.body.classList.add(
+              'ready'
+            );
+
+
+            /* =========================
+               4. NĂM HIỆN TẠI
+            ========================= */
+
+            if (yearElement) {
+
+              yearElement.textContent =
+                new Date()
+                  .getFullYear();
+
+            }
+
+
+            /* =========================
+               5. QUẢN LÝ NHÂN VIÊN
+            ========================= */
+
+            if (linkQuanLyNhanVien) {
+
+              linkQuanLyNhanVien.href =
+                './qly_nhanvien.html';
+
+
+              linkQuanLyNhanVien
+                .addEventListener(
+                  'click',
+                  event => {
+
+                    event.preventDefault();
+
+
+                    goPage(
+                      './qly_nhanvien.html'
+                    );
+
+                  }
+                );
+
+            }
+
+
+            /* =========================
+               6. DANH SÁCH QUYỀN
+            ========================= */
+
+            if (linkDanhSachQuyen) {
+
+              linkDanhSachQuyen.href =
+                './danh_sach_quyen.html';
+
+
+              linkDanhSachQuyen
+                .addEventListener(
+                  'click',
+                  event => {
+
+                    event.preventDefault();
+
+
+                    goPage(
+                      './danh_sach_quyen.html'
+                    );
+
+                  }
+                );
+
+            }
+
+
+            /* =========================
+               7. QUAY LẠI MAIN
+            ========================= */
+
+            if (btnBack) {
+
+              btnBack.addEventListener(
+                'click',
+                () => {
+
+                  goPage(
+                    './main.html'
+                  );
+
+                }
+              );
+
+            }
+
+
+          } catch (error) {
+
+
+            console.error(
+              '[ADMIN] ERROR:',
+              error
+            );
+
+
+            /* =========================
+               LỖI LOGIN
+               VỀ TRANG ĐĂNG NHẬP
+            ========================= */
+
+            try {
+
+              localStorage.removeItem(
+                'nv'
+              );
+
+              sessionStorage.removeItem(
+                'nv_ctx'
+              );
+
+            } catch {}
+
+
+            location.replace(
+              './login.html'
+            );
+
           }
-        });
 
-        const token = getTokenFromAnywhere();
-
-        if (token) {
-          url.searchParams.set('token', token);
         }
-
-        url.searchParams.set(
-          '_v',
-          Date.now().toString()
-        );
-
-        return url.href;
-      }
-
-      function bindLink(element, fileName) {
-        if (!element) return;
-
-        element.href = buildUrl(fileName);
-
-        element.addEventListener('click', event => {
-          event.preventDefault();
-
-          window.location.assign(
-            buildUrl(fileName)
-          );
-        });
-      }
-
-      bindLink(
-        linkQuanLyNhanVien,
-        './qly_nhanvien.html'
       );
 
-      bindLink(
-        linkDanhSachQuyen,
-        './danh_sach_quyen.html'
-      );
-
-      if (btnBack) {
-        btnBack.addEventListener('click', () => {
-          if (
-            document.referrer &&
-            window.history.length > 1
-          ) {
-            window.history.back();
-            return;
-          }
-
-          window.location.assign(
-            buildUrl('./main.html')
-          );
-        });
-      }
     })();
   </script>
+
 </body>
 </html>
