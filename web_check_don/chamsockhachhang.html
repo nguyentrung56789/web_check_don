@@ -1929,7 +1929,7 @@ function normalizeBigintOrNull(value) {
 
       const { data: customerIdRows, error: customerIdError } = await supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, ma_nv, dia_chi, khu_vuc, phuong_xa, dien_thoai, conversation_id, contact_id, ngay_chat_cuoi, uid_from, reminder_id, gio_hen")
+        .select("ma_kh, ten_kh, ma_nv, dia_chi, khu_vuc, phuong_xa, dien_thoai, conversation_id, contact_id, ngay_chat_cuoi, uid_from")
         .in("ma_kh", selectedMaKh);
 
       if (customerIdError) {
@@ -1966,6 +1966,39 @@ function normalizeBigintOrNull(value) {
             String(staff.ma_nv || "").trim(),
             String(staff.ten_nv || "").trim()
           );
+        });
+      }
+
+      // Đọc reminder_id + gio_hen hiện có từ bảng gửi tin.
+      // Không đọc 2 cột này từ view sql_khachhang_nhanvien vì view không có chúng.
+      const existingConversationIds = Array.from(new Set(
+        (selectedRows || [])
+          .map(function (row) {
+            return normalizeBigintOrNull(row.conversation_id);
+          })
+          .filter(Boolean)
+      ));
+
+      const reminderMap = new Map();
+
+      if (existingConversationIds.length > 0) {
+        const { data: reminderRows, error: reminderReadError } = await supabaseClient
+          .from(TABLE_KHACH_HANG_NHANVIEN_GUITIN)
+          .select("conversation_id, reminder_id, gio_hen")
+          .in("conversation_id", existingConversationIds);
+
+        if (reminderReadError) {
+          throw reminderReadError;
+        }
+
+        (reminderRows || []).forEach(function (item) {
+          const key = normalizeBigintOrNull(item.conversation_id);
+          if (!key) return;
+
+          reminderMap.set(String(key), {
+            reminder_id: normalizeBigintOrNull(item.reminder_id),
+            gio_hen: normalizeTimestampOrNull(item.gio_hen)
+          });
         });
       }
 
@@ -2025,14 +2058,12 @@ function normalizeBigintOrNull(value) {
             idRow.uid_from ?? row.uid_from
           ),
 
-          // Đồng bộ 2 cột nhắc hẹn sang kv_khachhang_nhanvien_guitin.
-          reminder_id: normalizeBigintOrNull(
-            idRow.reminder_id ?? row.reminder_id
-          ),
+          // Giữ lại 2 cột nhắc hẹn đang có trong kv_khachhang_nhanvien_guitin.
+          reminder_id:
+            reminderMap.get(String(conversationId || ""))?.reminder_id ?? null,
 
-          gio_hen: normalizeTimestampOrNull(
-            idRow.gio_hen ?? row.gio_hen
-          ),
+          gio_hen:
+            reminderMap.get(String(conversationId || ""))?.gio_hen ?? null,
 
           trang_thai: null
         };
@@ -3817,7 +3848,7 @@ function normalizeBigintOrNull(value) {
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminder_id, gio_hen", { count: "exact" })
+        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false });
 
       query = applySearchAllColumns(query, keyword);
@@ -3862,14 +3893,62 @@ function normalizeBigintOrNull(value) {
           conversation_id: item.conversation_id || null,
           contact_id: item.contact_id || null,
           uid_from: item.uid_from || null,
-          reminder_id: item.reminder_id ?? null,
-          gio_hen: item.gio_hen ?? null
+          reminder_id: null,
+          gio_hen: null
         };
       });
 
       await loadCustomerStaffAssignments(customers.map(function (item) { return item.ma_kh; }));
+      await loadReminderInfoForCustomers(customers);
       renderCustomers();
       setCustomerLoading(false);
+    }
+
+
+    async function loadReminderInfoForCustomers(customerRows) {
+      if (!supabaseClient || !Array.isArray(customerRows) || customerRows.length === 0) {
+        return;
+      }
+
+      const ids = Array.from(new Set(
+        customerRows
+          .map(function (item) {
+            return normalizeBigintOrNull(item?.conversation_id);
+          })
+          .filter(Boolean)
+      ));
+
+      if (ids.length === 0) return;
+
+      const { data, error } = await supabaseClient
+        .from(TABLE_KHACH_HANG_NHANVIEN_GUITIN)
+        .select("conversation_id, reminder_id, gio_hen")
+        .in("conversation_id", ids);
+
+      if (error) {
+        console.warn("[REMINDER] Không tải được reminder_id/gio_hen:", error);
+        return;
+      }
+
+      const map = new Map();
+
+      (data || []).forEach(function (row) {
+        const key = normalizeBigintOrNull(row.conversation_id);
+        if (!key) return;
+
+        map.set(String(key), {
+          reminder_id: normalizeBigintOrNull(row.reminder_id),
+          gio_hen: normalizeTimestampOrNull(row.gio_hen)
+        });
+      });
+
+      customerRows.forEach(function (item) {
+        const key = normalizeBigintOrNull(item?.conversation_id);
+        const reminder = key ? map.get(String(key)) : null;
+
+        item.reminder_id = reminder?.reminder_id ?? null;
+        item.gio_hen = reminder?.gio_hen ?? null;
+      });
     }
 
     async function loadCustomersWithoutStaff(page = 1) {
@@ -3890,7 +3969,7 @@ function normalizeBigintOrNull(value) {
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminder_id, gio_hen", { count: "exact" })
+        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false })
         .range(from, to);
 
@@ -3925,12 +4004,13 @@ function normalizeBigintOrNull(value) {
           conversation_id: item.conversation_id || null,
           contact_id: item.contact_id || null,
           uid_from: item.uid_from || null,
-          reminder_id: item.reminder_id ?? null,
-          gio_hen: item.gio_hen ?? null
+          reminder_id: null,
+          gio_hen: null
         };
       });
 
       await loadCustomerStaffAssignments(customers.map(function (item) { return item.ma_kh; }));
+      await loadReminderInfoForCustomers(customers);
       renderCustomers();
       setCustomerLoading(false);
     }
@@ -4073,7 +4153,7 @@ function normalizeBigintOrNull(value) {
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
         .select(
-          "ma_kh, ten_kh, alias_name, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminder_id, gio_hen"
+          "ma_kh, ten_kh, alias_name, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from"
         )
         .limit(1);
 
