@@ -288,25 +288,63 @@
 
   await window.configReady;
 
-  const supabaseUrl = window.getConfig("url");
-  const supabaseKey = window.getConfig("role") || window.getConfig("anon");
-  const internalKey = typeof window.getInternalKey === "function"
-    ? window.getInternalKey()
-    : "";
+  /* =========================
+     SUPABASE CONFIG AN TOÀN
+     - Không dùng role
+     - Chỉ dùng anon giống các HTML khác
+     - Ép kiểu String để tránh lỗi:
+       e?.trim is not a function
+  ========================= */
+
+  const rawSupabaseUrl =
+    typeof window.getConfig === "function"
+      ? window.getConfig("url")
+      : "";
+
+  const rawSupabaseAnon =
+    typeof window.getConfig === "function"
+      ? window.getConfig("anon")
+      : "";
+
+  const supabaseUrl =
+    String(rawSupabaseUrl ?? "").trim();
+
+  const supabaseKey =
+    String(rawSupabaseAnon ?? "").trim();
+
+  const internalKey =
+    typeof window.getInternalKey === "function"
+      ? String(window.getInternalKey() ?? "").trim()
+      : "";
+
+  console.log("[MAP_CHECKIN] SUPABASE CONFIG:", {
+    url: supabaseUrl || "(rỗng)",
+    co_anon: !!supabaseKey,
+    anon_length: supabaseKey.length,
+    internal_key: !!internalKey
+  });
 
   if (!supabaseUrl) {
     throw new Error("Thiếu SUPABASE_URL từ /api/getConfig");
   }
 
   if (!supabaseKey) {
-    throw new Error("Thiếu SUPABASE_ROLE hoặc SUPABASE_ANON_KEY từ /api/getConfig");
+    throw new Error("Thiếu SUPABASE_ANON_KEY từ /api/getConfig");
+  }
+
+  if (!window.supabase?.createClient) {
+    throw new Error("Chưa load thư viện Supabase JS");
   }
 
   const supabase = window.supabase.createClient(
     supabaseUrl,
     supabaseKey,
     {
-      global:{ headers:{ "x-internal-key": internalKey } }
+      global: {
+        headers: internalKey
+          ? { "x-internal-key": internalKey }
+          : {}
+      }
     }
   );
 
@@ -887,7 +925,9 @@
   searchBox.oninput = applyFilter;
 
 })().catch(err => {
-  const msg = err && err.message ? err.message : "";
+  const msg = String(
+    err && err.message ? err.message : err || ""
+  );
 
   if (msg === "Missing ma_nv" || msg === "Not logged in") {
     return;
@@ -895,8 +935,10 @@
 
   document.body.classList.add("ready");
 
-  alert("Lỗi tải bản đồ: " + (err.message || err));
-  console.error(err);
+  console.error("[MAP_CHECKIN] ERROR:", err);
+  console.error("[MAP_CHECKIN] STACK:", err?.stack || "");
+
+  alert("Lỗi tải bản đồ: " + msg);
 });
 </script>
 
