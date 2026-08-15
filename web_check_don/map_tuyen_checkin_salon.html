@@ -281,64 +281,111 @@
   /* Chỉ hiện trang sau khi xác thực hợp lệ */
   document.body.classList.add("ready");
 
-  // Chờ internal_key.js nạp xong cấu hình từ /api/getConfig
-  if (!window.configReady) {
-    throw new Error("Không tìm thấy configReady từ internal_key.js");
-  }
-
-  await window.configReady;
-
   /* =========================
-     SUPABASE CONFIG AN TOÀN
-     - Không dùng role
-     - Chỉ dùng anon giống các HTML khác
-     - Ép kiểu String để tránh lỗi:
-       e?.trim is not a function
+     LẤY CẤU HÌNH SUPABASE AN TOÀN
+     - Ưu tiên gọi thẳng /api/getConfig
+     - Hỗ trợ nhiều tên field
+     - Fallback sang window.getConfig()
+     - Chỉ dùng anon key
   ========================= */
 
-  const rawSupabaseUrl =
-    typeof window.getConfig === "function"
-      ? window.getConfig("url")
-      : "";
+  const internalKey = typeof window.getInternalKey === "function"
+    ? String(window.getInternalKey() ?? "").trim()
+    : "";
 
-  const rawSupabaseAnon =
-    typeof window.getConfig === "function"
-      ? window.getConfig("anon")
-      : "";
+  async function loadSupabaseConfigSafe() {
+    let cfg = null;
 
-  const supabaseUrl =
-    String(rawSupabaseUrl ?? "").trim();
+    // 1) Ưu tiên API trực tiếp
+    try {
+      const resp = await fetch("/api/getConfig", {
+        method: "GET",
+        headers: internalKey
+          ? { "x-internal-key": internalKey }
+          : {},
+        cache: "no-store"
+      });
 
-  const supabaseKey =
-    String(rawSupabaseAnon ?? "").trim();
+      if (resp.ok) {
+        cfg = await resp.json();
+      } else {
+        console.warn("[MAP_CHECKIN] /api/getConfig HTTP:", resp.status);
+      }
+    } catch (err) {
+      console.warn("[MAP_CHECKIN] Không gọi được /api/getConfig:", err);
+    }
 
-  const internalKey =
-    typeof window.getInternalKey === "function"
-      ? String(window.getInternalKey() ?? "").trim()
-      : "";
+    // 2) Lấy URL từ API
+    let rawUrl =
+      cfg?.url ??
+      cfg?.SUPABASE_URL ??
+      cfg?.supabaseUrl ??
+      cfg?.supabase_url ??
+      "";
 
-  console.log("[MAP_CHECKIN] SUPABASE CONFIG:", {
-    url: supabaseUrl || "(rỗng)",
-    co_anon: !!supabaseKey,
-    anon_length: supabaseKey.length,
-    internal_key: !!internalKey
-  });
+    // 3) Lấy ANON từ API
+    let rawAnon =
+      cfg?.anon ??
+      cfg?.key ??
+      cfg?.SUPABASE_ANON ??
+      cfg?.SUPABASE_ANON_KEY ??
+      cfg?.supabaseAnon ??
+      cfg?.supabase_anon ??
+      cfg?.supabase_anon_key ??
+      "";
 
-  if (!supabaseUrl) {
-    throw new Error("Thiếu SUPABASE_URL từ /api/getConfig");
+    // 4) Fallback sang window.getConfig()
+    if (!rawUrl && typeof window.getConfig === "function") {
+      try {
+        rawUrl = window.getConfig("url") ?? "";
+      } catch (e) {}
+    }
+
+    if (!rawAnon && typeof window.getConfig === "function") {
+      try {
+        rawAnon = window.getConfig("anon") ?? "";
+      } catch (e) {}
+    }
+
+    const url = String(rawUrl ?? "").trim();
+    const anon = String(rawAnon ?? "").trim();
+
+    console.log("[MAP_CHECKIN] CONFIG NHẬN ĐƯỢC:", {
+      url,
+      co_anon: !!anon,
+      anon_length: anon.length
+    });
+
+    if (!url) {
+      throw new Error(
+        "Không lấy được Supabase URL từ /api/getConfig"
+      );
+    }
+
+    if (!/^https?:\/\//i.test(url)) {
+      throw new Error(
+        "Supabase URL không hợp lệ: " + url
+      );
+    }
+
+    if (!anon) {
+      throw new Error(
+        "Không lấy được SUPABASE_ANON_KEY từ /api/getConfig"
+      );
+    }
+
+    return { url, anon };
   }
 
-  if (!supabaseKey) {
-    throw new Error("Thiếu SUPABASE_ANON_KEY từ /api/getConfig");
-  }
+  const supabaseConfig = await loadSupabaseConfigSafe();
 
   if (!window.supabase?.createClient) {
     throw new Error("Chưa load thư viện Supabase JS");
   }
 
   const supabase = window.supabase.createClient(
-    supabaseUrl,
-    supabaseKey,
+    supabaseConfig.url,
+    supabaseConfig.anon,
     {
       global: {
         headers: internalKey
