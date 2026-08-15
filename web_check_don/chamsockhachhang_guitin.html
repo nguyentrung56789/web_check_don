@@ -738,6 +738,15 @@
             />
             Nhắc hẹn
           </label>
+
+          <label class="send-type-option">
+            <input
+              id="sendTypeDeleteReminder"
+              type="checkbox"
+              value="xoanhachen"
+            />
+            Xóa nhắc hẹn
+          </label>
         </div>
 
         <div id="reminderTimeWrap" class="reminder-time-wrap">
@@ -1637,14 +1646,15 @@ function updateReminderTimeVisibility() {
 
   if (!wrap || !reminder) return;
 
+  // Chỉ hiện giờ hẹn khi chọn đúng "Nhắc hẹn".
   wrap.classList.toggle('show', reminder.checked === true);
 }
 
 function getLoaiGuiFromForm() {
   const normal = document.getElementById('sendTypeNormal');
   const reminder = document.getElementById('sendTypeReminder');
+  const deleteReminder = document.getElementById('sendTypeDeleteReminder');
 
-  // Gửi thường luôn là mặc định/ưu tiên.
   if (normal?.checked) {
     return 'guithuong';
   }
@@ -1653,26 +1663,41 @@ function getLoaiGuiFromForm() {
     return 'nhachen';
   }
 
-  // Nếu vì lý do nào đó cả hai đều bỏ chọn, tự quay về Gửi thường.
+  if (deleteReminder?.checked) {
+    return 'xoanhachen';
+  }
+
+  // Nếu cả 3 đều bỏ chọn thì quay về Gửi thường.
   if (normal) normal.checked = true;
   return 'guithuong';
+}
+
+function getLoiNhacFromForm() {
+  const deleteReminder = document.getElementById('sendTypeDeleteReminder');
+
+  // Theo yêu cầu:
+  // khi chọn "Xóa nhắc hẹn" webhook nhận:
+  // loinhac = xoanhachen
+  return deleteReminder?.checked ? 'xoanhachen' : '';
 }
 
 function bindSendTypeEvents() {
   const normal = document.getElementById('sendTypeNormal');
   const reminder = document.getElementById('sendTypeReminder');
+  const deleteReminder = document.getElementById('sendTypeDeleteReminder');
 
-  if (!normal || !reminder) return;
+  if (!normal || !reminder || !deleteReminder) return;
 
-  // Mặc định luôn ưu tiên Gửi thường.
-  if (!normal.checked && !reminder.checked) {
+  // Mặc định Gửi thường.
+  if (!normal.checked && !reminder.checked && !deleteReminder.checked) {
     normal.checked = true;
   }
 
   normal.addEventListener('change', function () {
     if (this.checked) {
       reminder.checked = false;
-    } else if (!reminder.checked) {
+      deleteReminder.checked = false;
+    } else if (!reminder.checked && !deleteReminder.checked) {
       this.checked = true;
     }
 
@@ -1682,7 +1707,19 @@ function bindSendTypeEvents() {
   reminder.addEventListener('change', function () {
     if (this.checked) {
       normal.checked = false;
-    } else if (!normal.checked) {
+      deleteReminder.checked = false;
+    } else if (!normal.checked && !deleteReminder.checked) {
+      normal.checked = true;
+    }
+
+    updateReminderTimeVisibility();
+  });
+
+  deleteReminder.addEventListener('change', function () {
+    if (this.checked) {
+      normal.checked = false;
+      reminder.checked = false;
+    } else if (!normal.checked && !reminder.checked) {
       normal.checked = true;
     }
 
@@ -1955,6 +1992,9 @@ async function sendRunWebhook() {
   const loaiGui =
     getLoaiGuiFromForm();
 
+  const loiNhac =
+    getLoiNhacFromForm();
+
   const gioHen =
     getGioHenFromForm();
 
@@ -2008,8 +2048,12 @@ async function sendRunWebhook() {
   // Loại tin nhắn Chatwoot
   formData.append('message_type', 'outgoing');
 
-  // Loại gửi: guithuong | nhachen
+  // Loại gửi: guithuong | nhachen | xoanhachen
   formData.append('loaigui', loaiGui);
+
+  // Khi chọn "Xóa nhắc hẹn":
+  // n8n nhận body.loinhac = "xoanhachen"
+  formData.append('loinhac', loiNhac);
 
   // Giờ hẹn: chỉ có giá trị khi loaigui = nhachen
   formData.append('gio_hen', gioHen);
@@ -2074,6 +2118,7 @@ async function sendRunWebhook() {
     conversation_id: String(conversationId),
     message_type: 'outgoing',
     loaigui: loaiGui,
+    loinhac: loiNhac,
     gio_hen: gioHen,
     noi_dung: noiDung,
     icon: icon,
@@ -2289,6 +2334,7 @@ async function startRun() {
     const delayConfig = getDelayConfigFromForm();
     const sendWindow = getSendWindowFromForm();
     const loaiGui = getLoaiGuiFromForm();
+    const loiNhac = getLoiNhacFromForm();
     const gioHen = getGioHenFromForm();
 
     setStatus(
@@ -2300,6 +2346,7 @@ async function startRun() {
       ' | Loại gửi: ' +
       loaiGui +
       (loaiGui === 'nhachen' ? ' | Giờ hẹn: ' + gioHen : '') +
+      (loiNhac === 'xoanhachen' ? ' | loinhac: xoanhachen' : '') +
       ' | Chờ ngẫu nhiên ' +
       delayConfig.min_seconds +
       ' - ' +
