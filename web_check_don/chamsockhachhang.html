@@ -1859,7 +1859,21 @@
         setAllVisibleRowsSelected(selectAllRows.checked);
       });
     }
-async function syncSelectedCustomersToGuiTin(selectedRows) {
+function normalizeBigintOrNull(value) {
+      if (value === undefined || value === null) return null;
+
+      const text = String(value).trim();
+      if (!text) return null;
+
+      const lowered = text.toLowerCase();
+      if (lowered === "undefined" || lowered === "null" || lowered === "nan") {
+        return null;
+      }
+
+      return /^\d+$/.test(text) ? text : null;
+    }
+
+    async function syncSelectedCustomersToGuiTin(selectedRows) {
       if (!supabaseClient) {
         throw new Error("Supabase chưa sẵn sàng.");
       }
@@ -1934,13 +1948,13 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
           ? String(idRow.ma_nv).trim()
           : (row.ma_nv ? String(row.ma_nv).trim() : null);
 
-        const rawConversationId =
-          row.conversation_id ?? idRow.conversation_id ?? null;
+        const conversationId = normalizeBigintOrNull(
+          row.conversation_id ?? idRow.conversation_id
+        );
 
-        const conversationId =
-          rawConversationId == null
-            ? null
-            : String(rawConversationId).trim();
+        const contactId = normalizeBigintOrNull(
+          idRow.contact_id ?? row.contact_id
+        );
 
         return {
           ma_kh: maKh,
@@ -1962,10 +1976,16 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
           dien_thoai:
             String(idRow.dien_thoai ?? row.dien_thoai ?? "").trim() || null,
 
-          conversation_id: conversationId || null,
-          contact_id: idRow.contact_id ?? row.contact_id ?? null,
+          conversation_id: conversationId,
+          contact_id: contactId,
           ngay_chat_cuoi: idRow.ngay_chat_cuoi ?? row.ngay_chat_cuoi ?? null,
           uid_from: idRow.uid_from ?? row.uid_from ?? null,
+
+          // Hai cột dùng cho chức năng nhắc hẹn Zalo.
+          // Khi tạo danh sách gửi mới thì để rỗng; workflow n8n sẽ cập nhật sau.
+          reminder_id: null,
+          gio_hen: null,
+
           trang_thai: null
         };
       }).filter(function (row) {
@@ -1987,6 +2007,8 @@ async function syncSelectedCustomersToGuiTin(selectedRows) {
       if (rowsToInsert.length === 0) {
         throw new Error("Không có khách nào có conversation_id hợp lệ.");
       }
+
+      console.log("[GUI_TIN] rowsToInsert:", rowsToInsert);
 
       const { error: insertError } = await supabaseClient
         .from(TABLE_KHACH_HANG_NHANVIEN_GUITIN)
