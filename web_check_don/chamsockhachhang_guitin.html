@@ -503,6 +503,43 @@
     }
 
 
+
+    /* ===================== LOẠI GỬI ===================== */
+    .send-type-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #edf0f5;
+    }
+
+    .send-type-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    .send-type-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 14px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .send-type-option input {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
     /* ===================== THU GỌN / MỞ RỘNG SOẠN NỘI DUNG ===================== */
     .composer-head {
       display: flex;
@@ -652,6 +689,29 @@
           class="message-box"
           placeholder="Ví dụ: Xin chào {{zalo name}}, em là {{ten}}..."
         ></textarea>
+
+        <div class="send-type-row">
+          <span class="send-type-title">Loại gửi:</span>
+
+          <label class="send-type-option">
+            <input
+              id="sendTypeNormal"
+              type="checkbox"
+              value="guithuong"
+              checked
+            />
+            Gửi thường
+          </label>
+
+          <label class="send-type-option">
+            <input
+              id="sendTypeReminder"
+              type="checkbox"
+              value="nhachen"
+            />
+            Nhắc hẹn
+          </label>
+        </div>
 
         <div class="composer-toolbar">
           <div class="variable-row">
@@ -1509,6 +1569,53 @@ function getSendWindowFromForm() {
   };
 }
 
+
+function getLoaiGuiFromForm() {
+  const normal = document.getElementById('sendTypeNormal');
+  const reminder = document.getElementById('sendTypeReminder');
+
+  // Gửi thường luôn là mặc định/ưu tiên.
+  if (normal?.checked) {
+    return 'guithuong';
+  }
+
+  if (reminder?.checked) {
+    return 'nhachen';
+  }
+
+  // Nếu vì lý do nào đó cả hai đều bỏ chọn, tự quay về Gửi thường.
+  if (normal) normal.checked = true;
+  return 'guithuong';
+}
+
+function bindSendTypeEvents() {
+  const normal = document.getElementById('sendTypeNormal');
+  const reminder = document.getElementById('sendTypeReminder');
+
+  if (!normal || !reminder) return;
+
+  // Mặc định luôn ưu tiên Gửi thường.
+  if (!normal.checked && !reminder.checked) {
+    normal.checked = true;
+  }
+
+  normal.addEventListener('change', function () {
+    if (this.checked) {
+      reminder.checked = false;
+    } else if (!reminder.checked) {
+      this.checked = true;
+    }
+  });
+
+  reminder.addEventListener('change', function () {
+    if (this.checked) {
+      normal.checked = false;
+    } else if (!normal.checked) {
+      normal.checked = true;
+    }
+  });
+}
+
 function bindComposerToggle() {
   const messageCard = document.getElementById('messageCard');
   const toggleBtn = document.getElementById('toggleComposerBtn');
@@ -1769,6 +1876,9 @@ async function sendRunWebhook() {
   const sendWindow =
     getSendWindowFromForm();
 
+  const loaiGui =
+    getLoaiGuiFromForm();
+
   if (!currentRunId) {
     currentRunId =
       (window.crypto && typeof window.crypto.randomUUID === 'function')
@@ -1818,6 +1928,9 @@ async function sendRunWebhook() {
 
   // Loại tin nhắn Chatwoot
   formData.append('message_type', 'outgoing');
+
+  // Loại gửi: guithuong | nhachen
+  formData.append('loaigui', loaiGui);
 
   formData.append('noi_dung', noiDung);
   formData.append('icon', icon);
@@ -1878,6 +1991,7 @@ async function sendRunWebhook() {
     so_khach_hop_le: rows.length,
     conversation_id: String(conversationId),
     message_type: 'outgoing',
+    loaigui: loaiGui,
     noi_dung: noiDung,
     icon: icon,
     delay_mode: delayConfig.mode,
@@ -2091,6 +2205,7 @@ async function startRun() {
 
     const delayConfig = getDelayConfigFromForm();
     const sendWindow = getSendWindowFromForm();
+    const loaiGui = getLoaiGuiFromForm();
 
     setStatus(
       'Đã gửi lệnh chạy ' +
@@ -2098,6 +2213,8 @@ async function startRun() {
       ' khách. ' +
       'ma_nv: ' +
       maNv +
+      ' | Loại gửi: ' +
+      loaiGui +
       ' | Chờ ngẫu nhiên ' +
       delayConfig.min_seconds +
       ' - ' +
@@ -2500,6 +2617,7 @@ window.addEventListener('beforeunload', function () {
     enableDraggableForm();
     bindComposerEvents();
     bindComposerToggle();
+    bindSendTypeEvents();
 
     sb =
       await createSupabaseClient();
