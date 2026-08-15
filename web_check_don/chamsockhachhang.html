@@ -1410,6 +1410,8 @@
             <col data-col="ma_nv" style="width: 190px;">
             <col data-col="conversation_id" style="width: 150px;">
             <col data-col="ngay_chat_cuoi" style="width: 160px;">
+            <col data-col="reminder_id" style="width: 150px;">
+            <col data-col="gio_hen" style="width: 190px;">
             <col data-col="action" style="width: 190px;">
           </colgroup>
 
@@ -1457,7 +1459,18 @@
                 Ngày <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
-              <th class="resizable" data-col="action" data-col-index="9">
+
+              <th class="resizable" data-col="reminder_id" data-col-index="9">
+                reminder_id
+                <span class="col-resizer"></span>
+              </th>
+
+              <th class="resizable" data-col="gio_hen" data-col-index="10">
+                gio_hen
+                <span class="col-resizer"></span>
+              </th>
+
+              <th class="resizable" data-col="action" data-col-index="11">
                 Thao tác
                 <span class="col-resizer"></span>
               </th>
@@ -1466,7 +1479,7 @@
 
           <tbody id="customerBody">
             <tr>
-              <td colspan="10">Đang tải dữ liệu...</td>
+              <td colspan="12">Đang tải dữ liệu...</td>
             </tr>
           </tbody>
         </table>
@@ -1586,6 +1599,8 @@
       { key: "ma_nv", label: "Nhân viên" },
       { key: "conversation_id", label: "conversation_id" },
       { key: "ngay_chat_cuoi", label: "Ngày" },
+      { key: "reminder_id", label: "reminder_id" },
+      { key: "gio_hen", label: "gio_hen" },
       { key: "action", label: "Thao tác", required: true }
     ];
     let hiddenColumns = [];
@@ -1983,9 +1998,6 @@ function normalizeBigintOrNull(value) {
 
           // Hai cột dùng cho chức năng nhắc hẹn Zalo.
           // Khi tạo danh sách gửi mới thì để rỗng; workflow n8n sẽ cập nhật sau.
-          reminder_id: null,
-          gio_hen: null,
-
           trang_thai: null
         };
       }).filter(function (row) {
@@ -2171,7 +2183,7 @@ function normalizeBigintOrNull(value) {
 
         customerBody.innerHTML = `
           <tr>
-            <td colspan="10">
+            <td colspan="12">
               Lỗi khởi tạo: ${escapeHtml(error.message || String(error))}
             </td>
           </tr>
@@ -3739,7 +3751,7 @@ function normalizeBigintOrNull(value) {
       if (!supabaseClient) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="10">Supabase chưa sẵn sàng.</td>
+            <td colspan="12">Supabase chưa sẵn sàng.</td>
           </tr>
         `;
         return;
@@ -3780,7 +3792,7 @@ function normalizeBigintOrNull(value) {
 
         customerBody.innerHTML = `
           <tr>
-            <td colspan="10">
+            <td colspan="12">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -3841,7 +3853,7 @@ function normalizeBigintOrNull(value) {
       if (error) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="10">
+            <td colspan="12">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -4520,7 +4532,7 @@ logoutBtn.addEventListener("click", function () {
       if (filtered.length === 0) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="10">Không có dữ liệu.</td>
+            <td colspan="12">Không có dữ liệu.</td>
           </tr>
         `;
         return;
@@ -4574,6 +4586,12 @@ logoutBtn.addEventListener("click", function () {
             <td data-col="ngay_chat_cuoi" title="${escapeHtml(formatDateOnlySafe(item.ngay_chat_cuoi))}">
               ${escapeHtml(formatDateOnlySafe(item.ngay_chat_cuoi))}
             </td>
+            <td data-col="reminder_id" title="${escapeHtml(item.reminder_id || "")}">
+              ${escapeHtml(item.reminder_id || "")}
+            </td>
+            <td data-col="gio_hen" title="${escapeHtml(item.gio_hen ? formatDateTime(item.gio_hen) : "")}">
+              ${escapeHtml(item.gio_hen ? formatDateTime(item.gio_hen) : "")}
+            </td>
             <td data-col="action">
               <div class="row-actions">
                 ${hasZaloUid ? `
@@ -4594,7 +4612,7 @@ logoutBtn.addEventListener("click", function () {
             class="customer-product-row hidden"
             data-product-for="${escapeHtml(maKh)}"
           >
-            <td colspan="10">
+            <td colspan="12">
               <div class="customer-product-box">
                 <div class="customer-product-head">
                   <div>
