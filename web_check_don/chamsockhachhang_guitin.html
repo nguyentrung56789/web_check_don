@@ -540,6 +540,33 @@
       cursor: pointer;
     }
 
+    .reminder-time-wrap {
+      display: none;
+      align-items: end;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      padding: 12px;
+      border: 1px solid #dbe3ef;
+      border-radius: 10px;
+      background: #f8fafc;
+    }
+
+    .reminder-time-wrap.show {
+      display: flex;
+    }
+
+    .reminder-time-field {
+      width: 260px;
+      max-width: 100%;
+    }
+
+    .reminder-time-note {
+      padding-bottom: 10px;
+      color: #64748b;
+      font-size: 13px;
+    }
+
     /* ===================== THU GỌN / MỞ RỘNG SOẠN NỘI DUNG ===================== */
     .composer-head {
       display: flex;
@@ -711,6 +738,22 @@
             />
             Nhắc hẹn
           </label>
+        </div>
+
+        <div id="reminderTimeWrap" class="reminder-time-wrap">
+          <div class="reminder-time-field">
+            <label class="field-label" for="reminderDateTime">Giờ hẹn</label>
+            <input
+              id="reminderDateTime"
+              class="input-control"
+              type="datetime-local"
+              step="60"
+            />
+          </div>
+
+          <div class="reminder-time-note">
+            Chỉ dùng khi chọn <b>Nhắc hẹn</b>.
+          </div>
         </div>
 
         <div class="composer-toolbar">
@@ -1570,6 +1613,33 @@ function getSendWindowFromForm() {
 }
 
 
+function getGioHenFromForm() {
+  const loaiGui = getLoaiGuiFromForm();
+
+  if (loaiGui !== 'nhachen') {
+    return '';
+  }
+
+  const value = String(
+    document.getElementById('reminderDateTime')?.value || ''
+  ).trim();
+
+  if (!value) {
+    throw new Error('Bạn đã chọn Nhắc hẹn nhưng chưa chọn giờ hẹn.');
+  }
+
+  return value;
+}
+
+function updateReminderTimeVisibility() {
+  const wrap = document.getElementById('reminderTimeWrap');
+  const reminder = document.getElementById('sendTypeReminder');
+
+  if (!wrap || !reminder) return;
+
+  wrap.classList.toggle('show', reminder.checked === true);
+}
+
 function getLoaiGuiFromForm() {
   const normal = document.getElementById('sendTypeNormal');
   const reminder = document.getElementById('sendTypeReminder');
@@ -1605,6 +1675,8 @@ function bindSendTypeEvents() {
     } else if (!reminder.checked) {
       this.checked = true;
     }
+
+    updateReminderTimeVisibility();
   });
 
   reminder.addEventListener('change', function () {
@@ -1613,7 +1685,11 @@ function bindSendTypeEvents() {
     } else if (!normal.checked) {
       normal.checked = true;
     }
+
+    updateReminderTimeVisibility();
   });
+
+  updateReminderTimeVisibility();
 }
 
 function bindComposerToggle() {
@@ -1879,6 +1955,9 @@ async function sendRunWebhook() {
   const loaiGui =
     getLoaiGuiFromForm();
 
+  const gioHen =
+    getGioHenFromForm();
+
   if (!currentRunId) {
     currentRunId =
       (window.crypto && typeof window.crypto.randomUUID === 'function')
@@ -1931,6 +2010,9 @@ async function sendRunWebhook() {
 
   // Loại gửi: guithuong | nhachen
   formData.append('loaigui', loaiGui);
+
+  // Giờ hẹn: chỉ có giá trị khi loaigui = nhachen
+  formData.append('gio_hen', gioHen);
 
   formData.append('noi_dung', noiDung);
   formData.append('icon', icon);
@@ -1992,6 +2074,7 @@ async function sendRunWebhook() {
     conversation_id: String(conversationId),
     message_type: 'outgoing',
     loaigui: loaiGui,
+    gio_hen: gioHen,
     noi_dung: noiDung,
     icon: icon,
     delay_mode: delayConfig.mode,
@@ -2206,6 +2289,7 @@ async function startRun() {
     const delayConfig = getDelayConfigFromForm();
     const sendWindow = getSendWindowFromForm();
     const loaiGui = getLoaiGuiFromForm();
+    const gioHen = getGioHenFromForm();
 
     setStatus(
       'Đã gửi lệnh chạy ' +
@@ -2215,6 +2299,7 @@ async function startRun() {
       maNv +
       ' | Loại gửi: ' +
       loaiGui +
+      (loaiGui === 'nhachen' ? ' | Giờ hẹn: ' + gioHen : '') +
       ' | Chờ ngẫu nhiên ' +
       delayConfig.min_seconds +
       ' - ' +
