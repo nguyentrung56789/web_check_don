@@ -1994,10 +1994,15 @@ function normalizeBigintOrNull(value) {
           conversation_id: conversationId,
           contact_id: contactId,
           ngay_chat_cuoi: idRow.ngay_chat_cuoi ?? row.ngay_chat_cuoi ?? null,
-          uid_from: idRow.uid_from ?? row.uid_from ?? null,
 
-          // Hai cột dùng cho chức năng nhắc hẹn Zalo.
-          // Khi tạo danh sách gửi mới thì để rỗng; workflow n8n sẽ cập nhật sau.
+          // uid_from trong DB có thể là bigint. Tuyệt đối không gửi chuỗi
+          // "undefined", "null" hoặc giá trị không phải số sang Supabase.
+          uid_from: normalizeBigintOrNull(
+            idRow.uid_from ?? row.uid_from
+          ),
+
+          // reminder_id và gio_hen chỉ là cột HIỂN THỊ trên bảng chính.
+          // Không INSERT hai cột này vào kv_khachhang_nhanvien_guitin.
           trang_thai: null
         };
       }).filter(function (row) {
@@ -2019,6 +2024,14 @@ function normalizeBigintOrNull(value) {
       if (rowsToInsert.length === 0) {
         throw new Error("Không có khách nào có conversation_id hợp lệ.");
       }
+
+      // Chốt an toàn lần cuối cho các cột bigint trước khi INSERT.
+      // Như vậy chuỗi "undefined" sẽ không bao giờ được gửi sang PostgreSQL.
+      rowsToInsert.forEach(function (item) {
+        item.conversation_id = normalizeBigintOrNull(item.conversation_id);
+        item.contact_id = normalizeBigintOrNull(item.contact_id);
+        item.uid_from = normalizeBigintOrNull(item.uid_from);
+      });
 
       console.log("[GUI_TIN] rowsToInsert:", rowsToInsert);
 
