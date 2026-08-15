@@ -1888,6 +1888,30 @@ function normalizeBigintOrNull(value) {
       return /^\d+$/.test(text) ? text : null;
     }
 
+    function normalizeTimestampOrNull(value) {
+      if (value === undefined || value === null) return null;
+
+      const text = String(value).trim();
+      if (!text) return null;
+
+      const lowered = text.toLowerCase();
+      if (
+        lowered === "undefined" ||
+        lowered === "null" ||
+        lowered === "nan"
+      ) {
+        return null;
+      }
+
+      const date = new Date(text);
+
+      if (Number.isNaN(date.getTime())) {
+        return null;
+      }
+
+      return date.toISOString();
+    }
+
     async function syncSelectedCustomersToGuiTin(selectedRows) {
       if (!supabaseClient) {
         throw new Error("Supabase chưa sẵn sàng.");
@@ -1905,7 +1929,7 @@ function normalizeBigintOrNull(value) {
 
       const { data: customerIdRows, error: customerIdError } = await supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, ma_nv, dia_chi, khu_vuc, phuong_xa, dien_thoai, conversation_id, contact_id, ngay_chat_cuoi, uid_from")
+        .select("ma_kh, ten_kh, ma_nv, dia_chi, khu_vuc, phuong_xa, dien_thoai, conversation_id, contact_id, ngay_chat_cuoi, uid_from, reminder_id, gio_hen")
         .in("ma_kh", selectedMaKh);
 
       if (customerIdError) {
@@ -2001,8 +2025,15 @@ function normalizeBigintOrNull(value) {
             idRow.uid_from ?? row.uid_from
           ),
 
-          // reminder_id và gio_hen chỉ là cột HIỂN THỊ trên bảng chính.
-          // Không INSERT hai cột này vào kv_khachhang_nhanvien_guitin.
+          // Đồng bộ 2 cột nhắc hẹn sang kv_khachhang_nhanvien_guitin.
+          reminder_id: normalizeBigintOrNull(
+            idRow.reminder_id ?? row.reminder_id
+          ),
+
+          gio_hen: normalizeTimestampOrNull(
+            idRow.gio_hen ?? row.gio_hen
+          ),
+
           trang_thai: null
         };
       }).filter(function (row) {
@@ -2031,6 +2062,8 @@ function normalizeBigintOrNull(value) {
         item.conversation_id = normalizeBigintOrNull(item.conversation_id);
         item.contact_id = normalizeBigintOrNull(item.contact_id);
         item.uid_from = normalizeBigintOrNull(item.uid_from);
+        item.reminder_id = normalizeBigintOrNull(item.reminder_id);
+        item.gio_hen = normalizeTimestampOrNull(item.gio_hen);
       });
 
       console.log("[GUI_TIN] rowsToInsert:", rowsToInsert);
@@ -3784,7 +3817,7 @@ function normalizeBigintOrNull(value) {
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from", { count: "exact" })
+        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminder_id, gio_hen", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false });
 
       query = applySearchAllColumns(query, keyword);
@@ -3828,7 +3861,9 @@ function normalizeBigintOrNull(value) {
           ngay_chat_cuoi: item.ngay_chat_cuoi || null,
           conversation_id: item.conversation_id || null,
           contact_id: item.contact_id || null,
-          uid_from: item.uid_from || null
+          uid_from: item.uid_from || null,
+          reminder_id: item.reminder_id ?? null,
+          gio_hen: item.gio_hen ?? null
         };
       });
 
@@ -3855,7 +3890,7 @@ function normalizeBigintOrNull(value) {
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from", { count: "exact" })
+        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminder_id, gio_hen", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false })
         .range(from, to);
 
@@ -3889,7 +3924,9 @@ function normalizeBigintOrNull(value) {
           ngay_chat_cuoi: item.ngay_chat_cuoi || null,
           conversation_id: item.conversation_id || null,
           contact_id: item.contact_id || null,
-          uid_from: item.uid_from || null
+          uid_from: item.uid_from || null,
+          reminder_id: item.reminder_id ?? null,
+          gio_hen: item.gio_hen ?? null
         };
       });
 
@@ -4036,7 +4073,7 @@ function normalizeBigintOrNull(value) {
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
         .select(
-          "ma_kh, ten_kh, alias_name, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from"
+          "ma_kh, ten_kh, alias_name, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminder_id, gio_hen"
         )
         .limit(1);
 
