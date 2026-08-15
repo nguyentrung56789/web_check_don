@@ -963,8 +963,27 @@
     });
 
     const remain = points.filter(p => map.hasLayer(p.marker));
-    if(remain.length === 1){
-      map.setView([remain[0].lat, remain[0].lng], 18);
+
+    // Tự động gom/thu bản đồ theo đúng các chấm còn đang hiển thị.
+    if (remain.length === 1) {
+
+      map.setView(
+        [remain[0].lat, remain[0].lng],
+        18
+      );
+
+    } else if (remain.length > 1) {
+
+      const visibleMarkers = remain.map(p => p.marker);
+      const group = L.featureGroup(visibleMarkers);
+
+      map.fitBounds(
+        group.getBounds(),
+        {
+          padding: [50, 50],
+          maxZoom: 17
+        }
+      );
     }
   }
 
