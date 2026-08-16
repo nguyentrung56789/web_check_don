@@ -1682,6 +1682,43 @@ function getLoiNhacFromForm() {
   return deleteReminder?.checked ? 'xoanhachen' : '';
 }
 
+function validateRunForm() {
+  const loaiGui = getLoaiGuiFromForm();
+
+  const noiDung = String(
+    document.getElementById('messageText')?.value || ''
+  ).trim();
+
+  // Gửi thường và Nhắc hẹn bắt buộc phải có nội dung.
+  // Riêng Xóa nhắc hẹn không cần nội dung.
+  if (
+    (loaiGui === 'guithuong' || loaiGui === 'nhachen') &&
+    !noiDung
+  ) {
+    const message =
+      loaiGui === 'nhachen'
+        ? 'Bạn đã chọn Nhắc hẹn nhưng chưa nhập nội dung.'
+        : 'Bạn đã chọn Gửi thường nhưng chưa nhập nội dung.';
+
+    alert(message);
+
+    const textarea = document.getElementById('messageText');
+    if (textarea) {
+      textarea.focus();
+    }
+
+    throw new Error(message);
+  }
+
+  // Nếu là Nhắc hẹn thì tiếp tục bắt buộc phải có giờ hẹn.
+  // getGioHenFromForm() sẽ tự báo lỗi nếu chưa chọn.
+  if (loaiGui === 'nhachen') {
+    getGioHenFromForm();
+  }
+
+  return true;
+}
+
 function bindSendTypeEvents() {
   const normal = document.getElementById('sendTypeNormal');
   const reminder = document.getElementById('sendTypeReminder');
@@ -1999,6 +2036,18 @@ async function sendRunWebhook() {
   const gioHen =
     getGioHenFromForm();
 
+  // Phòng thủ thêm: không cho gửi webhook nếu Gửi thường/Nhắc hẹn rỗng nội dung.
+  if (
+    (loaiGui === 'guithuong' || loaiGui === 'nhachen') &&
+    !noiDung
+  ) {
+    throw new Error(
+      loaiGui === 'nhachen'
+        ? 'Bạn đã chọn Nhắc hẹn nhưng chưa nhập nội dung.'
+        : 'Bạn đã chọn Gửi thường nhưng chưa nhập nội dung.'
+    );
+  }
+
   if (!currentRunId) {
     currentRunId =
       (window.crypto && typeof window.crypto.randomUUID === 'function')
@@ -2292,6 +2341,24 @@ async function startRun() {
 
     return;
 
+  }
+
+  // Kiểm tra form TRƯỚC khi bật trạng thái "Đang chạy".
+  // - Gửi thường: bắt buộc có nội dung
+  // - Nhắc hẹn: bắt buộc có nội dung + giờ hẹn
+  // - Xóa nhắc hẹn: không bắt buộc nội dung
+  try {
+    validateRunForm();
+  } catch (validationError) {
+    setRunButtonRunning(false);
+
+    const btnStop = document.getElementById('btnStop');
+    if (btnStop) {
+      btnStop.disabled = true;
+    }
+
+    setStatus(validationError.message || String(validationError));
+    return;
   }
 
 
@@ -2617,7 +2684,11 @@ function isDoneStatus(value) {
     s === 'hoàn thành' ||
     s === 'hoan thanh' ||
     s === 'hoan_thanh' ||
-    s === 'completed'
+    s === 'completed' ||
+    s === 'done' ||
+    s === 'success' ||
+    s === 'successful' ||
+    s === 'xong'
   );
 }
 
