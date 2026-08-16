@@ -2056,10 +2056,10 @@ function normalizeBigintOrNull(value) {
   ngay_chat_cuoi:
     idRow.ngay_chat_cuoi ?? row.ngay_chat_cuoi ?? null,
 
+  // uid_from là TEXT, có thể có dạng: 329078395489441443_291908697028
+  // Không được ép bigint vì sẽ làm giá trị có dấu "_" thành null.
   uid_from:
-    normalizeBigintOrNull(
-      idRow.uid_from ?? row.uid_from
-    ),
+    String(idRow.uid_from ?? row.uid_from ?? "").trim() || null,
 
   // THÊM 2 CỘT NÀY
   reminder_id:
@@ -2094,31 +2094,23 @@ function normalizeBigintOrNull(value) {
         throw new Error("Không có khách nào có conversation_id hợp lệ.");
       }
 
-      // Chốt an toàn lần cuối cho các cột bigint trước khi INSERT.
-      // Như vậy chuỗi "undefined" sẽ không bao giờ được gửi sang PostgreSQL.
+      // Chốt an toàn lần cuối trước khi INSERT.
+      // Các cột ID số vẫn chuẩn hóa bigint; riêng uid_from phải giữ dạng TEXT.
       rowsToInsert.forEach(function (item) {
         item.conversation_id = normalizeBigintOrNull(item.conversation_id);
         item.contact_id = normalizeBigintOrNull(item.contact_id);
-        item.uid_from = normalizeBigintOrNull(item.uid_from);
+
+        const uidText = String(item.uid_from ?? "").trim();
+        item.uid_from =
+          !uidText || ["undefined", "null", "nan"].includes(uidText.toLowerCase())
+            ? null
+            : uidText;
+
         item.reminder_id = normalizeBigintOrNull(item.reminder_id);
         item.gio_hen = normalizeTimestampOrNull(item.gio_hen);
       });
 
       console.log("[GUI_TIN] rowsToInsert:", rowsToInsert);
-
-      // KIỂM TRA UID_FROM TRƯỚC KHI INSERT
-      const checkUid = rowsToInsert.map(function (item) {
-        return {
-          ma_kh: item.ma_kh,
-          conversation_id: item.conversation_id,
-          uid_from: item.uid_from
-        };
-      });
-
-      alert(
-        "KIỂM TRA UID_FROM:\n\n" +
-        JSON.stringify(checkUid, null, 2)
-      );
 
       const { error: insertError } = await supabaseClient
         .from(TABLE_KHACH_HANG_NHANVIEN_GUITIN)
