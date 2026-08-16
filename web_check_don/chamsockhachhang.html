@@ -3045,6 +3045,22 @@ function normalizeBigintOrNull(value) {
     }
 
 
+    // Chuyển ArrayBuffer -> Base64 theo từng khối để tránh tràn stack với file lớn.
+    function arrayBufferToBase64(buffer) {
+      const bytes = new Uint8Array(buffer);
+      const chunkSize = 0x8000;
+      let binary = "";
+
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(
+          null,
+          bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
+        );
+      }
+
+      return btoa(binary);
+    }
+
     function resetZaloAttachment() {
       if (zaloAttachmentPreviewUrl) {
         URL.revokeObjectURL(zaloAttachmentPreviewUrl);
@@ -3225,20 +3241,53 @@ function normalizeBigintOrNull(value) {
         formData.append("selected_ten_nv", currentZaloChatRow.selected_ten_nv || "");
 
         if (file) {
-          formData.append("data", file, file.name);
-          formData.append("attachment_name", file.name);
-          formData.append("attachment_type", file.type || "");
-          formData.append("attachment_size", String(file.size || 0));
+          if (!file.size) {
+            throw new Error("File đã chọn rỗng (0 byte). Hãy chọn lại file.");
+          }
 
-          if (file.type.startsWith("image/")) {
+          // Đọc byte thật từ trình duyệt rồi tạo lại File mới.
+          // Việc này bảo đảm multipart/form-data chứa dữ liệu file thật,
+          // không chỉ giữ tham chiếu tới File input.
+          const fileBuffer = await file.arrayBuffer();
+          const mimeType = file.type || "application/octet-stream";
+          const freshFile = new File([fileBuffer], file.name || "attachment", {
+            type: mimeType,
+            lastModified: Date.now()
+          });
+
+          formData.append("data", freshFile, freshFile.name);
+          formData.append("attachment_name", freshFile.name);
+          formData.append("attachment_type", mimeType);
+          formData.append("attachment_size", String(freshFile.size));
+
+          // Base64 dự phòng: trường này là JSON/text nên vẫn đi qua được
+          // Execute Workflow -> When Executed by Another Workflow ngay cả khi
+          // binary temp của n8n bị mất hoặc dữ liệu test bị pin cũ.
+          // Chỉ thêm fallback tối đa 15 MB để tránh request quá lớn.
+          const BASE64_FALLBACK_MAX_BYTES = 15 * 1024 * 1024;
+          if (freshFile.size <= BASE64_FALLBACK_MAX_BYTES) {
+            formData.append("attachment_base64", arrayBufferToBase64(fileBuffer));
+          } else {
+            formData.append("attachment_base64", "");
+          }
+
+          if (mimeType.startsWith("image/")) {
             formData.append("attachment_kind", "image");
-          } else if (file.type.startsWith("video/")) {
+          } else if (mimeType.startsWith("video/")) {
             formData.append("attachment_kind", "video");
           } else {
             formData.append("attachment_kind", "file");
           }
+
+          console.log("[ZALO] FILE GỬI N8N:", {
+            name: freshFile.name,
+            type: freshFile.type,
+            size: freshFile.size,
+            hasBase64Fallback: freshFile.size <= BASE64_FALLBACK_MAX_BYTES
+          });
         } else {
           formData.append("attachment_kind", "text");
+          formData.append("attachment_base64", "");
         }
 
         const resp = await fetch(AUTO_TINNHAN_WEBHOOK_URL, {
