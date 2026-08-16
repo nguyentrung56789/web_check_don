@@ -1215,16 +1215,14 @@
     }
 
     function openEditRole(id){
-      const role=allRoles.find(item=>String(item.id)===String(id));
-      if(!role) return showToast('Không tìm thấy vai trò.','err');
+      if(!id){
+        showToast('Không tìm thấy ID vai trò.','err');
+        return;
+      }
 
-      $('roleModalTitle').textContent='Chỉnh sửa vai trò';
-      $('formRoleId').value=role.id ?? '';
-      $('formRoleName').value=role.ten_vai_tro ?? '';
-      $('formRoleDescription').value=role.mo_ta ?? '';
-      $('formRoleSystem').checked=role.la_he_thong===true;
-      $('formRoleStatus').checked=role.trang_thai!==false;
-      openModal('roleModal');
+      window.location.assign(
+        `./phan_quyen_vai_tro.html?vai_tro_id=${encodeURIComponent(id)}`
+      );
     }
 
     function copyRole(id){
