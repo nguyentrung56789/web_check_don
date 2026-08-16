@@ -2106,18 +2106,19 @@ function normalizeBigintOrNull(value) {
 
       console.log("[GUI_TIN] rowsToInsert:", rowsToInsert);
 
-const checkUid = rowsToInsert.map(function (item) {
-  return {
-    ma_kh: item.ma_kh,
-    conversation_id: item.conversation_id,
-    uid_from: item.uid_from
-  };
-});
+      // KIỂM TRA UID_FROM TRƯỚC KHI INSERT
+      const checkUid = rowsToInsert.map(function (item) {
+        return {
+          ma_kh: item.ma_kh,
+          conversation_id: item.conversation_id,
+          uid_from: item.uid_from
+        };
+      });
 
-alert(
-  "KIỂM TRA UID_FROM:\n\n" +
-  JSON.stringify(checkUid, null, 2)
-);
+      alert(
+        "KIỂM TRA UID_FROM:\n\n" +
+        JSON.stringify(checkUid, null, 2)
+      );
 
       const { error: insertError } = await supabaseClient
         .from(TABLE_KHACH_HANG_NHANVIEN_GUITIN)
