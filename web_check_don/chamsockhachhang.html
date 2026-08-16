@@ -1410,7 +1410,7 @@
             <col data-col="ma_nv" style="width: 190px;">
             <col data-col="conversation_id" style="width: 150px;">
             <col data-col="ngay_chat_cuoi" style="width: 160px;">
-            <col data-col="reminder_id" style="width: 150px;">
+            <col data-col="reminderid" style="width: 150px;">
             <col data-col="gio_hen" style="width: 190px;">
             <col data-col="action" style="width: 190px;">
           </colgroup>
@@ -1460,8 +1460,8 @@
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="resizable" data-col="reminder_id" data-col-index="9">
-                reminder_id
+              <th class="resizable" data-col="reminderid" data-col-index="9">
+                reminderid
                 <span class="col-resizer"></span>
               </th>
 
@@ -1599,7 +1599,7 @@
       { key: "ma_nv", label: "Nhân viên" },
       { key: "conversation_id", label: "conversation_id" },
       { key: "ngay_chat_cuoi", label: "Ngày" },
-      { key: "reminder_id", label: "reminder_id" },
+      { key: "reminderid", label: "reminderid" },
       { key: "gio_hen", label: "gio_hen" },
       { key: "action", label: "Thao tác", required: true }
     ];
@@ -1929,7 +1929,7 @@ function normalizeBigintOrNull(value) {
 
       const { data: customerIdRows, error: customerIdError } = await supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, ma_nv, dia_chi, khu_vuc, phuong_xa, dien_thoai, conversation_id, contact_id, ngay_chat_cuoi, uid_from, reminder_id, gio_hen")
+        .select("ma_kh, ten_kh, ma_nv, dia_chi, khu_vuc, phuong_xa, dien_thoai, conversation_id, contact_id, ngay_chat_cuoi, uid_from, reminderid, gio_hen")
         .in("ma_kh", selectedMaKh);
 
       if (customerIdError) {
@@ -1969,7 +1969,7 @@ function normalizeBigintOrNull(value) {
         });
       }
 
-      // Đọc reminder_id + gio_hen hiện có từ bảng gửi tin để làm fallback.
+      // Đọc reminderid + gio_hen hiện có từ bảng gửi tin để làm fallback.
       // View sql_khachhang_nhanvien hiện đã có 2 cột này và được ưu tiên khi INSERT.
       const existingConversationIds = Array.from(new Set(
         (selectedRows || [])
@@ -1984,7 +1984,7 @@ function normalizeBigintOrNull(value) {
       if (existingConversationIds.length > 0) {
         const { data: reminderRows, error: reminderReadError } = await supabaseClient
           .from(TABLE_KHACH_HANG_NHANVIEN_GUITIN)
-          .select("conversation_id, reminder_id, gio_hen")
+          .select("conversation_id, reminderid, gio_hen")
           .in("conversation_id", existingConversationIds);
 
         if (reminderReadError) {
@@ -1996,7 +1996,7 @@ function normalizeBigintOrNull(value) {
           if (!key) return;
 
           reminderMap.set(String(key), {
-            reminder_id: normalizeBigintOrNull(item.reminder_id),
+            reminderid: normalizeBigintOrNull(item.reminderid),
             gio_hen: normalizeTimestampOrNull(item.gio_hen)
           });
         });
@@ -2061,14 +2061,14 @@ function normalizeBigintOrNull(value) {
   uid_from:
     String(idRow.uid_from ?? row.uid_from ?? "").trim() || null,
 
-  // reminder_id + gio_hen:
+  // reminderid + gio_hen:
   // ưu tiên dữ liệu nguồn sql_khachhang_nhanvien,
   // nếu nguồn chưa có thì giữ lại giá trị cũ trong bảng guitin.
-  reminder_id:
+  reminderid:
     normalizeBigintOrNull(
-      idRow.reminder_id ??
-      row.reminder_id ??
-      reminderMap.get(String(conversationId || ""))?.reminder_id
+      idRow.reminderid ??
+      row.reminderid ??
+      reminderMap.get(String(conversationId || ""))?.reminderid
     ),
 
   gio_hen:
@@ -2112,7 +2112,7 @@ function normalizeBigintOrNull(value) {
             ? null
             : uidText;
 
-        item.reminder_id = normalizeBigintOrNull(item.reminder_id);
+        item.reminderid = normalizeBigintOrNull(item.reminderid);
         item.gio_hen = normalizeTimestampOrNull(item.gio_hen);
       });
 
@@ -2122,7 +2122,7 @@ function normalizeBigintOrNull(value) {
           ma_kh: item.ma_kh,
           conversation_id: item.conversation_id,
           uid_from: item.uid_from,
-          reminder_id: item.reminder_id,
+          reminderid: item.reminderid,
           gio_hen: item.gio_hen
         };
       }));
@@ -3876,7 +3876,7 @@ function normalizeBigintOrNull(value) {
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminder_id, gio_hen", { count: "exact" })
+        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false });
 
       query = applySearchAllColumns(query, keyword);
@@ -3921,7 +3921,7 @@ function normalizeBigintOrNull(value) {
           conversation_id: item.conversation_id || null,
           contact_id: item.contact_id || null,
           uid_from: item.uid_from || null,
-          reminder_id: normalizeBigintOrNull(item.reminder_id),
+          reminderid: normalizeBigintOrNull(item.reminderid),
           gio_hen: normalizeTimestampOrNull(item.gio_hen)
         };
       });
@@ -3950,11 +3950,11 @@ function normalizeBigintOrNull(value) {
 
       const { data, error } = await supabaseClient
         .from(TABLE_KHACH_HANG_NHANVIEN_GUITIN)
-        .select("conversation_id, reminder_id, gio_hen")
+        .select("conversation_id, reminderid, gio_hen")
         .in("conversation_id", ids);
 
       if (error) {
-        console.warn("[REMINDER] Không tải được reminder_id/gio_hen:", error);
+        console.warn("[REMINDER] Không tải được reminderid/gio_hen:", error);
         return;
       }
 
@@ -3965,7 +3965,7 @@ function normalizeBigintOrNull(value) {
         if (!key) return;
 
         map.set(String(key), {
-          reminder_id: normalizeBigintOrNull(row.reminder_id),
+          reminderid: normalizeBigintOrNull(row.reminderid),
           gio_hen: normalizeTimestampOrNull(row.gio_hen)
         });
       });
@@ -3974,8 +3974,8 @@ function normalizeBigintOrNull(value) {
         const key = normalizeBigintOrNull(item?.conversation_id);
         const reminder = key ? map.get(String(key)) : null;
 
-        if (item.reminder_id == null) {
-          item.reminder_id = reminder?.reminder_id ?? null;
+        if (item.reminderid == null) {
+          item.reminderid = reminder?.reminderid ?? null;
         }
 
         if (item.gio_hen == null) {
@@ -4002,7 +4002,7 @@ function normalizeBigintOrNull(value) {
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminder_id, gio_hen", { count: "exact" })
+        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false })
         .range(from, to);
 
@@ -4037,7 +4037,7 @@ function normalizeBigintOrNull(value) {
           conversation_id: item.conversation_id || null,
           contact_id: item.contact_id || null,
           uid_from: item.uid_from || null,
-          reminder_id: normalizeBigintOrNull(item.reminder_id),
+          reminderid: normalizeBigintOrNull(item.reminderid),
           gio_hen: normalizeTimestampOrNull(item.gio_hen)
         };
       });
@@ -4749,8 +4749,8 @@ logoutBtn.addEventListener("click", function () {
             <td data-col="ngay_chat_cuoi" title="${escapeHtml(formatDateOnlySafe(item.ngay_chat_cuoi))}">
               ${escapeHtml(formatDateOnlySafe(item.ngay_chat_cuoi))}
             </td>
-            <td data-col="reminder_id" title="${escapeHtml(item.reminder_id || "")}">
-              ${escapeHtml(item.reminder_id || "")}
+            <td data-col="reminderid" title="${escapeHtml(item.reminderid || "")}">
+              ${escapeHtml(item.reminderid || "")}
             </td>
             <td data-col="gio_hen" title="${escapeHtml(item.gio_hen ? formatDateTime(item.gio_hen) : "")}">
               ${escapeHtml(item.gio_hen ? formatDateTime(item.gio_hen) : "")}
