@@ -1929,7 +1929,7 @@ function normalizeBigintOrNull(value) {
 
       const { data: customerIdRows, error: customerIdError } = await supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, ma_nv, dia_chi, khu_vuc, phuong_xa, dien_thoai, conversation_id, contact_id, ngay_chat_cuoi, uid_from")
+        .select("ma_kh, ten_kh, ma_nv, dia_chi, khu_vuc, phuong_xa, dien_thoai, conversation_id, contact_id, ngay_chat_cuoi, uid_from, reminder_id, gio_hen")
         .in("ma_kh", selectedMaKh);
 
       if (customerIdError) {
