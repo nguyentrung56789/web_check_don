@@ -1583,9 +1583,6 @@
     const VIEW_HANG_HOA_THEO_KHACH = "sql_hanghoa_theokhach";
     const PRODUCT_DETAIL_MAX_ROWS = 500;
     const AUTO_TINNHAN_WEBHOOK_URL = "https://n8n.clawbot.io.vn/webhook/guitin_autozalo";
-    // Bucket Supabase Storage dùng để lưu ảnh/tệp trước khi gọi n8n.
-    // Tạo bucket PUBLIC tên "zalo-media" trong Supabase Storage.
-    const ZALO_MEDIA_BUCKET = "zalo-media";
 
     let currentUser = getLoginUser();
     const COLUMN_VISIBILITY_STORAGE_KEY = "ds_khachhang_hidden_columns";
@@ -3137,73 +3134,6 @@ function normalizeBigintOrNull(value) {
       setZaloChatMode("chat");
       resetZaloAttachment();
     }
-    function safeStorageFileName(fileName) {
-      const raw = String(fileName || "file").trim();
-      const dot = raw.lastIndexOf(".");
-      const ext = dot >= 0 ? raw.slice(dot).toLowerCase() : "";
-      const base = (dot >= 0 ? raw.slice(0, dot) : raw)
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-zA-Z0-9_-]+/g, "_")
-        .replace(/^_+|_+$/g, "")
-        .slice(0, 80) || "file";
-      return base + ext.replace(/[^a-z0-9.]/g, "");
-    }
-
-    async function uploadZaloAttachmentAndGetUrl(file) {
-      if (!file) return null;
-      if (!supabaseClient) {
-        throw new Error("Supabase chưa khởi tạo, không thể tải file lên Storage.");
-      }
-
-      const cleanName = safeStorageFileName(file.name);
-      const maKh = String(currentZaloChatRow?.ma_kh || "unknown")
-        .replace(/[^a-zA-Z0-9_-]+/g, "_");
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, "0");
-      const d = String(now.getDate()).padStart(2, "0");
-      const random = (crypto?.randomUUID?.() || Math.random().toString(36).slice(2))
-        .replace(/-/g, "");
-
-      const path = `${y}/${m}/${d}/${maKh}/${Date.now()}_${random}_${cleanName}`;
-
-      const { data, error } = await supabaseClient.storage
-        .from(ZALO_MEDIA_BUCKET)
-        .upload(path, file, {
-          contentType: file.type || "application/octet-stream",
-          cacheControl: "3600",
-          upsert: false
-        });
-
-      if (error) {
-        throw new Error("Không upload được file lên Supabase Storage: " + error.message);
-      }
-
-      const storedPath = data?.path || path;
-      const { data: publicData } = supabaseClient.storage
-        .from(ZALO_MEDIA_BUCKET)
-        .getPublicUrl(storedPath);
-
-      const publicUrl = String(publicData?.publicUrl || "").trim();
-      if (!publicUrl) {
-        throw new Error("Không lấy được URL công khai của file.");
-      }
-
-      return {
-        url: publicUrl,
-        path: storedPath,
-        name: file.name || cleanName,
-        type: file.type || "application/octet-stream",
-        size: Number(file.size || 0),
-        kind: file.type?.startsWith("image/")
-          ? "image"
-          : file.type?.startsWith("video/")
-            ? "video"
-            : "file"
-      };
-    }
-
     async function sendZaloChatMessage() {
       if (!currentZaloChatRow) {
         return;
@@ -3295,23 +3225,35 @@ function normalizeBigintOrNull(value) {
         formData.append("selected_ten_nv", currentZaloChatRow.selected_ten_nv || "");
 
         if (file) {
-          // KHÔNG truyền binary sang n8n nữa.
-          // Upload file lên Supabase Storage trước, sau đó chỉ gửi URL cho webhook.
-          zaloChatSendBtn.textContent = "Đang tải file...";
-          const uploaded = await uploadZaloAttachmentAndGetUrl(file);
+          // Gửi FILE THẬT trực tiếp tới Webhook n8n bằng multipart/form-data.
+          // Không upload Supabase, không tạo URL giả/blob URL.
+          // Dùng arrayBuffer để tạo lại File mới, bảo đảm fetch gửi byte thật.
+          const bytes = await file.arrayBuffer();
+          const freshFile = new File([bytes], file.name || "attachment", {
+            type: file.type || "application/octet-stream",
+            lastModified: Date.now()
+          });
 
-          formData.append("attachment_url", uploaded.url);
-          formData.append("attachment_path", uploaded.path);
-          formData.append("attachment_name", uploaded.name);
-          formData.append("attachment_type", uploaded.type);
-          formData.append("attachment_size", String(uploaded.size));
-          formData.append("attachment_kind", uploaded.kind);
+          formData.append("data", freshFile, freshFile.name);
+          formData.append("attachment_name", freshFile.name);
+          formData.append("attachment_type", freshFile.type || "application/octet-stream");
+          formData.append("attachment_size", String(freshFile.size || 0));
 
-          console.log("[ZALO] FILE ĐÃ UPLOAD:", uploaded);
-          zaloChatSendBtn.textContent = "Đang gửi...";
+          if ((freshFile.type || "").startsWith("image/")) {
+            formData.append("attachment_kind", "image");
+          } else if ((freshFile.type || "").startsWith("video/")) {
+            formData.append("attachment_kind", "video");
+          } else {
+            formData.append("attachment_kind", "file");
+          }
+
+          console.log("[ZALO] FILE GỬI WEBHOOK:", {
+            field: "data",
+            name: freshFile.name,
+            type: freshFile.type,
+            size: freshFile.size
+          });
         } else {
-          formData.append("attachment_url", "");
-          formData.append("attachment_path", "");
           formData.append("attachment_name", "");
           formData.append("attachment_type", "");
           formData.append("attachment_size", "0");
