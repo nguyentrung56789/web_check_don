@@ -1583,7 +1583,7 @@
     const VIEW_HANG_HOA_THEO_KHACH = "sql_hanghoa_theokhach";
     const PRODUCT_DETAIL_MAX_ROWS = 500;
     const UPDATE_CHATWOOT_WEBHOOK_URL = "https://n8n.clawbot.io.vn/webhook/guitin_autozalo";
-    const ZALO_CHAT_WEBHOOK_URL = "https://n8n.clawbot.io.vn/webhook/guitin_autozalo";
+    const AUTO_TINNHAN_WEBHOOK_URL = "https://n8n.clawbot.io.vn/webhook/my-zalo-chatwoot";
 
     // Giữ alias để các đoạn code cũ không bị lỗi, nhưng tất cả cập nhật KH/NV đều đi vào capnhat-chatwoot.
     const UPDATE_STAFF_WEBHOOK_URL = UPDATE_CHATWOOT_WEBHOOK_URL;
@@ -3277,7 +3277,7 @@ function normalizeBigintOrNull(value) {
       try {
         const formData = new FormData();
 
-        formData.append("action", "zalo_chat");
+        formData.append("loaigui", "auto_tinnhan");
         formData.append("source", "zalo_chat_button");
         formData.append("ma_kh", currentZaloChatRow.ma_kh || "");
         formData.append("ten_kh", currentZaloChatRow.ten_kh || "");
@@ -3315,7 +3315,7 @@ function normalizeBigintOrNull(value) {
           formData.append("attachment_kind", "text");
         }
 
-        const resp = await fetch(ZALO_CHAT_WEBHOOK_URL, {
+        const resp = await fetch(AUTO_TINNHAN_WEBHOOK_URL, {
           method: "POST",
           body: formData
         });
