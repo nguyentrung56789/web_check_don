@@ -1582,11 +1582,7 @@
     const TABLE_KHACH_HANG_NHANVIEN_GUITIN = "kv_khachhang_nhanvien_guitin";
     const VIEW_HANG_HOA_THEO_KHACH = "sql_hanghoa_theokhach";
     const PRODUCT_DETAIL_MAX_ROWS = 500;
-    const UPDATE_CHATWOOT_WEBHOOK_URL = "https://n8n.clawbot.io.vn/webhook/guitin_autozalo123";
     const AUTO_TINNHAN_WEBHOOK_URL = "https://n8n.clawbot.io.vn/webhook/guitin_autozalo";
-
-    // Giữ alias để các đoạn code cũ không bị lỗi, nhưng tất cả cập nhật KH/NV đều đi vào capnhat-chatwoot.
-    const UPDATE_STAFF_WEBHOOK_URL = UPDATE_CHATWOOT_WEBHOOK_URL;
 
     let currentUser = getLoginUser();
     const COLUMN_VISIBILITY_STORAGE_KEY = "ds_khachhang_hidden_columns";
@@ -2929,77 +2925,6 @@ function normalizeBigintOrNull(value) {
       return null;
     }
 
-    async function buildWebhookPayload(action, maKh, maNv, extra) {
-      const data = extra || {};
-
-      const contextConversationId = data.conversation_id || data.chatwoot_conversation_id
-        ? String(data.conversation_id || data.chatwoot_conversation_id)
-        : null;
-
-      if (!contextConversationId) {
-        await waitForChatwootContext();
-      }
-
-      const conversationId = contextConversationId || getCurrentConversationId();
-      const contactId = data.contact_id || getCurrentContactId();
-
-      return {
-        action: action,
-        ma_kh: maKh,
-        ma_nv: normalizeNullableMaNv(maNv),
-        conversation_id: conversationId ? String(conversationId) : null,
-        chatwoot_conversation_id: conversationId ? String(conversationId) : null,
-        contact_id: contactId ? String(contactId) : null,
-        source: data.source || "",
-        ...data
-      };
-    }
-
-    async function sendCustomerWebhook(action, maKh, maNv, extra, options) {
-      const opts = options || {};
-      const payload = await buildWebhookPayload(action, maKh, maNv, extra || {});
-
-      if (opts.requireConversation && !payload.conversation_id) {
-        console.error("Thiếu conversation_id khi gửi webhook:", {
-          payload: payload,
-          chatwootContext: chatwootContext,
-          iframe_url: window.location.href,
-          referrer: document.referrer
-        });
-
-        throw new Error("Chưa lấy được ID hội thoại từ Chatwoot appContext.");
-      }
-
-      const webhookUrl = opts.webhookUrl || UPDATE_STAFF_WEBHOOK_URL;
-      console.log("SEND WEBHOOK PAYLOAD:", payload, "URL:", webhookUrl);
-
-      const resp = await fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const text = await resp.text();
-      let result = {};
-
-      try {
-        result = text ? JSON.parse(text) : {};
-      } catch (error) {
-        result = { raw: text };
-      }
-
-      if (!resp.ok) {
-        throw new Error(result.message || text || "Webhook lỗi");
-      }
-
-      return {
-        payload: payload,
-        result: result
-      };
-    }
-
     function getWebhookDisplayMessage(result, fallbackMessage) {
       if (result && result.message) {
         return result.message;
@@ -3716,26 +3641,7 @@ function normalizeBigintOrNull(value) {
         updateCustomerStaffEditorUI(maKhText);
         renderCustomers();
 
-        await sendCustomerWebhook(
-          "set_khachhang_nhanvien",
-          maKhText,
-          valueToSave,
-          {
-            table: TABLE_KHACH_HANG,
-            source: "kv_khachhang_ma_nv_select",
-            mode: "single_staff_kv_khachhang_only",
-            id_nv: staff ? normalizeKiotStaffId(staff.id_nv) : valueToSave,
-            ma_nv: valueToSave,
-            selected_id_nv: staff ? normalizeKiotStaffId(staff.id_nv) : valueToSave,
-            selected_ma_nv: valueToSave,
-            selected_ten_nv: staff ? staff.ten_nv : ""
-          },
-          { requireConversation: false, webhookUrl: UPDATE_CHATWOOT_WEBHOOK_URL }
-        ).catch(function (webhookError) {
-          console.warn("Webhook cập nhật nhân viên lỗi:", webhookError);
-        });
-
-        showNotice(valueToSave
+showNotice(valueToSave
           ? "Đã cập nhật nhân viên phụ trách cho " + maKhText
           : "Đã bỏ nhân viên phụ trách của " + maKhText,
           "ok",
