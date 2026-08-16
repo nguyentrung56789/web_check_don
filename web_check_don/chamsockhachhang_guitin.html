@@ -1285,6 +1285,7 @@ async function loadData() {
           ten_nv,
           uid_from,
           conversation_id,
+          reminderid,
           trang_thai
         `)
         .not(
@@ -2044,6 +2045,14 @@ async function sendRunWebhook() {
     )?.conversation_id ?? '';
 
   formData.append('conversation_id', String(conversationId));
+
+  // ID nhắc hẹn - dùng tên cột mới reminderid
+  const reminderid =
+    rows.find(r =>
+      String(r.conversation_id ?? '').trim() === String(conversationId ?? '').trim()
+    )?.reminderid ?? '';
+
+  formData.append('reminderid', String(reminderid));
 
   // Loại tin nhắn Chatwoot
   formData.append('message_type', 'outgoing');
