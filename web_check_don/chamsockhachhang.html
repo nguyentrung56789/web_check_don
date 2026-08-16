@@ -1969,8 +1969,8 @@ function normalizeBigintOrNull(value) {
         });
       }
 
-      // Đọc reminder_id + gio_hen hiện có từ bảng gửi tin.
-      // Không đọc 2 cột này từ view sql_khachhang_nhanvien vì view không có chúng.
+      // Đọc reminder_id + gio_hen hiện có từ bảng gửi tin để làm fallback.
+      // View sql_khachhang_nhanvien hiện đã có 2 cột này và được ưu tiên khi INSERT.
       const existingConversationIds = Array.from(new Set(
         (selectedRows || [])
           .map(function (row) {
@@ -2061,14 +2061,20 @@ function normalizeBigintOrNull(value) {
   uid_from:
     String(idRow.uid_from ?? row.uid_from ?? "").trim() || null,
 
-  // THÊM 2 CỘT NÀY
+  // reminder_id + gio_hen:
+  // ưu tiên dữ liệu nguồn sql_khachhang_nhanvien,
+  // nếu nguồn chưa có thì giữ lại giá trị cũ trong bảng guitin.
   reminder_id:
     normalizeBigintOrNull(
+      idRow.reminder_id ??
+      row.reminder_id ??
       reminderMap.get(String(conversationId || ""))?.reminder_id
     ),
 
   gio_hen:
     normalizeTimestampOrNull(
+      idRow.gio_hen ??
+      row.gio_hen ??
       reminderMap.get(String(conversationId || ""))?.gio_hen
     ),
 
@@ -2111,6 +2117,15 @@ function normalizeBigintOrNull(value) {
       });
 
       console.log("[GUI_TIN] rowsToInsert:", rowsToInsert);
+      console.table(rowsToInsert.map(function (item) {
+        return {
+          ma_kh: item.ma_kh,
+          conversation_id: item.conversation_id,
+          uid_from: item.uid_from,
+          reminder_id: item.reminder_id,
+          gio_hen: item.gio_hen
+        };
+      }));
 
       const { error: insertError } = await supabaseClient
         .from(TABLE_KHACH_HANG_NHANVIEN_GUITIN)
@@ -3861,7 +3876,7 @@ function normalizeBigintOrNull(value) {
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from", { count: "exact" })
+        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminder_id, gio_hen", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false });
 
       query = applySearchAllColumns(query, keyword);
@@ -3906,8 +3921,8 @@ function normalizeBigintOrNull(value) {
           conversation_id: item.conversation_id || null,
           contact_id: item.contact_id || null,
           uid_from: item.uid_from || null,
-          reminder_id: null,
-          gio_hen: null
+          reminder_id: normalizeBigintOrNull(item.reminder_id),
+          gio_hen: normalizeTimestampOrNull(item.gio_hen)
         };
       });
 
@@ -3959,8 +3974,13 @@ function normalizeBigintOrNull(value) {
         const key = normalizeBigintOrNull(item?.conversation_id);
         const reminder = key ? map.get(String(key)) : null;
 
-        item.reminder_id = reminder?.reminder_id ?? null;
-        item.gio_hen = reminder?.gio_hen ?? null;
+        if (item.reminder_id == null) {
+          item.reminder_id = reminder?.reminder_id ?? null;
+        }
+
+        if (item.gio_hen == null) {
+          item.gio_hen = reminder?.gio_hen ?? null;
+        }
       });
     }
 
@@ -3982,7 +4002,7 @@ function normalizeBigintOrNull(value) {
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from", { count: "exact" })
+        .select("ma_kh, ten_kh, alias_name, dien_thoai, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminder_id, gio_hen", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false })
         .range(from, to);
 
@@ -4017,8 +4037,8 @@ function normalizeBigintOrNull(value) {
           conversation_id: item.conversation_id || null,
           contact_id: item.contact_id || null,
           uid_from: item.uid_from || null,
-          reminder_id: null,
-          gio_hen: null
+          reminder_id: normalizeBigintOrNull(item.reminder_id),
+          gio_hen: normalizeTimestampOrNull(item.gio_hen)
         };
       });
 
