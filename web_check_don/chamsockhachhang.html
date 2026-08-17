@@ -3225,34 +3225,78 @@ function normalizeBigintOrNull(value) {
         formData.append("selected_ten_nv", currentZaloChatRow.selected_ten_nv || "");
 
         if (file) {
-          // Gửi FILE THẬT trực tiếp tới Webhook n8n bằng multipart/form-data.
-          // Không upload Supabase, không tạo URL giả/blob URL.
-          // Dùng arrayBuffer để tạo lại File mới, bảo đảm fetch gửi byte thật.
-          const bytes = await file.arrayBuffer();
-          const freshFile = new File([bytes], file.name || "attachment", {
-            type: file.type || "application/octet-stream",
-            lastModified: Date.now()
-          });
+          const fileName = file.name || "attachment";
+          const mimeType = file.type || "application/octet-stream";
+          const fileSize = Number(file.size || 0);
+          const lowerName = fileName.toLowerCase();
 
-          formData.append("data", freshFile, freshFile.name);
-          formData.append("attachment_name", freshFile.name);
-          formData.append("attachment_type", freshFile.type || "application/octet-stream");
-          formData.append("attachment_size", String(freshFile.size || 0));
+          // Nhận diện video kể cả khi trình duyệt không trả MIME type.
+          const isVideo =
+            mimeType.startsWith("video/") ||
+            /\.(mp4|mov|m4v|webm|avi|mkv|3gp|mpeg|mpg)$/i.test(lowerName);
 
-          if ((freshFile.type || "").startsWith("image/")) {
-            formData.append("attachment_kind", "image");
-          } else if ((freshFile.type || "").startsWith("video/")) {
+          if (isVideo) {
+            // ===============================
+            // VIDEO -> BASE64
+            // ===============================
+            // n8n nhận ở body.data dưới dạng chuỗi Base64 thuần,
+            // KHÔNG có tiền tố data:video/...;base64,.
+            const bytes = new Uint8Array(await file.arrayBuffer());
+
+            // Chuyển theo từng khối để tránh lỗi call stack với video lớn.
+            const CHUNK_SIZE = 0x8000;
+            let binaryString = "";
+
+            for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+              const chunk = bytes.subarray(i, i + CHUNK_SIZE);
+              binaryString += String.fromCharCode.apply(null, chunk);
+            }
+
+            const base64Data = btoa(binaryString);
+
+            formData.append("data", base64Data);
+            formData.append("attachment_name", fileName);
+            formData.append("attachment_type", mimeType);
+            formData.append("attachment_size", String(fileSize));
             formData.append("attachment_kind", "video");
-          } else {
-            formData.append("attachment_kind", "file");
-          }
+            formData.append("attachment_encoding", "base64");
+            formData.append("is_base64", "true");
 
-          console.log("[ZALO] FILE GỬI WEBHOOK:", {
-            field: "data",
-            name: freshFile.name,
-            type: freshFile.type,
-            size: freshFile.size
-          });
+            console.log("[ZALO] VIDEO BASE64 GỬI WEBHOOK:", {
+              field: "data",
+              name: fileName,
+              type: mimeType,
+              size: fileSize,
+              base64Length: base64Data.length
+            });
+          } else {
+            // ===============================
+            // ẢNH / FILE KHÁC -> GIỮ FILE THẬT
+            // ===============================
+            const bytes = await file.arrayBuffer();
+            const freshFile = new File([bytes], fileName, {
+              type: mimeType,
+              lastModified: Date.now()
+            });
+
+            formData.append("data", freshFile, freshFile.name);
+            formData.append("attachment_name", freshFile.name);
+            formData.append("attachment_type", freshFile.type || "application/octet-stream");
+            formData.append("attachment_size", String(freshFile.size || 0));
+            formData.append(
+              "attachment_kind",
+              (freshFile.type || "").startsWith("image/") ? "image" : "file"
+            );
+            formData.append("attachment_encoding", "binary");
+            formData.append("is_base64", "false");
+
+            console.log("[ZALO] FILE GỬI WEBHOOK:", {
+              field: "data",
+              name: freshFile.name,
+              type: freshFile.type,
+              size: freshFile.size
+            });
+          }
         } else {
           formData.append("attachment_name", "");
           formData.append("attachment_type", "");
