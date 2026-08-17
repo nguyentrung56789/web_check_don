@@ -3254,19 +3254,40 @@ function normalizeBigintOrNull(value) {
 
             const base64Data = btoa(binaryString);
 
-            formData.append("data", base64Data);
-            formData.append("attachment_name", fileName);
-            formData.append("attachment_type", mimeType);
-            formData.append("attachment_size", String(fileSize));
-            formData.append("attachment_kind", "video");
-            formData.append("attachment_encoding", "base64");
+            // Đóng chuỗi Base64 thành FILE thật để gửi multipart/form-data.
+            // n8n sẽ nhận ở binary.data, không phải body.data.
+            const safeBaseName = (fileName || "video")
+              .replace(/[^a-zA-Z0-9._-]+/g, "_");
+            const base64FileName = safeBaseName + ".base64.txt";
+            const base64Blob = new Blob([base64Data], {
+              type: "text/plain;charset=utf-8"
+            });
+            const base64File = new File([base64Blob], base64FileName, {
+              type: "text/plain;charset=utf-8",
+              lastModified: Date.now()
+            });
+
+            formData.append("data", base64File, base64File.name);
+            formData.append("attachment_name", base64File.name);
+            formData.append("attachment_type", base64File.type);
+            formData.append("attachment_size", String(base64File.size));
+            formData.append("attachment_kind", "video_base64_file");
+            formData.append("attachment_encoding", "base64_file");
             formData.append("is_base64", "true");
 
-            console.log("[ZALO] VIDEO BASE64 GỬI WEBHOOK:", {
+            // Giữ metadata file video gốc để n8n có thể khôi phục lại đúng tên/type.
+            formData.append("original_file_name", fileName);
+            formData.append("original_mime_type", mimeType);
+            formData.append("original_file_size", String(fileSize));
+
+            console.log("[ZALO] VIDEO -> FILE BASE64 GỬI WEBHOOK:", {
               field: "data",
-              name: fileName,
-              type: mimeType,
-              size: fileSize,
+              base64_file_name: base64File.name,
+              base64_file_type: base64File.type,
+              base64_file_size: base64File.size,
+              original_name: fileName,
+              original_type: mimeType,
+              original_size: fileSize,
               base64Length: base64Data.length
             });
           } else {
