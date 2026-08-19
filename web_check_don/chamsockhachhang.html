@@ -517,7 +517,7 @@
 
     .xung-ho-select {
       width: 100%;
-      min-width: 105px;
+      min-width: 74px;
       height: 32px;
       border: 1px solid #d1d5db;
       border-radius: 7px;
@@ -1451,7 +1451,7 @@
             <col data-col="ten_kh" style="width: 240px;">
             <col data-col="alias_name" style="width: 220px;">
             <col data-col="sdt" style="width: 150px;">
-            <col data-col="xung_ho" style="width: 120px;">
+            <col data-col="xung_ho" style="width: 84px;">
             <col data-col="cong_no" style="width: 130px;">
             <col data-col="ma_nv" style="width: 190px;">
             <col data-col="conversation_id" style="width: 150px;">
@@ -4894,6 +4894,7 @@ logoutBtn.addEventListener("click", function () {
                 <option value="" ${!String(item.xung_ho || "").trim() ? "selected" : ""}>--</option>
                 <option value="cháu" ${String(item.xung_ho || "").trim().toLowerCase() === "cháu" ? "selected" : ""}>cháu</option>
                 <option value="em" ${String(item.xung_ho || "").trim().toLowerCase() === "em" ? "selected" : ""}>em</option>
+                <option value="bạn" ${String(item.xung_ho || "").trim().toLowerCase() === "bạn" ? "selected" : ""}>bạn</option>
                 <option value="anh" ${String(item.xung_ho || "").trim().toLowerCase() === "anh" ? "selected" : ""}>anh</option>
                 <option value="chị" ${String(item.xung_ho || "").trim().toLowerCase() === "chị" ? "selected" : ""}>chị</option>
                 <option value="cô" ${String(item.xung_ho || "").trim().toLowerCase() === "cô" ? "selected" : ""}>cô</option>
