@@ -190,6 +190,26 @@
       font-size: 13px;
       font-weight: 800;
       white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      border: 1px solid #c7d2fe;
+      transition: background .15s ease, color .15s ease, border-color .15s ease;
+    }
+
+    #selectedCountText:hover {
+      background: #e0e7ff;
+      border-color: #818cf8;
+    }
+
+    #selectedCountText.selected-filter-active {
+      background: #4338ca;
+      color: #ffffff;
+      border-color: #4338ca;
+    }
+
+    #selectedCountText.selected-filter-active:hover {
+      background: #3730a3;
+      border-color: #3730a3;
     }
 
     #refreshBtn.loading,
@@ -1390,7 +1410,7 @@
 
       <div class="toolbar-second-row">
         <button id="runSelectedBtn" type="button" class="run-popup-btn">▶ Chạy</button>
-        <span id="selectedCountText">Đã chọn: 0</span>
+        <span id="selectedCountText" role="button" tabindex="0" title="Bấm để chỉ xem các khách đã chọn">Đã chọn: 0</span>
 
         <div class="column-dropdown">
           <button id="columnToggleBtn" type="button">⚙️ Cột</button>
@@ -1624,6 +1644,10 @@
     let currentZaloChatRow = null;
     let zaloAttachmentPreviewUrl = "";
     let selectedCustomerKeys = new Set();
+
+    // false = hiển thị bình thường
+    // true  = chỉ hiển thị các dòng đã chọn
+    let showSelectedOnly = false;
 
     // =========================
     // REALTIME KHÁCH HÀNG / ALIAS
@@ -2207,6 +2231,21 @@ function normalizeBigintOrNull(value) {
 
     if (runSelectedBtn) {
       runSelectedBtn.addEventListener("click", runSelectedCustomers);
+    }
+
+    if (selectedCountText) {
+      selectedCountText.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleSelectedOnlyFilter();
+      });
+
+      selectedCountText.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          toggleSelectedOnlyFilter();
+        }
+      });
     }
 
     (async function startPage() {
@@ -4595,7 +4634,13 @@ logoutBtn.addEventListener("click", function () {
       }
 
       const staffList = getSelectedStaffList();
-      const list = customers;
+
+      // Khi bấm "Đã chọn", chỉ giữ những dòng đang được tick.
+      const list = showSelectedOnly
+        ? customers.filter(function (item) {
+            return selectedCustomerKeys.has(getCustomerSelectionKey(item));
+          })
+        : customers;
 
       // Lọc theo CHÍNH DÒNG hiện tại.
       // Không lookup lại bằng ma_kh vì một ma_kh có thể có nhiều conversation_id,
@@ -4833,7 +4878,18 @@ logoutBtn.addEventListener("click", function () {
       const count = selectedCustomerKeys.size;
 
       if (selectedCountText) {
-        selectedCountText.textContent = "Đã chọn: " + count;
+        selectedCountText.textContent = showSelectedOnly
+          ? "Đang xem: " + count
+          : "Đã chọn: " + count;
+
+        selectedCountText.classList.toggle(
+          "selected-filter-active",
+          showSelectedOnly
+        );
+
+        selectedCountText.title = showSelectedOnly
+          ? "Đang chỉ xem khách đã chọn. Bấm để hiện lại tất cả."
+          : "Bấm để chỉ xem các khách đã chọn";
       }
 
       if (runSelectedBtn) {
@@ -4869,6 +4925,22 @@ logoutBtn.addEventListener("click", function () {
       updateSelectedCountText();
     }
 
+    function toggleSelectedOnlyFilter() {
+      if (!showSelectedOnly && selectedCustomerKeys.size === 0) {
+        if (typeof showNotice === "function") {
+          showNotice("Chưa chọn khách hàng nào.", "error", 2200);
+        }
+        updateSelectedCountText();
+        return;
+      }
+
+      showSelectedOnly = !showSelectedOnly;
+      openedProductMaKh = "";
+
+      renderCustomers();
+      updateSelectedCountText();
+    }
+
     function handleRowSelectionChange(box) {
       const selectionKey = getCheckboxSelectionKey(box);
       if (!selectionKey) return;
@@ -4879,7 +4951,11 @@ logoutBtn.addEventListener("click", function () {
         selectedCustomerKeys.delete(selectionKey);
       }
 
-      syncSelectionUi();
+      if (showSelectedOnly && !box.checked) {
+        renderCustomers();
+      } else {
+        syncSelectionUi();
+      }
     }
 
     function setAllVisibleRowsSelected(checked) {
@@ -4894,7 +4970,11 @@ logoutBtn.addEventListener("click", function () {
         }
       });
 
-      syncSelectionUi();
+      if (showSelectedOnly && !checked) {
+        renderCustomers();
+      } else {
+        syncSelectionUi();
+      }
     }
 
     function getSelectedCustomerRows() {
@@ -4903,8 +4983,8 @@ logoutBtn.addEventListener("click", function () {
       });
     }
 
-
     window.handleRowSelectionChange = handleRowSelectionChange;
+    window.toggleSelectedOnlyFilter = toggleSelectedOnlyFilter;
 
     function getCustomerProductRowId(maKh) {
       return "product_row_" + String(maKh || "").replace(/[^a-zA-Z0-9_-]/g, "_");
