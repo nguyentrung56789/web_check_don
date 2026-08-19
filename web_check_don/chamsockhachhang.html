@@ -2106,6 +2106,11 @@ function normalizeBigintOrNull(value) {
   dien_thoai:
     String(idRow.dien_thoai ?? row.dien_thoai ?? "").trim() || null,
 
+  // Xưng hô được lấy từ sql_khachhang_nhanvien và ghi sang
+  // kv_khachhang_nhanvien_guitin khi bấm Chạy.
+  xung_ho:
+    String(idRow.xung_ho ?? row.xung_ho ?? "").trim() || null,
+
   conversation_id: conversationId,
   contact_id: contactId,
 
@@ -2178,6 +2183,7 @@ function normalizeBigintOrNull(value) {
           ma_kh: item.ma_kh,
           conversation_id: item.conversation_id,
           uid_from: item.uid_from,
+          xung_ho: item.xung_ho,
           reminderid: item.reminderid,
           gio_hen: item.gio_hen
         };
