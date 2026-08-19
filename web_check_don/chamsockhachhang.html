@@ -1645,8 +1645,12 @@
     let zaloAttachmentPreviewUrl = "";
     let selectedCustomerKeys = new Set();
 
+    // Lưu luôn dữ liệu của các dòng đã chọn để lựa chọn được giữ qua nhiều trang.
+    // Key giống selectedCustomerKeys, value là object customer đầy đủ.
+    let selectedCustomerRowsMap = new Map();
+
     // false = hiển thị bình thường
-    // true  = chỉ hiển thị các dòng đã chọn
+    // true  = chỉ hiển thị TẤT CẢ các dòng đã chọn ở mọi trang
     let showSelectedOnly = false;
 
     // =========================
@@ -3893,6 +3897,7 @@ showNotice(valueToSave
 
       await loadCustomerStaffAssignments(customers.map(function (item) { return item.ma_kh; }));
       await loadReminderInfoForCustomers(customers);
+      rememberSelectedRowsFromCurrentPage();
       renderCustomers();
       setCustomerLoading(false);
     }
@@ -4009,6 +4014,7 @@ showNotice(valueToSave
 
       await loadCustomerStaffAssignments(customers.map(function (item) { return item.ma_kh; }));
       await loadReminderInfoForCustomers(customers);
+      rememberSelectedRowsFromCurrentPage();
       renderCustomers();
       setCustomerLoading(false);
     }
@@ -4062,6 +4068,29 @@ showNotice(valueToSave
     }
 
     function updatePagination() {
+      // Khi đang xem khách đã chọn: gom tất cả khách đã chọn về một danh sách,
+      // không dùng phân trang Supabase nữa.
+      if (showSelectedOnly) {
+        const selectedCount = selectedCustomerRowsMap.size;
+
+        pageInput.value = 1;
+        pageInput.max = 1;
+        pageInfo.textContent = selectedCount > 0
+          ? `1 - ${selectedCount} trong ${selectedCount} khách đã chọn`
+          : `0 - 0 trong 0 khách đã chọn`;
+
+        firstPageBtn.disabled = true;
+        prevPageBtn.disabled = true;
+        nextPageBtn.disabled = true;
+        lastPageBtn.disabled = true;
+        pageInput.disabled = true;
+        pageSizeSelect.disabled = true;
+        return;
+      }
+
+      pageInput.disabled = false;
+      pageSizeSelect.disabled = false;
+
       const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
 
       const fromRow = totalRows === 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
@@ -4635,11 +4664,10 @@ logoutBtn.addEventListener("click", function () {
 
       const staffList = getSelectedStaffList();
 
-      // Khi bấm "Đã chọn", chỉ giữ những dòng đang được tick.
+      // Khi bấm "Đã chọn", lấy từ Map đã lưu nên sẽ gom được
+      // khách đã tick ở TẤT CẢ các trang, không chỉ trang hiện tại.
       const list = showSelectedOnly
-        ? customers.filter(function (item) {
-            return selectedCustomerKeys.has(getCustomerSelectionKey(item));
-          })
+        ? Array.from(selectedCustomerRowsMap.values())
         : customers;
 
       // Lọc theo CHÍNH DÒNG hiện tại.
@@ -4669,6 +4697,8 @@ logoutBtn.addEventListener("click", function () {
             <td colspan="12">Không có dữ liệu.</td>
           </tr>
         `;
+        syncSelectionUi();
+        updatePagination();
         return;
       }
 
@@ -4874,6 +4904,15 @@ logoutBtn.addEventListener("click", function () {
       ).trim();
     }
 
+    function rememberSelectedRowsFromCurrentPage() {
+      customers.forEach(function (item) {
+        const key = getCustomerSelectionKey(item);
+        if (selectedCustomerKeys.has(key)) {
+          selectedCustomerRowsMap.set(key, { ...item });
+        }
+      });
+    }
+
     function updateSelectedCountText() {
       const count = selectedCustomerKeys.size;
 
@@ -4937,8 +4976,13 @@ logoutBtn.addEventListener("click", function () {
       showSelectedOnly = !showSelectedOnly;
       openedProductMaKh = "";
 
+      // Trước khi chuyển chế độ, chắc chắn các lựa chọn trên trang hiện tại
+      // đã được lưu vào Map.
+      rememberSelectedRowsFromCurrentPage();
+
       renderCustomers();
       updateSelectedCountText();
+      updatePagination();
     }
 
     function handleRowSelectionChange(box) {
@@ -4947,12 +4991,22 @@ logoutBtn.addEventListener("click", function () {
 
       if (box.checked) {
         selectedCustomerKeys.add(selectionKey);
+
+        const item = customers.find(function (row) {
+          return getCustomerSelectionKey(row) === selectionKey;
+        }) || selectedCustomerRowsMap.get(selectionKey);
+
+        if (item) {
+          selectedCustomerRowsMap.set(selectionKey, { ...item });
+        }
       } else {
         selectedCustomerKeys.delete(selectionKey);
+        selectedCustomerRowsMap.delete(selectionKey);
       }
 
       if (showSelectedOnly && !box.checked) {
         renderCustomers();
+        updatePagination();
       } else {
         syncSelectionUi();
       }
@@ -4965,22 +5019,31 @@ logoutBtn.addEventListener("click", function () {
 
         if (checked) {
           selectedCustomerKeys.add(selectionKey);
+
+          const item = customers.find(function (row) {
+            return getCustomerSelectionKey(row) === selectionKey;
+          }) || selectedCustomerRowsMap.get(selectionKey);
+
+          if (item) {
+            selectedCustomerRowsMap.set(selectionKey, { ...item });
+          }
         } else {
           selectedCustomerKeys.delete(selectionKey);
+          selectedCustomerRowsMap.delete(selectionKey);
         }
       });
 
       if (showSelectedOnly && !checked) {
         renderCustomers();
+        updatePagination();
       } else {
         syncSelectionUi();
       }
     }
 
     function getSelectedCustomerRows() {
-      return customers.filter(function (item) {
-        return selectedCustomerKeys.has(getCustomerSelectionKey(item));
-      });
+      // Trả đủ khách đã chọn ở mọi trang, không phụ thuộc customers trang hiện tại.
+      return Array.from(selectedCustomerRowsMap.values());
     }
 
     window.handleRowSelectionChange = handleRowSelectionChange;
