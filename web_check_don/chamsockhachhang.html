@@ -4385,21 +4385,16 @@ showNotice(valueToSave
         return;
       }
 
-      // Patch alias ngay từ payload trước để giao diện phản ứng tức thì,
-      // sau đó đọc lại view để đồng bộ đầy đủ dữ liệu.
+      // Patch alias ngay từ payload trước để giao diện phản ứng tức thì.
+      // Chỉ sửa phần alias realtime; các xử lý khác giữ nguyên.
       const currentIndex = findCustomerIndexForRealtime(lookupRow);
 
       if (currentIndex >= 0) {
         let changed = false;
 
         if (Object.prototype.hasOwnProperty.call(newRow, "alias_name")) {
-          const oldAlias = normalizeRealtimeText(customers[currentIndex]?.alias_name);
-          const newAlias = normalizeRealtimeText(newRow.alias_name);
-
-          if (oldAlias !== newAlias) {
-            customers[currentIndex].alias_name = newRow.alias_name ?? "";
-            changed = true;
-          }
+          customers[currentIndex].alias_name = newRow.alias_name ?? "";
+          changed = true;
         }
 
         if (Object.prototype.hasOwnProperty.call(newRow, "ngay_chat_cuoi")) {
