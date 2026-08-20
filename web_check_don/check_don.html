@@ -693,6 +693,13 @@ td:first-child input[type="checkbox"] {
 const TABLE = 'don_hang';
 let supa = null;
 
+// Cấu hình runtime lấy từ /api/getConfig
+let APP_CONFIG = {};
+
+// URL dự phòng đã xác nhận trên Vercel.
+// Nếu /api/getConfig có trả webhook/WEBHOOK_URL thì giá trị đó sẽ được ưu tiên.
+const FALLBACK_WEBHOOK_URL = 'https://n8n.clawbot.io.vn/webhook/hoadon';
+
 /* ================== PHÂN TRANG (OFFSET-BASED) ================== */
 let PAGE_SIZE = 100;     // mặc định, có thể đổi ở #pgSize
 let CURRENT_PAGE = 1;    // 1-based
@@ -1170,8 +1177,27 @@ async function checkAndOpenByScan(code){
 
 /* ================== WEBHOOK HELPER ================== */
 function getWebhookUrl(){
-  try { return String((window.getConfig && window.getConfig('webhook')) || ''); }
-  catch { return ''; }
+  try {
+    // 1) Ưu tiên cấu hình server trả từ /api/getConfig
+    const fromApi = String(
+      APP_CONFIG?.webhook ||
+      APP_CONFIG?.WEBHOOK_URL ||
+      APP_CONFIG?.webhook_url ||
+      window.APP_WEBHOOK_URL ||
+      ''
+    ).trim();
+    if (fromApi) return fromApi.replace(/\/+$/, '');
+
+    // 2) Dùng URL dự phòng đã xác nhận
+    if (FALLBACK_WEBHOOK_URL) return FALLBACK_WEBHOOK_URL.replace(/\/+$/, '');
+
+    // 3) Fallback cuối cho cấu hình cũ
+    const legacy = String((window.getConfig && window.getConfig('webhook')) || '').trim();
+    return legacy.replace(/\/+$/, '');
+  } catch (e) {
+    console.error('[WEBHOOK] getWebhookUrl error:', e);
+    return FALLBACK_WEBHOOK_URL;
+  }
 }
 function getOrderInfoFromRow(tr){
   if (!tr) return { ma_hd:'', ten_kh:'', dia_chi:'' };
@@ -1573,30 +1599,51 @@ function bindViewRouteButton(){
 
 /* ================== CẬP NHẬT ĐƠN HÀNG (WEBHOOK) ================== */
 async function onCapNhatDon(){
-  const ymd = getCapDateISO();   // luôn có giá trị hợp lệ
+  const ymd = getCapDateISO();
   setState(true, 'đang cập nhật…');
 
   try{
-    const webhookUrl = (window.getConfig && window.getConfig("webhook")) || "";
-    if (!webhookUrl) { setState(false, "Thiếu webhook"); return; }
-    const res = await fetch(webhookUrl,{
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ action:'capnhathoadon', ngay_cap_nhat: ymd })
-    });
+    const webhookUrl = getWebhookUrl();
 
-    if(!res.ok){
-      const text = await res.text().catch(()=> '');
-      setState(false, 'Cập nhật lỗi: ' + (text || res.status));
-      setTimeout(()=>setState(true,'sẵn sàng'), 3000);
+    console.log('[CAP NHAT DON] webhook =', webhookUrl);
+    console.log('[CAP NHAT DON] ngay_cap_nhat =', ymd);
+
+    if (!webhookUrl) {
+      setState(false, 'Thiếu webhook');
       return;
     }
 
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'capnhathoadon',
+        ngay_cap_nhat: ymd
+      })
+    });
+
+    const responseText = await res.text().catch(() => '');
+
+    if (!res.ok) {
+      console.error('[CAP NHAT DON] HTTP ERROR', {
+        status: res.status,
+        url: webhookUrl,
+        response: responseText
+      });
+
+      setState(false, `Cập nhật lỗi (${res.status}): ${responseText || 'Webhook trả lỗi'}`);
+      setTimeout(() => setState(true, 'sẵn sàng'), 5000);
+      return;
+    }
+
+    console.log('[CAP NHAT DON] OK:', responseText);
     setState(true, `đã gửi cập nhật cho ${isoToVN(ymd)}`);
-    setTimeout(()=>setState(true,'sẵn sàng'), 2000);
-  }catch(e){
-    setState(false, 'Lỗi kết nối webhook');
-    setTimeout(()=>setState(true,'sẵn sàng'), 3000);
+    setTimeout(() => setState(true, 'sẵn sàng'), 2000);
+
+  } catch(e) {
+    console.error('[CAP NHAT DON] FETCH ERROR:', e);
+    setState(false, 'Lỗi kết nối webhook: ' + (e?.message || e));
+    setTimeout(() => setState(true, 'sẵn sàng'), 5000);
   }
 }
 
@@ -1762,7 +1809,20 @@ async function init(){
       return;
     }
     const cfg = await r.json().catch(()=> ({}));
-    const { url, anon } = (cfg || {});
+
+    // Lưu toàn bộ config runtime để các chức năng khác (đặc biệt webhook) dùng chung.
+    APP_CONFIG = (cfg && typeof cfg === 'object') ? cfg : {};
+    window.APP_CONFIG = APP_CONFIG;
+    window.APP_WEBHOOK_URL = String(
+      APP_CONFIG.webhook ||
+      APP_CONFIG.WEBHOOK_URL ||
+      APP_CONFIG.webhook_url ||
+      ''
+    ).trim();
+
+    console.log('[INIT] webhook runtime =', getWebhookUrl());
+
+    const { url, anon } = APP_CONFIG;
     if(!url || !anon){
       setState(false, 'Thiếu url/anon trong config');
       console.error('[INIT] Invalid config', cfg);
