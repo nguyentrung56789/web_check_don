@@ -1579,7 +1579,7 @@
             <input
               id="zaloAttachmentInput"
               type="file"
-              accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar"
+              accept="image/*,video/*"
               hidden
             />
           </label>
@@ -3283,7 +3283,6 @@ function normalizeBigintOrNull(value) {
       try {
         const formData = new FormData();
 
-        formData.append("loaigui", "auto_tinnhan");
         formData.append("source", "zalo_chat_button");
         formData.append("nguon", "chamsockhachhang.html");
         formData.append("ma_kh", currentZaloChatRow.ma_kh || "");
@@ -3322,10 +3321,15 @@ function normalizeBigintOrNull(value) {
 
           if ((freshFile.type || "").startsWith("image/")) {
             formData.append("attachment_kind", "image");
+            formData.append("loaigui", "image");
           } else if ((freshFile.type || "").startsWith("video/")) {
             formData.append("attachment_kind", "video");
+            formData.append("loaigui", "video");
           } else {
-            formData.append("attachment_kind", "file");
+            // Zalo chat hiện chỉ dùng 3 loại: text, image, video.
+            // Nếu trình duyệt trả MIME không xác định thì xử lý an toàn như text.
+            formData.append("attachment_kind", "text");
+            formData.append("loaigui", "text");
           }
 
           console.log("[ZALO] FILE GỬI WEBHOOK:", {
@@ -3339,6 +3343,7 @@ function normalizeBigintOrNull(value) {
           formData.append("attachment_type", "");
           formData.append("attachment_size", "0");
           formData.append("attachment_kind", "text");
+          formData.append("loaigui", "text");
         }
 
         const resp = await fetch(AUTO_TINNHAN_WEBHOOK_URL, {
