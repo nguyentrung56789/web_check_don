@@ -747,6 +747,15 @@
             />
             Xóa nhắc hẹn
           </label>
+
+          <label class="send-type-option">
+            <input
+              id="sendTypeDebtNotice"
+              type="checkbox"
+              value="thongbaocongno"
+            />
+            Thông báo công nợ
+          </label>
         </div>
 
         <div id="reminderTimeWrap" class="reminder-time-wrap">
@@ -1656,6 +1665,7 @@ function getLoaiGuiFromForm() {
   const normal = document.getElementById('sendTypeNormal');
   const reminder = document.getElementById('sendTypeReminder');
   const deleteReminder = document.getElementById('sendTypeDeleteReminder');
+  const debtNotice = document.getElementById('sendTypeDebtNotice');
 
   if (normal?.checked) {
     return 'guithuong';
@@ -1669,7 +1679,11 @@ function getLoaiGuiFromForm() {
     return 'xoanhachen';
   }
 
-  // Nếu cả 3 đều bỏ chọn thì quay về Gửi thường.
+  if (debtNotice?.checked) {
+    return 'thongbaocongno';
+  }
+
+  // Nếu tất cả đều bỏ chọn thì quay về Gửi thường.
   if (normal) normal.checked = true;
   return 'guithuong';
 }
@@ -1690,16 +1704,22 @@ function validateRunForm() {
     document.getElementById('messageText')?.value || ''
   ).trim();
 
-  // Gửi thường và Nhắc hẹn bắt buộc phải có nội dung.
+  // Gửi thường, Nhắc hẹn và Thông báo công nợ bắt buộc phải có nội dung.
   // Riêng Xóa nhắc hẹn không cần nội dung.
   if (
-    (loaiGui === 'guithuong' || loaiGui === 'nhachen') &&
+    (
+      loaiGui === 'guithuong' ||
+      loaiGui === 'nhachen' ||
+      loaiGui === 'thongbaocongno'
+    ) &&
     !noiDung
   ) {
     const message =
       loaiGui === 'nhachen'
         ? 'Bạn đã chọn Nhắc hẹn nhưng chưa nhập nội dung.'
-        : 'Bạn đã chọn Gửi thường nhưng chưa nhập nội dung.';
+        : loaiGui === 'thongbaocongno'
+          ? 'Bạn đã chọn Thông báo công nợ nhưng chưa nhập nội dung.'
+          : 'Bạn đã chọn Gửi thường nhưng chưa nhập nội dung.';
 
     alert(message);
 
@@ -1724,49 +1744,34 @@ function bindSendTypeEvents() {
   const normal = document.getElementById('sendTypeNormal');
   const reminder = document.getElementById('sendTypeReminder');
   const deleteReminder = document.getElementById('sendTypeDeleteReminder');
+  const debtNotice = document.getElementById('sendTypeDebtNotice');
 
-  if (!normal || !reminder || !deleteReminder) return;
+  if (!normal || !reminder || !deleteReminder || !debtNotice) return;
+
+  const sendTypes = [normal, reminder, deleteReminder, debtNotice];
 
   // Mặc định Gửi thường.
-  if (!normal.checked && !reminder.checked && !deleteReminder.checked) {
+  if (!sendTypes.some(input => input.checked)) {
     normal.checked = true;
   }
 
-  normal.addEventListener('change', function () {
-    if (this.checked) {
-      reminder.checked = false;
-      deleteReminder.checked = false;
-    } else if (!reminder.checked && !deleteReminder.checked) {
-      this.checked = true;
-    }
+  sendTypes.forEach(input => {
+    input.addEventListener('change', function () {
+      if (this.checked) {
+        sendTypes.forEach(other => {
+          if (other !== this) other.checked = false;
+        });
+      } else if (!sendTypes.some(other => other.checked)) {
+        normal.checked = true;
+      }
 
-    updateReminderTimeVisibility();
-  });
-
-  reminder.addEventListener('change', function () {
-    if (this.checked) {
-      normal.checked = false;
-      deleteReminder.checked = false;
-    } else if (!normal.checked && !deleteReminder.checked) {
-      normal.checked = true;
-    }
-
-    updateReminderTimeVisibility();
-  });
-
-  deleteReminder.addEventListener('change', function () {
-    if (this.checked) {
-      normal.checked = false;
-      reminder.checked = false;
-    } else if (!normal.checked && !reminder.checked) {
-      normal.checked = true;
-    }
-
-    updateReminderTimeVisibility();
+      updateReminderTimeVisibility();
+    });
   });
 
   updateReminderTimeVisibility();
 }
+
 
 function bindComposerToggle() {
   const messageCard = document.getElementById('messageCard');
@@ -2062,15 +2067,21 @@ async function sendRunWebhook() {
   const gioHen =
     getGioHenFromForm();
 
-  // Phòng thủ thêm: không cho gửi webhook nếu Gửi thường/Nhắc hẹn rỗng nội dung.
+  // Phòng thủ thêm: các chế độ gửi nội dung không được để trống.
   if (
-    (loaiGui === 'guithuong' || loaiGui === 'nhachen') &&
+    (
+      loaiGui === 'guithuong' ||
+      loaiGui === 'nhachen' ||
+      loaiGui === 'thongbaocongno'
+    ) &&
     !noiDung
   ) {
     throw new Error(
       loaiGui === 'nhachen'
         ? 'Bạn đã chọn Nhắc hẹn nhưng chưa nhập nội dung.'
-        : 'Bạn đã chọn Gửi thường nhưng chưa nhập nội dung.'
+        : loaiGui === 'thongbaocongno'
+          ? 'Bạn đã chọn Thông báo công nợ nhưng chưa nhập nội dung.'
+          : 'Bạn đã chọn Gửi thường nhưng chưa nhập nội dung.'
     );
   }
 
@@ -2132,12 +2143,18 @@ async function sendRunWebhook() {
   // Loại tin nhắn Chatwoot
   formData.append('message_type', 'outgoing');
 
-  // loaigui dùng để phân biệt dữ liệu gửi ra webhook:
-  // text | image | video
-  formData.append('loaigui', loaiGuiWebhook);
+  // Nếu chọn "Thông báo công nợ" thì webhook nhận:
+  // loaigui = thongbaocongno
+  // Các chế độ còn lại vẫn giữ cách cũ: text | image | video
+  const loaiGuiGuiWebhook =
+    loaiGui === 'thongbaocongno'
+      ? 'thongbaocongno'
+      : loaiGuiWebhook;
 
-  // Giữ nguyên chế độ nghiệp vụ cũ để n8n vẫn biết:
-  // guithuong | nhachen | xoanhachen
+  formData.append('loaigui', loaiGuiGuiWebhook);
+
+  // Chế độ nghiệp vụ:
+  // guithuong | nhachen | xoanhachen | thongbaocongno
   formData.append('che_do_gui', loaiGui);
 
   // Khi chọn "Xóa nhắc hẹn":
@@ -2206,7 +2223,7 @@ async function sendRunWebhook() {
     so_khach_hop_le: rows.length,
     conversation_id: String(conversationId),
     message_type: 'outgoing',
-    loaigui: loaiGuiWebhook,
+    loaigui: loaiGuiGuiWebhook,
     che_do_gui: loaiGui,
     loinhac: loiNhac,
     gio_hen: gioHen,
