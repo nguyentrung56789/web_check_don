@@ -1970,12 +1970,28 @@ function bindComposerEvents() {
 
   imageFile?.addEventListener('change', function () {
     const file = this.files?.[0];
+
+    // Chỉ cho chọn 1 loại media tại một thời điểm.
+    // Chọn ảnh thì bỏ video.
+    if (file && videoFile) {
+      videoFile.value = '';
+      document.getElementById('videoFileInfo').textContent = 'Chưa chọn video';
+    }
+
     document.getElementById('imageFileInfo').textContent =
       file ? `${file.name} (${Math.round(file.size / 1024)} KB)` : 'Chưa chọn ảnh';
   });
 
   videoFile?.addEventListener('change', function () {
     const file = this.files?.[0];
+
+    // Chỉ cho chọn 1 loại media tại một thời điểm.
+    // Chọn video thì bỏ ảnh.
+    if (file && imageFile) {
+      imageFile.value = '';
+      document.getElementById('imageFileInfo').textContent = 'Chưa chọn ảnh';
+    }
+
     document.getElementById('videoFileInfo').textContent =
       file ? `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)` : 'Chưa chọn video';
   });
@@ -2020,6 +2036,15 @@ async function sendRunWebhook() {
 
   const videoFile =
     document.getElementById('videoFile')?.files?.[0] || null;
+
+  // Loại dữ liệu gửi ra webhook:
+  // text  = không có ảnh/video
+  // image = có ảnh
+  // video = có video
+  const loaiGuiWebhook =
+    videoFile ? 'video' :
+    imageFile ? 'image' :
+    'text';
 
   const delayConfig =
     getDelayConfigFromForm();
@@ -2106,14 +2131,19 @@ async function sendRunWebhook() {
   // Loại tin nhắn Chatwoot
   formData.append('message_type', 'outgoing');
 
-  // Loại gửi: guithuong | nhachen | xoanhachen
-  formData.append('loaigui', loaiGui);
+  // loaigui dùng để phân biệt dữ liệu gửi ra webhook:
+  // text | image | video
+  formData.append('loaigui', loaiGuiWebhook);
+
+  // Giữ nguyên chế độ nghiệp vụ cũ để n8n vẫn biết:
+  // guithuong | nhachen | xoanhachen
+  formData.append('che_do_gui', loaiGui);
 
   // Khi chọn "Xóa nhắc hẹn":
   // n8n nhận body.loinhac = "xoanhachen"
   formData.append('loinhac', loiNhac);
 
-  // Giờ hẹn: chỉ có giá trị khi loaigui = nhachen
+  // Giờ hẹn: chỉ có giá trị khi che_do_gui = nhachen
   formData.append('gio_hen', gioHen);
 
   formData.append('noi_dung', noiDung);
@@ -2175,7 +2205,8 @@ async function sendRunWebhook() {
     so_khach_hop_le: rows.length,
     conversation_id: String(conversationId),
     message_type: 'outgoing',
-    loaigui: loaiGui,
+    loaigui: loaiGuiWebhook,
+    che_do_gui: loaiGui,
     loinhac: loiNhac,
     gio_hen: gioHen,
     noi_dung: noiDung,
