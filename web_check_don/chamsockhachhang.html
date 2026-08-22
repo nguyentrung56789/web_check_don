@@ -1511,13 +1511,13 @@
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="resizable" data-col="reminderid" data-col-index="10">
-                reminderid
+              <th class="sortable resizable" data-col="reminderid" data-sort="reminderid" data-col-index="10">
+                reminderid <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="resizable" data-col="gio_hen" data-col-index="11">
-                gio_hen
+              <th class="sortable resizable" data-col="gio_hen" data-sort="gio_hen" data-col-index="11">
+                gio_hen <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
@@ -3913,6 +3913,8 @@ showNotice(valueToSave
       if (sortField === "alias_name") return "alias_name";
       if (sortField === "ten_kh") return "ten_kh";
       if (sortField === "ma_kh") return "ma_kh";
+      if (sortField === "reminderid") return "reminderid";
+      if (sortField === "gio_hen") return "gio_hen";
 
       return "ma_kh";
     }
@@ -4352,7 +4354,7 @@ showNotice(valueToSave
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
         .select(
-          "ma_kh, ten_kh, alias_name, dien_thoai, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from"
+          "ma_kh, ten_kh, alias_name, dien_thoai, xung_ho, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen"
         )
         .limit(1);
 
@@ -4379,12 +4381,15 @@ showNotice(valueToSave
         ten_kh: item.ten_kh || "",
         alias_name: item.alias_name || "",
         sdt: item.dien_thoai || "",
+        xung_ho: item.xung_ho || "",
         cong_no: item.congno || 0,
         ma_nv: normalizeNullableMaNv(item.ma_nv),
         ngay_chat_cuoi: item.ngay_chat_cuoi || null,
         conversation_id: item.conversation_id || null,
         contact_id: item.contact_id || null,
-        uid_from: item.uid_from || null
+        uid_from: item.uid_from || null,
+        reminderid: normalizeBigintOrNull(item.reminderid),
+        gio_hen: normalizeTimestampOrNull(item.gio_hen)
       };
     }
 
@@ -4392,10 +4397,7 @@ showNotice(valueToSave
       const eventType = String(payload?.eventType || "").toUpperCase();
       const newRow = payload?.new || {};
       const oldRow = payload?.old || {};
-      const lookupRow =
-        eventType === "DELETE"
-          ? oldRow
-          : newRow;
+      const lookupRow = eventType === "DELETE" ? oldRow : newRow;
 
       console.log("[REALTIME KH]", eventType, lookupRow);
 
@@ -4412,46 +4414,16 @@ showNotice(valueToSave
         return;
       }
 
-      // Patch alias ngay từ payload trước để giao diện phản ứng tức thì.
-      // Chỉ sửa phần alias realtime; các xử lý khác giữ nguyên.
-      const currentIndex = findCustomerIndexForRealtime(lookupRow);
-
-      if (currentIndex >= 0) {
-        let changed = false;
-
-        if (Object.prototype.hasOwnProperty.call(newRow, "alias_name")) {
-          customers[currentIndex].alias_name = newRow.alias_name ?? "";
-          changed = true;
-        }
-
-        if (Object.prototype.hasOwnProperty.call(newRow, "ngay_chat_cuoi")) {
-          customers[currentIndex].ngay_chat_cuoi = newRow.ngay_chat_cuoi || null;
-          changed = true;
-        }
-
-        if (Object.prototype.hasOwnProperty.call(newRow, "contact_id")) {
-          customers[currentIndex].contact_id = newRow.contact_id || null;
-          changed = true;
-        }
-
-        if (Object.prototype.hasOwnProperty.call(newRow, "uid_from")) {
-          customers[currentIndex].uid_from = newRow.uid_from || null;
-          changed = true;
-        }
-
-        if (changed) {
-          renderCustomers();
-        }
-      }
-
+      // Mỗi thay đổi ở bảng khách hàng/nhân viên sẽ đọc lại dòng mới nhất
+      // từ TABLE_KHACH_HANG để cập nhật TOÀN BỘ các cột đang hiển thị.
       const latest = await fetchLatestCustomerForRealtime(lookupRow);
 
       if (latest) {
         const latestIndex = findCustomerIndexForRealtime(latest);
 
         if (latestIndex >= 0) {
-          // Giữ các field nhân viên đã được bổ sung ở client nếu view chưa trả về.
           const current = customers[latestIndex] || {};
+
           customers[latestIndex] = {
             ...current,
             ...latest,
@@ -4459,13 +4431,13 @@ showNotice(valueToSave
             ten_nv: current.ten_nv || latest.ten_nv || null
           };
 
+          rememberSelectedRowsFromCurrentPage();
           renderCustomers();
           return;
         }
       }
 
-      // Nếu đây là dòng mới / dòng hiện chưa có trên trang,
-      // debounce tải lại trang hiện tại để đúng bộ lọc, sort và phân trang.
+      // Nếu dòng mới chưa có trên trang hiện tại thì tải lại đúng bộ lọc/sort/phân trang.
       clearTimeout(customerRealtimeRefreshTimer);
       customerRealtimeRefreshTimer = setTimeout(function () {
         if (!isLoadingCustomers) {
@@ -4474,6 +4446,37 @@ showNotice(valueToSave
           });
         }
       }, 250);
+    }
+
+    function applyReminderRealtimeChange(payload) {
+      const eventType = String(payload?.eventType || "").toUpperCase();
+      const row = eventType === "DELETE" ? (payload?.old || {}) : (payload?.new || {});
+      const conversationId = normalizeBigintOrNull(row?.conversation_id);
+
+      if (!conversationId) return;
+
+      let changed = false;
+
+      customers.forEach(function (item) {
+        if (String(normalizeBigintOrNull(item?.conversation_id) || "") !== String(conversationId)) {
+          return;
+        }
+
+        if (eventType === "DELETE") {
+          item.reminderid = null;
+          item.gio_hen = null;
+        } else {
+          item.reminderid = normalizeBigintOrNull(row?.reminderid);
+          item.gio_hen = normalizeTimestampOrNull(row?.gio_hen);
+        }
+
+        changed = true;
+      });
+
+      if (changed) {
+        rememberSelectedRowsFromCurrentPage();
+        renderCustomers();
+      }
     }
 
     function subscribeCustomerRealtime() {
@@ -4493,8 +4496,11 @@ showNotice(valueToSave
         customerRealtimeChannel = null;
       }
 
+      // Một channel nghe cả 2 bảng:
+      // 1) kv_khachhang_nhanvien -> toàn bộ dữ liệu khách/nhân viên
+      // 2) kv_khachhang_nhanvien_guitin -> reminderid + gio_hen
       customerRealtimeChannel = supabaseClient
-        .channel("realtime_kv_khachhang_nhanvien")
+        .channel("realtime_khachhang_tatca_cot")
         .on(
           "postgres_changes",
           {
@@ -4508,13 +4514,29 @@ showNotice(valueToSave
             });
           }
         )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: TABLE_KHACH_HANG_NHANVIEN_GUITIN
+          },
+          function (payload) {
+            try {
+              applyReminderRealtimeChange(payload);
+            } catch (error) {
+              console.error("[REALTIME REMINDER] Lỗi xử lý event:", error);
+            }
+          }
+        )
         .subscribe(function (status, error) {
           console.log("[REALTIME KH SUBSCRIBE]", status, error || "");
 
           if (status === "SUBSCRIBED") {
             console.log(
-              "✅ Đã kết nối Realtime:",
-              TABLE_KHACH_HANG_NHANVIEN
+              "✅ Đã kết nối Realtime toàn bộ cột:",
+              TABLE_KHACH_HANG_NHANVIEN,
+              TABLE_KHACH_HANG_NHANVIEN_GUITIN
             );
           }
         });
