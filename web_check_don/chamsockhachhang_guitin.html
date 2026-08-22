@@ -1648,7 +1648,10 @@ function getGioHenFromForm() {
     throw new Error('Bạn đã chọn Nhắc hẹn nhưng chưa chọn giờ hẹn.');
   }
 
-  return value;
+  // Chỉ giờ Nhắc hẹn được gắn múi giờ Việt Nam UTC+7.
+  // datetime-local trả dạng: 2026-08-22T15:30
+  // Webhook nhận: 2026-08-22T15:30:00+07:00
+  return value + ':00+07:00';
 }
 
 function updateReminderTimeVisibility() {
