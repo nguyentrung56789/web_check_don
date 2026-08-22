@@ -2143,13 +2143,18 @@ async function sendRunWebhook() {
   // Loại tin nhắn Chatwoot
   formData.append('message_type', 'outgoing');
 
-  // Nếu chọn "Thông báo công nợ" thì webhook nhận:
-  // loaigui = thongbaocongno
-  // Các chế độ còn lại vẫn giữ cách cũ: text | image | video
+  // LOẠI GỬI WEBHOOK:
+  // - Gửi thường:
+  //     + có video  => video
+  //     + có ảnh    => image
+  //     + không media => text
+  // - Nhắc hẹn         => nhachen
+  // - Xóa nhắc hẹn     => xoanhachen
+  // - Thông báo công nợ => thongbaocongno
   const loaiGuiGuiWebhook =
-    loaiGui === 'thongbaocongno'
-      ? 'thongbaocongno'
-      : loaiGuiWebhook;
+    loaiGui === 'guithuong'
+      ? loaiGuiWebhook
+      : loaiGui;
 
   formData.append('loaigui', loaiGuiGuiWebhook);
 
