@@ -1983,18 +1983,32 @@ function normalizeBigintOrNull(value) {
         throw new Error("Chưa chọn khách hàng nào.");
       }
 
-      const { data: customerIdRows, error: customerIdError } = await supabaseClient
+      // Lấy ma_nv đang chọn ở dropdown để khi bấm Chạy
+      // chỉ đọc đúng dữ liệu của nhân viên đang được lọc.
+      const selectedStaffDbCodes = getSelectedStaffDbCodes();
+
+      let customerQuery = supabaseClient
         .from(TABLE_KHACH_HANG)
         .select("ma_kh, ten_kh, ma_nv, dia_chi, khu_vuc, phuong_xa, dien_thoai, xung_ho, conversation_id, contact_id, ngay_chat_cuoi, uid_from, reminderid, gio_hen")
         .in("ma_kh", selectedMaKh);
+
+      if (selectedStaffDbCodes.length > 0) {
+        customerQuery = customerQuery.in("ma_nv", selectedStaffDbCodes);
+      }
+
+      const { data: customerIdRows, error: customerIdError } = await customerQuery;
 
       if (customerIdError) {
         throw customerIdError;
       }
 
+      // Khóa theo ma_kh + ma_nv để các dòng cùng khách nhưng khác nhân viên
+      // không ghi đè lẫn nhau.
       const customerIdMap = new Map();
       (customerIdRows || []).forEach(function (row) {
-        customerIdMap.set(String(row.ma_kh || "").trim(), row);
+        const maKh = String(row.ma_kh || "").trim();
+        const maNv = String(row.ma_nv || "").trim();
+        customerIdMap.set(maKh + "|" + maNv, row);
       });
 
       const selectedMaNv = Array.from(new Set(
@@ -2059,10 +2073,17 @@ function normalizeBigintOrNull(value) {
       }
 
       // Xóa danh sách gửi tin cũ trước khi ghi danh sách mới.
-      const { error: deleteError } = await supabaseClient
+      // Nếu dropdown đang lọc nhân viên thì chỉ xóa đúng ma_nv đó.
+      let deleteQuery = supabaseClient
         .from(TABLE_KHACH_HANG_NHANVIEN_GUITIN)
         .delete()
         .not("conversation_id", "is", null);
+
+      if (selectedStaffDbCodes.length > 0) {
+        deleteQuery = deleteQuery.in("ma_nv", selectedStaffDbCodes);
+      }
+
+      const { error: deleteError } = await deleteQuery;
 
       if (deleteError) {
         throw deleteError;
@@ -2070,7 +2091,8 @@ function normalizeBigintOrNull(value) {
 
       const mappedRows = (selectedRows || []).map(function (row) {
         const maKh = String(row.ma_kh || "").trim();
-        const idRow = customerIdMap.get(maKh) || {};
+        const rowMaNv = String(row.ma_nv || "").trim();
+        const idRow = customerIdMap.get(maKh + "|" + rowMaNv) || {};
 
         const maNv = idRow.ma_nv
           ? String(idRow.ma_nv).trim()
