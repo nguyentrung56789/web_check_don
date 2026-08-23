@@ -2,1800 +2,1134 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#111" />
+  <title>Check-in (Camera + GPS + Âm thanh)</title>
 
-  <title>Ứng dụng giao hàng</title>
-
-  <link rel="manifest" href="/manifest.webmanifest" />
-  <meta name="theme-color" content="#1a73e8" />
-
-  <script>
-    /*
-     * KIỂM TRA ĐĂNG NHẬP CHUNG
-     * Đọc giống main.html:
-     *   1. localStorage["nv"]
-     *   2. localStorage["chatwoot_crm_user"]
-     * Ưu tiên ma_nv, nếu không có thì dùng id_nv.
-     */
-    (function kiemTraDangNhapChung() {
-      function readJsonStorage(key) {
-        try {
-          const raw = localStorage.getItem(key);
-          if (!raw) return null;
-
-          const data = JSON.parse(raw);
-          return data && typeof data === "object"
-            ? data
-            : null;
-        } catch (error) {
-          console.warn(
-            `[GIAO HÀNG] Không đọc được localStorage "${key}":`,
-            error
-          );
-          return null;
-        }
-      }
-
-      const loginUser =
-        readJsonStorage("nv") ||
-        readJsonStorage("chatwoot_crm_user");
-
-      /*
-       * Không tìm thấy phiên đăng nhập:
-       * vẫn cho mở app, không chuyển về login.html.
-       */
-      if (!loginUser) {
-        const guestUser = {
-          ma_nv: "",
-          ten_nv: "Nhân viên",
-          ts: Date.now()
-        };
-
-        window.APP_LOGIN_USER = guestUser;
-        document.documentElement.classList.add("auth-ok");
-
-        console.warn(
-          "[GIAO HÀNG] Không tìm thấy phiên đăng nhập, vẫn mở ứng dụng."
-        );
-
-        return;
-      }
-
-      const maNv = String(
-        loginUser.ma_nv ||
-        loginUser.id_nv ||
-        ""
-      ).trim();
-
-      const tenNv = String(
-        loginUser.ten_nv ||
-        loginUser.name ||
-        maNv ||
-        ""
-      ).trim();
-
-      /*
-       * Có dữ liệu đăng nhập nhưng không có ma_nv:
-       * vẫn cho mở app, không chuyển về login.html.
-       */
-      if (!maNv) {
-        const fallbackUser = {
-          ...loginUser,
-          ma_nv: "",
-          ten_nv: tenNv || "Nhân viên",
-          ts: Date.now()
-        };
-
-        window.APP_LOGIN_USER = fallbackUser;
-        document.documentElement.classList.add("auth-ok");
-
-        console.warn(
-          "[GIAO HÀNG] Tài khoản không có ma_nv, vẫn mở ứng dụng."
-        );
-
-        return;
-      }
-
-      const normalizedUser = {
-        ...loginUser,
-        ma_nv: maNv,
-        ten_nv: tenNv,
-        ts: Date.now()
-      };
-
-      /*
-       * Chuẩn hóa lại key "nv" để app_giao_hang.js
-       * và các trang con luôn đọc cùng một cấu trúc.
-       */
-      localStorage.setItem(
-        "nv",
-        JSON.stringify(normalizedUser)
-      );
-
-      sessionStorage.setItem(
-        "nv_ctx",
-        JSON.stringify({
-          ma_nv: maNv,
-          ten_nv: tenNv,
-          ts: Date.now()
-        })
-      );
-
-      window.APP_LOGIN_USER = normalizedUser;
-      document.documentElement.classList.add("auth-ok");
-
-      console.log(
-        "[GIAO HÀNG] Đã nhận tài khoản từ hệ thống:",
-        {
-          ma_nv: maNv,
-          ten_nv: tenNv
-        }
-      );
-    })();
-  </script>
-
-  <script>
-    if ("serviceWorker" in navigator) {
-      addEventListener("load", () => {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .catch(error => {
-            console.warn(
-              "[GIAO HÀNG] Không đăng ký được service worker:",
-              error
-            );
-          });
-      });
-    }
-  </script>
-
-  <script src="./js/internal_key.js"></script>
-  <script src="./js/cod_config.js"></script>
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
   <style>
-:root{--pri:#1a73e8;--ok:#0a8f3a;--err:#c62828;--bd:#e5e7eb;--txt:#111827;--muted:#6b7280;--maxw:520px;--barh:68px;--blue:#1d4ed8}
-*{box-sizing:border-box}
-body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:0;color:#111827;background:#fff}
-.wrap{max-width:var(--maxw);margin:0 auto;padding:10px 10px calc(var(--barh) + 14px)}
-.top{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--bd);padding:6px 0 8px}
-.row{display:flex;align-items:center;gap:8px}
-.cam-btn,.small-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--bd);background:#f8fafc;padding:6px 10px;border-radius:10px;cursor:pointer;font-weight:600}
-.install-btn{display:none}
-.user{position:relative}
-.user-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--bd);background:#fff;padding:6px 12px;border-radius:10px;cursor:pointer;font-weight:600}
-.caret{border:solid #666;border-width:0 2px 2px 0;display:inline-block;padding:3px;transform:rotate(45deg);margin-top:-2px}
-.menu{position:absolute;right:0;top:40px;background:#fff;border:1px solid var(--bd);border-radius:10px;box-shadow:0 6px 16px rgba(0,0,0,.08);display:none;min-width:160px;overflow:hidden;z-index:10}
-.menu button{display:block;width:100%;text-align:left;padding:10px 12px;background:#fff;border:0;cursor:pointer}
-.menu button:hover{background:#f3f4f6}
-.grid{display:grid;grid-template-columns:1fr;gap:8px}
-.card{border:1px solid var(--bd);border-radius:12px;padding:10px;background:#fff}
-label{font-weight:600;margin:6px 0 4px;display:block}
-input{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px}
-.info-bar{margin:8px 0;border:1px solid var(--bd);border-radius:10px;padding:8px 10px;font-size:14px;color:#334155;background:#f8fafc}
-.info-ok{background:#e8f7ee;border-color:#bfe9d0;color:#0a8f3a}
-.info-err{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
-.video-wrap{position:relative}
-video{width:100%;max-height:260px;border-radius:12px;background:#000;object-fit:cover;aspect-ratio:16/9}
-.scan-box{position:absolute;inset:12% 18%;border:2px solid rgba(255,255,255,.75);border-radius:12px;pointer-events:none}
-.seg{display:inline-flex;border:1px solid var(--bd);border-radius:999px;overflow:hidden}
-.seg input{display:none}
-.seg label{padding:8px 14px;cursor:pointer;font-weight:700;font-size:14px}
-.seg label.active,.seg input:checked+label{background:#e8f7ee;color:#0a8f3a}
-.btn{width:100%;padding:12px 16px;border:0;border-radius:12px;background:var(--pri);color:#fff;font-weight:700;cursor:pointer}
-.muted{color:#6b7280;font-size:13px;text-align:left;margin-top:4px}
-.bottom-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:var(--maxw);height:var(--barh);background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;z-index:999}
-.bar-item{flex:1;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1f2937;gap:8px}
-.bar-item button{all:unset;cursor:pointer;padding:10px 12px;border-radius:10px}
-.fab{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px solid #c7d2fe;background:#2563eb;color:#fff;font-size:24px;cursor:pointer;box-shadow:0 6px 20px rgba(37,99,235,.25)}
-.bell{position:relative}
-.bell-badge{position:absolute;top:6px;right:6px;min-width:18px;height:18px;border-radius:999px;background:#ef4444;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:800;padding:0 5px}
-.sheet-wrap{position:fixed;left:50%;transform:translateX(-50%);bottom:0;max-width:var(--maxw);width:100%;z-index:1000;display:none}
-.sheet{background:#fff;border:1px solid var(--bd);border-bottom:none;border-radius:16px 16px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.12);height:80vh;transform:translateY(100%);transition:transform .25s ease}
-.sheet.active{transform:translateY(0)}
-.sheet-header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--bd);padding:10px 12px;z-index:1;cursor:pointer}
-.grip{width:40px;height:5px;border-radius:999px;background:#cbd5e1;margin:4px auto 10px}
-.sheet-body{height:calc(80vh - 62px);overflow:auto;padding:10px 12px}
-.order{border:1px solid var(--bd);border-radius:12px;padding:10px;margin:8px 0;background:#fff}
-.order .row1{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.order .hd-link{font-weight:800;color:#111827;text-decoration:underline;text-decoration-thickness:2px;word-break:break-word;font-size:16px;max-width:70%}
-.order .badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #dbeafe;background:#eff6ff;color:#1d4ed8;font-size:12px}
-.order .row2,.order .row3{color:#475569;margin-top:4px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.money{font-weight:800}
-.tel{color:#2563eb;text-decoration:underline}
-.table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
-.table th,.table td{padding:10px 8px;border-bottom:1px solid var(--bd);text-align:left}
-.table th:nth-child(1),.table td:nth-child(1){width:auto;white-space:normal;word-break:break-word}
-.table th:nth-child(2),.table td:nth-child(2){width:3ch;text-align:center;white-space:nowrap;overflow:hidden}
-.table th:nth-child(3),.table td:nth-child(3){width:7ch;text-align:right;white-space:nowrap;overflow:hidden}
-.table th:nth-child(4),.table td:nth-child(4){width:8ch;text-align:right;white-space:nowrap;overflow:hidden}
-.total-row td:nth-child(4){width:auto;white-space:nowrap;overflow:visible;font-weight:800}
-#geoPrompt{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--barh)+10px);width:calc(100% - 20px);max-width:var(--maxw);background:#fff;border:1px solid var(--bd);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:12px;z-index:12000;display:none}
-#geoPrompt .title{font-weight:800;margin-bottom:6px}
-#geoPrompt .msg{color:#475569;font-size:14px;margin-bottom:10px}
-#geoPrompt .row{display:flex;gap:8px}
-#geoPrompt button{flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);background:#f8fafc;font-weight:700;cursor:pointer}
-#geoPrompt .primary{background:#2563eb;color:#fff;border-color:#c7d2fe}
-.flash{animation:flash 350ms ease-in-out 2}
-@keyframes flash{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}50%{box-shadow:0 0 0 4px rgba(16,185,129,.35)}}
-#geoWrap{position:fixed;inset:0;display:none;pointer-events:none;z-index:9999;background:rgba(0,0,0,0.25)}
-#geoSheet{position:fixed;left:0;right:0;bottom:0;width:100%;max-width:480px;margin:0 auto;max-height:85vh;overflow:auto;-webkit-overflow-scrolling:touch;background:#fff;border-top-left-radius:14px;border-top-right-radius:14px;box-shadow:0 -8px 24px rgba(0,0,0,.18);will-change:transform;transform:translateY(100%);transition:transform .22s ease;padding:12px 12px calc(env(safe-area-inset-bottom,0) + 12px)}
-#geoHeader{display:flex;align-items:center;gap:8px;margin:4px 0 8px}
-#geoHeader .dragBar,#geoSheet .dragBar{width:44px;height:5px;border-radius:999px;background:#d1d5db;margin:6px auto 10px}
-#geoHeader .title{font-weight:700;font-size:16px;text-align:center;width:100%}
-#geoSheet .btn{height:40px;border-radius:10px}
-#geoSheet .btn.primary{background:#1a73e8;color:#fff}
-@media (min-width:768px){#geoSheet{max-width:520px}}
-@media (prefers-reduced-motion:reduce){#geoSheet{transition:none}}
-#slideNotice{left:50%!important;top:50%!important;transform:translate(-50%,-130%)!important;width:calc(100% - 24px)!important;max-width:var(--maxw)!important;padding:12px 14px!important;border-radius:14px!important;font-size:clamp(14px,3.8vw,16px)!important;line-height:1.35!important;text-wrap:balance;word-break:break-word;z-index:99999!important}
-@media (max-width:360px){#slideNotice{font-size:14px!important;padding:10px 12px!important}}
-#ncWrap{position:fixed;inset:0;z-index:99998;pointer-events:none}
-#ncBackdrop{position:absolute;inset:0;background:rgba(0,0,0,.25);opacity:0;transition:opacity .24s ease}
-#ncWrap[data-open="1"] #ncBackdrop{opacity:1;pointer-events:auto}
-#ncSheet{position:fixed;left:50%;transform:translate(-50%,-120%);top:0;width:calc(100% - 24px);max-width:var(--maxw);height:min(72vh,560px);background:#fff;border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.22);transition:transform .28s cubic-bezier(.22,1,.36,1);overflow:auto;-webkit-overflow-scrolling:touch;pointer-events:auto}
-#ncWrap[data-open="1"] #ncSheet{transform:translate(-50%,12px)}
-#ncSheet .chip{display:inline-block;padding:2px 8px;border-radius:999px;font-weight:800;font-size:12px}
-#ncList>div{border:1px solid var(--bd);border-radius:12px;margin-bottom:8px}
-#ncList>div>div:last-child{color:#6b7280;font-size:12px}
-#ncSheet #ncClear,#ncSheet #ncClose{height:36px;padding:6px 12px;border-radius:10px}
-.sheet-wrap{padding-bottom:env(safe-area-inset-bottom,0)}
-
-  </style>
-<style>
-    /*
-     * App này dùng đăng nhập chung từ login.html/main.html.
-     * Không cho app_giao_hang.js hiện lại form đăng nhập cũ.
-     */
-    html:not(.auth-ok) body {
-      visibility: hidden;
+    :root{
+      --bar-h:76px;
     }
 
-    html.auth-ok body {
-      visibility: visible;
+    html,body{
+      margin:0;
+      padding:0;
+      height:100%;
+      min-height:-webkit-fill-available;
+      background:#000;
+      color:#fff;
+      font-family:system-ui, Segoe UI, Roboto, Arial;
+      overflow:hidden;
     }
 
-    html.auth-ok #login {
-      display: none !important;
+    .stage{
+      position:fixed;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#000;
+      z-index:1;
+      opacity:0;
+      transform:scale(0.001);
+      transition:.18s;
     }
 
-    html.auth-ok #app {
-      display: block !important;
+    .stage.ready{
+      opacity:1;
+      transform:scale(1);
     }
 
-    .top {
-      position: relative;
+    video,canvas{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+      background:#000;
+      pointer-events:none;
     }
 
-    .top .bell-top {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: auto;
+    .bar{
+      position:fixed;
+      left:0;
+      right:0;
+      bottom:0;
+      min-height:var(--bar-h);
+      padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      justify-content:center;
+      align-items:center;
+      background:rgba(0,0,0,.28);
+      backdrop-filter:blur(10px);
+      -webkit-backdrop-filter:blur(10px);
+      border-top:1px solid rgba(255,255,255,.12);
+      z-index:50;
+      box-sizing:border-box;
     }
 
-    .top .bell-top #tabBell {
-      position: relative;
+    .btn{
+      appearance:none;
+      -webkit-appearance:none;
+      border:none;
+      border-radius:12px;
+      padding:10px 14px;
+      font-weight:700;
+      font-size:15px;
+      cursor:pointer;
+      white-space:nowrap;
+      touch-action:manipulation;
     }
 
-    .top .bell-top #bellNum {
-      position: absolute;
-      top: -6px;
-      right: -6px;
-      min-width: 16px;
-      height: 16px;
-      line-height: 16px;
-      padding: 0 4px;
-      border-radius: 999px;
-      font-size: 11px;
+    .btn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+    }
+
+    .btn-blue{background:#2563eb;color:#fff;}
+    .btn-green{background:#10b981;color:#001b12;}
+    .btn-gray{background:#374151;color:#fff;}
+    .btn-on{background:#10b981!important;color:#fff!important;}
+
+    .btn-icon{
+      padding:10px;
+      width:44px;
+      height:44px;
+      font-size:18px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    #toast{
+      position:fixed;
+      left:50%;
+      top:0;
+      transform:translate(-50%,-120%);
+      opacity:0;
+      max-width:calc(100vw - 30px);
+      padding:10px 14px;
+      border-radius:12px;
+      background:#e0f2fe;
+      color:#075985;
+      border:1px solid #38bdf8;
+      font-weight:700;
+      text-align:center;
+      box-shadow:0 6px 22px rgba(0,0,0,.25);
+      transition:.25s;
+      z-index:99;
+      box-sizing:border-box;
+    }
+
+    #tagInfo{
+      position:fixed;
+      left:12px;
+      top:10px;
+      max-width:calc(100vw - 24px);
+      padding:6px 10px;
+      font-size:12px;
+      border-radius:10px;
+      backdrop-filter:blur(6px);
+      -webkit-backdrop-filter:blur(6px);
+      background:#111a;
+      border:1px solid #ffffff22;
+      z-index:60;
+      box-sizing:border-box;
+    }
+
+    .cam-box{
+      position:relative;
+      width:100%;
+      max-width:480px;
+      aspect-ratio:9/16;
+      margin:12px auto;
+      background:#000;
+      border-radius:18px;
+      overflow:hidden;
+    }
+
+    .cam-box video,
+    .cam-box canvas{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+
+    @media(max-width:768px){
+      .cam-box{
+        max-width:none;
+        height:min(70vh,600px);
+        aspect-ratio:auto;
+      }
+
+      .bar{
+        gap:7px;
+        padding-left:8px;
+        padding-right:8px;
+      }
+
+      .btn{
+        padding:9px 11px;
+        font-size:14px;
+      }
+
+      .btn-icon{
+        width:42px;
+        height:42px;
+        padding:8px;
+      }
     }
   </style>
 </head>
 
 <body>
-  <div class="wrap">
+  <div class="stage" id="stage">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas" style="display:none"></canvas>
 
-    <!--
-      Giữ lại các phần tử đăng nhập ở trạng thái ẩn
-      để app_giao_hang.js cũ không bị lỗi null nếu vẫn tham chiếu.
-      Nếu chưa có phiên đăng nhập, ứng dụng vẫn được mở.
-    -->
-    <section
-      id="login"
-      class="card"
-      style="display:none !important"
-      aria-hidden="true"
-    >
-      <h2>Đăng nhập nhân viên</h2>
-
-      <div class="grid">
-        <div>
-          <label for="ma_nv">Mã nhân viên</label>
-          <input id="ma_nv" autocomplete="username" />
-        </div>
-
-        <div>
-          <label for="mat_khau">Mật khẩu</label>
-          <input
-            id="mat_khau"
-            type="password"
-            autocomplete="current-password"
-          />
-        </div>
-
-        <button id="btnLogin" type="button">
-          Đăng nhập
-        </button>
-
-        <div id="loginMsg"></div>
-      </div>
-    </section>
-
-    <!-- APP GIAO HÀNG -->
-    <section id="app">
-      <div class="top">
-        <div class="row">
-          <button
-            id="startBtn"
-            class="cam-btn"
-            type="button"
-          >
-            📷 Bật camera
-          </button>
-
-          <button
-            id="refreshBtn"
-            class="small-btn"
-            type="button"
-          >
-            ♻️ Làm tươi
-          </button>
-
-          <button
-            id="installBtn"
-            class="small-btn install-btn"
-            type="button"
-          >
-            📲 Cài đặt
-          </button>
-        </div>
-
-        <div class="bell bell-top">
-          <button
-            id="tabBell"
-            type="button"
-            title="Thông báo"
-          >
-            🔔
-          </button>
-
-          <div
-            id="bellNum"
-            class="bell-badge"
-            style="display:none"
-          >
-            0
-          </div>
-        </div>
-
-        <div class="user">
-          <button
-            class="user-btn"
-            id="userBtn"
-            type="button"
-          >
-            <span id="who">👤</span>
-            <i class="caret"></i>
-          </button>
-
-          <div class="menu" id="userMenu">
-            <button id="logout" type="button">
-              Đăng xuất
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div
-        class="card"
-        style="display:flex;justify-content:center;margin-top:8px"
-      >
-        <div class="seg">
-          <input
-            type="radio"
-            name="mode"
-            id="modeHang"
-            value="hang"
-            checked
-          />
-          <label for="modeHang" id="lblHang">
-            Quét hóa đơn
-          </label>
-
-          <input
-            type="radio"
-            name="mode"
-            id="modeVD"
-            value="vd"
-          />
-          <label for="modeVD" id="lblVD">
-            Quét mã vận đơn
-          </label>
-        </div>
-      </div>
-
-      <div class="info-bar" id="info">
-        Sẵn sàng quét. Nhấn “Bật camera”.
-      </div>
-
-      <div class="card video-wrap" id="camCard">
-        <video
-          id="preview"
-          playsinline
-          autoplay
-          muted
-        ></video>
-
-        <div class="scan-box"></div>
-      </div>
-
-      <div class="card">
-        <div
-          id="statusText"
-          class="info-bar"
-          style="margin:0"
-        >
-          Trạng thái giao hàng
-        </div>
-      </div>
-
-      <div class="card">
-        <div id="rowVD" style="display:none">
-          <label for="mavd">Mã vận đơn</label>
-          <input
-            id="mavd"
-            placeholder="Tự điền sau khi quét"
-          />
-        </div>
-
-        <div id="rowDon">
-          <label for="madon">Mã đơn</label>
-          <input
-            id="madon"
-            placeholder="Tự điền sau khi quét"
-          />
-        </div>
-
-        <button
-          id="saveBtn"
-          class="btn"
-          type="button"
-          style="margin-top:10px"
-        >
-          Cập nhật
-        </button>
-
-        <div
-          class="muted"
-          style="margin-top:6px"
-        ></div>
-      </div>
-    </section>
-  </div>
-
-  <!-- THANH ĐÁY -->
-  <nav class="bottom-bar">
-    <div class="bar-item">
-      <button id="tabOrders" type="button">
-        Đơn hàng
-      </button>
-    </div>
-
-    <button
-      id="fabScan"
-      class="fab"
-      type="button"
-      title="Quét mã"
-    >
-      ▦
-    </button>
-
-    <div class="bar-item">
-      <button
-        id="tabMap"
-        type="button"
-        title="Xem bản đồ"
-      >
-        Xem bản đồ
-      </button>
-    </div>
-  </nav>
-
-  <!-- SHEET ĐƠN HÀNG -->
-  <div id="ordersWrap" class="sheet-wrap">
-    <div
-      id="ordersSheet"
-      class="sheet"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        class="sheet-header"
-        id="ordersHeader"
-      >
-        <div class="grip"></div>
-
-        <div
-          class="row"
-          style="justify-content:space-between;align-items:center;pointer-events:none"
-        >
-          <h3 style="margin:0;pointer-events:none">
-            📦 Đơn hàng
-          </h3>
-
-          <div
-            style="display:flex;gap:10px;align-items:center;pointer-events:auto"
-          >
-            <a
-              id="ordersMapLink"
-              href="#"
-              title="Xem bản đồ"
-            >
-              🗺️ Xem bản đồ
-            </a>
-
-            <select id="statusFilter">
-              <option value="">Tất cả</option>
-              <option>Đã kiểm đơn</option>
-              <option>Đang giao hàng</option>
-              <option>Giao thành công</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div
-        id="ordersBody"
-        class="sheet-body"
-      >
-        <div id="ordersList"></div>
-
-        <div
-          id="ordersEmpty"
-          class="muted"
-          style="display:none"
-        >
-          Chưa có dữ liệu.
-        </div>
-      </div>
+    <div class="bar" id="bar">
+      <button id="btnStart" class="btn btn-blue">Cam</button>
+      <button id="btnShot" class="btn btn-green" disabled>📸</button>
+      <button id="btnZoomOut" class="btn btn-icon btn-gray" title="Thu nhỏ">➖</button>
+      <button id="btnZoomIn" class="btn btn-icon btn-gray" title="Phóng to">➕</button>
+      <button id="btnTorch" class="btn btn-icon btn-gray" title="Đèn">🔦</button>
+      <button id="btnSound" class="btn btn-icon btn-gray" title="Bật/Tắt tiếng">🔊</button>
+      <button id="btnMenu" class="btn btn-gray">☰ Menu</button>
     </div>
   </div>
 
-  <!-- SHEET CHI TIẾT -->
-  <div id="detailWrap" class="sheet-wrap">
-    <div
-      id="detailSheet"
-      class="sheet"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        class="sheet-header"
-        id="detailHeader"
-      >
-        <div class="grip"></div>
+  <div id="tagInfo"></div>
+  <div id="toast"></div>
 
-        <div class="detail-head">
-          <button
-            id="backOrders"
-            class="small-btn"
-            type="button"
-          >
-            ⬅️ Đơn hàng
-          </button>
+  <iframe id="sink" name="sink" style="display:none"></iframe>
 
-          <div
-            id="detailTitle"
-            style="font-weight:800"
-          ></div>
-        </div>
-      </div>
-
-      <div class="sheet-body">
-        <table class="table" id="ctTable">
-          <thead>
-            <tr>
-              <th>Tên hàng</th>
-              <th>SL</th>
-              <th>ĐG</th>
-              <th>TT</th>
-            </tr>
-          </thead>
-
-          <tbody id="ctBody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <div
-    id="toast"
-    style="
-      display:none;
-      position:fixed;
-      left:50%;
-      bottom:calc(var(--barh) + 10px);
-      transform:translateX(-50%);
-      background:#111827;
-      color:#fff;
-      padding:10px 14px;
-      border-radius:10px;
-      font-size:14px;
-      box-shadow:0 8px 24px rgba(0,0,0,.25);
-      z-index:9999;
-    "
-  ></div>
-
-  <!-- GEO BOTTOM SHEET -->
-  <div
-    id="geoWrap"
-    class="sheetWrap"
-    style="display:none"
-  >
-    <div id="geoSheet" class="sheet">
-      <div
-        id="geoHeader"
-        class="sheetHeader"
-      >
-        <div class="dragBar"></div>
-
-        <div class="title">
-          Gửi vị trí giao hàng?
-        </div>
-      </div>
-
-      <div class="sheetBody">
-        <p
-          id="geoMsg2"
-          style="margin:8px 0 16px"
-        >
-          Đã cập nhật trạng thái
-          <b>Giao thành công</b>.
-          Bạn có muốn gửi kèm tọa độ,
-          liên kết bản đồ và ảnh chụp để lưu lại điểm giao không?
-        </p>
-
-        <div
-          class="row"
-          style="gap:8px;display:flex"
-        >
-          <button
-            id="geoSend"
-            class="btn primary"
-            type="button"
-            style="flex:1"
-          >
-            📍 Gửi vị trí
-          </button>
-
-          <button
-            id="geoClose2"
-            class="btn"
-            type="button"
-            style="flex:1"
-          >
-            Thoát
-          </button>
-        </div>
-
-        <div
-          id="geoHint"
-          style="color:#8892a6;font-size:12px;margin-top:10px"
-        >
-          Hệ thống sẽ xin quyền định vị và chụp ảnh từ camera
-          nếu camera đang mở. Thời gian lưu theo giờ Việt Nam:
-          dd/MM/yyyy HH:mm.
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <audio id="beep" preload="auto">
-    <source
-      src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
-      type="audio/ogg"
-    />
-    <source
-      src="https://actions.google.com/sounds/v1/alarms/beep_short.mp3"
-      type="audio/mpeg"
-    />
+  <audio
+    id="snapSound"
+    src="https://cdn.jsdelivr.net/gh/naptha/tesseract.js@master/examples/browser/sound/snap.wav"
+    preload="auto">
   </audio>
 
-  <script>
-    /*
-     * Gắn thông tin nhân viên lên giao diện
-     * trước khi chạy app_giao_hang.js.
-     */
-    (function hienThiNhanVien() {
-      const user = window.APP_LOGIN_USER;
-
-      if (!user) return;
-
-      const who = document.getElementById("who");
-
-      if (who) {
-        who.textContent =
-          `👤 ${user.ten_nv || user.ma_nv}`;
-      }
-    })();
-  </script>
+  <script src="../js/internal_key.js"></script>
+  <script src="../js/config.js"></script>
 
   <script>
-/* global ZXing */
-window.APP_GIAO_HANG_BUILD = '2026-08-06-fix-trim-v3';
-/* ====================== app_giao_hang.js — build r7 (NO-GEO, CHECK-IN OVERLAY, SCAN BEEP, NOTIFY PANEL) ======================
- * - KHÔNG xin GPS, KHÔNG gửi vị trí/webhook tại file này
- * - Khi lên "Giao thành công": mở checkin.html full-screen từ TRÊN xuống (truyền đúng ma_kh & ma_hd)
- * - Nếu đơn đã "Giao thành công" từ trước: chỉ báo & dừng
- * - Gỡ panel chuông cũ; thay bằng Notify Panel (mở khi bấm 🔔 #tabBell)
- * - Thêm âm "beep" khi quét; mở khóa audio đúng cách cho iOS/Android
- * =========================================================================================================================== */
+/* ================== CONFIG ================== */
+const TARGET_W = 900, TARGET_H = 1600;
 
-/* ===== PWA install ===== */
-let deferredPrompt=null;
-const installBtn=document.getElementById('installBtn');
-addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;installBtn&&(installBtn.style.display='inline-flex');});
-installBtn?.addEventListener('click',async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installBtn.style.display='none';});
+/* ===== VỊ TRÍ CHECK-IN GẦN ĐÂY: lấy trực tiếp từ Supabase ===== */
+const LOCATION_TABLE = 'nv_checkin_khach_hang';
+const NEAR_RADIUS_M = 50;
+const LOCATION_TTL_MS = 2 * 60 * 1000;
+const LOCATION_CACHE_KEY = 'CHECKIN_LOCATION_POINTS_CACHE_V1';
+const LOCATION_CACHE_TS_KEY = 'CHECKIN_LOCATION_POINTS_TS_V1';
+const NEARBY_SESSION_KEY = 'CHECKIN_NEARBY_POINTS_V1';
+const SESSION_IMG_KEY = 'CHECKIN_IMAGE_PAYLOAD';
 
-/* ===== Supabase (DB/Auth) - chờ internal_key.js tải cấu hình ===== */
-let supa = null;
+let LOCATION_POINTS = [];
 
-const confNV = {
-  table: 'kv_nhan_vien',
-  url: '',
-  key: ''
+/* ===== Local cache helpers ===== */
+const lsGet = k => {
+  try { return JSON.parse(localStorage.getItem(k) || 'null'); }
+  catch { return null; }
+};
+const lsSet = (k,v) => {
+  try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
 };
 
-const CFG = {
-  ...(window.COD_CONFIG || {})
-};
-
-function safeTrim(value) {
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'string') return value.trim();
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value).trim();
+/* ===== Đọc cấu hình Supabase từ config.js / /api/getConfig ===== */
+function safeText(v){
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+    return String(v).trim();
+  }
   return '';
 }
 
-function readConfigString(value, keys = []) {
-  const direct = safeTrim(value);
+function pickConfigValue(value, keys=[]){
+  const direct = safeText(value);
   if (direct) return direct;
 
-  if (value && typeof value === 'object') {
-    for (const key of keys) {
-      if (Object.prototype.hasOwnProperty.call(value, key)) {
-        const nested = safeTrim(value[key]);
-        if (nested) return nested;
+  if (value && typeof value === 'object'){
+    for (const key of keys){
+      if (Object.prototype.hasOwnProperty.call(value, key)){
+        const s = safeText(value[key]);
+        if (s) return s;
       }
     }
   }
-
   return '';
 }
 
-async function resolveSupabaseConfig() {
-  if (window.configReady && typeof window.configReady.then === 'function') {
-    await window.configReady;
-  }
+let __SUPABASE_REST_CONFIG__ = null;
 
-  let rawUrl = window.getConfig?.('url');
-  let rawAnon = window.getConfig?.('anon');
+async function getSupabaseRestConfig(){
+  if (__SUPABASE_REST_CONFIG__) return __SUPABASE_REST_CONFIG__;
 
-  let url = readConfigString(rawUrl, [
-    'url', 'value', 'SUPABASE_URL', 'supabaseUrl', 'supabase_url'
-  ]);
+  try{
+    if (window.configReady && typeof window.configReady.then === 'function'){
+      await window.configReady;
+    }
+  }catch{}
 
-  let anon = readConfigString(rawAnon, [
-    'anon', 'key', 'value', 'SUPABASE_ANON', 'SUPABASE_ANON_KEY',
-    'supabaseAnon', 'supabaseKey', 'supabase_anon_key'
-  ]);
+  let url = '';
+  let anon = '';
 
-  if (!url || !anon) {
+  try{
+    url = pickConfigValue(window.getConfig?.('url'), [
+      'url','value','SUPABASE_URL','supabaseUrl','supabase_url'
+    ]);
+
+    anon = pickConfigValue(window.getConfig?.('anon'), [
+      'anon','key','value','SUPABASE_ANON','SUPABASE_ANON_KEY',
+      'supabaseAnon','supabaseKey','supabase_anon_key'
+    ]);
+  }catch{}
+
+  if (!url || !anon){
     const internalKey = typeof window.getInternalKey === 'function'
-      ? safeTrim(window.getInternalKey())
+      ? safeText(window.getInternalKey())
       : '';
 
-    const response = await fetch('/api/getConfig', {
-      method: 'GET',
-      headers: {
+    const res = await fetch('/api/getConfig', {
+      method:'GET',
+      headers:{
         'x-internal-key': internalKey,
-        'Accept': 'application/json'
+        'Accept':'application/json'
       },
-      cache: 'no-store'
+      cache:'no-store'
     });
 
-    if (!response.ok) {
-      const detail = await response.text();
-      throw new Error(`Không lấy được cấu hình Supabase: HTTP ${response.status} ${detail}`);
+    if (!res.ok){
+      throw new Error(`Không lấy được cấu hình Supabase: HTTP ${res.status}`);
     }
 
-    const config = await response.json();
+    const cfg = await res.json();
 
-    if (!url) {
-      url = readConfigString(config, [
-        'url', 'SUPABASE_URL', 'supabaseUrl', 'supabase_url'
+    if (!url){
+      url = pickConfigValue(cfg, [
+        'url','SUPABASE_URL','supabaseUrl','supabase_url'
       ]);
     }
 
-    if (!anon) {
-      anon = readConfigString(config, [
-        'anon', 'key', 'SUPABASE_ANON', 'SUPABASE_ANON_KEY',
-        'supabaseAnon', 'supabaseKey', 'supabase_anon_key'
+    if (!anon){
+      anon = pickConfigValue(cfg, [
+        'anon','key','SUPABASE_ANON','SUPABASE_ANON_KEY',
+        'supabaseAnon','supabaseKey','supabase_anon_key'
       ]);
     }
   }
 
-  url = safeTrim(url).replace(/\/+$/, '');
-  anon = safeTrim(anon);
+  url = safeText(url).replace(/\/+$/, '');
+  anon = safeText(anon);
 
-  if (!url) throw new Error('Thiếu URL Supabase');
-  if (!anon) throw new Error('Thiếu anon key Supabase');
-  if (!/^https:\/\//i.test(url)) throw new Error(`URL Supabase không hợp lệ: ${url}`);
+  if (!url) throw new Error('Thiếu Supabase URL');
+  if (!anon) throw new Error('Thiếu Supabase anon key');
 
-  console.log('[GIAO HÀNG] Cấu hình Supabase hợp lệ:', {
-    url,
-    urlType: typeof url,
-    anonType: typeof anon,
-    anonLength: anon.length
-  });
-
-  return { url, anon };
+  __SUPABASE_REST_CONFIG__ = { url, anon };
+  return __SUPABASE_REST_CONFIG__;
 }
 
-const supabaseReady = (async () => {
-  const { url, anon } = await resolveSupabaseConfig();
+/* ===== Lấy toàn bộ điểm check-in có lat/lng từ table nv_checkin_khach_hang =====
+   lat/lng của table hiện là TEXT nên ép Number() ở phía trình duyệt.
+*/
+async function fetchLocationPointsFromSupabase(){
+  const { url, anon } = await getSupabaseRestConfig();
 
-  if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-    throw new Error('Thư viện Supabase chưa được tải');
-  }
+  const qs = new URLSearchParams({
+    select: 'ma_kh,ma_nv,ten_kh,lng,lat,dien_thoai',
+    limit: '10000'
+  });
 
-  supa = window.supabase.createClient(String(url), String(anon), {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false
+  const res = await fetch(
+    `${url}/rest/v1/${LOCATION_TABLE}?${qs.toString()}`,
+    {
+      method:'GET',
+      headers:{
+        apikey: anon,
+        Authorization: `Bearer ${anon}`,
+        Accept: 'application/json'
+      },
+      cache:'no-store'
     }
-  });
+  );
 
-  confNV.url = String(url);
-  confNV.key = String(anon);
-  CFG.url = String(url);
-  CFG.key = String(anon);
-
-  console.log('[GIAO HÀNG] Supabase sẵn sàng:', CFG.url);
-  return supa;
-})().catch(error => {
-  console.error('[GIAO HÀNG] Lỗi khởi tạo Supabase:', error);
-  const message = error instanceof Error ? error.message : String(error);
-  alert(message || 'Không thể khởi tạo Supabase');
-  throw error;
-});
-
-/* ===== Cấu hình động từ cod_config.js ===== */
-const KEY_VD        = CFG.keyColVD   || CFG.keyCol   || 'ma_vd';
-const KEY_DON_HD    = CFG.keyColHD   || 'ma_hd';
-const KEY_KH        = CFG.keyColKH   || 'ma_kh';
-const DATE_COL      = CFG.dateCol    || 'ngay_chuan_bi_don';
-const TABLE_VD_KIOT = CFG.tableVD    || (CFG.table && CFG.table.vd) || 'don_hang_kiot_cod';
-const TABLE_DON     = CFG.tableHD    || (CFG.table && CFG.table.hd) || 'don_hang';
-const TABLE_CT      = CFG.tableCT    || (CFG.table && CFG.table.ct) || 'don_hang_chitiet';
-
-/* ===== Helpers ===== */
-const $=s=>document.querySelector(s);
-const fmtMoney=n=>(Number(n||0)).toLocaleString('vi-VN');
-const TZ='Asia/Ho_Chi_Minh';
-
-/* ===== Slide banner (TRƯỢT TỪ TRÊN XUỐNG) ===== */
-let slideEl=null;
-function ensureSlide(){
-  if(slideEl) return slideEl;
-  slideEl=document.createElement('div');
-  slideEl.id='slideNotice';
-  slideEl.setAttribute('role','status');
-  slideEl.style.cssText=`
-    position:fixed;z-index:99999;left:50%;top:0;transform:translate(-50%,-120%);opacity:0;pointer-events:none;
-    padding:12px 14px;border-radius:14px;font-weight:800;letter-spacing:.2px;line-height:1.35;box-shadow:0 10px 28px rgba(0,0,0,.22);
-    background:#e0f2fe;color:#075985;border:1px solid #38bdf8;transition:transform .22s ease,opacity .22s ease;`;
-  document.body.appendChild(slideEl);return slideEl;
-}
-function showSlide(msg,type='info',ms){
-  const el=ensureSlide();
-  if(type==='warn'){ el.style.background='#fde68a'; el.style.color='#92400e'; el.style.border='1px solid #f59e0b'; }
-  else if(type==='ok'){ el.style.background='#bbf7d0'; el.style.color='#065f46'; el.style.border='1px solid #10b981'; }
-  else if(type==='err'){ el.style.background='#fecaca'; el.style.color='#7f1d1d'; el.style.border='1px solid #ef4444'; }
-  else { el.style.background='#e0f2fe'; el.style.color='#075985'; el.style.border='1px solid #38bdf8'; }
-  let dur = typeof ms==='number' ? ms : 2800;
-  if(type==='warn' && ms==null) dur=3200;
-  if(type==='err'  && ms==null) dur=4200;
-  el.textContent=String(msg||''); el.style.opacity='1'; el.style.transform='translate(-50%, 12px)';
-  clearTimeout(showSlide._t); showSlide._t=setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translate(-50%,-120%)'; }, dur);
-}
-
-/* ===== Notify Panel (🔔 #tabBell + #bellNum) ===== */
-/* ===== Notify Panel (🔔 #tabBell + #bellNum) — canh NGAY DƯỚI CHUÔNG ===== */
-(function initBellPanel(){
-  // CSS
-  if(!document.getElementById('notifyStyles')){
-    const st=document.createElement('style');
-    st.id='notifyStyles';
-    st.textContent=`
-      #notifyOverlay{position:fixed;inset:0;display:none;background:rgba(2,6,23,.35);z-index:99999}
-      #notifyPanel{position:fixed;transform:translateX(-50%);
-        width:min(92vw,520px);background:#fff;color:#111827;border:1px solid #e5e7eb;border-radius:14px;
-        box-shadow:0 12px 28px rgba(0,0,0,.18)}
-      .np-head{padding:12px 16px;font-weight:800;letter-spacing:.2px;background:#f9fafb;border-bottom:1px solid #e5e7eb;
-        display:flex;align-items:center;justify-content:space-between}
-      .np-close{border:none;background:transparent;font-size:18px;line-height:1;cursor:pointer;color:#6b7280}
-      .np-close:hover{color:#111827}
-      .np-body{max-height:55vh;overflow:auto}
-      .np-item{padding:10px 14px;border-bottom:1px dashed #e5e7eb;display:flex;flex-direction:column;gap:4px}
-      .np-item:last-child{border-bottom:none}
-      .np-item time{color:#6b7280;font-size:12px}
-      .np-empty{padding:14px;color:#6b7280;text-align:center}`;
-    document.head.appendChild(st);
+  if (!res.ok){
+    const detail = await res.text().catch(()=>'');
+    throw new Error(`Không tải được vị trí: HTTP ${res.status}${detail ? ' - ' + detail : ''}`);
   }
 
-  // Overlay + Panel
-  let overlay=document.getElementById('notifyOverlay');
-  if(!overlay){
-    overlay=document.createElement('div');
-    overlay.id='notifyOverlay';
-    overlay.innerHTML=`
-      <div id="notifyPanel" role="dialog" aria-modal="true" aria-labelledby="npTitle">
-        <div class="np-head">
-          <div id="npTitle">Thông báo</div>
-          <button id="npClose" class="np-close" aria-label="Đóng">×</button>
-        </div>
-        <div id="notifyList" class="np-body">
-          <div class="np-empty">Chưa có thông báo.</div>
-        </div>
-      </div>`;
-    document.body.appendChild(overlay);
+  const rows = await res.json();
+
+  return (Array.isArray(rows) ? rows : [])
+    .map(r => ({
+      ma_kh: safeText(r.ma_kh),
+      ma_nv: safeText(r.ma_nv),
+      ten_kh: safeText(r.ten_kh),
+      dien_thoai: safeText(r.dien_thoai),
+      lat: Number(r.lat),
+      lng: Number(r.lng)
+    }))
+    .filter(r =>
+      Number.isFinite(r.lat) &&
+      Number.isFinite(r.lng) &&
+      r.lat !== 0 &&
+      r.lng !== 0
+    );
+}
+
+async function ensureLocationPoints(force=false){
+  if (!force && LOCATION_POINTS.length) return LOCATION_POINTS;
+
+  if (!force){
+    const cached = lsGet(LOCATION_CACHE_KEY);
+    const ts = Number(lsGet(LOCATION_CACHE_TS_KEY) || 0);
+
+    if (
+      Array.isArray(cached) &&
+      cached.length &&
+      ts &&
+      Date.now() - ts < LOCATION_TTL_MS
+    ){
+      LOCATION_POINTS = cached;
+      return LOCATION_POINTS;
+    }
   }
 
-  const panel=document.getElementById('notifyPanel');
-  const list =document.getElementById('notifyList');
-  const btnX =document.getElementById('npClose');
-  const bell =document.getElementById('tabBell');
-  const badge=document.getElementById('bellNum');
-
-  // --- Badge helper ---
-  let COUNT=0;
-  function setBadge(n){
-    COUNT=Math.max(0, Math.min(99, Number(n)||0));
-    if(!badge) return;
-    badge.textContent=String(COUNT);
-    badge.style.display = COUNT>0 ? 'block' : 'none';
-  }
-  function bump(n=1){ setBadge(COUNT+n); }
-
-  // --- Đặt panel NGAY DƯỚI CHUÔNG ---
-  function positionPanel(){
-    if(!panel || !bell) return;
-    const r = bell.getBoundingClientRect(); // toạ độ chuông
-    const gap = 8;                          // khoảng cách dưới chuông
-    // vị trí ngang: tâm theo chuông, nhưng giữ không tràn mép
-    const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
-    const panelW = Math.min(vw * 0.92, 520);
-    let left = r.left + r.width/2;
-    left = Math.max(panelW/2 + 6, Math.min(vw - panelW/2 - 6, left));
-    panel.style.left = left + 'px';
-    panel.style.top  = (r.bottom + gap) + 'px';
-  }
-
-  // --- Mở/Đóng panel ---
-  function onEsc(e){ if(e.key==='Escape') closePanel(); }
-  function openPanel(){
-    overlay.style.display='block';
-    positionPanel();           // <<— CANH DƯỚI CHUÔNG NGAY KHI MỞ
-    setBadge(0);
-    document.addEventListener('keydown',onEsc);
-  }
-  function closePanel(){
-    overlay.style.display='none';
-    document.removeEventListener('keydown',onEsc);
-  }
-  addEventListener('resize', ()=>{ if(overlay.style.display==='block') positionPanel(); });
-
-  // --- Gắn events ---
-  bell?.addEventListener('click',(e)=>{ e.stopPropagation(); if(overlay.style.display==='block') closePanel(); else openPanel(); });
-  btnX?.addEventListener('click',closePanel);
-  overlay.addEventListener('click',e=>{ if(e.target===overlay) closePanel(); });
-
-  // --- API công khai để nơi khác push thông báo ---
-  function esc(s){ return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-  window.pushNotify = function(text){
-    if(!list) return;
-    const empty=list.querySelector('.np-empty'); if(empty) empty.remove();
-    const item=document.createElement('div');
-    item.className='np-item';
-    const now=new Date().toLocaleString('vi-VN');
-    item.innerHTML=`${esc(text)}<time>${now}</time>`;
-    list.prepend(item);
-    const items=list.querySelectorAll('.np-item');
-    if(items.length>100) list.removeChild(items[items.length-1]);
-    bump(1);
-  };
-  window.setNotifyCount = setBadge;
-
-  // Khởi tạo badge theo số item hiện có
-  setBadge(list.querySelectorAll('.np-item').length);
-})();
-
-
-/* ===== Time helpers ===== */
-function fmtDateVN(input){
-  if(!input) return '';
-  const d=new Date(input);
-  const f=new Intl.DateTimeFormat('vi-VN',{timeZone:TZ,day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
-  return f.format(d).replace(',','');
-}
-function nowVN_ddmmyyyy_hhmm(){
-  const fmt=new Intl.DateTimeFormat('en-GB',{ timeZone:TZ, day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:false });
-  const parts=Object.fromEntries(fmt.formatToParts(new Date()).map(p=>[p.type,p.value]));
-  return `${parts.day}-${parts.month}-${parts.year} ${parts.hour}:${parts.minute}`;
+  const data = await fetchLocationPointsFromSupabase();
+  LOCATION_POINTS = data;
+  lsSet(LOCATION_CACHE_KEY, data);
+  lsSet(LOCATION_CACHE_TS_KEY, Date.now());
+  return LOCATION_POINTS;
 }
 
-/* ===== Supabase REST helpers ===== */
-async function sbSelect(table,filterObj,selectCols='*'){
-  await supabaseReady;
-  const qs=new URLSearchParams({select:selectCols,...filterObj}).toString();
-  const res=await fetch(`${CFG.url}/rest/v1/${table}?${qs}`,{headers:{apikey:CFG.key,Authorization:`Bearer ${CFG.key}`}});
-  if(!res.ok)throw new Error(await res.text());return res.json();
-}
-async function sbSelectWithCount(table,filterObj,selectCols='*'){
-  await supabaseReady;
-  const qs=new URLSearchParams({select:selectCols,...filterObj}).toString();
-  const res=await fetch(`${CFG.url}/rest/v1/${table}?${qs}`,{headers:{apikey:CFG.key,Authorization:`Bearer ${CFG.key}`,'Prefer':'count=exact'}});
-  if(!res.ok)throw new Error(await res.text());
-  const rows=await res.json();
-  const range=res.headers.get('content-range');
-  let total=null;
-  if(range&&range.includes('/')){ const n=range.split('/').pop(); total=Number(n)||null; }
-  return {rows,total};
-}
-async function sbPatch(table,filterObj,bodyObj){
-  await supabaseReady;
-  const qs=new URLSearchParams(filterObj).toString();
-  const res=await fetch(`${CFG.url}/rest/v1/${table}?${qs}`,{
-    method:'PATCH',
-    headers:{apikey:CFG.key,Authorization:`Bearer ${CFG.key}`,'Content-Type':'application/json',Prefer:'return=representation'},
-    body:JSON.stringify(bodyObj)
-  });
-  if(!res.ok)throw new Error(await res.text());return res.json();
+/* ===== Tính khoảng cách theo mét ===== */
+function distanceMeters(a,b){
+  const toRad = d => d * Math.PI / 180;
+  const R = 6371000;
+
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const s1 = Math.sin(dLat / 2);
+  const s2 = Math.sin(dLng / 2);
+
+  const aa =
+    s1*s1 +
+    Math.cos(toRad(a.lat)) *
+    Math.cos(toRad(b.lat)) *
+    s2*s2;
+
+  return 2 * R * Math.atan2(Math.sqrt(aa), Math.sqrt(1-aa));
 }
 
-/* ===== Lấy mã khách theo mã hóa đơn ===== */
-async function getMaKhByMaHd(ma_hd){
-  try{
-    const rows=await sbSelect(TABLE_DON,{[KEY_DON_HD]:`eq.${ma_hd}`,limit:1},KEY_KH);
-    return rows?.[0]?.[KEY_KH]??null;
-  }catch(e){console.warn('Không lấy được mã khách:',e);return null;}
-}
+/* ===== Trả TẤT CẢ vị trí <= radiusM, gần -> xa ===== */
+function findNearbyInArray(lat,lng,arr,radiusM=NEAR_RADIUS_M){
+  const origin = { lat:Number(lat), lng:Number(lng) };
 
-/* ===== Đăng nhập (gọn/chống lỗi) ===== */
-(function initAuthSection(){
-  const _ = s => document.querySelector(s);
-  const el = { loginSec:_('#login'), appSec:_('#app'), msg:_('#loginMsg'), who:_('#who'), btn:_('#btnLogin'), ma:_('#ma_nv'), mk:_('#mat_khau'), userBtn:_('#userBtn'), userMenu:_('#userMenu'), logout:_('#logout') };
-  if (!el.ma || !el.mk || !el.btn) return;
-  const KEY='nv';
-  const saveCase=i=>{try{localStorage.setItem(KEY,JSON.stringify(i));}catch{}};
-  const loadCase=()=>{try{return JSON.parse(localStorage.getItem(KEY))}catch{return null}};
-  const clearCase=()=>{try{localStorage.removeItem(KEY);}catch{}};
-  function showApp(u){el.loginSec&&(el.loginSec.style.display='none');el.appSec&&(el.appSec.style.display='block');el.who&&(el.who.textContent=u?.ten_nv||'Nhân viên');}
-  function showLogin(){el.appSec&&(el.appSec.style.display='none');el.loginSec&&(el.loginSec.style.display='block');}
-  function setMsg(text,type='err'){el.msg&&(el.msg.textContent=text||'');showSlide(text,type==='err'?'err':(type==='ok'?'ok':'info'));}
-  function lockBtn(on=true,label='Đang kiểm tra...'){el.btn&&(el.btn.disabled=!!on,el.btn.textContent=on?label:'Đăng nhập');}
-  function readInput(){const ma=safeTrim(el.ma?.value),mk=el.mk?.value||'';if(!ma||!mk){setMsg('Vui lòng nhập đủ thông tin','err');return null;}return{ma,mk};}
-  async function fetchUser(ma,mk){await supabaseReady;const table=confNV?.table||'kv_nhan_vien';const {data,error}=await supa.from(table).select('ma_nv,ten_nv').eq('ma_nv',ma).eq('mat_khau',mk).maybeSingle();return error||!data?null:data;}
-  let logging=false;
-  async function doLogin(){ if(logging) return; const inp=readInput(); if(!inp) return; logging=true; lockBtn(true); setMsg('');
-    try{const user=await fetchUser(inp.ma,inp.mk); if(!user){setMsg('Sai mã nhân viên hoặc mật khẩu','err');return;} saveCase(user); showApp(user); setMsg('Đăng nhập thành công','ok');}
-    catch(e){setMsg('Lỗi đăng nhập: '+(e?.message||e),'err');}
-    finally{logging=false;lockBtn(false);}
-  }
-  (function bootstrap(){const u=loadCase(); u?.ma_nv?showApp(u):showLogin();})();
-  el.btn.addEventListener('click',doLogin);
-  el.mk.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-  if(el.userBtn&&el.userMenu){
-    el.userBtn.addEventListener('click',()=>{el.userMenu.style.display=(el.userMenu.style.display==='block'?'none':'block');});
-    document.addEventListener('click',e=>{if(!el.userBtn.contains(e.target)&&!el.userMenu.contains(e.target))el.userMenu.style.display='none';});
-  }
-  el.logout?.addEventListener('click',()=>{clearCase();location.reload();});
-})();
+  if (
+    !Number.isFinite(origin.lat) ||
+    !Number.isFinite(origin.lng)
+  ) return [];
 
-/* ===== Camera (auto-off 60s) & QUÉT ===== */
-const video=$('#preview'),startBtn=$('#startBtn'),refreshBtn=$('#refreshBtn'),camCard=$('#camCard'),info=$('#info'),beep=$('#beep');
-const hints=new Map();hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.CODE_128,ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8,ZXing.BarcodeFormat.QR_CODE]);
-const reader=new ZXing.BrowserMultiFormatReader(hints);
-let currentStream=null,currentDeviceId=null,last='',scanLock=false,noScanTimer=null;
-function vibrate(p){try{navigator.vibrate?p=navigator.vibrate(p):camCard?.classList.add('flash'),setTimeout(()=>camCard?.classList.remove('flash'),400);}catch{camCard?.classList.add('flash');setTimeout(()=>camCard?.classList.remove('flash'),400);}}
-function setInfo(type,t){if(!info)return;info.className='info-bar';if(type==='ok')info.classList.add('info-ok');else if(type==='err')info.classList.add('info-err');info.textContent=t||'';}
-function startNoScanTimer(){clearTimeout(noScanTimer);noScanTimer=setTimeout(()=>{sleepCamera();showSlide('⏸ Tự tắt camera sau 60s không quét mã');},60000);}
-async function ensureCamera(){ if(currentStream) return currentStream;
-  currentStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:720},height:{ideal:720},facingMode:{ideal:'environment'}},audio:false});
-  try{localStorage.setItem('cam_ok','1');}catch{} return currentStream;
-}
-async function startReader(stream){
-  if(!video) return;
-  video.srcObject=stream;video.setAttribute('playsinline','');video.muted=true;
-  try{await video.play();}catch{}
-  const t=stream.getVideoTracks();const s=t[0]?.getSettings?.()||{};currentDeviceId=s.deviceId||null;
-  await reader.decodeFromVideoDevice(currentDeviceId||null,video,onScan);
-  setInfo('','Đang quét...');startNoScanTimer();
-}
-function sleepCamera(){try{reader.reset();}catch{}try{video?.srcObject&&video.srcObject.getTracks().forEach(t=>t.stop());}catch{}currentStream=null;startBtn&&(startBtn.disabled=false);setInfo('','⏸ Camera đã tắt do không có mã trong 60s.');}
-
-/* ==== Scan Beep (unlock + play + fallback) ==== */
-let scanBeepUnlocked = false;
-let scanSoundEnabled = (localStorage.getItem('scan_beep') ?? '1') === '1';
-function setScanSound(on){ scanSoundEnabled=!!on; try{localStorage.setItem('scan_beep',on?'1':'0');}catch{} }
-function unlockScanBeepOnce(){
-  if (scanBeepUnlocked) return;
-  const tryUnlock = async () => {
-    if (!beep) return;
-    try {
-      beep.muted = false;
-      beep.currentTime = 0;
-      const p = beep.play();
-      if (p?.catch) { await p.catch(()=>{}); }
-      beep.pause();
-      scanBeepUnlocked = true;
-      cleanup();
-    } catch {}
-  };
-  const cleanup = () => {
-    ['startBtn','refreshBtn','fabScan'].forEach(id=>{
-      const el=document.getElementById(id);
-      if(el) el.removeEventListener('click',tryUnlock);
-    });
-    document.removeEventListener('touchstart',tryUnlock);
-    document.removeEventListener('keydown',tryUnlock);
-  };
-  ['startBtn','refreshBtn','fabScan'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.addEventListener('click',tryUnlock,{once:true});
-  });
-  document.addEventListener('touchstart',tryUnlock,{once:true});
-  document.addEventListener('keydown',tryUnlock,{once:true});
-}
-async function playScanBeep(){
-  if (!scanSoundEnabled || !beep) return;
-  unlockScanBeepOnce();
-  try{
-    beep.currentTime = 0;
-    const p = beep.play();
-    if (p?.catch) {
-      await p.catch(() => {
-        const a = beep.cloneNode(true);
-        a.currentTime = 0;
-        a.play().catch(()=>{});
+  return (Array.isArray(arr) ? arr : [])
+    .map(it => {
+      const d = distanceMeters(origin, {
+        lat:Number(it.lat),
+        lng:Number(it.lng)
       });
-    }
-  }catch{
-    try{const a=beep.cloneNode(true);a.currentTime=0;await a.play();}catch{}
-  }
+
+      return {
+        ...it,
+        dist: Math.round(d)
+      };
+    })
+    .filter(it => Number.isFinite(it.dist) && it.dist <= radiusM)
+    .sort((a,b) => a.dist - b.dist);
 }
 
-/* ===== Buttons (start/refresh) ===== */
-startBtn?.addEventListener('click',async()=>{ await playScanBeep(); startBtn.disabled=true;
-  try{const s=await ensureCamera();currentStream=s;await startReader(s);}
-  catch(e){setInfo('err','Không mở được camera: '+(e.message||'Không rõ'));showSlide('KHÔNG MỞ ĐƯỢC CAMERA','err');startBtn.disabled=false;}
-});
-refreshBtn?.addEventListener('click',async()=>{sleepCamera();startBtn?.click();});
-(function(){const isIOS=/iP(hone|ad|od)/i.test(navigator.userAgent);const appVisible=document.getElementById('app')?.style.display==='block';if(localStorage.getItem('cam_ok')==='1'&&!isIOS&&appVisible){startBtn?.click();}})();
-
-/* —— Chặn quét trùng 2 phút —— */
-const SCAN_BLOCK_MS=120000,recentScans=new Map();
-const isBlocked=c=>{const t=recentScans.get(c);return t&&(Date.now()-t<SCAN_BLOCK_MS);}
-const markScanned=c=>recentScans.set(c,Date.now());
-setInterval(()=>{const now=Date.now();for(const[k,v]of recentScans.entries())if(now-v>SCAN_BLOCK_MS)recentScans.delete(k);},30000);
-
-/* ====================== CHECK-IN OVERLAY (full-screen, trượt từ TRÊN xuống) ====================== */
-(function(){
-  let ciWrap=null, ciPanel=null, ciFrame=null;
-
-  function ensureCheckinOverlay(){
-    if(ciWrap) return;
-    ciWrap=document.createElement('div'); ciWrap.id='checkinOverlay';
-    ciWrap.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.08);display:none;z-index:9999';
-    ciWrap.innerHTML=`
-      <div id="ciPanel" style="position:fixed;inset:0;background:#fff;transform:translateY(-100%);transition:transform .22s ease;display:flex;flex-direction:column">
-        <div id="ciHeader" style="height:20px;flex:0 0 auto;padding:8px 0;border-bottom:1px solid #eee">
-          <div style="width:44px;height:4px;background:#c9d2dc;border-radius:4px;margin:0 auto"></div>
-        </div>
-        <div style="padding:10px 12px;font-weight:700">Check-in giao thành công</div>
-        <iframe id="ciFrame" src="" style="border:0;flex:1 1 auto;width:100%"></iframe>
-      </div>`;
-    document.body.appendChild(ciWrap);
-    ciPanel=ciWrap.querySelector('#ciPanel');
-    ciFrame=ciWrap.querySelector('#ciFrame');
-
-    ciWrap.addEventListener('click',e=>{ if(e.target===ciWrap) closeCheckin(); });
-    ciWrap.querySelector('#ciHeader').addEventListener('click',closeCheckin);
-
-    let y0=0,y=0,drag=false;
-    ciPanel.addEventListener('touchstart',e=>{drag=true;y0=e.touches[0].clientY;ciPanel.style.transition='none';});
-    ciPanel.addEventListener('touchmove',e=>{if(!drag)return;y=e.touches[0].clientY;const dy=Math.max(0,y-y0);ciPanel.style.transform=`translateY(${dy}px)`;});
-    ciPanel.addEventListener('touchend',()=>{ciPanel.style.transition='transform .22s ease';const dy=Math.max(0,y-y0);if(dy>100)closeCheckin();else ciPanel.style.transform='translateY(0)';drag=false;y0=y=0;});
-  }
-
-  function buildCheckinURL(ma_kh, ma_hd){
-    const q = new URLSearchParams();
-    if (ma_kh) q.set('ma_kh', String(ma_kh).trim());
-    if (ma_hd) q.set('ma_hd', String(ma_hd).trim());
-    return 'checkin.html?' + q.toString();
-  }
-
-  function openCheckinByMaKh(ma_kh, ma_hd){
-    ensureCheckinOverlay();
-    ciFrame.removeAttribute('src');
-    ciFrame.src = buildCheckinURL(ma_kh, ma_hd);
-    document.documentElement.style.overflow='hidden';
-    document.body.style.overflow='hidden';
-    ciWrap.style.display='block';
-    requestAnimationFrame(()=>{ciPanel.style.transform='translateY(0)';});
-  }
-
-  function closeCheckin(){
-    if(!ciWrap||!ciPanel) return;
-    ciPanel.style.transform='translateY(-100%)';
-    setTimeout(()=>{ciWrap.style.display='none';},220);
-    document.documentElement.style.overflow=''; document.body.style.overflow='';
-  }
-
-  async function openCheckinByMaHd(ma_hd){
-    try{
-      const ma_kh=await getMaKhByMaHd(ma_hd);
-      if(!ma_kh){ showSlide('KHÔNG TÌM THẤY MÃ KHÁCH','warn'); return; }
-      openCheckinByMaKh(ma_kh, ma_hd);
-    }catch(e){ showSlide('LỖI MỞ CHECK-IN','err'); }
-  }
-
-  window.__openCheckinByMaKh=openCheckinByMaKh;
-  window.__openCheckinByMaHd=openCheckinByMaHd;
-})();
-
-/* ===== Mode & Status ===== */
-let MODE='hang';
-const modeVD=$('#modeVD'),modeHang=$('#modeHang'),rowVD=$('#rowVD'),rowDon=$('#rowDon'),lblVD=$('#lblVD'),lblHang=$('#lblHang');
-const mavd=$('#mavd'),madon=$('#madon'),statusText=$('#statusText');
-function applyMode(){MODE=modeVD?.checked?'vd':'hang';rowVD&&(rowVD.style.display=MODE==='vd'?'block':'none');rowDon&&(rowDon.style.display=MODE==='vd'?'none':'block');lblHang?.classList.toggle('active',MODE==='hang');lblVD?.classList.toggle('active',MODE==='vd');}
-modeHang&&(modeHang.checked=true);modeVD&&(modeVD.checked=false);modeVD?.addEventListener('change',applyMode);modeHang?.addEventListener('change',applyMode);applyMode();
-function renderStatus(t){statusText&&(statusText.textContent=t||'Trạng thái giao hàng');if(t&&statusText){statusText.classList.remove('info-err','info-ok');if(t==='Giao thành công'||t==='Đã đóng hàng')statusText.classList.add('info-ok');}}
-
-/* ===== Trạng thái tuyến tính ===== */
-function nextStatusNew(cur){
-  const c=safeTrim(cur);
-  if(c==='Đã kiểm đơn')return 'Đang giao hàng';
-  if(c==='Đang giao hàng')return 'Giao thành công';
-  if(c==='Giao thành công')return null;
-  return 'Đang giao hàng';
-}
-
-/* ===== LƯU (NO-GEO) — MỞ CHECK-IN KHI “GIAO THÀNH CÔNG” ===== */
-async function doSaveByMode(codeScanned){
-  if(MODE==='hang'){
-    const code=safeTrim(codeScanned || madon?.value);
-    if(!code){ setInfo('err','Thiếu mã đơn'); showSlide('THIẾU MÃ HÓA ĐƠN','err'); return; }
-    if(isBlocked(code)){ setInfo('','Mã này vừa quét rồi — chờ 2 phút.'); showSlide('MÃ VỪA QUÉT — CHỜ 2 PHÚT','warn'); vibrate([60,40,60]); return; }
-
-    const rows=await sbSelect(TABLE_DON,{[KEY_DON_HD]:`eq.${code}`,limit:1},'id,trang_thai');
-    if(!rows.length){ setInfo('err','Không tìm thấy mã hóa đơn'); showSlide('KHÔNG TÌM THẤY HÓA ĐƠN','err'); return; }
-
-    const cur=safeTrim(rows?.[0]?.trang_thai);
-    const nxt=nextStatusNew(cur);
-
-    // ĐÃ giao thành công từ trước → chỉ báo & dừng
-    if(!nxt){
-      renderStatus('Giao thành công');
-      setInfo('ok','Đã giao hàng rồi');
-      showSlide('ĐÃ GIAO HÀNG RỒI','ok');
-      markScanned(code);
-      return;
-    }
-
-    // Bật sang “Giao thành công” lần đầu → cập nhật và mở check-in
-    if(nxt==='Giao thành công'){
-      try{
-        await sbPatch(TABLE_DON,{ [KEY_DON_HD]: `eq.${code}` },{ trang_thai:'Giao thành công' });
-        renderStatus('Giao thành công'); setInfo('ok','✔ Giao thành công'); showSlide('GIAO THÀNH CÔNG','ok');
-      }catch(e){
-        renderStatus(cur||'Đang giao hàng'); setInfo('err','⚠️ Cập nhật trạng thái lỗi — vẫn mở CHECK-IN'); showSlide('CẬP NHẬT TRẠNG THÁI LỖI','err');
-      }finally{
-        vibrate([80,60,80]); markScanned(code);
-        try{ window.__openCheckinByMaHd?.(code); }catch{}
-      }
-      return;
-    }
-
-    // Các bước trung gian
-    await sbPatch(TABLE_DON,{ [KEY_DON_HD]: `eq.${code}` },{ trang_thai:nxt });
-    renderStatus(nxt); setInfo('ok','✔ '+nxt); showSlide('CẬP NHẬT TRẠNG THÁI: '+nxt,'info'); vibrate([80,60,80]); markScanned(code);
-
-  }else{
-    // === QUÉT MÃ VẬN ĐƠN
-    const code = safeTrim(codeScanned || mavd?.value);
-    if (!code) {
-      setInfo('err','Thiếu mã vận đơn');
-      showSlide('THIẾU MÃ VẬN ĐƠN','err');
-      return;
-    }
-    if (isBlocked(code)) {
-      setInfo('','Mã này vừa quét rồi — chờ 2 phút.');
-      showSlide('MÃ VỪA QUÉT — CHỜ 2 PHÚT','warn');
-      vibrate([60,40,60]);
-      return;
-    }
-
-    try {
-      // LẤY THÊM ngay_dong_hang TỪ BẢNG VẬN ĐƠN
-      const vdRow = await sbSelect(
-        TABLE_VD_KIOT,
-        { [KEY_VD]: `eq.${code}`, limit: 1 },
-        `${KEY_VD},${KEY_DON_HD},ngay_dong_hang`
-      );
-      if (!vdRow.length) {
-        setInfo('err','Không tìm thấy vận đơn');
-        showSlide('KHÔNG TÌM THẤY VẬN ĐƠN','err');
-        vibrate([60,40,60]);
-        return;
-      }
-      const ma_hd  = vdRow[0][KEY_DON_HD];
-      const ngayDH = vdRow[0].ngay_dong_hang;
-
-      // ❗ ĐÃ CÓ NGÀY ĐÓNG HÀNG → xem như đã đóng, chỉ báo & dừng
-      if (ngayDH) {
-        renderStatus('Đã đóng hàng');
-        setInfo('ok', `Đơn này đã đóng hàng lúc ${ngayDH}`);
-        showSlide(`ĐƠN NÀY ĐÃ ĐÓNG HÀNG LÚC ${ngayDH}`, 'ok');
-
-        vibrate([60,40,60]);
-        markScanned(code);
-        return;
-      }
-
-      // Chưa có ngay_dong_hang → xử lý bình thường theo trạng thái đơn
-      const existed = await sbSelect(
-        TABLE_DON,
-        { [KEY_DON_HD]: `eq.${ma_hd}`, limit: 1 },
-        `${KEY_DON_HD},trang_thai`
-      );
-      if (!existed.length) {
-        setInfo('err','Không tìm thấy hóa đơn');
-        showSlide('KHÔNG TÌM THẤY HÓA ĐƠN','err');
-        vibrate([60,40,60]);
-        return;
-      }
-
-      const cur = safeTrim(existed?.[0]?.trang_thai);
-
-      // ĐÃ “Giao thành công” → chỉ báo & dừng
-      if (cur === 'Giao thành công') {
-        renderStatus('Giao thành công');
-        setInfo('ok','Đã giao hàng rồi');
-        showSlide('ĐÃ GIAO HÀNG RỒI','ok');
-        markScanned(code);
-        return;
-      }
-
-      // Ràng buộc đóng hàng
-      if (cur === 'Chưa kiểm đơn') {
-        setInfo('err','Chưa kiểm đơn — không thể đóng hàng');
-        showSlide('LỖI: CHƯA KIỂM ĐƠN','err');
-        vibrate([80,60,80]);
-        markScanned(code);
-        return;
-      }
-      if (cur !== 'Đã kiểm đơn' && cur !== 'Đã đóng hàng') {
-        setInfo('err','Trạng thái hiện tại không hợp lệ để Đóng hàng');
-        showSlide('KHÔNG HỢP LỆ: CẦN "ĐÃ KIỂM ĐƠN" TRƯỚC','err');
-        vibrate([80,60,80]);
-        markScanned(code);
-        return;
-      }
-
-      // cur === 'Đã kiểm đơn' (hoặc dữ liệu cũ 'Đã đóng hàng' nhưng chưa có ngay_dong_hang) → nâng lên / set lại “Đã đóng hàng”
-      const nv  = (function(){
-        try { return JSON.parse(localStorage.getItem('nv'))?.ma_nv || null; }
-        catch { return null; }
-      })();
-      const nowText = nowVN_ddmmyyyy_hhmm();
-
-      await sbPatch(TABLE_DON,{ [KEY_DON_HD]: `eq.${ma_hd}` },{
-        trang_thai: 'Đã đóng hàng',
-        ngay_dong_hang: nowText, nv_dong_hang: nv,
-        ngay_check_don: nowText, nv_check_don: nv
-      });
-      await sbPatch(TABLE_VD_KIOT,{ [KEY_VD]: `eq.${code}` },{ ngay_dong_hang: nowText });
-
-      renderStatus('Đã đóng hàng');
-      setInfo('ok','✔ Đã đóng hàng');
-      showSlide('ĐÃ ĐÓNG HÀNG','ok');
-      vibrate([80,60,80]);
-      markScanned(code);
-    } catch (e) {
-      setInfo('err','Lỗi cập nhật trạng thái: ' + (e.message || e));
-      showSlide('LỖI CẬP NHẬT TRẠNG THÁI','err');
-    }
-  }
-}
-
-
-/* ===== onScan ===== */
-async function onScan(res){
-  if(!res)return;
-  const code=safeTrim(res?.text); if(!code||code===last||scanLock)return;
-  if(isBlocked(code)){setInfo('','Mã này vừa quét rồi — chờ 2 phút.');showSlide('MÃ VỪA QUÉT — CHỜ 2 PHÚT','warn');vibrate([40,40,40]);return;}
-  clearTimeout(noScanTimer);startNoScanTimer();
-  last=code;scanLock=true;
-
-  await playScanBeep(); // âm báo đã quét
-
-  if(MODE==='vd')mavd&&(mavd.value=code);else madon&&(madon.value=code);
-  setInfo('','Đã quét: '+code+' → đang lưu...');showSlide('ĐANG LƯU MÃ: '+code,'info',1600);
-  try{await doSaveByMode(code);}catch(e){setInfo('err','Lỗi lưu: '+(e.message||e));showSlide('LỖI LƯU','err');}
-  finally{setTimeout(()=>{scanLock=false;last='';},800);}
-}
-$('#saveBtn')?.addEventListener('click',()=>doSaveByMode());
-
-/* ===== Bottom sheets (Đơn hàng, Chi tiết) ===== */
-const fabScan=$('#fabScan'), tabOrders=$('#tabOrders'),tabMap=$('#tabMap');
-const ordersWrap=$('#ordersWrap'),ordersSheet=$('#ordersSheet'),ordersList=$('#ordersList'),ordersEmpty=$('#ordersEmpty'),statusFilter=$('#statusFilter');
-const detailWrap=$('#detailWrap'),detailSheet=$('#detailSheet'),detailTitle=$('#detailTitle'),ctBody=$('#ctBody');
-const backOrders=$('#backOrders');
-
-function openSheet(wrap,sheet){if(!wrap||!sheet)return;wrap.style.display='block';requestAnimationFrame(()=>sheet.classList.add('active'));}
-function closeSheet(wrap,sheet){if(!wrap||!sheet)return;sheet.classList.remove('active');setTimeout(()=>wrap.style.display='none',220);}
-function attachSwipe(wrap,sheet){
-  if(!wrap||!sheet)return;
-  let y0=0,y=0,drag=false;
-  sheet.addEventListener('touchstart',e=>{drag=true;y0=e.touches[0].clientY;sheet.style.transition='none';});
-  sheet.addEventListener('touchmove',e=>{if(!drag)return;y=e.touches[0].clientY;const dy=Math.max(0,y-y0);sheet.style.transform=`translateY(${dy}px)`;});
-  sheet.addEventListener('touchend',()=>{sheet.style.transition='transform .2s ease';const dy=Math.max(0,y-y0);if(dy>100)closeSheet(wrap,sheet);else sheet.style.transform='translateY(0)';drag=false;y0=y=0;});
-  wrap.addEventListener('click',e=>{if(e.target===wrap)closeSheet(wrap,sheet);});
-}
-attachSwipe(ordersWrap,ordersSheet);attachSwipe(detailWrap,detailSheet);
-
-/* ====== MAP SHEET (iframe map_tuyen.html) ====== */
-(function(){
-  let mapWrap=null,mapSheet=null,mapFrame=null,tempQuery=null;
-  function ensureMapSheet(){
-    if(mapWrap) return;
-    mapWrap=document.createElement('div'); mapWrap.id='mapWrap';
-    mapWrap.style.cssText='position:fixed;inset:0;display:none;background:rgba(0,0,0,.08);z-index:9998';
-    mapWrap.innerHTML=`
-      <div id="__mapSheet" style="position:fixed;left:0;right:0;bottom:0;margin:0 auto;width:calc(100vw - 24px);max-width:900px;background:#fff;border-radius:16px 16px 0 0;box-shadow:0 -8px 24px rgba(0,0,0,.18);transition:transform .22s ease;transform:translateY(100%);overflow:hidden">
-        <div id="__mapHeader" style="padding:10px 12px;border-bottom:1px solid #eee">
-          <div style="width:44px;height:4px;background:#c9d2dc;border-radius:4px;margin:0 auto"></div>
-        </div>
-        <div style="padding:8px 12px 6px;font-weight:700">Bản đồ tuyến</div>
-        <iframe id="__mapFrame" src="" style="display:block;border:0;width:100%;height:calc(100vh - 160px)"></iframe>
-      </div>`;
-    document.body.appendChild(mapWrap);
-    mapSheet=mapWrap.querySelector('#__mapSheet');
-    mapFrame=mapWrap.querySelector('#__mapFrame');
-    mapWrap.addEventListener('click',e=>{if(e.target===mapWrap)closeMapSheet();});
-    mapWrap.querySelector('#__mapHeader').addEventListener('click',closeMapSheet);
-    let y0=0,y=0,drag=false;
-    mapSheet.addEventListener('touchstart',e=>{drag=true;y0=e.touches[0].clientY;mapSheet.style.transition='none';});
-    mapSheet.addEventListener('touchmove',e=>{if(!drag)return;y=e.touches[0].clientY;const dy=Math.max(0,y-y0);mapSheet.style.transform=`translateY(${dy}px)`;});
-    mapSheet.addEventListener('touchend',()=>{mapSheet.style.transition='transform .22s ease';const dy=Math.max(0,y-y0);if(dy>100)closeMapSheet();else mapSheet.style.transform='translateY(0)';drag=false;y0=y=0;});
-  }
-  function injectNoLogoCSS(){
-    try{
-      const d=mapFrame.contentDocument||mapFrame.contentWindow.document;
-      const css = `
-        .leaflet-control-attribution, .leaflet-control-container, [class*="attribution"], [aria-label*="Attribution"] { display:none !important; }
-        img[alt*="OpenStreetMap"], img[alt*="Carto"], a[href*="openstreetmap"]{ display:none !important; }`;
-      const st=d.createElement('style'); st.textContent=css; d.head.appendChild(st);
-    }catch{}
-  }
-  function openMapSheet(queryText){
-    ensureMapSheet();
-    tempQuery = queryText || null;
-    mapFrame.removeAttribute('src'); mapFrame.src='map_tuyen.html?no_logo=1';
-    mapFrame.onload=()=>{
-      injectNoLogoCSS();
-      const qText = tempQuery ?? (localStorage.getItem('MAP_QUERY')||'');
-      if(qText) pushQueryAndReloadMap(qText);
-      tempQuery=null;
-    };
-    mapWrap.style.display='block'; requestAnimationFrame(()=>{mapSheet.style.transform='translateY(0)';});
-    document.documentElement.style.overflow='hidden'; document.body.style.overflow='hidden';
-  }
-  function closeMapSheet(){
-    mapSheet.style.transform='translateY(100%)';
-    setTimeout(()=>{mapWrap.style.display='none';},220);
-    document.documentElement.style.overflow=''; document.body.style.overflow='';
-  }
-  function pushQueryAndReloadMap(queryText){
-    if(!mapFrame||!mapFrame.contentWindow) return;
-    const tryFill=()=>{
-      const w=mapFrame.contentWindow,d=w.document;
-      try{ if(typeof w.setQuery==='function'&&typeof w.reloadMap==='function'){w.setQuery(queryText);w.reloadMap();return true;} }catch{}
-      try{
-        const input=d.querySelector('#q,#search,#query,input[name="q"],input[type="search"]');
-        if(!input) return false;
-        input.value=queryText; ['input','change','keyup'].forEach(t=>input.dispatchEvent(new Event(t,{bubbles:true})));
-        let reloadBtn=d.querySelector('#btnReload,[data-reload]')||Array.from(d.querySelectorAll('button,a')).find(el=>safeTrim(el.textContent).toLowerCase().includes('tải lại'));
-        if(reloadBtn){reloadBtn.click();return true;}
-        const form=input.form||input.closest('form'); if(form){form.requestSubmit?form.requestSubmit():form.submit();return true;}
-        input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
-        input.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter',bubbles:true}));
-        return true;
-      }catch{}
-      try{w.postMessage({type:'MAP_SET_AND_RELOAD',query:queryText},'*');return true;}catch{}
-      return false;
-    };
-    let tries=0;const t=setInterval(()=>{tries++;if(tryFill()||tries>25)clearInterval(t);},100);
-  }
-  function getVisibleCustomerIds(){
-    if(!ordersList) return [];
-    return [...ordersList.querySelectorAll('.order')]
-      .filter(el=>getComputedStyle(el).display!=='none')
-      .map(el=>safeTrim(el.dataset.kh))
-      .filter(Boolean)
-      .filter((v,i,a)=>a.indexOf(v)===i);
-  }
-  function openMapByCurrentFilter(){
-    const ids=getVisibleCustomerIds(); const qText=ids.length?('ma: '+ids.join(' ')):'';
-    try{localStorage.setItem('MAP_QUERY',qText);}catch{}
-    openMapSheet();
-  }
-  $('#tabMap')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openMapByCurrentFilter();});
-  $('#ordersMapLink')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openMapByCurrentFilter();});
-  window.__openMapForOneCustomer = (ma_kh) => {
-    const q='ma: '+safeTrim(ma_kh);
-    if(!safeTrim(q)) return;
-    openMapSheet(q);
-  };
-})();
-
-/* ===== Header đơn hàng: chèn link “Xem bản đồ” (nếu thiếu) ===== */
-(function injectOrdersHeaderMapLink(){
-  const header=document.getElementById('ordersHeader');
-  if(!header||document.getElementById('ordersMapLink'))return;
-  const a=document.createElement('a');
-  a.id='ordersMapLink';a.href='#';a.textContent='🗺️ Xem bản đồ';
-  a.style.marginLeft='12px';a.style.fontWeight='700';
-  a.addEventListener('click',(e)=>{e.preventDefault();e.stopPropagation();const btn=document.getElementById('tabMap');btn?.click();});
-  const select=document.getElementById('statusFilter');
-  if(select&&select.parentElement)select.parentElement.insertBefore(a,select);else header.appendChild(a);
-})();
-
-/* ===== Phân trang danh sách đơn ===== */
-let CURRENT_PAGE=1, PAGE_SIZE=50, TOTAL_ITEMS=null, TOTAL_PAGES=1;
-const PAGING = {wrap:null, prev:null, next:null, info:null, sizeSel:null};
-function ensurePaginationUI(){
-  if(PAGING.wrap) return;
-  PAGING.wrap=document.createElement('div');
-  PAGING.wrap.id='ordersPaging';
-  PAGING.wrap.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 6px;border-top:1px solid #eee;margin-top:8px';
-  PAGING.wrap.innerHTML=`
-    <div style="display:flex;align-items:center;gap:8px">
-      <button id="pgPrev" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 10px;background:#fafafa">Trang trước</button>
-      <span id="pgInfo" style="min-width:140px;display:inline-block;text-align:center">Trang 1/1</span>
-      <button id="pgNext" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 10px;background:#fafafa">Trang sau</button>
-    </div>
-    <div style="display:flex;align-items:center;gap:6px">
-      <label for="pgSize" style="color:#6b7280">Dòng/trang</label>
-      <select id="pgSize" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 8px">
-        <option value="50">50</option>
-        <option value="100">100</option>
-        <option value="200">200</option>
-      </select>
-    </div>`;
-  ordersSheet?.appendChild(PAGING.wrap);
-  PAGING.prev=PAGING.wrap.querySelector('#pgPrev');
-  PAGING.next=PAGING.wrap.querySelector('#pgNext');
-  PAGING.info=PAGING.wrap.querySelector('#pgInfo');
-  PAGING.sizeSel=PAGING.wrap.querySelector('#pgSize');
-  PAGING.prev.addEventListener('click',()=>{ if(CURRENT_PAGE>1){CURRENT_PAGE--;loadOrders();} });
-  PAGING.next.addEventListener('click',()=>{ if(CURRENT_PAGE<TOTAL_PAGES){CURRENT_PAGE++;loadOrders();} });
-  PAGING.sizeSel.addEventListener('change',()=>{ PAGE_SIZE=Number(PAGING.sizeSel.value)||50; CURRENT_PAGE=1; loadOrders(); });
-}
-
-/* ===== Sự kiện mở tab Đơn hàng: mặc định “Đang giao hàng” ===== */
-function setDefaultStatusFilter(){
-  if(!statusFilter) return;
-  const want='Đang giao hàng';
-  if (![...statusFilter.options].some(o=>o.value===want)) {
-    const opt=document.createElement('option'); opt.value=want; opt.textContent=want; statusFilter.appendChild(opt);
-  }
-  statusFilter.value=want;
-}
-document.addEventListener('DOMContentLoaded',()=>{ setDefaultStatusFilter(); });
-tabOrders?.addEventListener('click',async()=>{ setDefaultStatusFilter(); CURRENT_PAGE=1; await loadOrders(); openSheet(ordersWrap,ordersSheet); });
-statusFilter?.addEventListener('change',()=>{ CURRENT_PAGE=1; loadOrders(); });
-
-document.getElementById('ordersHeader')?.addEventListener('click',(e)=>{
-  const t=e.target;
-  if(t.tagName?.toLowerCase()==='select'||t.closest('select')||t.id==='ordersMapLink'||t.closest('#ordersMapLink')||t.id==='tabMap'||t.closest('#tabMap')){e.stopPropagation();return;}
-  closeSheet(ordersWrap,ordersSheet);
-});
-document.getElementById('detailHeader')?.addEventListener('click',()=>closeSheet(detailWrap,detailSheet));
-
-/* ===== Đơn hàng + LOAD có phân trang ===== */
-function toTelLink(v){
-  const raw=String(v||'').replace(/\D+/g,'');if(!raw)return'';
-  const intl=raw.startsWith('0')?'+84'+raw.slice(1):(raw.startsWith('84')?('+'+raw):('+'+raw));
-  return `<a class="tel" href="tel:${intl}">${v||''}</a>`;
-}
-async function loadOrders(){
-  ensurePaginationUI();
-  const f=safeTrim(statusFilter?.value);
-  const offset=(CURRENT_PAGE-1)*PAGE_SIZE;
-  const params={order:`${DATE_COL}.desc.nullslast`,limit:PAGE_SIZE,offset};
-  if(f) params.trang_thai=`eq.${f}`;
+/* ===== Lấy danh sách vị trí quanh GPS hiện tại và lưu cho trang sau ===== */
+async function prepareNearbyLocations(lat,lng){
+  let nearby = [];
 
   try{
-    const {rows,total}=await sbSelectWithCount(
-      TABLE_DON,
-      params,
-      `${KEY_DON_HD},${KEY_KH},ten_kh,dien_thoai,dia_chi,trang_thai,tong_tien,${DATE_COL}`
+    const points = await ensureLocationPoints();
+    nearby = findNearbyInArray(lat, lng, points, NEAR_RADIUS_M);
+
+    const payload = {
+      lat: Number(lat),
+      lng: Number(lng),
+      radius_m: NEAR_RADIUS_M,
+      total: nearby.length,
+      items: nearby,
+      created_at: Date.now()
+    };
+
+    sessionStorage.setItem(
+      NEARBY_SESSION_KEY,
+      JSON.stringify(payload)
     );
 
-    TOTAL_ITEMS = typeof total==='number' ? total : (rows?.length||0);
-    TOTAL_PAGES = Math.max(1, Math.ceil(TOTAL_ITEMS / PAGE_SIZE));
-    if (PAGING.info) PAGING.info.textContent = `Trang ${CURRENT_PAGE}/${TOTAL_PAGES}`;
-    PAGING.prev.disabled = CURRENT_PAGE<=1;
-    PAGING.next.disabled = CURRENT_PAGE>=TOTAL_PAGES;
+    // alias ngắn để trang checkin_khach_hang cũ/mới đều dễ đọc
+    sessionStorage.setItem(
+      'CHECKIN_NEARBY_POINTS',
+      JSON.stringify(payload)
+    );
 
-    renderOrders(rows||[]);
-  }catch(e){
-    console.error('loadOrders error',e);
-    ordersList&&(ordersList.innerHTML='');ordersEmpty&&(ordersEmpty.style.display='block');
-    if (PAGING.info) PAGING.info.textContent = `Trang ${CURRENT_PAGE}/${TOTAL_PAGES}`;
+    if (nearby.length){
+      const first = nearby[0];
+      const label =
+        first.ten_kh ||
+        first.ma_kh ||
+        first.dien_thoai ||
+        'Vị trí';
+
+      toast(
+        `📍 Có ${nearby.length} vị trí trong ${NEAR_RADIUS_M}m. Gần nhất: ${label} (${first.dist}m)`,
+        'ok',
+        2800
+      );
+    }else{
+      toast(
+        `📍 Không có vị trí đã lưu trong bán kính ${NEAR_RADIUS_M}m`,
+        'info',
+        2200
+      );
+    }
+  }catch(err){
+    console.warn('[CHECKIN] Không tải được vị trí xung quanh:', err);
+
+    const payload = {
+      lat: Number(lat),
+      lng: Number(lng),
+      radius_m: NEAR_RADIUS_M,
+      total: 0,
+      items: [],
+      error: String(err?.message || err || ''),
+      created_at: Date.now()
+    };
+
+    try{
+      sessionStorage.setItem(
+        NEARBY_SESSION_KEY,
+        JSON.stringify(payload)
+      );
+      sessionStorage.setItem(
+        'CHECKIN_NEARBY_POINTS',
+        JSON.stringify(payload)
+      );
+    }catch{}
+
+    // Không chặn chụp/gửi ảnh nếu danh sách vị trí lỗi.
+    toast(
+      '⚠️ Không tải được danh sách vị trí gần, vẫn tiếp tục ảnh check-in.',
+      'err',
+      2600
+    );
   }
-}
-function renderOrders(rows){
-  if(!ordersList)return;
-  ordersList.innerHTML='';
-  if(!rows.length){ordersEmpty&&(ordersEmpty.style.display='block');return;}
-  ordersEmpty&&(ordersEmpty.style.display='none');
-  rows.forEach(r=>{
-    const ma=safeTrim(r?.[KEY_DON_HD]);const st=safeTrim(r?.trang_thai)||'Chưa rõ';
-    const ma_kh=r[KEY_KH]||'';
-    const div=document.createElement('div');
-    div.className='order';div.dataset.kh=ma_kh;
-    div.innerHTML=`
-      <div class="row1">
-        <a href="#" class="hd-link" data-ma="${ma}">${ma}</a>
-        <span class="badge">${st}</span>
-      </div>
-      <div class="row2">
-        <span>${fmtDateVN(r[DATE_COL]||Date.now())}</span>
-        <span class="money">${fmtMoney(r.tong_tien)}</span>
-      </div>
-      <div class="row3" style="justify-content:space-between">
-        <span>KH: ${r.ten_kh||''}</span>
-        <span>ĐT: ${toTelLink(r.dien_thoai)}</span>
-      </div>
-      <div class="row3" style="justify-content:flex-start">
-        <span>ĐC: ${r.dia_chi||''}</span>
-      </div>
-      <div class="row4" style="margin-top:6px">
-        <a href="#" class="map-link" data-kh="${ma_kh}">Xem bản đồ</a>
-      </div>`;
-    div.querySelector('.hd-link')?.addEventListener('click',async(e)=>{e.preventDefault();await openDetail(ma);});
-    div.querySelector('.map-link')?.addEventListener('click',(e)=>{
-      e.preventDefault();e.stopPropagation();
-      const kh=safeTrim(ma_kh);if(!kh){showSlide('KHÔNG CÓ MÃ KHÁCH','warn');return;}
-      window.__openMapForOneCustomer(kh);
-    });
-    ordersList.appendChild(div);
-  });
+
+  return nearby;
 }
 
-/* ===== Chi tiết đơn ===== */
-async function openDetail(ma){
-  if(!detailTitle||!ctBody)return;
-  detailTitle.textContent='HĐ: '+ma;
-  ctBody.innerHTML='<tr><td colspan="4">Đang tải...</td></tr>';
-  openSheet(detailWrap,detailSheet);
-  try{
-    const rows=await sbSelect(TABLE_CT,{[KEY_DON_HD]:`eq.${ma}`,order:'ten_h.asc'},'ten_h,so_luong,don_gia,thanh_tien');
-    renderCT(rows||[]);
-  }catch(e){ctBody.innerHTML=`<tr><td colspan="4">Lỗi tải chi tiết</td></tr>`;showSlide('LỖI TẢI CHI TIẾT','err');}
-}
-function renderCT(rows){
-  if(!ctBody)return;
-  let sum=0;ctBody.innerHTML='';
-  rows.forEach(r=>{
-    sum+=Number(r.thanh_tien||0);
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.ten_h||''}</td><td>${r.so_luong||0}</td><td>${fmtMoney(r.don_gia)}</td><td>${fmtMoney(r.thanh_tien)}</td>`;
-    ctBody.appendChild(tr);
-  });
-  const tr=document.createElement('tr');tr.className='total-row';
-  tr.innerHTML=`<td>Tổng cộng</td><td></td><td></td><td>${fmtMoney(sum)}</td>`;
-  ctBody.appendChild(tr);
-}
-backOrders?.addEventListener('click',()=>{closeSheet(detailWrap,detailSheet);});
 
-/* ===== Realtime (nhẹ) ===== */
-let ch = null;
-supabaseReady.then(() => {
-  ch = supa.channel('rt-don-hang')
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:TABLE_DON},p=>{
-      if(ordersWrap?.style.display==='block') loadOrders();
-      try{ pushNotify(`➕ Thêm đơn mới ${p.new?.[KEY_DON_HD]||''}`); }catch{}
-    })
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:TABLE_DON},p=>{
-      if(ordersWrap?.style.display==='block') loadOrders();
-      try{
-        const ma = p.new?.[KEY_DON_HD] || p.old?.[KEY_DON_HD] || '';
-        const tt = safeTrim(p?.new?.trang_thai);
-        pushNotify(`🔄 Cập nhật đơn ${ma}${tt?` → “${tt}”`:''}`);
-      }catch{}
-    })
-    .subscribe(status => {
-      console.log('[GIAO HÀNG] Realtime:', status);
-    });
-}).catch(error => {
-  console.error('[REALTIME] Không khởi tạo được:', error);
+/* ================== DOM & PARAMS ================== */
+const $ = id => document.getElementById(id);
+
+const video     = $('video');
+const canvas    = $('canvas');
+const btnStart  = $('btnStart');
+const btnShot   = $('btnShot');
+const btnTorch  = $('btnTorch');
+const btnSound  = $('btnSound');
+const btnZoomIn = $('btnZoomIn');
+const btnZoomOut= $('btnZoomOut');
+const btnMenu   = $('btnMenu'); // nút Menu mới
+
+const toastEl   = $('toast');
+const bar       = $('bar');
+const tagInfo   = $('tagInfo');
+const stage     = $('stage') || document.querySelector('.stage');
+
+if (video) {
+  video.style.objectFit = 'cover';
+  video.setAttribute('playsinline','');
+  video.muted = true;
+}
+
+const qp   = new URLSearchParams(location.search);
+const MA_KH = qp.get('ma_kh') || '';
+const MA_HD = qp.get('ma_hd') || '';
+
+function getLoggedNV(){
+  const nv = lsGet('nv');
+  if (nv && nv.ma_nv) return nv;
+
+  const ctx = (() => {
+    try { return JSON.parse(sessionStorage.getItem('nv_ctx') || 'null'); }
+    catch { return null; }
+  })();
+  if (ctx && ctx.ma_nv) return ctx;
+
+  return null;
+}
+
+const LOGGED_NV = getLoggedNV();
+const MA_NV = (
+  qp.get('ma_nv') ||
+  LOGGED_NV?.ma_nv ||
+  ''
+).trim();
+
+const TEN_NV = (
+  qp.get('ten_nv') ||
+  LOGGED_NV?.ten_nv ||
+  ''
+).trim();
+
+if (!MA_NV) {
+  try { alert('Thiếu mã nhân viên. Vui lòng vào từ Trang chính.'); } catch {}
+  location.replace('./main.html');
+  throw new Error('Missing ma_nv');
+}
+
+if (!LOGGED_NV || !LOGGED_NV.ma_nv || LOGGED_NV.hoat_dong === false) {
+  try { alert('Bạn chưa đăng nhập.'); } catch {}
+  location.replace('./login.html');
+  throw new Error('Not logged in');
+}
+
+if (String(LOGGED_NV.ma_nv) !== String(MA_NV)) {
+  try { alert('Mã nhân viên không khớp tài khoản đăng nhập.'); } catch {}
+  location.replace('./main.html');
+  throw new Error('ma_nv mismatch');
+}
+
+if (tagInfo) {
+  tagInfo.textContent = [MA_NV && `NV:${MA_NV}`, MA_KH && `KH:${MA_KH}`, MA_HD && `HD:${MA_HD}`]
+    .filter(Boolean).join(' · ');
+}
+
+/* ================== AUDIO (shutter) ================== */
+let audioCtx = null, compressor = null;
+const SHUTTER_GAIN = 0.9;
+
+async function ensureAudioCtx(){
+  if(!audioCtx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AC();
+    compressor = audioCtx.createDynamicsCompressor();
+    compressor.threshold.setValueAtTime(-24, audioCtx.currentTime);
+    compressor.knee.setValueAtTime(30, audioCtx.currentTime);
+    compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
+    compressor.attack.setValueAtTime(0.002, audioCtx.currentTime);
+    compressor.release.setValueAtTime(0.1, audioCtx.currentTime);
+    compressor.connect(audioCtx.destination);
+  }
+  if(audioCtx.state === 'suspended') await audioCtx.resume();
+}
+
+function noiseBurst(ctx, t0, dur=0.03){
+  const len = Math.floor(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for(let i=0;i<len;i++) data[i] = (Math.random()*2-1) * 0.6;
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(SHUTTER_GAIN, t0 + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+  const lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.setValueAtTime(4500, t0);
+  src.connect(lp); lp.connect(g); g.connect(compressor);
+  src.start(t0); src.stop(t0 + dur + 0.01);
+}
+
+let soundEnabled = (localStorage.getItem('soundEnabled')??'1') === '1';
+
+function renderSoundBtn(){
+  if (!btnSound) return;
+  btnSound.classList.toggle('btn-on', soundEnabled);
+  btnSound.textContent = soundEnabled ? '🔊' : '🔇';
+  btnSound.title = soundEnabled ? 'Đang bật tiếng (bấm để tắt)' : 'Đang tắt tiếng (bấm để bật)';
+}
+renderSoundBtn();
+
+btnSound && (btnSound.onclick = ()=>{ 
+  soundEnabled=!soundEnabled; 
+  localStorage.setItem('soundEnabled', soundEnabled?'1':'0'); 
+  renderSoundBtn(); 
+  toast(soundEnabled?'Đã bật tiếng chụp':'Đã tắt tiếng chụp'); 
 });
 
-/* ===== Nút nổi scan ===== */
-fabScan?.addEventListener('click',()=>{if(document.getElementById('app')?.style.display!=='block')return;$('#startBtn')?.click();showSlide('MỞ CAMERA QUÉT','info');});
+async function playShutter(){
+  if(!soundEnabled) return;
+  await ensureAudioCtx();
+  const ctx = audioCtx; const now = ctx.currentTime;
+  noiseBurst(ctx, now, 0.035);
+  const osc1 = ctx.createOscillator(), g1 = ctx.createGain();
+  osc1.type='square'; osc1.frequency.setValueAtTime(1400, now);
+  g1.gain.setValueAtTime(0, now);
+  g1.gain.linearRampToValueAtTime(SHUTTER_GAIN, now + 0.01);
+  g1.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+  osc1.connect(g1); g1.connect(compressor); osc1.start(now); osc1.stop(now + 0.1);
+  const t2 = now + 0.06;
+  const osc2 = ctx.createOscillator(), g2 = ctx.createGain();
+  osc2.type='square'; osc2.frequency.setValueAtTime(950, t2);
+  g2.gain.setValueAtTime(0, t2);
+  g2.gain.linearRampToValueAtTime(SHUTTER_GAIN*0.7, t2 + 0.012);
+  g2.gain.exponentialRampToValueAtTime(0.001, t2 + 0.08);
+  osc2.connect(g2); g2.connect(compressor); osc2.start(t2); osc2.stop(t2 + 0.09);
+  if (navigator.vibrate) navigator.vibrate(30);
+}
 
-/* Ghi chú: KHÔNG xin/quản lý vị trí tại file này. Check-in mở full-screen từ TRÊN xuống. */
-</script>
+/* ================== TOAST ================== */
+function toast(t,type='info',ms=2400){
+  if (!toastEl) return;
+  toastEl.textContent=t;
+  toastEl.style.opacity='1';
+  toastEl.style.transform='translate(-50%,10px)';
+  clearTimeout(toast._t);
+  toast._t=setTimeout(()=>{
+    toastEl.style.opacity='0';
+    toastEl.style.transform='translate(-50%,-120%)';
+  },ms);
+}
 
-  <script>
-    /*
-     * Đăng xuất chung.
-     * Dùng capture=true để xử lý trước sự kiện đăng xuất cũ
-     * trong app_giao_hang.js nếu vẫn còn.
-     */
-    document
-      .getElementById("logout")
-      ?.addEventListener(
-        "click",
-        event => {
-          event.preventDefault();
-          event.stopImmediatePropagation();
+/* ================== GPS + VỊ TRÍ GẦN (CHỈ XỬ LÝ KHI BẤM CHỤP) ================== */
+function openGeoHelp(){
+  const msg =
+`⚠️ Bạn đã chặn quyền vị trí.
+Cách bật lại nhanh:
 
-          try {
-            localStorage.removeItem("nv");
-            localStorage.removeItem(
-              "chatwoot_crm_user"
-            );
+• Chrome/Edge (máy tính): bấm biểu tượng 🔒 cạnh thanh địa chỉ → Site settings → Location = Allow → tải lại trang.
+• Điện thoại: Settings → Privacy/Location → bật Location; và trong Chrome → Site settings → Location = Allow.
 
-            sessionStorage.removeItem(
-              "nv_ctx"
-            );
+Sau đó bấm lại "Bật camera".`;
+  try{ alert(msg); }catch{}
+}
 
-            sessionStorage.removeItem(
-              "APP_ACCESS"
-            );
-          } catch (error) {
-            console.warn(
-              "[GIAO HÀNG] Lỗi khi xóa phiên đăng nhập:",
-              error
-            );
-          }
+function getGeoPermStateSafe(){
+  return (navigator.permissions && navigator.permissions.query)
+    ? navigator.permissions.query({ name:'geolocation' }).then(p=>p.state).catch(()=>null)
+    : Promise.resolve(null);
+}
 
-          location.replace("./login.html");
-        },
-        true
-      );
+function getGPSOnce(timeoutMs = 10000){ 
+  return new Promise(resolve=>{
+    if(!('geolocation' in navigator)) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      p=>resolve({lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy}),
+      err=>resolve({err}),
+      { enableHighAccuracy:true, timeout:timeoutMs, maximumAge:30000 }
+    );
+  });
+}
+
+// ✅ đảm bảo: denied => báo + return false
+// ✅ prompt => tự gọi getCurrentPosition để bật popup xin quyền
+// ✅ granted => cố lấy 1 tọa độ hợp lệ (lat != 0)
+async function ensureGeoAllowedAndGet(){
+  if(!('geolocation' in navigator)){
+    toast('Thiết bị không hỗ trợ vị trí (GPS)', 'err', 3500);
+    try{ alert('Thiết bị không hỗ trợ vị trí (GPS).'); }catch{}
+    return false;
+  }
+
+  const st = await getGeoPermStateSafe();
+
+  if (st === 'denied'){
+    toast('⚠️ Bạn đã chặn quyền vị trí. Hãy bật lại trong cài đặt trình duyệt.', 'err', 4200);
+    openGeoHelp();
+    return false;
+  }
+
+  // st === 'prompt' hoặc null => gọi để bật popup xin quyền
+  const r = await getGPSOnce();
+
+  // bị chặn ngay lúc popup
+  if (r && r.err){
+    const code = r.err.code;
+    if (code === 1){ // PERMISSION_DENIED
+      toast('⚠️ Bạn đã chặn quyền vị trí. Hãy bật lại trong cài đặt trình duyệt.', 'err', 4200);
+      openGeoHelp();
+      return false;
+    }
+    toast('⚠️ Không lấy được GPS. Hãy bật vị trí/GPS và thử lại.', 'err', 3500);
+    return false;
+  }
+
+  const lat = r?.lat ?? 0;
+  const lng = r?.lng ?? 0;
+
+  if (!lat || lat === 0 || !lng || lng === 0){
+    toast('⚠️ Chưa có vị trí GPS. Hãy bật vị trí rồi thử lại.', 'err', 3500);
+    try{ alert('⚠️ Chưa có vị trí GPS. Hãy bật vị trí/GPS rồi bấm lại "Bật camera".'); }catch{}
+    return false;
+  }
+
+  // lưu lại để các bước khác dùng (nếu cần)
+  window.__myLatLng = { lat, lng };
+  return true;
+}
+
+const CSS_DIGITAL_ZOOM_MAX = 5;
+
+/* ================== CAMERA, ZOOM, TORCH ================== */
+let stream=null, videoTrack=null, torchOn=false;
+let zoomSupported=false, cssZoomFallback=false;
+let zoomMin=1, zoomMax=1, zoomStep=0.1, zoomVal=1;
+
+function stopCam(){
+  if(stream){ try{ stream.getTracks().forEach(t=>t.stop()); }catch{} }
+  stream=null; videoTrack=null;
+  if (video) video.srcObject=null;
+}
+
+async function startCam(){
+  try{
+    stopCam();
+    stage && stage.classList.remove('ready');
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Trình duyệt không hỗ trợ camera');
+    }
+
+    const base = {
+      video: {
+        width:  { ideal: 1080 },
+        height: { ideal: 1920 },
+        facingMode: { ideal: 'environment' }
+      },
+      audio: false
+    };
+
+    try{
+      stream = await navigator.mediaDevices.getUserMedia(base);
+    }catch(e){
+      if (e.name === 'NotAllowedError') {
+        throw new Error('Bạn đã chặn quyền camera. Vào Cài đặt trình duyệt để bật lại.');
+      }
+      if (e.name === 'NotFoundError') {
+        throw new Error('Không tìm thấy thiết bị camera.');
+      }
+      if (String(e.message || '').includes('Device in use')) {
+        toast('Camera đang bận — thử lại...', 'info', 2000);
+        await new Promise(r => setTimeout(r, 1000));
+        stream = await navigator.mediaDevices.getUserMedia(base);
+      } else {
+        throw e;
+      }
+    }
+
+    if (video) {
+      video.srcObject = stream;
+      video.setAttribute('playsinline','');
+      video.muted = true;
+
+      // Đợi metadata
+      await new Promise(r => { video.onloadedmetadata = r; });
+
+      // BẮT BUỘC phải play() cho mobile
+      try {
+        await video.play();
+      } catch (err) {
+        console.warn('Không play được video:', err);
+      }
+    }
+
+    videoTrack = stream.getVideoTracks()[0] || null;
+
+    stage && stage.classList.add('ready');
+
+    if (btnShot) btnShot.disabled = false;
+    await initZoom();
+
+    // 👇 luôn dùng mức zoom nhỏ nhất
+    await setZoom(zoomMin);
+    await tryApplyTorch(false);
+
+    toast('Đã bật camera. GPS và vị trí gần sẽ lấy khi bấm chụp.','ok');
+
+    // Không gọi Sheet/GPS khi mở camera để trang nhẹ hơn.
+    // GPS chỉ lấy khi bấm chụp ảnh.
+
+  }catch(e){
+    console.error(e);
+    if (btnShot) btnShot.disabled = true;
+    stage && stage.classList.remove('ready');
+    toast('Lỗi camera: ' + (e.message || e), 'err', 4200);
+  }
+}
+
+function renderCssZoom(){
+  if (!video) return;
+  video.style.transformOrigin = 'center center';
+  video.style.transform = `scale(${zoomVal})`;
+}
+
+async function initZoom(){
+  zoomSupported = false;
+  cssZoomFallback = false;
+  zoomMin = 1;
+  zoomMax = 1;
+  zoomStep = 0.1;
+  zoomVal = 1;
+
+  try{
+    const caps = videoTrack?.getCapabilities?.() || {};
+    const hasZoom = caps && typeof caps.zoom === 'object';
+
+    if (hasZoom && typeof caps.zoom.min === 'number'){
+      zoomSupported = true;
+      zoomMin  = caps.zoom.min;
+      zoomMax  = caps.zoom.max || caps.zoom.min;
+      zoomStep = caps.zoom.step || 0.1;
+      zoomVal  = zoomMin;
+      await videoTrack.applyConstraints({ advanced: [{ zoom: zoomVal }] });
+    } else {
+      cssZoomFallback = true;
+      zoomMin  = 1;
+      zoomMax  = CSS_DIGITAL_ZOOM_MAX;
+      zoomStep = 0.2;
+      zoomVal  = 1;
+      renderCssZoom();
+    }
+  } catch {
+    cssZoomFallback = true;
+    zoomMin  = 1;
+    zoomMax  = CSS_DIGITAL_ZOOM_MAX;
+    zoomStep = 0.2;
+    zoomVal  = 1;
+    renderCssZoom();
+  }
+
+  if (btnZoomIn)  btnZoomIn.disabled  = (zoomVal >= zoomMax);
+  if (btnZoomOut) btnZoomOut.disabled = (zoomVal <= zoomMin);
+}
+
+async function setZoom(next){
+  next = Number(next) || 1;
+  next = Math.max(zoomMin, Math.min(zoomMax, next));
+  if (Math.abs(next - zoomVal) < 1e-3) return;
+  zoomVal = next;
+
+  try{
+    if (zoomSupported){
+      await videoTrack.applyConstraints({ advanced: [{ zoom: zoomVal }] });
+    } else if (cssZoomFallback){
+      renderCssZoom();
+    }
+  } catch (e){
+    cssZoomFallback = true;
+    zoomSupported = false;
+    renderCssZoom();
+  }
+
+  if (btnZoomOut) btnZoomOut.disabled = zoomVal <= (zoomMin + 1e-6);
+  if (btnZoomIn)  btnZoomIn.disabled  = zoomVal >= (zoomMax - 1e-6);
+}
+
+btnZoomIn  && (btnZoomIn.onclick  = ()=> setZoom((zoomVal + zoomStep).toFixed(2)));
+btnZoomOut && (btnZoomOut.onclick = ()=> setZoom((zoomVal - zoomStep).toFixed(2)));
+
+async function tryApplyTorch(turnOn){
+  try{
+    if(!videoTrack) return false;
+    const capabilities = videoTrack.getCapabilities?.() || {};
+    if(!('torch' in capabilities)) { if (btnTorch) btnTorch.disabled=true; return false; }
+    await videoTrack.applyConstraints({ advanced: [{ torch: !!turnOn }] });
+    torchOn = !!turnOn;
+    btnTorch && btnTorch.classList.toggle('btn-on', torchOn);
+    return true;
+  }catch{
+    if (btnTorch) btnTorch.disabled=true;
+    return false;
+  }
+}
+
+btnTorch && (btnTorch.onclick = async ()=>{
+  const ok = await tryApplyTorch(!torchOn);
+  if(!ok) toast('Thiết bị không hỗ trợ đèn', 'err');
+});
+
+/* ================== CANVAS ================== */
+function drawToCanvas(){
+  if (!video || !canvas) return;
+  const fw = video.videoWidth, fh = video.videoHeight;
+  if(!fw || !fh) return;
+  const desired = TARGET_W / TARGET_H;
+  const ar = fw / fh;
+  let sx=0, sy=0, sw=fw, sh=fh;
+  if (ar > desired){ sw = fh * desired; sx = (fw - sw) / 2; }
+  else { sh = fw / desired; sy = (fh - sh) / 2; }
+  if (cssZoomFallback && zoomVal > 1){
+    const cx = sx + sw/2, cy = sy + sh/2, z = zoomVal;
+    const newSw = sw / z, newSh = sh / z;
+    sx = cx - newSw/2; sy = cy - newSh/2; sw = newSw; sh = newSh;
+  }
+  canvas.width = TARGET_W; canvas.height = TARGET_H;
+  canvas.getContext('2d').drawImage(video, sx, sy, sw, sh, 0, 0, TARGET_W, TARGET_H);
+}
+
+/* ================== EVENTS ================== */
+btnStart && (btnStart.onclick = startCam);
+
+let shooting = false;
+
+btnShot && (btnShot.onclick = async ()=>{
+  if(!stream || shooting){
+    toast('Đang xử lý...', 'info');
+    return;
+  }
+
+  shooting = true;
+  btnShot.disabled = true;
+
+  try{
+    await ensureAudioCtx();
+    await playShutter();
+    drawToCanvas();
+
+    toast('Đang lấy vị trí GPS...', 'info', 1800);
+    const gps = await getGPSOnce(10000);
+
+    if (gps && gps.err){
+      if (gps.err.code === 1){
+        toast('⚠️ Bạn đã chặn quyền vị trí. Hãy bật lại GPS.', 'err', 4200);
+        openGeoHelp();
+        return;
+      }
+
+      toast('⚠️ Không lấy được GPS. Hãy bật vị trí rồi chụp lại.', 'err', 3500);
+      return;
+    }
+
+    const lat = gps?.lat ?? 0;
+    const lng = gps?.lng ?? 0;
+
+    if (!lat || lat === 0 || !lng || lng === 0){
+      toast('⚠️ Chưa có vị trí. Hãy bật GPS rồi chụp lại.', 'err', 3500);
+      try{ alert('⚠️ Chưa có vị trí. Hãy bật GPS/vị trí rồi chụp lại.'); }catch{}
+      return; // THOÁT, KHÔNG ĐI TIẾP
+    }
+
+    // Lấy TẤT CẢ vị trí check-in đã lưu trong bán kính 50m.
+    // Kết quả được lưu vào sessionStorage để checkin_khach_hang.html hiển thị.
+    await prepareNearbyLocations(lat, lng);
+
+    const mime = 'image/jpeg';
+    const dataUrl = canvas.toDataURL(mime, 0.85);
+
+    const payload = {
+      image_mime: mime,
+      image_b64: (dataUrl.split(',')[1] || ''),
+      ma_nv: MA_NV,
+      ten_nv: TEN_NV,
+      ma_kh: MA_KH || '',
+      ma_hd: MA_HD || ''
+    };
+
+    sessionStorage.setItem(SESSION_IMG_KEY, JSON.stringify(payload));
+
+    const targetUrl = new URL('/checkin_khach_hang.html', location.origin);
+
+    targetUrl.searchParams.set('lat', String(lat));
+    targetUrl.searchParams.set('lng', String(lng));
+    targetUrl.searchParams.set('lag', String(lat)); // giữ nguyên theo bạn
+    targetUrl.searchParams.set('nearby', '1');
+    targetUrl.searchParams.set('radius', String(NEAR_RADIUS_M));
+    targetUrl.searchParams.set('ma_nv', MA_NV);
+    targetUrl.searchParams.set('ten_nv', TEN_NV);
+
+    if (MA_KH) targetUrl.searchParams.set('ma_kh', MA_KH);
+    if (MA_HD) targetUrl.searchParams.set('ma_hd', MA_HD);
+
+targetUrl.searchParams.set('img', 'session');
+
+/*
+  Mỗi lần chụp ảnh mới từ app_checkin,
+  tạo shot_id mới để trang checkin_khach_hang biết đây là lượt chụp mới.
+*/
+const shotId = String(Date.now());
+targetUrl.searchParams.set('shot_id', shotId);
+sessionStorage.setItem('CHECKIN_CURRENT_SHOT_ID', shotId);
+
+/*
+  Xóa toàn bộ khóa tạm của nút Mã KH trên chính trình duyệt/tab hiện tại.
+  Khi mở checkin_khach_hang.html:
+  - Các nút Mã KH sẽ hiện lại bình thường.
+  - Chỉ những KH đã check-in cùng ngày theo dữ liệu thật mới bị mờ.
+*/
+sessionStorage.removeItem('CLICKED_CHECKIN_BROWSER_V1');
+sessionStorage.removeItem('CHECKIN_BROWSER_DONE_V1');
+
+location.assign(targetUrl.toString());
+
+  } catch (err) {
+    console.error(err);
+    toast('Lỗi khi chuẩn bị dữ liệu: ' + (err.message || err), 'err', 4000);
+  } finally {
+    setTimeout(()=>{
+      shooting = false;
+      btnShot.disabled = !stream;
+    }, 800);
+  }
+});
+
+/* Nút Menu → về main.html */
+btnMenu && (btnMenu.onclick = ()=>{
+  location.assign('main.html');
+});
+
+/* ================== AUTO BOOT ================== */
+
+// helper: đảm bảo stage + UI hiện ra (kể cả khi chưa bật cam)
+function showStage(){
+  if (stage && !stage.classList.contains('ready')) {
+    stage.classList.add('ready');
+  }
+}
+
+async function getPermState(name){
+  try{
+    if (!navigator.permissions?.query) return null;
+    const p = await navigator.permissions.query({ name });
+    return p.state;
+  }catch{
+    return null;
+  }
+}
+
+// Nếu trình duyệt đã lưu quyền camera thì tự mở camera.
+// Không kiểm tra GPS ở đây. GPS chỉ lấy khi bấm chụp ảnh.
+(async () => {
+  showStage();
+  if (btnShot) btnShot.disabled = true;
+
+  const camState = await getPermState('camera');
+
+  if (camState === 'granted') {
+    toast('Đang mở camera...', 'info', 1200);
+    await startCam();
+    return;
+  }
+
+  toast('Bấm nút "Cam" để mở camera.', 'info', 2200);
+})();
+
+/* Khi tab ẩn/hiện lại */
+document.addEventListener('visibilitychange', () => { 
+  if (document.hidden) {
+    // Ẩn tab → tắt camera cho nhẹ máy
+    stopCam();
+  } else {
+    showStage();
+    if (!stream) {
+      if (btnShot) btnShot.disabled = true;
+      toast('Bấm nút "Cam" để mở lại camera. GPS sẽ lấy khi chụp.', 'info', 2600);
+    }
+  }
+});
   </script>
 </body>
 </html>
