@@ -376,3 +376,67 @@ td:first-child input[type="checkbox"] {
 }
 .slide-banner.ok{ background:#10b981; }
 .slide-banner.show{ top:0; }
+
+/* =========================================================
+   FONT + ĐỘ HIỂN THỊ GIỐNG GIAO DIỆN MẪU
+   Chỉ chỉnh phần hiển thị, không thay đổi logic/bố cục chức năng
+   ========================================================= */
+html,
+body,
+input,
+button,
+select,
+textarea,
+table,
+th,
+td {
+  font-family: Arial, "Segoe UI", sans-serif !important;
+}
+
+html,
+body {
+  font-size: 14px !important;
+  font-weight: 400;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+table {
+  font-size: 14px !important;
+}
+
+thead th {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
+tbody td {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+}
+
+input,
+select,
+textarea {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+}
+
+button {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+.badge,
+.inline-label,
+#pgInfo {
+  font-family: Arial, "Segoe UI", sans-serif !important;
+}
+
+#scan {
+  font-family: Arial, "Segoe UI", sans-serif !important;
+}
