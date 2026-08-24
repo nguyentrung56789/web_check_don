@@ -4399,14 +4399,20 @@ function continueToCheckin(
 
 
 
-btnContinueNoCustomer.onclick =
-  () => {
+btnContinueNoCustomer.onclick = () => {
 
-    continueToCheckin(
-      null
-    );
+  // Đóng popup khách xung quanh
+  closeNearby();
 
-  };
+  // Không chuyển sang checkin_khach_hang.html
+  // Giữ nguyên ảnh + GPS đã chụp để tiếp tục gửi vị trí
+  toast(
+    'Không chọn khách hàng',
+    'info',
+    1500
+  );
+
+};
 
 
 
