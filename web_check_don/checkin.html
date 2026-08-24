@@ -145,29 +145,6 @@ canvas{
 }
 
 /* =====================================================
-   CHỌN BÁN KÍNH
-===================================================== */
-
-.radius-wrap{
-  display:flex;
-  border:1px solid rgba(255,255,255,.25);
-  border-radius:11px;
-  overflow:hidden;
-}
-
-.radius-btn{
-  border-radius:0;
-  min-width:48px;
-  background:#374151;
-  color:#fff;
-}
-
-.radius-btn.active{
-  background:#10b981;
-  color:#052e1d;
-}
-
-/* =====================================================
    TOAST
 ===================================================== */
 
@@ -499,9 +476,6 @@ canvas{
     height:39px;
   }
 
-  .radius-btn{
-    min-width:43px;
-  }
 }
 
 </style>
@@ -540,29 +514,6 @@ canvas{
     >
       Cam
     </button>
-
-
-    <!-- MẶC ĐỊNH 50M -->
-
-    <div class="radius-wrap">
-
-      <button
-        id="btnRadius20"
-        class="btn radius-btn"
-        type="button"
-      >
-        20m
-      </button>
-
-      <button
-        id="btnRadius50"
-        class="btn radius-btn active"
-        type="button"
-      >
-        50m
-      </button>
-
-    </div>
 
 
     <button
@@ -823,12 +774,6 @@ const btnZoomOut =
 
 const btnMenu =
   $('btnMenu');
-
-const btnRadius20 =
-  $('btnRadius20');
-
-const btnRadius50 =
-  $('btnRadius50');
 
 const toastEl =
   $('toast');
@@ -1202,116 +1147,31 @@ function toast(
 
 
 /* =========================================================
-   RADIUS 20 / 50
-
-   MẶC ĐỊNH 50
+   BÁN KÍNH CỐ ĐỊNH 50M
 ========================================================= */
 
-function renderRadius(){
+NEAR_RADIUS_M = 50;
 
-  btnRadius20
-    ?.classList
-    .toggle(
-      'active',
-      NEAR_RADIUS_M === 20
-    );
+if(tagInfo){
 
+  tagInfo.textContent =
+    [
 
-  btnRadius50
-    ?.classList
-    .toggle(
-      'active',
-      NEAR_RADIUS_M === 50
-    );
+      MA_NV &&
+        `NV:${MA_NV}`,
 
+      MA_KH &&
+        `KH:${MA_KH}`,
 
-  if(tagInfo){
+      MA_HD &&
+        `HD:${MA_HD}`,
 
-    tagInfo.textContent =
-      [
+      '📍50m'
 
-        MA_NV &&
-          `NV:${MA_NV}`,
-
-        MA_KH &&
-          `KH:${MA_KH}`,
-
-        MA_HD &&
-          `HD:${MA_HD}`,
-
-        `📍${NEAR_RADIUS_M}m`
-
-      ]
-      .filter(Boolean)
-      .join(' · ');
-  }
-
+    ]
+    .filter(Boolean)
+    .join(' · ');
 }
-
-
-
-function setRadius(meters){
-
-  if(
-    meters !== 20 &&
-    meters !== 50
-  ){
-
-    meters = 50;
-  }
-
-
-  NEAR_RADIUS_M =
-    meters;
-
-
-  renderRadius();
-
-
-  toast(
-    `Bán kính tìm khách: ${meters}m`,
-    'ok',
-    1400
-  );
-
-
-  /*
-    Nếu đã chụp và đang có GPS
-    thì đổi bán kính sẽ tính lại ngay.
-  */
-
-  if(
-    LAST_GPS &&
-    nearbyWrap.classList.contains(
-      'open'
-    )
-  ){
-
-    renderNearbyFromLoadedPoints();
-
-  }
-
-}
-
-
-btnRadius20
-  ?.addEventListener(
-    'click',
-    () =>
-      setRadius(20)
-  );
-
-
-btnRadius50
-  ?.addEventListener(
-    'click',
-    () =>
-      setRadius(50)
-  );
-
-
-renderRadius();
-
 
 
 /* =========================================================
@@ -4640,7 +4500,14 @@ async function sendSelectedCustomerWithImage(customer){
       null,
 
     selected_customer:
-      true
+      true,
+
+    /*
+      Loại vị trí:
+      chọn khách có sẵn trong table.
+    */
+    loaivitri:
+      'vitricosan'
 
   };
 
@@ -4727,7 +4594,10 @@ async function sendSelectedCustomerWithImage(customer){
                   payload.lng,
 
                 selected_customer:
-                  true
+                  true,
+
+                loaivitri:
+                  'vitricosan'
               },
               '*'
             );
@@ -4901,7 +4771,14 @@ async function sendImageWithGPSNow(){
       ),
 
     selected_customer:
-      false
+      false,
+
+    /*
+      Loại vị trí:
+      gửi trực tiếp GPS điện thoại.
+    */
+    loaivitri:
+      'guitructiep'
 
   };
 
@@ -4989,7 +4866,10 @@ async function sendImageWithGPSNow(){
                   payload.lng,
 
                 selected_customer:
-                  false
+                  false,
+
+                loaivitri:
+                  'guitructiep'
               },
               '*'
             );
