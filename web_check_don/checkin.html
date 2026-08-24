@@ -445,8 +445,18 @@ canvas{
   padding:0 12px 12px;
 
   display:flex;
+  flex-wrap:wrap;
 
   gap:8px;
+}
+
+.btn-send-location{
+  flex-basis:100% !important;
+  order:-1;
+  background:#10b981;
+  color:#052e1d;
+  font-size:15px;
+  padding:13px 12px !important;
 }
 
 .nearby-actions .btn{
@@ -686,6 +696,14 @@ canvas{
     <div class="nearby-actions">
 
       <button
+        id="btnSendImageWithGPS"
+        class="btn btn-send-location"
+        type="button"
+      >
+        📍 Gửi vị trí kèm ảnh
+      </button>
+
+      <button
         id="btnScanAgain"
         class="btn btn-blue"
         type="button"
@@ -749,6 +767,10 @@ const TARGET_H = 1600;
 
 const TABLE_CUSTOMER =
   'nv_checkin_khach_hang';
+
+/* Webhook giống checkin.js gốc */
+const WEBHOOK_URL =
+  'https://dhsybbqoe.datadex.vn/webhook/hoadon';
 
 
 /*
@@ -843,6 +865,9 @@ const btnScanAgain =
 
 const btnContinueNoCustomer =
   $('btnContinueNoCustomer');
+
+const btnSendImageWithGPS =
+  $('btnSendImageWithGPS');
 
 
 if(video){
@@ -4397,6 +4422,106 @@ function continueToCheckin(
 
 }
 
+
+
+/* =========================================================
+   GỬI ẢNH + VỊ TRÍ
+   HÀNH ĐỘNG GIỐNG sendPayload(true) TRONG checkin.js GỐC
+========================================================= */
+
+let sendingImageWithGPS = false;
+
+async function sendImageWithGPSNow(){
+
+  if(sendingImageWithGPS){
+    toast('Đang gửi...','info',1500);
+    return;
+  }
+
+  if(!LAST_GPS){
+    toast('Chưa có vị trí GPS','err',2200);
+    return;
+  }
+
+  let saved = null;
+  try{
+    saved = JSON.parse(sessionStorage.getItem(SESSION_IMG_KEY) || 'null');
+  }catch{}
+
+  if(!saved || !saved.image_b64){
+    toast('Chưa có ảnh để gửi','err',2200);
+    return;
+  }
+
+  sendingImageWithGPS = true;
+
+  if(btnSendImageWithGPS){
+    btnSendImageWithGPS.disabled = true;
+    btnSendImageWithGPS.textContent = '⏳ Đang gửi...';
+  }
+
+  try{
+    const payload = {
+      action:'giaohangthanhcong',
+      ma_kh:saved.ma_kh || MA_KH || '',
+      ma_hd:saved.ma_hd || MA_HD || '',
+      image_mime:saved.image_mime || 'image/jpeg',
+      image_b64:saved.image_b64,
+      ts:new Date().toISOString(),
+      source:'browser-checkin',
+      ma_nv:saved.ma_nv || MA_NV || '',
+      ten_nv:saved.ten_nv || TEN_NV || '',
+      lat:Number(LAST_GPS.lat),
+      lng:Number(LAST_GPS.lng),
+      acc:Number(LAST_GPS.acc || 0)
+    };
+
+    const res = await fetch(WEBHOOK_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+
+    if(!res.ok){
+      let detail='';
+      try{ detail=await res.text(); }catch{}
+      throw new Error(`HTTP ${res.status}${detail ? ' - '+detail : ''}`);
+    }
+
+    toast('✅ Gửi thành công (kèm vị trí)','ok',1600);
+    closeNearby();
+    try{ sessionStorage.removeItem(SESSION_IMG_KEY); }catch{}
+    try{ stopCam(); }catch{}
+
+    setTimeout(()=>{
+      try{ window.close(); }catch{}
+      try{
+        if(window.parent && window.parent !== window){
+          window.parent.postMessage({
+            type:'CHECKIN_GIAO_HANG_THANH_CONG',
+            ma_kh:payload.ma_kh,
+            ma_hd:payload.ma_hd,
+            lat:payload.lat,
+            lng:payload.lng
+          },'*');
+        }
+        if(history.length > 1) history.back();
+      }catch{}
+    },900);
+
+  }catch(error){
+    console.error('[CHECKIN] Gửi vị trí + ảnh lỗi:',error);
+    toast('Gửi thất bại: '+(error.message || error),'err',3500);
+  }finally{
+    sendingImageWithGPS = false;
+    if(btnSendImageWithGPS){
+      btnSendImageWithGPS.disabled = false;
+      btnSendImageWithGPS.textContent = '📍 Gửi vị trí kèm ảnh';
+    }
+  }
+}
+
+btnSendImageWithGPS && (btnSendImageWithGPS.onclick = sendImageWithGPSNow);
 
 
 btnContinueNoCustomer.onclick = () => {
