@@ -642,7 +642,7 @@ canvas{
         type="button"
         style="flex-basis:100%;padding:13px 12px;font-size:15px"
       >
-        📍 Gửi vị trí hiện tại
+        📍 Gửi vị trí kèm ảnh
       </button>
 
       <button
@@ -4503,6 +4503,12 @@ async function sendSelectedCustomerWithImage(customer){
       true,
 
     /*
+      ID đúng dòng khách trong table nv_checkin_khach_hang
+    */
+    id_checkin_khach_hang:
+      customer.id ?? null,
+
+    /*
       Loại vị trí:
       chọn khách có sẵn trong table.
     */
@@ -4595,6 +4601,9 @@ async function sendSelectedCustomerWithImage(customer){
 
                 selected_customer:
                   true,
+
+                id_checkin_khach_hang:
+                  customer.id ?? null,
 
                 loaivitri:
                   'vitricosan'
@@ -4774,6 +4783,12 @@ async function sendImageWithGPSNow(){
       false,
 
     /*
+      Gửi vị trí trực tiếp không chọn dòng khách có sẵn
+    */
+    id_checkin_khach_hang:
+      null,
+
+    /*
       Loại vị trí:
       gửi trực tiếp GPS điện thoại.
     */
@@ -4867,6 +4882,9 @@ async function sendImageWithGPSNow(){
 
                 selected_customer:
                   false,
+
+                id_checkin_khach_hang:
+                  null,
 
                 loaivitri:
                   'guitructiep'
