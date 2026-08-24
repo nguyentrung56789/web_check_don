@@ -2,45 +2,71 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8" />
+
 <meta
   name="viewport"
   content="width=device-width,initial-scale=1,viewport-fit=cover"
 />
+
 <meta name="theme-color" content="#111" />
 
 <title>Check-in giao thành công</title>
 
+
 <!-- =====================================================
-     CẤU HÌNH + SUPABASE
+     CẤU HÌNH HỆ THỐNG
 ===================================================== -->
+
 <script src="./js/internal_key.js"></script>
 <script src="./js/cod_config.js"></script>
+
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
-<!-- CSS cũ -->
-<link rel="stylesheet" href="./css/checkin.css" />
+
+<!-- =====================================================
+     CSS CŨ
+===================================================== -->
+
+<link
+  rel="stylesheet"
+  href="./css/checkin.css"
+/>
+
 
 <style>
+
 /* =====================================================
-   KHÁCH HÀNG XUNG QUANH
+   DANH SÁCH VỊ TRÍ XUNG QUANH
 ===================================================== */
 
 #nearbyOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.45);
-  z-index: 99998;
+
+  background: rgba(0,0,0,.48);
+
+  z-index: 999999;
+
   display: none;
 }
 
+
+#nearbyOverlay.open {
+  display: block;
+}
+
+
 #nearbySheet {
   position: fixed;
+
   left: 50%;
   bottom: 0;
+
   transform: translate(-50%, 100%);
 
   width: 100%;
   max-width: 520px;
+
   max-height: 72vh;
 
   background: #fff;
@@ -48,9 +74,7 @@
   border-radius: 18px 18px 0 0;
 
   box-shadow:
-    0 -10px 30px rgba(0,0,0,.24);
-
-  z-index: 99999;
+    0 -12px 35px rgba(0,0,0,.28);
 
   display: flex;
   flex-direction: column;
@@ -58,97 +82,133 @@
   transition: transform .25s ease;
 
   padding-bottom:
-    env(safe-area-inset-bottom, 0);
+    env(safe-area-inset-bottom,0);
 }
 
-#nearbyOverlay.open {
-  display: block;
-}
 
 #nearbyOverlay.open #nearbySheet {
-  transform: translate(-50%, 0);
+  transform: translate(-50%,0);
 }
+
 
 .nearby-grip {
   width: 42px;
   height: 5px;
 
-  border-radius: 999px;
-
   background: #d1d5db;
 
-  margin: 8px auto 5px;
+  border-radius: 999px;
+
+  margin: 9px auto 3px;
 }
 
+
 .nearby-header {
-  padding: 8px 14px 10px;
+  padding: 7px 14px 10px;
 
   border-bottom: 1px solid #e5e7eb;
 }
 
-.nearby-title-row {
+
+.nearby-head-row {
   display: flex;
-  align-items: center;
+
   justify-content: space-between;
-  gap: 8px;
+  align-items: center;
+
+  gap: 10px;
 }
 
+
 .nearby-title {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 800;
+
   color: #111827;
 }
 
-.nearby-close {
-  width: 36px;
-  height: 36px;
+
+#btnCloseNearby {
+  width: 38px;
+  height: 38px;
 
   border: 0;
+
   border-radius: 10px;
 
   background: #f3f4f6;
 
-  font-size: 18px;
   cursor: pointer;
+
+  font-size: 19px;
 }
 
-.nearby-gps {
-  margin-top: 5px;
 
-  font-size: 13px;
+#nearbyStatus {
+  margin-top: 4px;
+
+  font-size: 12px;
+
   color: #64748b;
 }
 
+
 #nearbyList {
-  overflow: auto;
-  padding: 10px 12px 15px;
+  padding: 10px 12px 18px;
+
+  overflow-y: auto;
+
+  -webkit-overflow-scrolling: touch;
 }
 
+
+.nearby-loading,
+.nearby-empty {
+
+  padding: 30px 15px;
+
+  text-align: center;
+
+  color: #64748b;
+}
+
+
+.nearby-loading {
+  font-weight: 700;
+}
+
+
 .nearby-item {
+
   width: 100%;
 
   display: block;
 
-  text-align: left;
+  border: 1px solid #dbe1e8;
 
-  padding: 12px;
+  background: #fff;
+
+  border-radius: 13px;
 
   margin-bottom: 9px;
 
-  border: 1px solid #dbe2ea;
-  border-radius: 13px;
+  padding: 12px;
 
-  background: #fff;
+  text-align: left;
 
   cursor: pointer;
 }
 
+
 .nearby-item:active {
-  background: #f0fdf4;
+  background: #ecfdf5;
 }
 
+
 .nearby-name {
+
   font-size: 16px;
+
   font-weight: 800;
 
   color: #111827;
@@ -156,21 +216,26 @@
   margin-bottom: 5px;
 }
 
+
 .nearby-address,
 .nearby-phone {
+
   font-size: 14px;
 
   color: #475569;
 
-  line-height: 1.4;
+  line-height: 1.45;
 
   margin-top: 2px;
 }
 
-.nearby-bottom {
+
+.nearby-footer {
+
   display: flex;
 
   align-items: center;
+
   justify-content: space-between;
 
   gap: 8px;
@@ -178,36 +243,24 @@
   margin-top: 8px;
 }
 
+
 .nearby-distance {
+
   font-size: 14px;
+
   font-weight: 800;
 
   color: #15803d;
 }
 
+
 .nearby-select {
+
   font-size: 13px;
+
   font-weight: 700;
 
   color: #2563eb;
-}
-
-.nearby-empty {
-  padding: 30px 15px;
-
-  text-align: center;
-
-  color: #64748b;
-}
-
-.nearby-loading {
-  padding: 30px 15px;
-
-  text-align: center;
-
-  color: #475569;
-
-  font-weight: 700;
 }
 
 
@@ -216,19 +269,20 @@
 ===================================================== */
 
 #selectedCustomer {
-  display: none;
 
   position: fixed;
 
   left: 50%;
-  bottom: 82px;
+
+  bottom: 80px;
 
   transform: translateX(-50%);
 
   width: calc(100% - 20px);
+
   max-width: 500px;
 
-  z-index: 9000;
+  padding: 10px 12px;
 
   background: #ecfdf5;
 
@@ -236,68 +290,112 @@
 
   border-radius: 12px;
 
-  padding: 9px 11px;
-
   box-shadow:
-    0 5px 18px rgba(0,0,0,.12);
+    0 6px 20px rgba(0,0,0,.15);
 
-  font-size: 13px;
+  z-index: 99990;
+
+  display: none;
 }
 
-#selectedCustomer strong {
-  display: block;
+
+#selectedCustomerName {
 
   font-size: 14px;
+
+  font-weight: 800;
 
   color: #166534;
 }
 
-#selectedCustomer .selected-sub {
+
+#selectedCustomerInfo {
+
   margin-top: 3px;
+
+  font-size: 12px;
 
   color: #475569;
 }
 
 
 /* =====================================================
-   TOAST PHỤ
+   TOAST
 ===================================================== */
 
 #nearbyToast {
+
   position: fixed;
 
+  top: 18px;
+
   left: 50%;
-  top: 20px;
 
   transform: translateX(-50%);
-
-  z-index: 100001;
 
   max-width: calc(100% - 30px);
 
   padding: 10px 14px;
 
-  background: #111827;
-
-  color: white;
-
   border-radius: 10px;
 
+  background: #111827;
+
+  color: #fff;
+
   font-size: 14px;
+
+  z-index: 1000000;
 
   display: none;
 
   box-shadow:
-    0 8px 22px rgba(0,0,0,.25);
+    0 8px 25px rgba(0,0,0,.28);
 }
+
+
+/* =====================================================
+   NÚT THỬ LẠI
+===================================================== */
+
+.retry-nearby {
+
+  width: 100%;
+
+  margin-top: 14px;
+
+  padding: 11px 14px;
+
+  border: 0;
+
+  border-radius: 10px;
+
+  background: #2563eb;
+
+  color: #fff;
+
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
 </style>
 
-<!-- JS check-in hiện tại -->
-<script defer src="./js/checkin.js"></script>
+
+<!-- =====================================================
+     JS CHECKIN CŨ
+===================================================== -->
+
+<script
+  defer
+  src="./js/checkin.js"
+></script>
 
 </head>
 
+
 <body>
+
 
 <!-- =====================================================
      CAMERA
@@ -312,6 +410,7 @@
     muted
   ></video>
 
+
   <canvas
     id="canvas"
     style="display:none"
@@ -320,7 +419,10 @@
 </div>
 
 
-<!-- Ẩn khung thông tin cũ -->
+<!-- =====================================================
+     THÔNG TIN CŨ
+===================================================== -->
+
 <div
   class="tag"
   id="infoTag"
@@ -329,7 +431,7 @@
 
 
 <!-- =====================================================
-     THANH NÚT
+     THANH ĐIỀU KHIỂN
 ===================================================== -->
 
 <div class="bar">
@@ -363,8 +465,6 @@
   </button>
 
 
-  <!-- Zoom -->
-
   <button
     id="btnZoomOut"
     class="btn"
@@ -396,24 +496,23 @@
 </div>
 
 
+
 <!-- =====================================================
-     KHÁCH ĐANG ĐƯỢC CHỌN
+     KHÁCH ĐÃ CHỌN
 ===================================================== -->
 
 <div id="selectedCustomer">
 
-  <strong id="selectedCustomerName"></strong>
+  <div id="selectedCustomerName"></div>
 
-  <div
-    id="selectedCustomerSub"
-    class="selected-sub"
-  ></div>
+  <div id="selectedCustomerInfo"></div>
 
 </div>
 
 
+
 <!-- =====================================================
-     SHEET CŨ: HỎI GỬI GPS
+     SHEET CŨ: GỬI VỊ TRÍ
 ===================================================== -->
 
 <div
@@ -428,11 +527,12 @@
     Gửi kèm vị trí?
   </h3>
 
+
   <p>
     Bạn có muốn đính kèm toạ độ GPS
-    (nếu cấp quyền)
     khi gửi ảnh xác nhận giao hàng thành công?
   </p>
+
 
   <div class="row">
 
@@ -443,6 +543,7 @@
     >
       Gửi kèm vị trí
     </button>
+
 
     <button
       id="btnSendNoGPS"
@@ -457,8 +558,9 @@
 </div>
 
 
+
 <!-- =====================================================
-     SHEET KHÁCH HÀNG TRONG 50M
+     DANH SÁCH KHÁCH TRONG 50M
 ===================================================== -->
 
 <div id="nearbyOverlay">
@@ -467,35 +569,37 @@
 
     <div class="nearby-grip"></div>
 
+
     <div class="nearby-header">
 
-      <div class="nearby-title-row">
+      <div class="nearby-head-row">
 
         <div class="nearby-title">
           📍 Vị trí xung quanh
         </div>
 
+
         <button
           id="btnCloseNearby"
-          class="nearby-close"
           type="button"
         >
-          ✕
+          ×
         </button>
 
       </div>
 
-      <div
-        id="nearbyGpsInfo"
-        class="nearby-gps"
-      ></div>
+
+      <div id="nearbyStatus">
+        Đang xác định vị trí...
+      </div>
 
     </div>
+
 
     <div id="nearbyList">
 
       <div class="nearby-loading">
-        Đang lấy vị trí...
+        📍 Đang lấy GPS...
       </div>
 
     </div>
@@ -503,6 +607,7 @@
   </div>
 
 </div>
+
 
 
 <div id="toast"></div>
@@ -524,10 +629,14 @@
 ></audio>
 
 
+
 <script>
+
 /* =========================================================
-   QUÉT KHÁCH HÀNG XUNG QUANH 50M
-   TABLE: nv_checkin_khach_hang
+   KHÁCH HÀNG XUNG QUANH 50M
+
+   TABLE:
+   nv_checkin_khach_hang
 ========================================================= */
 
 (function () {
@@ -539,20 +648,28 @@
      CẤU HÌNH
   ===================================================== */
 
-  const CUSTOMER_TABLE =
+  const TABLE_CUSTOMER =
     'nv_checkin_khach_hang';
+
 
   const RADIUS_METERS =
     50;
 
 
-  let nearbySupa = null;
+  let nearbySupabase =
+    null;
 
-  let currentGPS = null;
 
-  let selectedNearbyCustomer = null;
+  let currentGPS =
+    null;
 
-  let scanningNearby = false;
+
+  let selectedCustomer =
+    null;
+
+
+  let scanning =
+    false;
 
 
 
@@ -560,47 +677,103 @@
      DOM
   ===================================================== */
 
-  const btnShot =
-    document.getElementById('btnShot');
-
   const nearbyOverlay =
-    document.getElementById('nearbyOverlay');
+    document.getElementById(
+      'nearbyOverlay'
+    );
+
 
   const nearbyList =
-    document.getElementById('nearbyList');
+    document.getElementById(
+      'nearbyList'
+    );
 
-  const nearbyGpsInfo =
-    document.getElementById('nearbyGpsInfo');
+
+  const nearbyStatus =
+    document.getElementById(
+      'nearbyStatus'
+    );
+
 
   const btnCloseNearby =
-    document.getElementById('btnCloseNearby');
+    document.getElementById(
+      'btnCloseNearby'
+    );
+
+
+  const btnShot =
+    document.getElementById(
+      'btnShot'
+    );
+
 
   const selectedBox =
-    document.getElementById('selectedCustomer');
+    document.getElementById(
+      'selectedCustomer'
+    );
+
 
   const selectedName =
-    document.getElementById('selectedCustomerName');
+    document.getElementById(
+      'selectedCustomerName'
+    );
 
-  const selectedSub =
-    document.getElementById('selectedCustomerSub');
+
+  const selectedInfo =
+    document.getElementById(
+      'selectedCustomerInfo'
+    );
 
 
 
   /* =====================================================
-     HELPER
+     STRING
   ===================================================== */
 
-  function clean(value) {
+  function str(value) {
+
+    /*
+      QUAN TRỌNG:
+
+      Không dùng String(object) vì sẽ sinh ra
+      "[object Object]"
+      rồi Supabase hiểu đó là URL.
+
+      Đây chính là kiểu lỗi vừa gặp.
+    */
 
     if (
       value === null ||
       value === undefined
     ) {
+
       return '';
+
     }
 
-    return String(value).trim();
+
+    if (
+      typeof value === 'string'
+    ) {
+
+      return value.trim();
+
+    }
+
+
+    if (
+      typeof value === 'number'
+    ) {
+
+      return String(value).trim();
+
+    }
+
+
+    return '';
+
   }
+
 
 
   function escapeHtml(value) {
@@ -616,15 +789,125 @@
       .replace(/"/g, '&quot;')
 
       .replace(/'/g, '&#039;');
+
   }
 
 
-  function showNearbyToast(message) {
+
+  /* =====================================================
+     TÌM STRING TRONG OBJECT
+  ===================================================== */
+
+  function findString(
+    value,
+    possibleKeys = []
+  ) {
+
+    /*
+      Nếu value đã là string
+    */
+
+    const direct =
+      str(value);
+
+
+    if (direct) {
+
+      return direct;
+
+    }
+
+
+    /*
+      Nếu là object
+    */
+
+    if (
+      value &&
+      typeof value === 'object'
+    ) {
+
+      for (
+        const key of possibleKeys
+      ) {
+
+        const found =
+          str(
+            value[key]
+          );
+
+
+        if (found) {
+
+          return found;
+
+        }
+
+      }
+
+
+      /*
+        Có thể config lồng thêm 1 tầng
+      */
+
+      for (
+        const objectValue
+        of Object.values(value)
+      ) {
+
+        if (
+          objectValue &&
+          typeof objectValue === 'object'
+        ) {
+
+          for (
+            const key of possibleKeys
+          ) {
+
+            const found =
+              str(
+                objectValue[key]
+              );
+
+
+            if (found) {
+
+              return found;
+
+            }
+
+          }
+
+        }
+
+      }
+
+    }
+
+
+    return '';
+
+  }
+
+
+
+  /* =====================================================
+     TOAST
+  ===================================================== */
+
+  function showToast(message) {
 
     const el =
-      document.getElementById('nearbyToast');
+      document.getElementById(
+        'nearbyToast'
+      );
 
-    if (!el) return;
+
+    if (!el) {
+
+      return;
+
+    }
 
 
     el.textContent =
@@ -636,91 +919,281 @@
 
 
     clearTimeout(
-      showNearbyToast._timer
+      showToast.timer
     );
 
 
-    showNearbyToast._timer =
-      setTimeout(() => {
+    showToast.timer =
+      setTimeout(
+        () => {
 
-        el.style.display =
-          'none';
+          el.style.display =
+            'none';
 
-      }, 3000);
+        },
+        3000
+      );
+
   }
 
 
 
   /* =====================================================
-     SUPABASE
+     ĐỌC CONFIG TỪ WINDOW
   ===================================================== */
 
-  function readConfigValue(
-    value,
-    keys = []
+  function readConfigFromWindow(
+    targetWindow
   ) {
 
-    const direct =
-      clean(value);
+    let url = '';
 
-    if (direct) {
-      return direct;
+    let key = '';
+
+
+    if (!targetWindow) {
+
+      return {
+        url,
+        key
+      };
+
     }
 
 
-    if (
-      value &&
-      typeof value === 'object'
-    ) {
+    /* -----------------------------------------
+       getConfig()
+    ----------------------------------------- */
 
-      for (const key of keys) {
+    try {
 
-        if (
-          Object.prototype.hasOwnProperty.call(
-            value,
-            key
-          )
-        ) {
+      if (
+        typeof targetWindow.getConfig ===
+        'function'
+      ) {
 
-          const found =
-            clean(value[key]);
+        const rawUrl =
+          targetWindow.getConfig(
+            'url'
+          );
 
-          if (found) {
-            return found;
-          }
+
+        const rawAnon =
+          targetWindow.getConfig(
+            'anon'
+          );
+
+
+        url =
+          findString(
+            rawUrl,
+            [
+              'url',
+              'value',
+              'SUPABASE_URL',
+              'supabaseUrl',
+              'supabase_url'
+            ]
+          );
+
+
+        key =
+          findString(
+            rawAnon,
+            [
+              'anon',
+              'key',
+              'value',
+              'SUPABASE_ANON',
+              'SUPABASE_ANON_KEY',
+              'supabaseAnon',
+              'supabaseKey',
+              'supabase_anon_key'
+            ]
+          );
+
+      }
+
+    } catch (e) {
+
+      console.warn(
+        '[CHECKIN] getConfig lỗi:',
+        e
+      );
+
+    }
+
+
+
+    /* -----------------------------------------
+       COD_CONFIG
+    ----------------------------------------- */
+
+    try {
+
+      const cfg =
+        targetWindow.COD_CONFIG;
+
+
+      if (
+        cfg &&
+        typeof cfg === 'object'
+      ) {
+
+        if (!url) {
+
+          url =
+            findString(
+              cfg,
+              [
+                'url',
+                'SUPABASE_URL',
+                'supabaseUrl',
+                'supabase_url'
+              ]
+            );
+
+        }
+
+
+        if (!key) {
+
+          key =
+            findString(
+              cfg,
+              [
+                'key',
+                'anon',
+                'SUPABASE_ANON',
+                'SUPABASE_ANON_KEY',
+                'supabaseAnon',
+                'supabaseKey',
+                'supabase_anon_key'
+              ]
+            );
 
         }
 
       }
 
+    } catch (e) {
+
+      console.warn(
+        '[CHECKIN] COD_CONFIG lỗi:',
+        e
+      );
+
     }
 
 
-    return '';
+
+    return {
+      url,
+      key
+    };
+
   }
 
 
 
+  /* =====================================================
+     LẤY CONFIG SUPABASE
+  ===================================================== */
+
   async function resolveSupabaseConfig() {
 
-    /*
-      Nếu cod_config.js của bạn có configReady
-      thì chờ nó tải xong.
-    */
+    let url = '';
+
+    let key = '';
+
+
+    /* =================================================
+       1. CHỜ CONFIG CỦA TRANG HIỆN TẠI
+    ================================================= */
+
+    try {
+
+      if (
+        window.configReady &&
+        typeof window.configReady.then ===
+        'function'
+      ) {
+
+        await window.configReady;
+
+      }
+
+    } catch (e) {
+
+      console.warn(
+        '[CHECKIN] configReady lỗi:',
+        e
+      );
+
+    }
+
+
+
+    /* =================================================
+       2. ĐỌC TỪ CHECKIN.HTML
+    ================================================= */
+
+    let localConfig =
+      readConfigFromWindow(
+        window
+      );
+
+
+    url =
+      localConfig.url;
+
+
+    key =
+      localConfig.key;
+
+
+
+    /* =================================================
+       3. NẾU ĐANG CHẠY TRONG IFRAME
+          THỬ LẤY CONFIG TỪ TRANG CHA
+
+          app giao hàng của bạn mở checkin.html
+          bằng iframe cùng domain.
+    ================================================= */
 
     if (
-      window.configReady &&
-      typeof window.configReady.then === 'function'
+      (!url || !key) &&
+      window.parent &&
+      window.parent !== window
     ) {
 
       try {
 
-        await window.configReady;
+        const parentConfig =
+          readConfigFromWindow(
+            window.parent
+          );
+
+
+        if (!url) {
+
+          url =
+            parentConfig.url;
+
+        }
+
+
+        if (!key) {
+
+          key =
+            parentConfig.key;
+
+        }
 
       } catch (e) {
 
         console.warn(
-          '[CHECKIN] configReady lỗi:',
+          '[CHECKIN] Không đọc được parent config:',
           e
         );
 
@@ -729,121 +1202,94 @@
     }
 
 
-    let url = '';
 
-    let key = '';
-
-
-    /*
-      Cách 1:
-      getConfig giống app giao hàng.
-    */
+    /* =================================================
+       4. API /api/getConfig
+    ================================================= */
 
     if (
-      typeof window.getConfig === 'function'
-    ) {
-
-      url =
-        readConfigValue(
-          window.getConfig('url'),
-          [
-            'url',
-            'value',
-            'SUPABASE_URL',
-            'supabaseUrl',
-            'supabase_url'
-          ]
-        );
-
-
-      key =
-        readConfigValue(
-          window.getConfig('anon'),
-          [
-            'anon',
-            'key',
-            'value',
-            'SUPABASE_ANON',
-            'SUPABASE_ANON_KEY',
-            'supabaseAnon',
-            'supabaseKey',
-            'supabase_anon_key'
-          ]
-        );
-
-    }
-
-
-    /*
-      Cách 2:
-      COD_CONFIG
-    */
-
-    const cfg =
-      window.COD_CONFIG || {};
-
-
-    if (!url) {
-
-      url =
-        clean(
-          cfg.url ||
-          cfg.supabaseUrl ||
-          cfg.supabase_url ||
-          cfg.SUPABASE_URL
-        );
-
-    }
-
-
-    if (!key) {
-
-      key =
-        clean(
-          cfg.key ||
-          cfg.anon ||
-          cfg.supabaseKey ||
-          cfg.supabaseAnon ||
-          cfg.SUPABASE_ANON ||
-          cfg.SUPABASE_ANON_KEY
-        );
-
-    }
-
-
-    /*
-      Cách 3:
-      gọi /api/getConfig
-    */
-
-    if (
-      (!url || !key) &&
-      typeof fetch === 'function'
+      !url ||
+      !key
     ) {
 
       try {
 
-        const internalKey =
-          typeof window.getInternalKey === 'function'
-            ? clean(
+        let internalKey =
+          '';
+
+
+        try {
+
+          if (
+            typeof window.getInternalKey ===
+            'function'
+          ) {
+
+            internalKey =
+              str(
                 window.getInternalKey()
-              )
-            : '';
+              );
+
+          }
+
+        } catch (e) {}
+
+
+        /*
+          Nếu iframe không có internal key
+          thử lấy từ parent
+        */
+
+        if (
+          !internalKey &&
+          window.parent &&
+          window.parent !== window
+        ) {
+
+          try {
+
+            if (
+              typeof window.parent.getInternalKey ===
+              'function'
+            ) {
+
+              internalKey =
+                str(
+                  window.parent.getInternalKey()
+                );
+
+            }
+
+          } catch (e) {}
+
+        }
+
+
+        const headers = {
+
+          'Accept':
+            'application/json'
+
+        };
+
+
+        if (internalKey) {
+
+          headers[
+            'x-internal-key'
+          ] = internalKey;
+
+        }
 
 
         const response =
           await fetch(
             '/api/getConfig',
             {
-              method: 'GET',
+              method:
+                'GET',
 
-              headers: {
-                'x-internal-key':
-                  internalKey,
-
-                'Accept':
-                  'application/json'
-              },
+              headers,
 
               cache:
                 'no-store'
@@ -851,53 +1297,74 @@
           );
 
 
-        if (response.ok) {
+        if (!response.ok) {
 
-          const config =
-            await response.json();
-
-
-          if (!url) {
-
-            url =
-              readConfigValue(
-                config,
-                [
-                  'url',
-                  'SUPABASE_URL',
-                  'supabaseUrl',
-                  'supabase_url'
-                ]
-              );
-
-          }
+          const text =
+            await response.text();
 
 
-          if (!key) {
+          throw new Error(
 
-            key =
-              readConfigValue(
-                config,
-                [
-                  'anon',
-                  'key',
-                  'SUPABASE_ANON',
-                  'SUPABASE_ANON_KEY',
-                  'supabaseAnon',
-                  'supabaseKey',
-                  'supabase_anon_key'
-                ]
-              );
+            'HTTP ' +
+            response.status +
+            ' ' +
+            text
 
-          }
+          );
 
         }
 
-      } catch (e) {
+
+        const config =
+          await response.json();
+
+
+        console.log(
+          '[CHECKIN] /api/getConfig:',
+          config
+        );
+
+
+        if (!url) {
+
+          url =
+            findString(
+              config,
+              [
+                'url',
+                'SUPABASE_URL',
+                'supabaseUrl',
+                'supabase_url'
+              ]
+            );
+
+        }
+
+
+        if (!key) {
+
+          key =
+            findString(
+              config,
+              [
+                'anon',
+                'key',
+                'SUPABASE_ANON',
+                'SUPABASE_ANON_KEY',
+                'supabaseAnon',
+                'supabaseKey',
+                'supabase_anon_key'
+              ]
+            );
+
+        }
+
+
+      } catch (error) {
 
         console.warn(
-          '[CHECKIN] Không lấy được /api/getConfig:',
-          e
+          '[CHECKIN] /api/getConfig lỗi:',
+          error
         );
 
       }
@@ -905,51 +1372,97 @@
     }
 
 
+
+    /* =================================================
+       CHUẨN HOÁ
+    ================================================= */
+
     url =
-      clean(url)
-        .replace(/\/+$/, '');
+      str(url)
+        .replace(
+          /\/+$/,
+          ''
+        );
+
 
     key =
-      clean(key);
+      str(key);
 
 
-    if (!url) {
+
+    /* =================================================
+       KIỂM TRA URL
+    ================================================= */
+
+    if (
+      !url ||
+      !/^https?:\/\/.+/i.test(url)
+    ) {
+
+      console.error(
+        '[CHECKIN] URL Supabase sai:',
+        {
+          url,
+          keyLength:
+            key.length
+        }
+      );
+
 
       throw new Error(
-        'Thiếu SUPABASE_URL'
+        'Không lấy được URL Supabase hợp lệ'
       );
 
     }
+
 
 
     if (!key) {
 
       throw new Error(
-        'Thiếu SUPABASE_ANON_KEY'
+        'Không lấy được Supabase anon key'
       );
 
     }
+
+
+
+    console.log(
+      '[CHECKIN] Supabase config OK:',
+      {
+        url,
+        keyLength:
+          key.length
+      }
+    );
 
 
     return {
       url,
       key
     };
+
   }
 
 
 
-  async function getNearbySupa() {
+  /* =====================================================
+     TẠO SUPABASE CLIENT
+  ===================================================== */
 
-    if (nearbySupa) {
-      return nearbySupa;
+  async function getSupabase() {
+
+    if (nearbySupabase) {
+
+      return nearbySupabase;
+
     }
 
 
     if (
       !window.supabase ||
-      typeof window.supabase.createClient
-        !== 'function'
+      typeof window.supabase.createClient !==
+      'function'
     ) {
 
       throw new Error(
@@ -963,21 +1476,33 @@
       await resolveSupabaseConfig();
 
 
-    nearbySupa =
+    nearbySupabase =
       window.supabase.createClient(
+
         config.url,
+
         config.key,
+
         {
           auth: {
-            persistSession: false,
-            autoRefreshToken: false,
-            detectSessionInUrl: false
+
+            persistSession:
+              false,
+
+            autoRefreshToken:
+              false,
+
+            detectSessionInUrl:
+              false
+
           }
         }
+
       );
 
 
-    return nearbySupa;
+    return nearbySupabase;
+
   }
 
 
@@ -989,7 +1514,10 @@
   function getCurrentGPS() {
 
     return new Promise(
-      (resolve, reject) => {
+      (
+        resolve,
+        reject
+      ) => {
 
         if (
           !navigator.geolocation
@@ -1002,6 +1530,7 @@
           );
 
           return;
+
         }
 
 
@@ -1011,6 +1540,7 @@
             position => {
 
               resolve({
+
                 lat:
                   Number(
                     position.coords.latitude
@@ -1023,8 +1553,10 @@
 
                 accuracy:
                   Number(
-                    position.coords.accuracy || 0
+                    position.coords.accuracy ||
+                    0
                   )
+
               });
 
             },
@@ -1033,7 +1565,7 @@
             error => {
 
               let message =
-                'Không lấy được vị trí';
+                'Không lấy được GPS';
 
 
               if (
@@ -1045,33 +1577,38 @@
 
               }
 
+
               else if (
                 error.code === 2
               ) {
 
                 message =
-                  'Không xác định được GPS';
+                  'Thiết bị chưa xác định được vị trí';
 
               }
+
 
               else if (
                 error.code === 3
               ) {
 
                 message =
-                  'GPS phản hồi quá lâu';
+                  'Lấy GPS quá thời gian';
 
               }
 
 
               reject(
-                new Error(message)
+                new Error(
+                  message
+                )
               );
 
             },
 
 
             {
+
               enableHighAccuracy:
                 true,
 
@@ -1080,18 +1617,20 @@
 
               maximumAge:
                 0
+
             }
 
           );
 
       }
     );
+
   }
 
 
 
   /* =====================================================
-     TÍNH KHOẢNG CÁCH HAVERSINE
+     KHOẢNG CÁCH
   ===================================================== */
 
   function toRad(value) {
@@ -1101,11 +1640,12 @@
       Math.PI /
       180
     );
+
   }
 
 
 
-  function distanceMeters(
+  function getDistanceMeters(
     lat1,
     lng1,
     lat2,
@@ -1119,32 +1659,40 @@
     const p1 =
       toRad(lat1);
 
+
     const p2 =
       toRad(lat2);
 
 
-    const dp =
+    const dLat =
       toRad(
-        lat2 - lat1
+        lat2 -
+        lat1
       );
 
-    const dl =
+
+    const dLng =
       toRad(
-        lng2 - lng1
+        lng2 -
+        lng1
       );
 
 
     const a =
 
-      Math.sin(dp / 2) *
-      Math.sin(dp / 2)
+      Math.sin(
+        dLat / 2
+      ) ** 2
 
       +
 
       Math.cos(p1) *
+
       Math.cos(p2) *
-      Math.sin(dl / 2) *
-      Math.sin(dl / 2);
+
+      Math.sin(
+        dLng / 2
+      ) ** 2;
 
 
     const c =
@@ -1152,41 +1700,42 @@
       2 *
 
       Math.atan2(
+
         Math.sqrt(a),
-        Math.sqrt(1 - a)
+
+        Math.sqrt(
+          1 - a
+        )
+
       );
 
 
-    return R * c;
+    return (
+      R *
+      c
+    );
+
   }
 
 
 
   /* =====================================================
-     ĐỌC TABLE
+     ĐỌC nv_checkin_khach_hang
   ===================================================== */
 
   async function loadNearbyCustomers(
-    currentLat,
-    currentLng
+    gps
   ) {
 
     const supa =
-      await getNearbySupa();
+      await getSupabase();
 
 
-    /*
-      Dùng select('*') để không lỗi nếu table
-      có thêm/bớt cột khác.
+    console.log(
+      '[CHECKIN] Đọc table:',
+      TABLE_CUSTOMER
+    );
 
-      Các cột chúng ta cần:
-      ma_kh
-      ten_kh
-      dia_chi
-      dien_thoai
-      lat
-      lng
-    */
 
     const {
       data,
@@ -1194,7 +1743,7 @@
     } = await supa
 
       .from(
-        CUSTOMER_TABLE
+        TABLE_CUSTOMER
       )
 
       .select('*');
@@ -1202,9 +1751,18 @@
 
     if (error) {
 
+      console.error(
+        '[CHECKIN] Supabase error:',
+        error
+      );
+
+
       throw new Error(
+
         error.message ||
-        'Không đọc được danh sách khách'
+        'Không đọc được table ' +
+        TABLE_CUSTOMER
+
       );
 
     }
@@ -1216,19 +1774,36 @@
         : [];
 
 
-    const result = [];
+    console.log(
+      '[CHECKIN] Tổng khách:',
+      rows.length
+    );
+
+
+    const result =
+      [];
 
 
     for (
-      const row of rows
+      const row
+      of rows
     ) {
 
       const lat =
-        Number(row.lat);
+        Number(
+          row.lat
+        );
+
 
       const lng =
-        Number(row.lng);
+        Number(
+          row.lng
+        );
 
+
+      /*
+        Không có GPS
+      */
 
       if (
         !Number.isFinite(lat) ||
@@ -1241,7 +1816,7 @@
 
 
       /*
-        Loại tọa độ sai
+        GPS không hợp lệ
       */
 
       if (
@@ -1257,11 +1832,16 @@
 
 
       const distance =
-        distanceMeters(
-          currentLat,
-          currentLng,
+        getDistanceMeters(
+
+          gps.lat,
+
+          gps.lng,
+
           lat,
+
           lng
+
         );
 
 
@@ -1276,81 +1856,67 @@
 
 
       result.push({
+
         ...row,
 
         lat,
+
         lng,
 
         distance
+
       });
 
     }
 
 
+
     /*
-      Gần nhất hiện đầu tiên
+      GẦN NHẤT LÊN ĐẦU
     */
 
     result.sort(
-      (a, b) =>
+      (
+        a,
+        b
+      ) =>
+
         a.distance -
         b.distance
+
     );
 
 
     return result;
+
   }
 
 
 
   /* =====================================================
-     MỞ / ĐÓNG SHEET
+     SHEET
   ===================================================== */
 
   function openNearby() {
 
-    if (!nearbyOverlay) {
-      return;
-    }
-
-
     nearbyOverlay
-      .classList
-      .add('open');
+      ?.classList
+      .add(
+        'open'
+      );
 
-
-    document.documentElement
-      .style.overflow =
-      'hidden';
-
-
-    document.body
-      .style.overflow =
-      'hidden';
   }
 
 
 
   function closeNearby() {
 
-    if (!nearbyOverlay) {
-      return;
-    }
-
-
     nearbyOverlay
-      .classList
-      .remove('open');
+      ?.classList
+      .remove(
+        'open'
+      );
 
-
-    document.documentElement
-      .style.overflow =
-      '';
-
-
-    document.body
-      .style.overflow =
-      '';
   }
 
 
@@ -1382,7 +1948,7 @@
 
 
   /* =====================================================
-     HIỂN THỊ DANH SÁCH
+     RENDER
   ===================================================== */
 
   function renderNearby(
@@ -1391,39 +1957,27 @@
   ) {
 
     if (!nearbyList) {
+
       return;
-    }
-
-
-    if (nearbyGpsInfo) {
-
-      let text =
-
-        `Tìm thấy ${rows.length} vị trí trong ${RADIUS_METERS}m`;
-
-
-      if (
-        gps &&
-        Number.isFinite(
-          gps.accuracy
-        )
-      ) {
-
-        text +=
-
-          ` • GPS ±${Math.round(gps.accuracy)}m`;
-
-      }
-
-
-      nearbyGpsInfo.textContent =
-        text;
 
     }
+
+
+    nearbyStatus.textContent =
+
+      `Tìm thấy ${rows.length} vị trí trong ${RADIUS_METERS}m`
+
+      +
+
+      (
+        gps.accuracy
+          ? ` • GPS ±${Math.round(gps.accuracy)}m`
+          : ''
+      );
 
 
     if (
-      !rows.length
+      rows.length === 0
     ) {
 
       nearbyList.innerHTML = `
@@ -1432,32 +1986,60 @@
 
           <div
             style="
-              font-size:34px;
+              font-size:36px;
               margin-bottom:8px
             "
           >
             📍
           </div>
 
+
           <strong>
-            Không có khách hàng nào trong bán kính ${RADIUS_METERS}m
+            Không có khách hàng trong ${RADIUS_METERS}m
           </strong>
+
 
           <div
             style="
-              margin-top:6px;
+              margin-top:7px;
               font-size:13px
             "
           >
-            Bạn có thể thử đứng gần vị trí khách hơn
-            hoặc chờ GPS chính xác hơn.
+
+            GPS hiện tại ±${Math.round(
+              gps.accuracy || 0
+            )}m
+
           </div>
 
+
+          <button
+            id="btnRetryNearby"
+            class="retry-nearby"
+            type="button"
+          >
+            Quét lại
+          </button>
+
         </div>
+
       `;
 
+
+      document
+        .getElementById(
+          'btnRetryNearby'
+        )
+        ?.addEventListener(
+          'click',
+          scanNearby
+        );
+
+
       return;
+
     }
+
 
 
     nearbyList.innerHTML =
@@ -1465,52 +2047,76 @@
 
 
     rows.forEach(
-      (row, index) => {
+      (
+        row,
+        index
+      ) => {
 
-        const button =
+        const item =
           document.createElement(
             'button'
           );
 
 
-        button.type =
+        item.type =
           'button';
 
 
-        button.className =
+        item.className =
           'nearby-item';
 
 
         const tenKh =
-          clean(row.ten_kh) ||
+
+          str(
+            row.ten_kh
+          )
+
+          ||
+
           'Không có tên khách';
 
 
+
         const diaChi =
-          clean(row.dia_chi);
+
+          str(
+            row.dia_chi
+          )
+
+          ||
+
+          'Chưa có địa chỉ';
+
 
 
         const dienThoai =
-          clean(row.dien_thoai);
+
+          str(
+            row.dien_thoai
+          )
+
+          ||
+
+          'Chưa có điện thoại';
+
 
 
         const distance =
-          Math.max(
-            0,
-            Math.round(
-              Number(
-                row.distance || 0
-              )
-            )
+
+          Math.round(
+            row.distance
           );
 
 
-        button.innerHTML = `
+        item.innerHTML = `
 
           <div class="nearby-name">
 
             ${index + 1}.
-            ${escapeHtml(tenKh)}
+            ${escapeHtml(
+              tenKh
+            )}
 
           </div>
 
@@ -1518,11 +2124,9 @@
           <div class="nearby-address">
 
             📍
-            ${
+            ${escapeHtml(
               diaChi
-                ? escapeHtml(diaChi)
-                : 'Chưa có địa chỉ'
-            }
+            )}
 
           </div>
 
@@ -1530,38 +2134,38 @@
           <div class="nearby-phone">
 
             📞
-            ${
+            ${escapeHtml(
               dienThoai
-                ? escapeHtml(dienThoai)
-                : 'Chưa có số điện thoại'
-            }
+            )}
 
           </div>
 
 
-          <div class="nearby-bottom">
+          <div class="nearby-footer">
 
-            <div class="nearby-distance">
+            <span class="nearby-distance">
 
               Cách ${distance} m
 
-            </div>
+            </span>
 
-            <div class="nearby-select">
 
-              Chọn vị trí ›
+            <span class="nearby-select">
 
-            </div>
+              Chọn ›
+
+            </span>
 
           </div>
+
         `;
 
 
-        button.addEventListener(
+        item.addEventListener(
           'click',
           () => {
 
-            selectNearbyCustomer(
+            chooseCustomer(
               row
             );
 
@@ -1569,32 +2173,31 @@
         );
 
 
-        nearbyList
-          .appendChild(
-            button
-          );
+        nearbyList.appendChild(
+          item
+        );
 
       }
     );
+
   }
 
 
 
   /* =====================================================
-     CHỌN KHÁCH HÀNG
+     CHỌN KHÁCH
   ===================================================== */
 
-  function selectNearbyCustomer(
+  function chooseCustomer(
     row
   ) {
 
-    selectedNearbyCustomer =
+    selectedCustomer =
       row;
 
 
     /*
-      Cho checkin.js hoặc code khác
-      có thể lấy khách đã chọn.
+      BIẾN DÙNG CHUNG
     */
 
     window.SELECTED_NEARBY_CUSTOMER =
@@ -1605,92 +2208,113 @@
       currentGPS;
 
 
+
     /*
-      Lưu sessionStorage để nếu cần
-      page khác cũng lấy được.
+      SESSION
     */
 
     try {
 
       sessionStorage.setItem(
+
         'checkin_nearby_customer',
-        JSON.stringify(row)
+
+        JSON.stringify(
+          row
+        )
+
       );
 
     } catch (e) {}
 
 
+
+    /*
+      HIỆN KHÁCH ĐÃ CHỌN
+    */
+
     if (
       selectedBox &&
       selectedName &&
-      selectedSub
+      selectedInfo
     ) {
 
       selectedName.textContent =
 
         '📍 ' +
+
         (
-          clean(row.ten_kh) ||
+          str(
+            row.ten_kh
+          )
+
+          ||
+
           'Khách hàng'
         );
 
 
-      const sub = [];
+      const info =
+        [];
 
 
       if (
-        clean(row.dia_chi)
-      ) {
-
-        sub.push(
-          clean(row.dia_chi)
-        );
-
-      }
-
-
-      if (
-        clean(row.dien_thoai)
-      ) {
-
-        sub.push(
-          clean(row.dien_thoai)
-        );
-
-      }
-
-
-      if (
-        Number.isFinite(
-          Number(
-            row.distance
-          )
+        str(
+          row.dia_chi
         )
       ) {
 
-        sub.push(
-          Math.round(
-            Number(
-              row.distance
-            )
-          ) + 'm'
+        info.push(
+          str(
+            row.dia_chi
+          )
         );
 
       }
 
 
-      selectedSub.textContent =
-        sub.join(' • ');
+      if (
+        str(
+          row.dien_thoai
+        )
+      ) {
+
+        info.push(
+          str(
+            row.dien_thoai
+          )
+        );
+
+      }
+
+
+      info.push(
+
+        Math.round(
+          row.distance || 0
+        ) + 'm'
+
+      );
+
+
+      selectedInfo.textContent =
+        info.join(
+          ' • '
+        );
 
 
       selectedBox.style.display =
         'block';
+
     }
 
 
+
     /*
-      Phát event để checkin.js
-      có thể bắt nếu sau này cần.
+      CUSTOM EVENT
+
+      checkin.js có thể nghe event này
+      nếu cần gửi khách vào webhook.
     */
 
     try {
@@ -1698,16 +2322,23 @@
       window.dispatchEvent(
 
         new CustomEvent(
+
           'nearby-customer-selected',
+
           {
+
             detail: {
+
               customer:
                 row,
 
               gps:
                 currentGPS
+
             }
+
           }
+
         )
 
       );
@@ -1715,15 +2346,22 @@
     } catch (e) {}
 
 
+
     closeNearby();
 
 
-    showNearbyToast(
+
+    showToast(
 
       'Đã chọn: ' +
+
       (
-        clean(row.ten_kh) ||
-        clean(row.ma_kh) ||
+        str(
+          row.ten_kh
+        )
+
+        ||
+
         'khách hàng'
       )
 
@@ -1731,60 +2369,55 @@
 
 
     console.log(
-      '[CHECKIN] Đã chọn khách:',
+      '[CHECKIN] Khách đã chọn:',
       row
     );
+
   }
 
 
 
   /* =====================================================
-     QUÉT VỊ TRÍ
+     QUÉT
   ===================================================== */
 
-  async function scanNearbyAfterPhoto() {
+  async function scanNearby() {
 
-    if (
-      scanningNearby
-    ) {
+    if (scanning) {
+
       return;
+
     }
 
 
-    scanningNearby =
+    scanning =
       true;
 
 
     openNearby();
 
 
-    if (nearbyList) {
-
-      nearbyList.innerHTML = `
-
-        <div class="nearby-loading">
-
-          📍 Đang lấy GPS và tìm khách hàng trong ${RADIUS_METERS}m...
-
-        </div>
-      `;
-
-    }
+    nearbyStatus.textContent =
+      'Đang xác định GPS...';
 
 
-    if (nearbyGpsInfo) {
+    nearbyList.innerHTML = `
 
-      nearbyGpsInfo.textContent =
-        'Đang xác định vị trí hiện tại...';
+      <div class="nearby-loading">
 
-    }
+        📍 Đang lấy vị trí hiện tại...
+
+      </div>
+
+    `;
 
 
     try {
 
-      /*
-        1. Lấy GPS
-      */
+
+      /* ===============================================
+         1. GPS
+      =============================================== */
 
       currentGPS =
         await getCurrentGPS();
@@ -1800,131 +2433,125 @@
       );
 
 
-      if (nearbyGpsInfo) {
+      nearbyStatus.textContent =
 
-        nearbyGpsInfo.textContent =
-
-          `GPS ±${Math.round(currentGPS.accuracy || 0)}m • Đang tìm khách...`;
-
-      }
+        `GPS ±${Math.round(
+          currentGPS.accuracy || 0
+        )}m • Đang tìm khách...`;
 
 
-      /*
-        2. Đọc table
-        3. Tính khoảng cách
-        4. Giữ <= 50m
-      */
 
-      const customers =
+      /* ===============================================
+         2. SUPABASE
+      =============================================== */
+
+      const rows =
         await loadNearbyCustomers(
-          currentGPS.lat,
-          currentGPS.lng
+          currentGPS
         );
 
 
       console.log(
         '[CHECKIN] Khách <= 50m:',
-        customers
+        rows
       );
 
 
-      /*
-        5. Hiện danh sách
-      */
+
+      /* ===============================================
+         3. HIỆN DANH SÁCH
+      =============================================== */
 
       renderNearby(
-        customers,
+        rows,
         currentGPS
       );
 
 
     } catch (error) {
 
+
       console.error(
-        '[CHECKIN] Lỗi quét vị trí:',
+        '[CHECKIN] scanNearby ERROR:',
         error
       );
 
 
-      if (nearbyGpsInfo) {
-
-        nearbyGpsInfo.textContent =
-          'Không lấy được vị trí';
-
-      }
+      nearbyStatus.textContent =
+        'Không quét được vị trí';
 
 
-      if (nearbyList) {
+      nearbyList.innerHTML = `
 
-        nearbyList.innerHTML = `
-
-          <div class="nearby-empty">
-
-            <div
-              style="
-                font-size:32px;
-                margin-bottom:8px
-              "
-            >
-              ⚠️
-            </div>
-
-            <strong>
-              Không quét được vị trí
-            </strong>
-
-            <div
-              style="
-                margin-top:7px;
-                font-size:13px
-              "
-            >
-
-              ${escapeHtml(
-                error?.message ||
-                String(error)
-              )}
-
-            </div>
+        <div class="nearby-empty">
 
 
-            <button
-              id="btnRetryNearby"
-              type="button"
+          <div
+            style="
+              font-size:36px;
+              margin-bottom:8px
+            "
+          >
+            ⚠️
+          </div>
 
-              style="
-                margin-top:14px;
-                width:100%;
-                padding:11px;
-                border:0;
-                border-radius:10px;
-                background:#2563eb;
-                color:#fff;
-                font-weight:700
-              "
-            >
-              Thử lại
-            </button>
+
+          <strong>
+            Không quét được vị trí
+          </strong>
+
+
+          <div
+            style="
+              margin-top:8px;
+              font-size:13px;
+              line-height:1.4
+            "
+          >
+
+            ${escapeHtml(
+
+              error?.message ||
+
+              String(error)
+
+            )}
 
           </div>
-        `;
 
 
-        document
-          .getElementById(
-            'btnRetryNearby'
-          )
-          ?.addEventListener(
-            'click',
-            scanNearbyAfterPhoto
-          );
+          <button
+            id="btnRetryNearby"
+            class="retry-nearby"
+            type="button"
+          >
 
-      }
+            Thử lại
+
+          </button>
+
+
+        </div>
+
+      `;
+
+
+      document
+        .getElementById(
+          'btnRetryNearby'
+        )
+        ?.addEventListener(
+          'click',
+          scanNearby
+        );
+
 
     } finally {
 
-      scanningNearby =
+
+      scanning =
         false;
+
 
     }
 
@@ -1933,13 +2560,7 @@
 
 
   /* =====================================================
-     GẮN VÀO NÚT "CHỤP & GỬI"
-
-     checkin.js vẫn xử lý việc chụp ảnh/gửi ảnh.
-
-     Phần này chỉ bổ sung:
-     sau khi bấm Chụp & Gửi
-     → quét khách xung quanh.
+     SAU KHI BẤM CHỤP
   ===================================================== */
 
   btnShot
@@ -1948,17 +2569,18 @@
       () => {
 
         /*
-          Cho checkin.js có chút thời gian
-          chụp frame trước.
+          checkin.js xử lý chụp ảnh trước.
+
+          Chờ 500ms rồi quét vị trí.
         */
 
         setTimeout(
           () => {
 
-            scanNearbyAfterPhoto();
+            scanNearby();
 
           },
-          350
+          500
         );
 
       }
@@ -1967,43 +2589,61 @@
 
 
   /* =====================================================
-     CÔNG KHAI API
+     API CHO CHECKIN.JS
   ===================================================== */
 
-  window.scanNearbyAfterPhoto =
-    scanNearbyAfterPhoto;
+  window.scanNearbyCustomers =
+    scanNearby;
 
 
   window.getSelectedNearbyCustomer =
     function () {
 
       return (
-        selectedNearbyCustomer ||
-        window.SELECTED_NEARBY_CUSTOMER ||
+
+        selectedCustomer
+
+        ||
+
+        window.SELECTED_NEARBY_CUSTOMER
+
+        ||
+
         null
+
       );
 
-  };
+    };
 
 
   window.getCheckinCurrentGPS =
     function () {
 
       return (
-        currentGPS ||
-        window.CHECKIN_CURRENT_GPS ||
+
+        currentGPS
+
+        ||
+
+        window.CHECKIN_CURRENT_GPS
+
+        ||
+
         null
+
       );
 
-  };
+    };
 
 
   console.log(
-    '[CHECKIN] Nearby customer scan ready'
+    '[CHECKIN] Nearby 50m READY'
   );
 
 })();
+
 </script>
+
 
 </body>
 </html>
