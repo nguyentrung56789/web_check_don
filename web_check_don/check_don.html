@@ -289,6 +289,68 @@ th.col-trang-thai, td[data-cell="trang_thai"] {
   text-align: center;
 }
 
+/* ===== Dropdown trạng thái ngay trong từng dòng ===== */
+.status-row-select{
+  width: 100%;
+  min-width: 155px;
+  max-width: 190px;
+  height: 40px;
+  padding: 7px 32px 7px 12px;
+  border-radius: 999px;
+  border: 1px solid #334a78;
+  outline: none;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  appearance: auto;
+  transition: .15s ease;
+}
+
+.status-row-select:focus{
+  box-shadow: 0 0 0 2px rgba(105,180,255,.25);
+}
+
+/* Chưa có trạng thái */
+.status-row-select.st-empty{
+  background:#101b34;
+  color:#c9d5ef;
+  border-color:#334a78;
+}
+
+/* Đã chuyển hoàn */
+.status-row-select.st-return{
+  background:#3a1820;
+  color:#ff9a9a;
+  border-color:#8f3545;
+}
+
+/* Đã kiểm đơn */
+.status-row-select.st-checked{
+  background:#332b10;
+  color:#facc15;
+  border-color:#8f7a1f;
+}
+
+/* Đang giao hàng */
+.status-row-select.st-shipping{
+  background:#102c4b;
+  color:#79c7ff;
+  border-color:#2b75ad;
+}
+
+/* Giao thành công */
+.status-row-select.st-success{
+  background:#103126;
+  color:#9FE870;
+  border-color:#23865e;
+}
+
+.status-row-select:disabled{
+  opacity:.65;
+  cursor:wait;
+}
+
 
 
 
@@ -1254,24 +1316,109 @@ async function sendGiaohangWebhook({ ma_nv, ma_hd, ten_kh, sender_id, dia_chi })
 }
 
 /* ================== TRẠNG THÁI + NÚT "ĐÃ GIAO" ================== */
+function statusClass(val){
+  const s = vnFold(val || '');
+
+  if (s === vnFold('Đã chuyển hoàn')) return 'st-return';
+  if (s === vnFold('Đã kiểm đơn')) return 'st-checked';
+  if (s === vnFold('Đang giao hàng')) return 'st-shipping';
+  if (s === vnFold('Giao thành công')) return 'st-success';
+
+  return 'st-empty';
+}
+
 function renderStatusCell(ma, val){
   const raw = (val || '').toString().trim();
-  const low = raw.toLowerCase();
-  const label = raw || '—';
+  const cls = statusClass(raw);
 
-  const cls = low.includes('chuẩn bị') ? 'wait'
-           : low.includes('đang giao hàng') ? 'ok'
-           : (low.includes('thành công')||low.includes('đã giao')||low==='done') ? 'ok'
-           : (low.includes('chờ')||low.includes('đang')) ? 'wait'
-           : (low.includes('hủy')||low.includes('huỷ')||low.includes('fail')) ? 'err' : '';
+  // Trong từng đơn KHÔNG có "Tất cả" vì "Tất cả" chỉ dùng cho bộ lọc phía trên.
+  // Dòng chưa có trạng thái sẽ hiện "—", bấm vào để chọn trạng thái.
+  const statuses = [
+    ['', '—'],
+    ['Đã chuyển hoàn', 'Đã chuyển hoàn'],
+    ['Đã kiểm đơn', 'Đã kiểm đơn'],
+    ['Đang giao hàng', 'Đang giao hàng'],
+    ['Giao thành công', 'Giao thành công'],
+  ];
 
-  const shouldShowBtn = (vnFold(raw) === vnFold('Đã kiểm đơn'));
+  const options = statuses.map(([value, label]) => {
+    const selected = vnFold(value) === vnFold(raw) ? ' selected' : '';
+    return `<option value="${esc(value)}"${selected}>${esc(label)}</option>`;
+  }).join('');
 
-  const btn = shouldShowBtn
-    ? ` <button class="btn-da-giao" data-ma="${esc(ma)}" title="Cập nhật sang Giao thành công">Đã giao</button>`
-    : '';
+  return `
+    <select
+      class="status-row-select ${cls}"
+      data-ma="${esc(ma)}"
+      data-old-status="${esc(raw)}"
+      title="Bấm để đổi trạng thái"
+    >${options}</select>
+  `;
+}
 
-  return `<span class="badge ${cls}">${esc(label)}</span>${btn}`;
+async function updateOrderStatusFromDropdown(selectEl){
+  if (!selectEl || !supa) return;
+
+  const ma_hd = String(selectEl.dataset.ma || '').trim();
+  const oldStatus = String(selectEl.dataset.oldStatus || '').trim();
+  const newStatus = String(selectEl.value || '').trim();
+
+  if (!ma_hd){
+    showSlideBanner('❌ Thiếu mã hóa đơn', 'err');
+    selectEl.value = oldStatus;
+    return;
+  }
+
+  // Đổi màu ngay khi người dùng chọn
+  selectEl.classList.remove('st-empty','st-return','st-checked','st-shipping','st-success');
+  selectEl.classList.add(statusClass(newStatus));
+
+  selectEl.disabled = true;
+
+  try{
+    const patch = {
+      trang_thai: newStatus || null
+    };
+
+    // Nếu chọn Giao thành công thì giữ luôn logic ngày/NV giao hàng như nút cũ
+    if (vnFold(newStatus) === vnFold('Giao thành công')){
+      patch.ngay_giao_thanh_cong = new Date().toISOString();
+
+      const nv_id = getCurrentNVID();
+      if (nv_id) patch.nv_giao_hang = nv_id;
+    }
+
+    const { data, error } = await supa
+      .from(TABLE)
+      .update(patch)
+      .eq('ma_hd', ma_hd)
+      .select('*')
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) throw new Error('Không nhận được bản ghi sau cập nhật');
+
+    selectEl.dataset.oldStatus = newStatus;
+
+    // Đồng bộ lại toàn bộ dòng theo record mới từ DB
+    updateRowFromRecord(data);
+
+    showSlideBanner(
+      newStatus
+        ? `✅ Đã đổi trạng thái: ${newStatus}`
+        : '✅ Đã bỏ trạng thái',
+      'ok'
+    );
+  }catch(e){
+    // Nếu lỗi: trả lại trạng thái cũ + màu cũ
+    selectEl.value = oldStatus;
+    selectEl.classList.remove('st-empty','st-return','st-checked','st-shipping','st-success');
+    selectEl.classList.add(statusClass(oldStatus));
+
+    showSlideBanner('❌ Lỗi cập nhật trạng thái: ' + esc(e.message || e), 'err');
+  }finally{
+    selectEl.disabled = false;
+  }
 }
 
 /**
@@ -1325,7 +1472,15 @@ async function markDaGiao(ma_hd, btnEl){
 function bindTableActions(){
   const tb = document.getElementById('tbody');
 
-  tb?.addEventListener('change', (e)=>{
+  tb?.addEventListener('change', async (e)=>{
+    // ===== Đổi trạng thái ngay trong từng dòng =====
+    const statusSel = e.target.closest?.('.status-row-select');
+    if (statusSel){
+      await updateOrderStatusFromDropdown(statusSel);
+      return;
+    }
+
+    // ===== Checkbox chọn đơn =====
     const cb = e.target.closest?.('.row-chk');
     if(!cb) return;
     const tr = cb.closest('tr[data-ma]'); if(!tr) return;
