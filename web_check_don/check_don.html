@@ -572,11 +572,8 @@ td:first-child input[type="checkbox"] {
       <label class="inline-label" for="filterTrangThai">Trạng thái:</label>
       <select id="filterTrangThai" title="Lọc theo cột trạng_thái">
         <option value="">Tất cả</option>
-        <option value="cho lay lai">Chờ lấy lại</option>
         <option value="da chuyen hoan">Đã chuyển hoàn</option>
-        <option value="da huy">Đã hủy</option>
-        <option value="da kiem don" selected>Đã kiểm đơn</option>
-        <option value="da giao">Đã giao</option>
+        <option value="da kiem don">Đã kiểm đơn</option>
         <option value="dang giao hang">Đang giao hàng</option>
         <option value="giao thanh cong">Giao thành công</option>
       </select>
@@ -1652,23 +1649,27 @@ function renderStatusFilterOptions(statusList){
   const sel = document.getElementById('filterTrangThai');
   if (!sel) return;
 
-  const map = new Map();
-  statusList.forEach(s=>{
-    const label = (s||'').toString().trim();
-    const key = normStatus(label);
-    if (label && !map.has(key)) map.set(key, label);
-  });
+  // Luôn giữ đầy đủ đúng các trạng thái này, không phụ thuộc dữ liệu đang có trong DB
+  const fixedStatuses = [
+    ['', 'Tất cả'],
+    ['da chuyen hoan', 'Đã chuyển hoàn'],
+    ['da kiem don', 'Đã kiểm đơn'],
+    ['dang giao hang', 'Đang giao hàng'],
+    ['giao thanh cong', 'Giao thành công'],
+  ];
 
-  if (FILTER_STATUS && !map.has(FILTER_STATUS)) {
-    map.set(FILTER_STATUS, FILTER_STATUS);
+  // Nếu localStorage đang lưu trạng thái cũ không còn trong danh sách thì trả về "Tất cả"
+  const allowed = new Set(fixedStatuses.map(([value]) => value));
+  if (!allowed.has(FILTER_STATUS)) {
+    FILTER_STATUS = '';
+    saveStatusFilter();
   }
 
-  const opts = [`<option value="">Tất cả</option>`]
-    .concat([...map.entries()]
-      .sort((a,b)=> a[1].localeCompare(b[1],'vi',{sensitivity:'base'}))
-      .map(([val,label])=> `<option value="${esc(val)}"${val===FILTER_STATUS?' selected':''}>${esc(label)}</option>`));
-
-  sel.innerHTML = opts.join('');
+  sel.innerHTML = fixedStatuses
+    .map(([value, label]) =>
+      `<option value="${value}"${value === FILTER_STATUS ? ' selected' : ''}>${label}</option>`
+    )
+    .join('');
 }
 
 async function fetchDistinctStatuses(qtxt, from, to){
