@@ -1401,7 +1401,11 @@ async function updateOrderStatusFromDropdown(selectEl){
     selectEl.dataset.oldStatus = newStatus;
 
     // Đồng bộ lại toàn bộ dòng theo record mới từ DB
-    updateRowFromRecord(data);
+    if (typeof window.updateRowFromRecord === 'function') {
+      window.updateRowFromRecord(data);
+    } else {
+      await reload();
+    }
 
     showSlideBanner(
       newStatus
@@ -1453,7 +1457,11 @@ async function markDaGiao(ma_hd, btnEl){
     if (error) throw error;
     if (!data) throw new Error('Không nhận được bản ghi sau cập nhật');
 
-    updateRowFromRecord(data);
+    if (typeof window.updateRowFromRecord === 'function') {
+      window.updateRowFromRecord(data);
+    } else {
+      await reload();
+    }
     if (btnEl){ btnEl.style.display = 'none'; }
 
     showSlideBanner('✅ Đã cập nhật: Giao thành công', 'ok');
@@ -2153,6 +2161,9 @@ async function init(){
     if (btnSend){ btnSend.style.display = r.ngay_dong_hang ? 'none' : ''; }
     return true;
   }
+
+  // Cho các handler bên ngoài init() gọi được hàm cập nhật dòng.
+  window.updateRowFromRecord = updateRowFromRecord;
 
   function setupRealtime(){
     if (!supa) return false;
