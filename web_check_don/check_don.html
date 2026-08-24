@@ -634,10 +634,10 @@ td:first-child input[type="checkbox"] {
       <label class="inline-label" for="filterTrangThai">Trạng thái:</label>
       <select id="filterTrangThai" title="Lọc theo cột trạng_thái">
         <option value="">Tất cả</option>
-        <option value="da chuyen hoan">Đã chuyển hoàn</option>
-        <option value="da kiem don">Đã kiểm đơn</option>
-        <option value="dang giao hang">Đang giao hàng</option>
-        <option value="giao thanh cong">Giao thành công</option>
+        <option value="Đã chuyển hoàn">Đã chuyển hoàn</option>
+        <option value="Đã kiểm đơn">Đã kiểm đơn</option>
+        <option value="Đang giao hàng">Đang giao hàng</option>
+        <option value="Giao thành công">Giao thành công</option>
       </select>
 
       <span class="right-end">
@@ -1149,7 +1149,7 @@ function bindScanAndButtons(){
 
   const selTT = document.getElementById('filterTrangThai');
   selTT?.addEventListener('change', ()=>{
-    FILTER_STATUS = selTT.value;  // đã lowercase
+    FILTER_STATUS = selTT.value;  // giữ nguyên tiếng Việt để lọc đúng dữ liệu DB
     saveStatusFilter();
     resetToPage1(); reload();
   });
@@ -1815,13 +1815,26 @@ function renderStatusFilterOptions(statusList){
   // Luôn giữ đầy đủ đúng các trạng thái này, không phụ thuộc dữ liệu đang có trong DB
   const fixedStatuses = [
     ['', 'Tất cả'],
-    ['da chuyen hoan', 'Đã chuyển hoàn'],
-    ['da kiem don', 'Đã kiểm đơn'],
-    ['dang giao hang', 'Đang giao hàng'],
-    ['giao thanh cong', 'Giao thành công'],
+    ['Đã chuyển hoàn', 'Đã chuyển hoàn'],
+    ['Đã kiểm đơn', 'Đã kiểm đơn'],
+    ['Đang giao hàng', 'Đang giao hàng'],
+    ['Giao thành công', 'Giao thành công'],
   ];
 
-  // Nếu localStorage đang lưu trạng thái cũ không còn trong danh sách thì trả về "Tất cả"
+  // Chuyển giá trị localStorage cũ không dấu sang đúng giá trị đang lưu trong DB
+  const legacyStatusMap = {
+    'da chuyen hoan': 'Đã chuyển hoàn',
+    'da kiem don': 'Đã kiểm đơn',
+    'dang giao hang': 'Đang giao hàng',
+    'giao thanh cong': 'Giao thành công',
+  };
+
+  if (legacyStatusMap[FILTER_STATUS]) {
+    FILTER_STATUS = legacyStatusMap[FILTER_STATUS];
+    saveStatusFilter();
+  }
+
+  // Nếu localStorage chứa giá trị lạ thì trả về "Tất cả"
   const allowed = new Set(fixedStatuses.map(([value]) => value));
   if (!allowed.has(FILTER_STATUS)) {
     FILTER_STATUS = '';
