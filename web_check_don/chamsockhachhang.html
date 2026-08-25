@@ -3989,17 +3989,21 @@ showNotice(valueToSave
       }
     }
 
-    async function loadCustomersFromSupabase(page = 1) {
+    async function loadCustomersFromSupabase(page = 1, options = {}) {
+      const silent = options?.silent === true;
+
       if (isLoadingCustomers) {
         return;
       }
 
       if (!supabaseClient) {
-        customerBody.innerHTML = `
-          <tr>
-            <td colspan="13">Supabase chưa sẵn sàng.</td>
-          </tr>
-        `;
+        if (!silent) {
+          customerBody.innerHTML = `
+            <tr>
+              <td colspan="13">Supabase chưa sẵn sàng.</td>
+            </tr>
+          `;
+        }
         return;
       }
 
@@ -4010,7 +4014,11 @@ showNotice(valueToSave
       const keyword = searchInput.value.trim();
       const selectedStaffDbCodes = getSelectedStaffDbCodes();
 
-      setCustomerLoading(true);
+      if (silent) {
+        isLoadingCustomers = true;
+      } else {
+        setCustomerLoading(true);
+      }
 
       const dbSortField = getDbSortField();
       const ascending = getDbSortAscending();
@@ -4032,8 +4040,12 @@ showNotice(valueToSave
 
       if (error) {
         if (String(error.message || "").includes("ma_nv")) {
-          setCustomerLoading(false);
-          return loadCustomersWithoutStaff(page);
+          if (silent) {
+            isLoadingCustomers = false;
+          } else {
+            setCustomerLoading(false);
+          }
+          return loadCustomersWithoutStaff(page, { silent });
         }
 
         customerBody.innerHTML = `
@@ -4044,7 +4056,11 @@ showNotice(valueToSave
           </tr>
         `;
 
-        setCustomerLoading(false);
+        if (silent) {
+          isLoadingCustomers = false;
+        } else {
+          setCustomerLoading(false);
+        }
         return;
       }
 
@@ -4072,7 +4088,13 @@ showNotice(valueToSave
       await loadReminderInfoForCustomers(customers);
       rememberSelectedRowsFromCurrentPage();
       renderCustomers();
-      setCustomerLoading(false);
+
+      if (silent) {
+        isLoadingCustomers = false;
+        updatePagination();
+      } else {
+        setCustomerLoading(false);
+      }
     }
 
 
@@ -4127,7 +4149,9 @@ showNotice(valueToSave
       });
     }
 
-    async function loadCustomersWithoutStaff(page = 1) {
+    async function loadCustomersWithoutStaff(page = 1, options = {}) {
+      const silent = options?.silent === true;
+
       if (isLoadingCustomers || !supabaseClient) {
         return;
       }
@@ -4138,7 +4162,11 @@ showNotice(valueToSave
       const to = from + pageSize - 1;
       const keyword = searchInput.value.trim();
 
-      setCustomerLoading(true);
+      if (silent) {
+        isLoadingCustomers = true;
+      } else {
+        setCustomerLoading(true);
+      }
 
       const dbSortField = getDbSortField();
       const ascending = getDbSortAscending();
@@ -4162,7 +4190,11 @@ showNotice(valueToSave
           </tr>
         `;
 
-        setCustomerLoading(false);
+        if (silent) {
+          isLoadingCustomers = false;
+        } else {
+          setCustomerLoading(false);
+        }
         return;
       }
 
@@ -4190,7 +4222,13 @@ showNotice(valueToSave
       await loadReminderInfoForCustomers(customers);
       rememberSelectedRowsFromCurrentPage();
       renderCustomers();
-      setCustomerLoading(false);
+
+      if (silent) {
+        isLoadingCustomers = false;
+        updatePagination();
+      } else {
+        setCustomerLoading(false);
+      }
     }
 
     async function saveStaffChanges() {
@@ -4441,7 +4479,8 @@ showNotice(valueToSave
       clearTimeout(customerRealtimeRefreshTimer);
       customerRealtimeRefreshTimer = setTimeout(function () {
         if (!isLoadingCustomers) {
-          loadCustomersFromSupabase(currentPage).catch(function (error) {
+          loadCustomersFromSupabase(currentPage, { silent: true }).catch(function (error) {
+            isLoadingCustomers = false;
             console.warn("[REALTIME KH] Không tải lại được danh sách:", error);
           });
         }
