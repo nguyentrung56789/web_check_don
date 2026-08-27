@@ -520,6 +520,25 @@
       background: #2563eb;
     }
 
+
+    /* ===================== KÉO / THẢ ĐỂ DI CHUYỂN CỘT ===================== */
+    .customer-table th.column-draggable {
+      cursor: grab;
+    }
+
+    .customer-table th.column-draggable:active {
+      cursor: grabbing;
+    }
+
+    .customer-table th.column-dragging {
+      opacity: .45;
+    }
+
+    .customer-table th.column-drag-over {
+      box-shadow: inset 3px 0 0 #2563eb;
+      background: #eef2ff !important;
+    }
+
     body.resizing-column {
       cursor: col-resize;
       user-select: none;
@@ -2400,6 +2419,7 @@ function normalizeBigintOrNull(value) {
         setTimeout(requestChatwootContext, 1200);
 
         await initPage();
+        initColumnDragAndDrop();
         enableColumnResize();
         initColumnVisibility();
 
@@ -5163,6 +5183,7 @@ logoutBtn.addEventListener("click", function () {
         `;
       }).join("");
 
+      applyColumnOrder();
       applyColumnVisibility();
       syncSelectionUi();
 
@@ -5743,6 +5764,228 @@ logoutBtn.addEventListener("click", function () {
       return hiddenColumns.includes(columnKey);
     }
 
+
+    // =========================
+    // DI CHUYỂN CỘT BẰNG KÉO / THẢ
+    // - Giữ cột checkbox cố định ở đầu.
+    // - Các cột còn lại có thể kéo sang trái / phải.
+    // - Lưu thứ tự vào localStorage.
+    // =========================
+    const COLUMN_ORDER_STORAGE_KEY = "chatwoot_crm_customer_table_column_order";
+    let draggedColumnKey = "";
+
+    function getDefaultCustomerColumnOrder() {
+      return [
+        "select",
+        ...CUSTOMER_TABLE_COLUMNS.map(function (item) {
+          return item.key;
+        })
+      ];
+    }
+
+    function getSavedCustomerColumnOrder() {
+      const defaults = getDefaultCustomerColumnOrder();
+
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem(COLUMN_ORDER_STORAGE_KEY) || "[]"
+        );
+
+        if (!Array.isArray(saved)) {
+          return defaults;
+        }
+
+        // Chỉ giữ các cột còn tồn tại.
+        const valid = saved.filter(function (key) {
+          return defaults.includes(key);
+        });
+
+        // Bổ sung cột mới chưa từng được lưu.
+        defaults.forEach(function (key) {
+          if (!valid.includes(key)) {
+            valid.push(key);
+          }
+        });
+
+        // Checkbox luôn cố định ở đầu.
+        return ["select"].concat(
+          valid.filter(function (key) {
+            return key !== "select";
+          })
+        );
+      } catch (error) {
+        return defaults;
+      }
+    }
+
+    function saveCustomerColumnOrder(order) {
+      const safeOrder = ["select"].concat(
+        (order || []).filter(function (key) {
+          return key && key !== "select";
+        })
+      );
+
+      localStorage.setItem(
+        COLUMN_ORDER_STORAGE_KEY,
+        JSON.stringify(safeOrder)
+      );
+    }
+
+    function applyColumnOrder() {
+      const table = document.querySelector(".customer-table");
+      if (!table) return;
+
+      const order = getSavedCustomerColumnOrder();
+      const colgroup = table.querySelector("colgroup");
+      const headerRow = table.querySelector("thead tr");
+
+      if (colgroup) {
+        const colMap = new Map(
+          Array.from(colgroup.querySelectorAll("col[data-col]")).map(function (col) {
+            return [String(col.dataset.col || ""), col];
+          })
+        );
+
+        order.forEach(function (key) {
+          const col = colMap.get(key);
+          if (col) colgroup.appendChild(col);
+        });
+      }
+
+      if (headerRow) {
+        const thMap = new Map(
+          Array.from(headerRow.querySelectorAll("th[data-col]")).map(function (th) {
+            return [String(th.dataset.col || ""), th];
+          })
+        );
+
+        order.forEach(function (key, index) {
+          const th = thMap.get(key);
+          if (!th) return;
+
+          headerRow.appendChild(th);
+
+          // data-col-index luôn khớp vị trí hiện tại để resize đúng.
+          th.dataset.colIndex = String(index);
+        });
+      }
+
+      // Chỉ sắp xếp các dòng dữ liệu chính.
+      // Dòng xổ "Hàng hóa theo khách" dùng colspan nên giữ nguyên.
+      table.querySelectorAll("tbody tr.customer-main-row").forEach(function (row) {
+        const tdMap = new Map(
+          Array.from(row.querySelectorAll(":scope > td[data-col]")).map(function (td) {
+            return [String(td.dataset.col || ""), td];
+          })
+        );
+
+        order.forEach(function (key) {
+          const td = tdMap.get(key);
+          if (td) row.appendChild(td);
+        });
+      });
+
+      recalculateCustomerTableWidth();
+    }
+
+    function moveCustomerColumn(sourceKey, targetKey) {
+      if (!sourceKey || !targetKey) return;
+      if (sourceKey === targetKey) return;
+      if (sourceKey === "select" || targetKey === "select") return;
+
+      const order = getSavedCustomerColumnOrder();
+      const sourceIndex = order.indexOf(sourceKey);
+      const targetIndex = order.indexOf(targetKey);
+
+      if (sourceIndex < 0 || targetIndex < 0) return;
+
+      order.splice(sourceIndex, 1);
+      order.splice(targetIndex, 0, sourceKey);
+
+      saveCustomerColumnOrder(order);
+      applyColumnOrder();
+      applyColumnVisibility();
+    }
+
+    function initColumnDragAndDrop() {
+      const table = document.querySelector(".customer-table");
+      if (!table) return;
+
+      applyColumnOrder();
+
+      const headers = Array.from(
+        table.querySelectorAll('thead th[data-col]')
+      );
+
+      headers.forEach(function (th) {
+        const key = String(th.dataset.col || "");
+
+        if (!key || key === "select") {
+          th.draggable = false;
+          return;
+        }
+
+        th.draggable = true;
+        th.classList.add("column-draggable");
+
+        th.addEventListener("dragstart", function (event) {
+          // Không bắt đầu kéo nếu người dùng đang kéo nút resize.
+          if (event.target && event.target.closest(".col-resizer")) {
+            event.preventDefault();
+            return;
+          }
+
+          draggedColumnKey = key;
+          th.classList.add("column-dragging");
+
+          if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", key);
+          }
+        });
+
+        th.addEventListener("dragend", function () {
+          draggedColumnKey = "";
+          th.classList.remove("column-dragging");
+
+          table
+            .querySelectorAll("th.column-drag-over")
+            .forEach(function (item) {
+              item.classList.remove("column-drag-over");
+            });
+        });
+
+        th.addEventListener("dragover", function (event) {
+          if (!draggedColumnKey || draggedColumnKey === key) return;
+          if (key === "select") return;
+
+          event.preventDefault();
+          th.classList.add("column-drag-over");
+
+          if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = "move";
+          }
+        });
+
+        th.addEventListener("dragleave", function () {
+          th.classList.remove("column-drag-over");
+        });
+
+        th.addEventListener("drop", function (event) {
+          event.preventDefault();
+          th.classList.remove("column-drag-over");
+
+          const sourceKey =
+            draggedColumnKey ||
+            (event.dataTransfer
+              ? event.dataTransfer.getData("text/plain")
+              : "");
+
+          moveCustomerColumn(sourceKey, key);
+        });
+      });
+    }
+
     function recalculateCustomerTableWidth() {
       const table = document.querySelector(".customer-table");
 
@@ -5843,6 +6086,7 @@ logoutBtn.addEventListener("click", function () {
       });
 
       buildColumnToggleMenu();
+      applyColumnOrder();
       applyColumnVisibility();
     }
 
@@ -5853,16 +6097,36 @@ logoutBtn.addEventListener("click", function () {
         return;
       }
 
-      const storageKey = "chatwoot_crm_customer_table_widths";
-      const colList = Array.from(table.querySelectorAll("col"));
-      const thList = Array.from(table.querySelectorAll("th.resizable"));
-      const defaultWidths = [44, 130, 240, 150, 130, 160, 150, 160, 190];
+      const storageKey = "chatwoot_crm_customer_table_widths_v2";
 
-      function getColWidth(index) {
-        const col = colList[index];
+      const defaultWidths = {
+        select: 44,
+        avatar: 58,
+        ma_kh: 130,
+        ten_kh: 240,
+        alias_name: 220,
+        sdt: 150,
+        xung_ho: 84,
+        cong_no: 130,
+        ma_nv: 190,
+        conversation_id: 150,
+        ngay_chat_cuoi: 160,
+        reminderid: 150,
+        gio_hen: 190,
+        action: 190
+      };
+
+      function getCol(columnKey) {
+        return table.querySelector(
+          'colgroup col[data-col="' + cssEscapeValue(columnKey) + '"]'
+        );
+      }
+
+      function getColWidth(columnKey) {
+        const col = getCol(columnKey);
 
         if (!col) {
-          return defaultWidths[index] || 100;
+          return defaultWidths[columnKey] || 100;
         }
 
         const styleWidth = parseInt(col.style.width, 10);
@@ -5871,17 +6135,18 @@ logoutBtn.addEventListener("click", function () {
           return styleWidth;
         }
 
-        return defaultWidths[index] || 100;
+        return defaultWidths[columnKey] || 100;
       }
 
-      function setColWidth(index, width) {
-        const col = colList[index];
+      function setColWidth(columnKey, width) {
+        const col = getCol(columnKey);
 
         if (!col) {
           return;
         }
 
-        const safeWidth = Math.max(70, Math.round(width));
+        const minWidth = columnKey === "select" ? 44 : 58;
+        const safeWidth = Math.max(minWidth, Math.round(width));
         col.style.width = safeWidth + "px";
       }
 
@@ -5889,37 +6154,41 @@ logoutBtn.addEventListener("click", function () {
         recalculateCustomerTableWidth();
       }
 
+      let savedWidths = {};
+
       try {
-        const savedWidths = JSON.parse(localStorage.getItem(storageKey) || "{}");
-
-        colList.forEach(function (col, index) {
-          const width = Number(savedWidths[index]);
-
-          if (width && width >= 70) {
-            setColWidth(index, width);
-          } else {
-            setColWidth(index, defaultWidths[index] || 100);
-          }
-        });
+        savedWidths = JSON.parse(
+          localStorage.getItem(storageKey) || "{}"
+        ) || {};
       } catch (error) {
-        colList.forEach(function (col, index) {
-          setColWidth(index, defaultWidths[index] || 100);
-        });
+        savedWidths = {};
       }
+
+      Array.from(table.querySelectorAll("colgroup col[data-col]")).forEach(function (col) {
+        const key = String(col.dataset.col || "");
+        const width = Number(savedWidths[key]);
+
+        if (width && width >= 44) {
+          setColWidth(key, width);
+        } else {
+          setColWidth(key, defaultWidths[key] || 100);
+        }
+      });
 
       applyTableWidth();
 
-      thList.forEach(function (th) {
+      Array.from(table.querySelectorAll("th.resizable[data-col]")).forEach(function (th) {
         const resizer = th.querySelector(".col-resizer");
 
-        if (!resizer) {
+        if (!resizer || resizer.dataset.resizeReady === "1") {
           return;
         }
 
-        const colIndex = Number(th.dataset.colIndex || 0);
+        resizer.dataset.resizeReady = "1";
 
         let startX = 0;
         let startWidth = 0;
+        let activeColumnKey = "";
 
         resizer.addEventListener("click", function (event) {
           event.preventDefault();
@@ -5942,8 +6211,11 @@ logoutBtn.addEventListener("click", function () {
           event.preventDefault();
           event.stopPropagation();
 
+          activeColumnKey = String(th.dataset.col || "");
+          if (!activeColumnKey) return;
+
           startX = pageX;
-          startWidth = getColWidth(colIndex);
+          startWidth = getColWidth(activeColumnKey);
 
           resizer.classList.add("active");
           document.body.classList.add("resizing-column");
@@ -5969,13 +6241,15 @@ logoutBtn.addEventListener("click", function () {
         }
 
         function resizeColumn(pageX) {
+          if (!activeColumnKey) return;
+
           const newWidth = startWidth + (pageX - startX);
 
-          if (newWidth < 70) {
+          if (newWidth < 58 && activeColumnKey !== "select") {
             return;
           }
 
-          setColWidth(colIndex, newWidth);
+          setColWidth(activeColumnKey, newWidth);
           applyTableWidth();
         }
 
@@ -5990,14 +6264,18 @@ logoutBtn.addEventListener("click", function () {
           document.removeEventListener("touchend", stopResize);
 
           saveColumnWidths();
+          activeColumnKey = "";
         }
       });
 
       function saveColumnWidths() {
         const widths = {};
 
-        colList.forEach(function (col, index) {
-          widths[index] = getColWidth(index);
+        Array.from(table.querySelectorAll("colgroup col[data-col]")).forEach(function (col) {
+          const key = String(col.dataset.col || "");
+          if (!key) return;
+
+          widths[key] = getColWidth(key);
         });
 
         localStorage.setItem(storageKey, JSON.stringify(widths));
