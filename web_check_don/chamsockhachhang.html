@@ -3178,6 +3178,7 @@ function normalizeBigintOrNull(value) {
       currentZaloChatRow = {
         ma_kh: customer.ma_kh || "",
         ten_kh: customer.ten_kh || "",
+        alias_name: customer.alias_name || "",
         sdt: customer.sdt || "",
         uid_from: customer.uid_from || "",
 
@@ -3195,7 +3196,10 @@ function normalizeBigintOrNull(value) {
         selected_ten_nv: selectedTenNv || idNv
       };
 
-      zaloChatTitle.textContent = "Zalo chat - " + currentZaloChatRow.ma_kh;
+      zaloChatTitle.textContent =
+        'KH: "' +
+        (currentZaloChatRow.alias_name || currentZaloChatRow.ten_kh || currentZaloChatRow.ma_kh || "") +
+        '"';
       zaloSenderInfo.textContent = "Nhân viên: " + currentZaloChatRow.selected_ten_nv;
       zaloChatText.value = "";
       zaloChatPopover.classList.remove("assign-staff-dropdown");
