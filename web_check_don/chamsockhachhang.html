@@ -224,6 +224,40 @@
       width:44px; min-width:44px; max-width:44px;
       text-align:center !important; overflow:visible !important;
     }
+
+    .avatar-col-cell {
+      width: 58px;
+      min-width: 58px;
+      max-width: 58px;
+      text-align: center !important;
+      overflow: visible !important;
+    }
+
+    .customer-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      object-fit: cover;
+      display: inline-block;
+      vertical-align: middle;
+      border: 1px solid #e5e7eb;
+      background: #f3f4f6;
+    }
+
+    .customer-avatar-placeholder {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      border: 1px solid #e5e7eb;
+      background: #f3f4f6;
+      color: #9ca3af;
+      font-size: 18px;
+      font-weight: 700;
+    }
     #selectAllRows,.row-select-checkbox{
       width:17px; height:17px; cursor:pointer; vertical-align:middle;
     }
@@ -1447,6 +1481,7 @@
         <table class="customer-table">
           <colgroup>
             <col data-col="select" style="width:44px;">
+            <col data-col="avatar" style="width: 58px;">
             <col data-col="ma_kh" style="width: 130px;">
             <col data-col="ten_kh" style="width: 240px;">
             <col data-col="alias_name" style="width: 220px;">
@@ -1466,62 +1501,67 @@
               <th class="select-col-cell" data-col="select">
                 <input id="selectAllRows" type="checkbox" title="Chọn tất cả dòng đang hiển thị">
               </th>
-              <th class="sortable resizable" data-col="ma_kh" data-sort="ma_kh" data-col-index="1">
+              <th class="avatar-col-cell resizable" data-col="avatar" data-col-index="1">
+                Avatar
+                <span class="col-resizer"></span>
+              </th>
+
+              <th class="sortable resizable" data-col="ma_kh" data-sort="ma_kh" data-col-index="2">
                 Mã KH <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="ten_kh" data-sort="ten_kh" data-col-index="2">
+              <th class="sortable resizable" data-col="ten_kh" data-sort="ten_kh" data-col-index="3">
                 Tên khách hàng <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="alias_name" data-sort="alias_name" data-col-index="3">
+              <th class="sortable resizable" data-col="alias_name" data-sort="alias_name" data-col-index="4">
                 Alias name <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="sdt" data-sort="sdt" data-col-index="4">
+              <th class="sortable resizable" data-col="sdt" data-sort="sdt" data-col-index="5">
                 Số điện thoại <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="xung_ho" data-sort="xung_ho" data-col-index="5">
+              <th class="sortable resizable" data-col="xung_ho" data-sort="xung_ho" data-col-index="6">
                 Xưng hô <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="cong_no" data-sort="cong_no" data-col-index="6">
+              <th class="sortable resizable" data-col="cong_no" data-sort="cong_no" data-col-index="7">
                 Công nợ <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="ma_nv" data-sort="ma_nv" data-col-index="7">
+              <th class="sortable resizable" data-col="ma_nv" data-sort="ma_nv" data-col-index="8">
                 Nhân viên <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
               
-              <th class="sortable resizable" data-col="conversation_id" data-sort="conversation_id" data-col-index="8">
+              <th class="sortable resizable" data-col="conversation_id" data-sort="conversation_id" data-col-index="9">
                 conversation_id <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="ngay_chat_cuoi" data-sort="ngay_chat_cuoi" data-col-index="9">
+              <th class="sortable resizable" data-col="ngay_chat_cuoi" data-sort="ngay_chat_cuoi" data-col-index="10">
                 Ngày <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="reminderid" data-sort="reminderid" data-col-index="10">
+              <th class="sortable resizable" data-col="reminderid" data-sort="reminderid" data-col-index="11">
                 reminderid <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="gio_hen" data-sort="gio_hen" data-col-index="11">
+              <th class="sortable resizable" data-col="gio_hen" data-sort="gio_hen" data-col-index="12">
                 gio_hen <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="resizable" data-col="action" data-col-index="12">
+              <th class="resizable" data-col="action" data-col-index="13">
                 Thao tác
                 <span class="col-resizer"></span>
               </th>
@@ -1530,7 +1570,7 @@
 
           <tbody id="customerBody">
             <tr>
-              <td colspan="13">Đang tải dữ liệu...</td>
+              <td colspan="14">Đang tải dữ liệu...</td>
             </tr>
           </tbody>
         </table>
@@ -1638,6 +1678,7 @@
     let currentUser = getLoginUser();
     const COLUMN_VISIBILITY_STORAGE_KEY = "ds_khachhang_hidden_columns";
     const CUSTOMER_TABLE_COLUMNS = [
+      { key: "avatar", label: "Avatar" },
       { key: "ma_kh", label: "Mã KH", required: true },
       { key: "ten_kh", label: "Tên khách hàng", required: true },
       { key: "alias_name", label: "Alias name" },
@@ -2387,7 +2428,7 @@ function normalizeBigintOrNull(value) {
 
         customerBody.innerHTML = `
           <tr>
-            <td colspan="13">
+            <td colspan="14">
               Lỗi khởi tạo: ${escapeHtml(error.message || String(error))}
             </td>
           </tr>
@@ -4000,7 +4041,7 @@ showNotice(valueToSave
         if (!silent) {
           customerBody.innerHTML = `
             <tr>
-              <td colspan="13">Supabase chưa sẵn sàng.</td>
+              <td colspan="14">Supabase chưa sẵn sàng.</td>
             </tr>
           `;
         }
@@ -4025,7 +4066,7 @@ showNotice(valueToSave
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, alias_name, dien_thoai, xung_ho, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen", { count: "exact" })
+        .select("ma_kh, ten_kh, alias_name, avatar, dien_thoai, xung_ho, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false });
 
       query = applySearchAllColumns(query, keyword);
@@ -4050,7 +4091,7 @@ showNotice(valueToSave
 
         customerBody.innerHTML = `
           <tr>
-            <td colspan="13">
+            <td colspan="14">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -4071,6 +4112,7 @@ showNotice(valueToSave
           ma_kh: item.ma_kh || "",
           ten_kh: item.ten_kh || "",
           alias_name: item.alias_name || "",
+          avatar: item.avatar || "",
           sdt: item.dien_thoai || "",
           xung_ho: item.xung_ho || "",
           cong_no: item.congno || 0,
@@ -4173,7 +4215,7 @@ showNotice(valueToSave
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, alias_name, dien_thoai, xung_ho, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen", { count: "exact" })
+        .select("ma_kh, ten_kh, alias_name, avatar, dien_thoai, xung_ho, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false })
         .range(from, to);
 
@@ -4184,7 +4226,7 @@ showNotice(valueToSave
       if (error) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="13">
+            <td colspan="14">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -4205,6 +4247,7 @@ showNotice(valueToSave
           ma_kh: item.ma_kh || "",
           ten_kh: item.ten_kh || "",
           alias_name: item.alias_name || "",
+          avatar: item.avatar || "",
           sdt: item.dien_thoai || "",
           xung_ho: item.xung_ho || "",
           cong_no: item.congno || 0,
@@ -4392,7 +4435,7 @@ showNotice(valueToSave
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
         .select(
-          "ma_kh, ten_kh, alias_name, dien_thoai, xung_ho, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen"
+          "ma_kh, ten_kh, alias_name, avatar, dien_thoai, xung_ho, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen"
         )
         .limit(1);
 
@@ -4418,6 +4461,7 @@ showNotice(valueToSave
         ma_kh: item.ma_kh || "",
         ten_kh: item.ten_kh || "",
         alias_name: item.alias_name || "",
+        avatar: item.avatar || "",
         sdt: item.dien_thoai || "",
         xung_ho: item.xung_ho || "",
         cong_no: item.congno || 0,
@@ -4922,7 +4966,7 @@ logoutBtn.addEventListener("click", function () {
       if (filtered.length === 0) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="13">Không có dữ liệu.</td>
+            <td colspan="14">Không có dữ liệu.</td>
           </tr>
         `;
         syncSelectionUi();
@@ -4963,6 +5007,19 @@ logoutBtn.addEventListener("click", function () {
                 onchange="handleRowSelectionChange(this)"
                 onclick="event.stopPropagation()"
               >
+            </td>
+            <td class="avatar-col-cell" data-col="avatar" onclick="event.stopPropagation()">
+              ${String(item.avatar || "").trim()
+                ? `<img
+                    class="customer-avatar"
+                    src="${escapeHtml(String(item.avatar || "").trim())}"
+                    alt="Avatar"
+                    loading="lazy"
+                    referrerpolicy="no-referrer"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';"
+                  ><span class="customer-avatar-placeholder" style="display:none;">?</span>`
+                : `<span class="customer-avatar-placeholder">?</span>`
+              }
             </td>
             <td data-col="ma_kh" title="${escapeHtml(item.ma_kh || "")}">${escapeHtml(item.ma_kh || "")}</td>
             <td data-col="ten_kh" title="${escapeHtml(item.ten_kh || "")}">${escapeHtml(item.ten_kh || "")}</td>
@@ -5027,7 +5084,7 @@ logoutBtn.addEventListener("click", function () {
             class="customer-product-row hidden"
             data-product-for="${escapeHtml(maKh)}"
           >
-            <td colspan="13">
+            <td colspan="14">
               <div class="customer-product-box">
                 <div class="customer-product-head">
                   <div>
