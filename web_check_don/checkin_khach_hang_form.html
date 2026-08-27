@@ -44,7 +44,7 @@
     .wrap {
       max-width: 520px;
       margin: 0 auto;
-      padding: 14px;
+      padding: 8px;
     }
 
     .card {
@@ -62,21 +62,21 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
-      padding: 12px 14px;
+      gap: 7px;
+      padding: 9px 11px;
       background: white;
       border-bottom: 1px solid #e5e7eb;
     }
 
     h1 {
       margin: 0;
-      font-size: 18px;
+      font-size: 16px;
       line-height: 1.2;
     }
 
     .close {
-      width: 34px;
-      height: 34px;
+      width: 30px;
+      height: 30px;
       border: 0;
       border-radius: 8px;
       background: #f3f4f6;
@@ -85,13 +85,13 @@
     }
 
     form {
-      padding: 14px;
+      padding: 10px;
     }
 
     label {
       display: block;
-      margin-top: 10px;
-      font-size: 13px;
+      margin-top: 6px;
+      font-size: 12px;
       font-weight: 800;
       color: #374151;
     }
@@ -100,8 +100,8 @@
     textarea,
     select {
       width: 100%;
-      margin-top: 5px;
-      padding: 10px 11px;
+      margin-top: 3px;
+      padding: 7px 9px;
       border: 1px solid #d1d5db;
       border-radius: 8px;
       background: white;
@@ -109,26 +109,46 @@
     }
 
     textarea {
-      min-height: 76px;
+      min-height: 58px;
       resize: vertical;
     }
 
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      gap: 7px;
+    }
+
+    .field {
+      min-width: 0;
+    }
+
+    .field label {
+      margin-top: 6px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 7px;
+    }
+
+    .bottom-buy {
+      margin-top: 7px;
+      padding-top: 7px;
+      border-top: 1px solid #e5e7eb;
     }
 
     .actions {
       display: flex;
-      gap: 10px;
-      margin-top: 14px;
+      gap: 7px;
+      margin-top: 9px;
     }
 
     button {
       border: 0;
       border-radius: 8px;
-      padding: 11px;
+      padding: 8px 10px;
       font: inherit;
       font-weight: 800;
       cursor: pointer;
@@ -191,6 +211,7 @@
       }
 
       .grid,
+      .grid-3,
       .actions {
         grid-template-columns: 1fr;
         flex-direction: column;
@@ -218,65 +239,88 @@
       </div>
 
       <form id="form">
-        <label>Mã KH</label>
-        <input
-          id="ma_kh"
-          autocomplete="off"
-        />
+        <div class="grid">
+          <div class="field">
+            <label>Mã KH</label>
+            <input id="ma_kh" autocomplete="off" />
+          </div>
+
+          <div class="field">
+            <label>Điện thoại</label>
+            <input id="dien_thoai" inputmode="tel" autocomplete="off" />
+          </div>
+        </div>
 
         <label>Tên KH</label>
-        <input
-          id="ten_kh"
-          autocomplete="off"
-        />
+        <input id="ten_kh" autocomplete="off" />
 
         <label>Địa chỉ</label>
         <textarea id="dia_chi"></textarea>
 
-        <label>Phường/Xã</label>
-        <input
-          id="phuong_xa"
-          autocomplete="off"
-        />
-
-        <label>Điện thoại</label>
-        <input
-          id="dien_thoai"
-          inputmode="tel"
-          autocomplete="off"
-        />
-
-        <label>Mã NV</label>
-        <select id="ma_nv">
-          <option value="">Nhân viên</option>
-        </select>
-
         <div class="grid">
-          <div>
-            <label>Kinh độ lng</label>
-            <input
-              id="lng"
-              inputmode="decimal"
-              autocomplete="off"
-            />
+          <div class="field">
+            <label>Phường/Xã</label>
+            <input id="phuong_xa" autocomplete="off" />
           </div>
 
-          <div>
-            <label>Vĩ độ lat</label>
-            <input
-              id="lat"
-              inputmode="decimal"
-              autocomplete="off"
-            />
+          <div class="field">
+            <label>Nhân viên</label>
+            <select id="ma_nv">
+              <option value="">Nhân viên</option>
+            </select>
           </div>
         </div>
 
-        <label>Đã mua hàng</label>
-        <select id="Da_mua_hang">
-          <option value="">Chưa rõ</option>
-          <option value="true">Đã mua</option>
-          <option value="false">Chưa mua</option>
-        </select>
+        <div class="grid-3">
+          <div class="field">
+            <label>Số gương/ghế</label>
+            <select id="so_luong_guong_ghe">
+              <option value="">--</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
+              <option value="11">11</option>
+              <option value="12">12</option>
+              <option value="13">13</option>
+              <option value="14">14</option>
+              <option value="15">15</option>
+              <option value="16">16</option>
+              <option value="17">17</option>
+              <option value="18">18</option>
+              <option value="19">19</option>
+              <option value="20">20</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Kinh độ</label>
+            <input id="lng" inputmode="decimal" autocomplete="off" />
+          </div>
+
+          <div class="field">
+            <label>Vĩ độ</label>
+            <input id="lat" inputmode="decimal" autocomplete="off" />
+          </div>
+        </div>
+
+        <label>Mô tả</label>
+        <textarea id="mo_ta" placeholder="Nhập mô tả..."></textarea>
+
+        <div class="bottom-buy">
+          <label>Đã mua hàng</label>
+          <select id="Da_mua_hang">
+            <option value="">Chưa rõ</option>
+            <option value="true">Đã mua</option>
+            <option value="false">Chưa mua</option>
+          </select>
+        </div>
 
         <div class="actions">
           <button
@@ -344,7 +388,9 @@
         "ma_nv",
         "lng",
         "lat",
-        "Da_mua_hang"
+        "Da_mua_hang",
+        "so_luong_guong_ghe",
+        "mo_ta"
       ];
 
       const nvNameByCode = new Map();
@@ -613,7 +659,7 @@
             "nv_checkin_khach_hang"
           )
           .select(
-            "id,ma_kh,ten_kh,dia_chi,phuong_xa,dien_thoai,ma_nv,lng,lat,Da_mua_hang"
+            "id,ma_kh,ten_kh,dia_chi,phuong_xa,dien_thoai,ma_nv,lng,lat,Da_mua_hang,so_luong_guong_ghe,mo_ta"
           )
           .eq(
             "id",
@@ -660,6 +706,15 @@
             return;
           }
 
+          if (name === "so_luong_guong_ghe") {
+            input(name).value =
+              data[name] === null || data[name] === undefined
+                ? ""
+                : String(data[name]);
+
+            return;
+          }
+
           input(name).value =
             data[name] ?? "";
         });
@@ -697,6 +752,18 @@
                   toBoolOrNull(
                     input(name).value
                   );
+
+                return;
+              }
+
+              if (name === "so_luong_guong_ghe") {
+                const rawValue =
+                  String(input(name).value || "").trim();
+
+                payload[name] =
+                  rawValue === ""
+                    ? null
+                    : Number(rawValue);
 
                 return;
               }
