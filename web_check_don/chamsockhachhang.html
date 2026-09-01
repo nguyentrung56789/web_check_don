@@ -2064,7 +2064,7 @@ function normalizeBigintOrNull(value) {
 
       let customerQuery = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, ma_nv, dia_chi, khu_vuc, phuong_xa, dien_thoai, xung_ho, conversation_id, contact_id, ngay_chat_cuoi, uid_from, reminderid, gio_hen")
+        .select("ma_kh, ten_kh, ma_nv, dia_chi, khu_vuc, phuong_xa, dien_thoai, xung_ho, conversation_id, contact_id, ngay_chat_cuoi, uid_from, reminderid, gio_hen, check")
         .in("ma_kh", selectedMaKh);
 
       if (selectedStaffDbCodes.length > 0) {
@@ -2235,6 +2235,8 @@ function normalizeBigintOrNull(value) {
       row.gio_hen ??
       reminderMap.get(String(conversationId || ""))?.gio_hen
     ),
+
+  check: Boolean(idRow.check ?? row.check ?? false),
 
   trang_thai: null
 };
