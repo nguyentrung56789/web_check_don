@@ -1441,6 +1441,50 @@
       font-size: 11px;
     }
 
+    .customer-detail-tabs {
+      display: flex;
+      gap: 6px;
+      margin: 0 0 10px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .customer-detail-tab {
+      border: none;
+      background: transparent;
+      color: #6b7280;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      border-radius: 6px 6px 0 0;
+    }
+
+    .customer-detail-tab:hover {
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    .customer-detail-tab.active {
+      color: #2563eb;
+      border-bottom-color: #2563eb;
+      background: #eff6ff;
+    }
+
+    .customer-detail-panel.hidden {
+      display: none !important;
+    }
+
+    .salon-analysis-table td {
+      white-space: normal !important;
+      vertical-align: top !important;
+    }
+
+    .salon-analysis-table th:first-child,
+    .salon-analysis-table td:first-child {
+      width: 220px;
+    }
+
     @media (max-width: 760px) {
       .customer-product-head {
         display: block;
@@ -1691,6 +1735,7 @@
 
     const TABLE_KHACH_HANG_NHANVIEN_GUITIN = "kv_khachhang_nhanvien_guitin";
     const VIEW_HANG_HOA_THEO_KHACH = "sql_hanghoa_theokhach";
+    const VIEW_PHANTICH_SALON = "sql_phantich_salon";
     const PRODUCT_DETAIL_MAX_ROWS = 500;
     const AUTO_TINNHAN_WEBHOOK_URL = "https://n8n.clawbot.io.vn/webhook/guitin_autozalo";
 
@@ -1719,6 +1764,7 @@
     let SUPABASE_REST_ANON = "";
     let customers = [];
     let customerProductCache = {};
+    let customerSalonCache = {};
     let openedProductMaKh = "";
 
     let currentPage = 1;
@@ -4022,6 +4068,7 @@ showNotice(valueToSave
 
     async function refreshCustomersSmooth() {
       customerProductCache = {};
+      customerSalonCache = {};
       openedProductMaKh = "";
 
       if (isLoadingCustomers) {
@@ -5110,6 +5157,26 @@ logoutBtn.addEventListener("click", function () {
           >
             <td colspan="14">
               <div class="customer-product-box">
+                <div class="customer-detail-tabs" onclick="event.stopPropagation()">
+                  <button
+                    type="button"
+                    id="${escapeHtml(productRowId)}_tab_products"
+                    class="customer-detail-tab active"
+                    onclick="event.stopPropagation(); switchCustomerDetailTab('${safeMaKh}', 'products')"
+                  >
+                    Hàng hóa
+                  </button>
+                  <button
+                    type="button"
+                    id="${escapeHtml(productRowId)}_tab_salon"
+                    class="customer-detail-tab"
+                    onclick="event.stopPropagation(); switchCustomerDetailTab('${safeMaKh}', 'salon')"
+                  >
+                    Phân tích salon
+                  </button>
+                </div>
+
+                <div id="${escapeHtml(productRowId)}_panel_products" class="customer-detail-panel">
                 <div class="customer-product-head">
                   <div>
                     <div class="customer-product-title">
@@ -5181,6 +5248,41 @@ logoutBtn.addEventListener("click", function () {
                 </div>
 
                 <div id="${escapeHtml(productRowId)}_footer" class="customer-product-footer"></div>
+                </div>
+
+                <div id="${escapeHtml(productRowId)}_panel_salon" class="customer-detail-panel hidden">
+                  <div class="customer-product-head">
+                    <div>
+                      <div class="customer-product-title">
+                        Phân tích salon: ${escapeHtml(item.ten_kh || item.ma_kh || "")}
+                      </div>
+                      <div class="customer-product-subtitle">
+                        Mã KH: <b>${escapeHtml(maKh)}</b>
+                      </div>
+                      <div id="${escapeHtml(productRowId)}_salon_status" class="customer-product-status">
+                        Chưa tải dữ liệu.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="customer-product-table-wrap">
+                    <table class="customer-product-table salon-analysis-table">
+                      <thead>
+                        <tr>
+                          <th>Số lượng gương ghế</th>
+                          <th>Mô tả</th>
+                        </tr>
+                      </thead>
+                      <tbody id="${escapeHtml(productRowId)}_salon_body">
+                        <tr>
+                          <td colspan="2" class="customer-product-empty">Bấm tab để tải phân tích salon.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div id="${escapeHtml(productRowId)}_salon_footer" class="customer-product-footer"></div>
+                </div>
               </div>
             </td>
           </tr>
@@ -5447,6 +5549,114 @@ logoutBtn.addEventListener("click", function () {
         openedProductMaKh = "";
       }
     }
+
+    async function switchCustomerDetailTab(maKh, tabName) {
+      const cleanMaKh = String(maKh || "").trim();
+      const detailId = getCustomerProductRowId(cleanMaKh);
+      const productPanel = document.getElementById(detailId + "_panel_products");
+      const salonPanel = document.getElementById(detailId + "_panel_salon");
+      const productTab = document.getElementById(detailId + "_tab_products");
+      const salonTab = document.getElementById(detailId + "_tab_salon");
+
+      const showSalon = tabName === "salon";
+
+      if (productPanel) productPanel.classList.toggle("hidden", showSalon);
+      if (salonPanel) salonPanel.classList.toggle("hidden", !showSalon);
+      if (productTab) productTab.classList.toggle("active", !showSalon);
+      if (salonTab) salonTab.classList.toggle("active", showSalon);
+
+      if (showSalon) {
+        await loadSalonAnalysis(cleanMaKh);
+      } else {
+        await loadCustomerProducts(cleanMaKh);
+      }
+    }
+
+    async function loadSalonAnalysis(maKh, forceReload = false) {
+      const cleanMaKh = String(maKh || "").trim();
+      const detailId = getCustomerProductRowId(cleanMaKh);
+      const bodyEl = document.getElementById(detailId + "_salon_body");
+      const statusEl = document.getElementById(detailId + "_salon_status");
+      const footerEl = document.getElementById(detailId + "_salon_footer");
+
+      if (!cleanMaKh || !bodyEl) return;
+
+      if (!forceReload && Object.prototype.hasOwnProperty.call(customerSalonCache, cleanMaKh)) {
+        renderSalonAnalysis(cleanMaKh);
+        return;
+      }
+
+      if (!supabaseClient) {
+        bodyEl.innerHTML = `<tr><td colspan="2" class="customer-product-empty">Supabase chưa sẵn sàng.</td></tr>`;
+        return;
+      }
+
+      bodyEl.innerHTML = `<tr><td colspan="2" class="customer-product-empty">Đang tải phân tích salon...</td></tr>`;
+      if (statusEl) statusEl.textContent = "Đang lọc theo mã KH: " + cleanMaKh;
+
+      try {
+        const { data, error } = await supabaseClient
+          .from(VIEW_PHANTICH_SALON)
+          .select("so_luong_guong_ghe, mo_ta")
+          .eq("ma_kh", cleanMaKh);
+
+        if (error) throw error;
+
+        customerSalonCache[cleanMaKh] = data || [];
+        renderSalonAnalysis(cleanMaKh);
+      } catch (error) {
+        console.error("Lỗi tải phân tích salon:", error);
+        bodyEl.innerHTML = `
+          <tr>
+            <td colspan="2" class="customer-product-empty">
+              Lỗi tải phân tích salon: ${escapeHtml(error.message || JSON.stringify(error))}
+            </td>
+          </tr>
+        `;
+        if (statusEl) statusEl.textContent = "Lỗi tải dữ liệu.";
+        if (footerEl) footerEl.textContent = "";
+      }
+    }
+
+    function renderSalonAnalysis(maKh) {
+      const cleanMaKh = String(maKh || "").trim();
+      const detailId = getCustomerProductRowId(cleanMaKh);
+      const bodyEl = document.getElementById(detailId + "_salon_body");
+      const statusEl = document.getElementById(detailId + "_salon_status");
+      const footerEl = document.getElementById(detailId + "_salon_footer");
+      const rows = customerSalonCache[cleanMaKh] || [];
+
+      if (!bodyEl) return;
+
+      if (!rows.length) {
+        bodyEl.innerHTML = `
+          <tr>
+            <td colspan="2" class="customer-product-empty">
+              Chưa có dữ liệu trong view ${escapeHtml(VIEW_PHANTICH_SALON)}.
+            </td>
+          </tr>
+        `;
+        if (statusEl) statusEl.textContent = "0 dữ liệu.";
+        if (footerEl) footerEl.textContent = "Đang lọc theo mã KH: " + cleanMaKh;
+        return;
+      }
+
+      bodyEl.innerHTML = rows.map(function (item) {
+        return `
+          <tr>
+            <td class="right" title="${escapeHtml(formatNumberSafe(item.so_luong_guong_ghe))}">
+              ${escapeHtml(formatNumberSafe(item.so_luong_guong_ghe))}
+            </td>
+            <td title="${escapeHtml(item.mo_ta || "")}">${escapeHtml(item.mo_ta || "")}</td>
+          </tr>
+        `;
+      }).join("");
+
+      if (statusEl) statusEl.textContent = rows.length + " dòng dữ liệu.";
+      if (footerEl) footerEl.textContent = "Đang lọc theo mã KH: " + cleanMaKh;
+    }
+
+    window.switchCustomerDetailTab = switchCustomerDetailTab;
 
     async function loadCustomerProducts(maKh, forceReload = false) {
       const cleanMaKh = String(maKh || "").trim();
