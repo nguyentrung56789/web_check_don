@@ -2903,6 +2903,18 @@ function applyRealtimeStatus(payload) {
         changed = true;
       }
     }
+
+    // Cập nhật check theo Realtime.
+    // Khi n8n / Supabase đổi check true/false thì checkbox trên HTML đổi ngay.
+    if (Object.prototype.hasOwnProperty.call(newRow, 'check')) {
+      const oldCheck = row.check === true;
+      const newCheck = newRow.check === true;
+
+      if (oldCheck !== newCheck) {
+        row.check = newCheck;
+        changed = true;
+      }
+    }
   });
 
   if (changed) {
