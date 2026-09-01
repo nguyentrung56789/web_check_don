@@ -1448,27 +1448,28 @@
       border-bottom: 1px solid #e5e7eb;
     }
 
-    .customer-detail-tab {
-      border: none;
-      background: transparent;
-      color: #6b7280;
-      padding: 8px 12px;
+    /* Tab chi tiết: ghi đè style button chung của .customer-table */
+    .customer-table button.customer-detail-tab {
+      border: 1px solid #dbe3ef;
+      background: #eef2f7;
+      color: #4b5563;
+      padding: 7px 12px;
       font-size: 13px;
       font-weight: 800;
       cursor: pointer;
-      border-bottom: 3px solid transparent;
-      border-radius: 6px 6px 0 0;
+      border-radius: 6px;
     }
 
-    .customer-detail-tab:hover {
-      background: #f3f4f6;
+    .customer-table button.customer-detail-tab:hover {
+      background: #e2e8f0;
       color: #111827;
     }
 
-    .customer-detail-tab.active {
-      color: #2563eb;
-      border-bottom-color: #2563eb;
-      background: #eff6ff;
+    .customer-table button.customer-detail-tab.active,
+    .customer-table button.customer-detail-tab.active:hover {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
     }
 
     .customer-detail-panel.hidden {
@@ -5162,6 +5163,7 @@ logoutBtn.addEventListener("click", function () {
                     type="button"
                     id="${escapeHtml(productRowId)}_tab_products"
                     class="customer-detail-tab active"
+                    aria-selected="true"
                     onclick="event.stopPropagation(); switchCustomerDetailTab('${safeMaKh}', 'products')"
                   >
                     Hàng hóa
@@ -5170,13 +5172,14 @@ logoutBtn.addEventListener("click", function () {
                     type="button"
                     id="${escapeHtml(productRowId)}_tab_salon"
                     class="customer-detail-tab"
+                    aria-selected="false"
                     onclick="event.stopPropagation(); switchCustomerDetailTab('${safeMaKh}', 'salon')"
                   >
                     Phân tích salon
                   </button>
                 </div>
 
-                <div id="${escapeHtml(productRowId)}_panel_products" class="customer-detail-panel">
+                <div id="${escapeHtml(productRowId)}_panel_products" class="customer-detail-panel" style="display:block">
                 <div class="customer-product-head">
                   <div>
                     <div class="customer-product-title">
@@ -5250,7 +5253,7 @@ logoutBtn.addEventListener("click", function () {
                 <div id="${escapeHtml(productRowId)}_footer" class="customer-product-footer"></div>
                 </div>
 
-                <div id="${escapeHtml(productRowId)}_panel_salon" class="customer-detail-panel hidden">
+                <div id="${escapeHtml(productRowId)}_panel_salon" class="customer-detail-panel hidden" style="display:none">
                   <div class="customer-product-head">
                     <div>
                       <div class="customer-product-title">
@@ -5560,10 +5563,31 @@ logoutBtn.addEventListener("click", function () {
 
       const showSalon = tabName === "salon";
 
-      if (productPanel) productPanel.classList.toggle("hidden", showSalon);
-      if (salonPanel) salonPanel.classList.toggle("hidden", !showSalon);
-      if (productTab) productTab.classList.toggle("active", !showSalon);
-      if (salonTab) salonTab.classList.toggle("active", showSalon);
+      // Ẩn/hiện PANEL thật sự để nội dung luôn khớp với tab đang xanh.
+      if (productPanel) {
+        productPanel.classList.toggle("hidden", showSalon);
+        productPanel.style.display = showSalon ? "none" : "block";
+      }
+
+      if (salonPanel) {
+        salonPanel.classList.toggle("hidden", !showSalon);
+        salonPanel.style.display = showSalon ? "block" : "none";
+      }
+
+      // Đổi trạng thái tab đang xem.
+      if (productTab) {
+        productTab.classList.toggle("active", !showSalon);
+        productTab.setAttribute("aria-selected", showSalon ? "false" : "true");
+      }
+
+      if (salonTab) {
+        salonTab.classList.toggle("active", showSalon);
+        salonTab.setAttribute("aria-selected", showSalon ? "true" : "false");
+      }
+
+      // Ghi nhớ tab đang mở của khách này.
+      const detailRow = document.getElementById(detailId);
+      if (detailRow) detailRow.dataset.activeDetailTab = showSalon ? "salon" : "products";
 
       if (showSalon) {
         await loadSalonAnalysis(cleanMaKh);
