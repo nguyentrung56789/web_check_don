@@ -187,6 +187,31 @@
       color: #166534;
     }
 
+
+    /* ===================== CỘT CHECK TRUE / FALSE ===================== */
+    .row-check {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      cursor: pointer;
+      accent-color: #2563eb;
+    }
+
+    .check-cell {
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .check-value {
+      display: inline-block;
+      min-width: 36px;
+      margin-left: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #64748b;
+      vertical-align: 3px;
+    }
+
     .empty {
       text-align: center;
       padding: 30px;
@@ -935,13 +960,14 @@
             <th>Tên khách hàng</th>
             <th>Tên nhân viên</th>
             <th>alias_name</th>
+            <th>Check</th>
             <th>Trạng thái</th>
           </tr>
         </thead>
 
         <tbody id="tbody">
           <tr>
-            <td colspan="6" class="empty">
+            <td colspan="7" class="empty">
               Đang tải dữ liệu...
             </td>
           </tr>
@@ -1261,7 +1287,7 @@ async function loadData() {
         `
         <tr>
           <td
-            colspan="6"
+            colspan="7"
             class="empty"
           >
             Đang tải dữ liệu...
@@ -1296,6 +1322,7 @@ async function loadData() {
           uid_from,
           conversation_id,
           reminderid,
+          check,
           trang_thai
         `)
         .not(
@@ -1414,7 +1441,7 @@ async function loadData() {
         `
         <tr>
           <td
-            colspan="6"
+            colspan="7"
             class="empty"
           >
             Không tải được dữ liệu
@@ -1440,6 +1467,73 @@ async function loadData() {
    HIỂN THỊ BẢNG
 ========================================================= */
 
+
+async function updateRowCheck(conversationId, checked, checkboxEl) {
+  const id = String(conversationId ?? '').trim();
+
+  if (!id || !sb) {
+    if (checkboxEl) {
+      checkboxEl.checked = !checked;
+    }
+    return;
+  }
+
+  const valueText = checkboxEl
+    ?.closest('.check-cell')
+    ?.querySelector('.check-value');
+
+  if (checkboxEl) {
+    checkboxEl.disabled = true;
+  }
+
+  try {
+    const { error } = await sb
+      .from(TABLE_NAME)
+      .update({
+        check: checked === true
+      })
+      .eq('conversation_id', id);
+
+    if (error) {
+      throw error;
+    }
+
+    const row = rows.find(r =>
+      String(r.conversation_id ?? '').trim() === id
+    );
+
+    if (row) {
+      row.check = checked === true;
+    }
+
+    if (valueText) {
+      valueText.textContent = checked ? 'true' : 'false';
+    }
+
+  } catch (err) {
+    console.error('[UPDATE CHECK ERROR]', err);
+
+    if (checkboxEl) {
+      checkboxEl.checked = !checked;
+    }
+
+    if (valueText) {
+      valueText.textContent = !checked ? 'true' : 'false';
+    }
+
+    alert(
+      'Không cập nhật được Check: ' +
+      (err?.message || err)
+    );
+
+  } finally {
+    if (checkboxEl) {
+      checkboxEl.disabled = false;
+    }
+  }
+}
+
+
 function renderTable() {
 
   const tbody =
@@ -1452,7 +1546,7 @@ function renderTable() {
       `
       <tr>
         <td
-          colspan="6"
+          colspan="7"
           class="empty"
         >
           Không có khách hợp lệ
@@ -1497,6 +1591,22 @@ function renderTable() {
             ${escapeHtml(
               r.alias_name ?? ''
             )}
+          </td>
+
+          <td class="check-cell">
+            <input
+              type="checkbox"
+              class="row-check"
+              ${r.check === true ? 'checked' : ''}
+              onchange="updateRowCheck(
+                '${escapeHtml(String(r.conversation_id ?? ''))}',
+                this.checked,
+                this
+              )"
+            />
+            <span class="check-value">
+              ${r.check === true ? 'true' : 'false'}
+            </span>
           </td>
 
           <td>
