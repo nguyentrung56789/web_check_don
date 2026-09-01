@@ -1441,51 +1441,6 @@
       font-size: 11px;
     }
 
-    .customer-detail-tabs {
-      display: flex;
-      gap: 6px;
-      margin: 0 0 10px 0;
-      border-bottom: 1px solid #e5e7eb;
-    }
-
-    /* Tab chi tiết: ghi đè style button chung của .customer-table */
-    .customer-table button.customer-detail-tab {
-      border: 1px solid #dbe3ef;
-      background: #eef2f7;
-      color: #4b5563;
-      padding: 7px 12px;
-      font-size: 13px;
-      font-weight: 800;
-      cursor: pointer;
-      border-radius: 6px;
-    }
-
-    .customer-table button.customer-detail-tab:hover {
-      background: #e2e8f0;
-      color: #111827;
-    }
-
-    .customer-table button.customer-detail-tab.active,
-    .customer-table button.customer-detail-tab.active:hover {
-      background: #2563eb;
-      color: #ffffff;
-      border-color: #2563eb;
-    }
-
-    .customer-detail-panel.hidden {
-      display: none !important;
-    }
-
-    .salon-analysis-table td {
-      white-space: normal !important;
-      vertical-align: top !important;
-    }
-
-    .salon-analysis-table th:first-child,
-    .salon-analysis-table td:first-child {
-      width: 220px;
-    }
-
     @media (max-width: 760px) {
       .customer-product-head {
         display: block;
@@ -1552,6 +1507,8 @@
             <col data-col="sdt" style="width: 150px;">
             <col data-col="xung_ho" style="width: 84px;">
             <col data-col="cong_no" style="width: 130px;">
+            <col data-col="so_luong_guong_ghe" style="width: 160px;">
+            <col data-col="mo_ta" style="width: 280px;">
             <col data-col="ma_nv" style="width: 190px;">
             <col data-col="conversation_id" style="width: 150px;">
             <col data-col="ngay_chat_cuoi" style="width: 160px;">
@@ -1600,32 +1557,42 @@
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="ma_nv" data-sort="ma_nv" data-col-index="8">
+              <th class="resizable" data-col="so_luong_guong_ghe" data-col-index="8">
+                Số lượng gương ghế
+                <span class="col-resizer"></span>
+              </th>
+
+              <th class="resizable" data-col="mo_ta" data-col-index="9">
+                Mô tả
+                <span class="col-resizer"></span>
+              </th>
+
+              <th class="sortable resizable" data-col="ma_nv" data-sort="ma_nv" data-col-index="10">
                 Nhân viên <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
               
-              <th class="sortable resizable" data-col="conversation_id" data-sort="conversation_id" data-col-index="9">
+              <th class="sortable resizable" data-col="conversation_id" data-sort="conversation_id" data-col-index="11">
                 conversation_id <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="ngay_chat_cuoi" data-sort="ngay_chat_cuoi" data-col-index="10">
+              <th class="sortable resizable" data-col="ngay_chat_cuoi" data-sort="ngay_chat_cuoi" data-col-index="12">
                 Ngày <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="reminderid" data-sort="reminderid" data-col-index="11">
+              <th class="sortable resizable" data-col="reminderid" data-sort="reminderid" data-col-index="13">
                 reminderid <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="gio_hen" data-sort="gio_hen" data-col-index="12">
+              <th class="sortable resizable" data-col="gio_hen" data-sort="gio_hen" data-col-index="14">
                 gio_hen <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="resizable" data-col="action" data-col-index="13">
+              <th class="resizable" data-col="action" data-col-index="15">
                 Thao tác
                 <span class="col-resizer"></span>
               </th>
@@ -1634,7 +1601,7 @@
 
           <tbody id="customerBody">
             <tr>
-              <td colspan="14">Đang tải dữ liệu...</td>
+              <td colspan="16">Đang tải dữ liệu...</td>
             </tr>
           </tbody>
         </table>
@@ -1736,7 +1703,7 @@
 
     const TABLE_KHACH_HANG_NHANVIEN_GUITIN = "kv_khachhang_nhanvien_guitin";
     const VIEW_HANG_HOA_THEO_KHACH = "sql_hanghoa_theokhach";
-    const VIEW_PHANTICH_SALON = "sql_phantich_salon";
+    const VIEW_PHAN_TICH_SALON = "sql_phantich_salon";
     const PRODUCT_DETAIL_MAX_ROWS = 500;
     const AUTO_TINNHAN_WEBHOOK_URL = "https://n8n.clawbot.io.vn/webhook/guitin_autozalo";
 
@@ -1750,6 +1717,8 @@
       { key: "sdt", label: "Số điện thoại" },
       { key: "xung_ho", label: "Xưng hô" },
       { key: "cong_no", label: "Công nợ" },
+      { key: "so_luong_guong_ghe", label: "Số lượng gương ghế" },
+      { key: "mo_ta", label: "Mô tả" },
       { key: "ma_nv", label: "Nhân viên" },
       { key: "conversation_id", label: "conversation_id" },
       { key: "ngay_chat_cuoi", label: "Ngày" },
@@ -1765,7 +1734,6 @@
     let SUPABASE_REST_ANON = "";
     let customers = [];
     let customerProductCache = {};
-    let customerSalonCache = {};
     let openedProductMaKh = "";
 
     let currentPage = 1;
@@ -2495,7 +2463,7 @@ function normalizeBigintOrNull(value) {
 
         customerBody.innerHTML = `
           <tr>
-            <td colspan="14">
+            <td colspan="16">
               Lỗi khởi tạo: ${escapeHtml(error.message || String(error))}
             </td>
           </tr>
@@ -4069,7 +4037,6 @@ showNotice(valueToSave
 
     async function refreshCustomersSmooth() {
       customerProductCache = {};
-      customerSalonCache = {};
       openedProductMaKh = "";
 
       if (isLoadingCustomers) {
@@ -4113,7 +4080,7 @@ showNotice(valueToSave
         if (!silent) {
           customerBody.innerHTML = `
             <tr>
-              <td colspan="14">Supabase chưa sẵn sàng.</td>
+              <td colspan="16">Supabase chưa sẵn sàng.</td>
             </tr>
           `;
         }
@@ -4163,7 +4130,7 @@ showNotice(valueToSave
 
         customerBody.innerHTML = `
           <tr>
-            <td colspan="14">
+            <td colspan="16">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -4199,6 +4166,7 @@ showNotice(valueToSave
       });
 
       await loadCustomerStaffAssignments(customers.map(function (item) { return item.ma_kh; }));
+      await loadSalonInfoForCustomers(customers);
       await loadReminderInfoForCustomers(customers);
       rememberSelectedRowsFromCurrentPage();
       renderCustomers();
@@ -4209,6 +4177,63 @@ showNotice(valueToSave
       } else {
         setCustomerLoading(false);
       }
+    }
+
+
+
+    async function loadSalonInfoForCustomers(customerRows) {
+      if (!supabaseClient || !Array.isArray(customerRows) || customerRows.length === 0) {
+        return;
+      }
+
+      const maKhList = Array.from(new Set(
+        customerRows
+          .map(function (item) { return String(item?.ma_kh || "").trim(); })
+          .filter(Boolean)
+      ));
+
+      if (maKhList.length === 0) return;
+
+      const { data, error } = await supabaseClient
+        .from(VIEW_PHAN_TICH_SALON)
+        .select("ma_kh, so_luong_guong_ghe, mo_ta")
+        .in("ma_kh", maKhList);
+
+      if (error) {
+        console.warn("[PHAN_TICH_SALON] Không tải được dữ liệu:", error);
+        return;
+      }
+
+      const salonMap = new Map();
+
+      (data || []).forEach(function (row) {
+        const key = String(row?.ma_kh || "").trim();
+        if (!key) return;
+
+        // Nếu một mã KH có nhiều dòng thì ưu tiên dòng đầu có dữ liệu.
+        if (!salonMap.has(key)) {
+          salonMap.set(key, row);
+        } else {
+          const old = salonMap.get(key) || {};
+          salonMap.set(key, {
+            ma_kh: key,
+            so_luong_guong_ghe:
+              old.so_luong_guong_ghe ?? row.so_luong_guong_ghe ?? null,
+            mo_ta:
+              String(old.mo_ta || "").trim()
+                ? old.mo_ta
+                : (row.mo_ta ?? null)
+          });
+        }
+      });
+
+      customerRows.forEach(function (item) {
+        const key = String(item?.ma_kh || "").trim();
+        const salon = salonMap.get(key);
+
+        item.so_luong_guong_ghe = salon?.so_luong_guong_ghe ?? null;
+        item.mo_ta = salon?.mo_ta ?? "";
+      });
     }
 
 
@@ -4298,7 +4323,7 @@ showNotice(valueToSave
       if (error) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="14">
+            <td colspan="16">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -4334,6 +4359,7 @@ showNotice(valueToSave
       });
 
       await loadCustomerStaffAssignments(customers.map(function (item) { return item.ma_kh; }));
+      await loadSalonInfoForCustomers(customers);
       await loadReminderInfoForCustomers(customers);
       rememberSelectedRowsFromCurrentPage();
       renderCustomers();
@@ -5038,7 +5064,7 @@ logoutBtn.addEventListener("click", function () {
       if (filtered.length === 0) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="14">Không có dữ liệu.</td>
+            <td colspan="16">Không có dữ liệu.</td>
           </tr>
         `;
         syncSelectionUi();
@@ -5121,6 +5147,12 @@ logoutBtn.addEventListener("click", function () {
               </select>
             </td>
             <td data-col="cong_no" title="${formatMoney(item.cong_no)}">${formatMoney(item.cong_no)}</td>
+            <td data-col="so_luong_guong_ghe" title="${escapeHtml(item.so_luong_guong_ghe ?? "")}">
+              ${escapeHtml(item.so_luong_guong_ghe ?? "")}
+            </td>
+            <td data-col="mo_ta" title="${escapeHtml(item.mo_ta || "")}">
+              ${escapeHtml(item.mo_ta || "")}
+            </td>
             <td data-col="ma_nv" title="${escapeHtml(staffTitle)}">
               ${escapeHtml(staffTitle || "")}
             </td>
@@ -5156,30 +5188,8 @@ logoutBtn.addEventListener("click", function () {
             class="customer-product-row hidden"
             data-product-for="${escapeHtml(maKh)}"
           >
-            <td colspan="14">
+            <td colspan="16">
               <div class="customer-product-box">
-                <div class="customer-detail-tabs" onclick="event.stopPropagation()">
-                  <button
-                    type="button"
-                    id="${escapeHtml(productRowId)}_tab_products"
-                    class="customer-detail-tab active"
-                    aria-selected="true"
-                    onclick="event.stopPropagation(); switchCustomerDetailTab('${safeMaKh}', 'products')"
-                  >
-                    Hàng hóa
-                  </button>
-                  <button
-                    type="button"
-                    id="${escapeHtml(productRowId)}_tab_salon"
-                    class="customer-detail-tab"
-                    aria-selected="false"
-                    onclick="event.stopPropagation(); switchCustomerDetailTab('${safeMaKh}', 'salon')"
-                  >
-                    Phân tích salon
-                  </button>
-                </div>
-
-                <div id="${escapeHtml(productRowId)}_panel_products" class="customer-detail-panel" style="display:block">
                 <div class="customer-product-head">
                   <div>
                     <div class="customer-product-title">
@@ -5251,41 +5261,6 @@ logoutBtn.addEventListener("click", function () {
                 </div>
 
                 <div id="${escapeHtml(productRowId)}_footer" class="customer-product-footer"></div>
-                </div>
-
-                <div id="${escapeHtml(productRowId)}_panel_salon" class="customer-detail-panel hidden" style="display:none">
-                  <div class="customer-product-head">
-                    <div>
-                      <div class="customer-product-title">
-                        Phân tích salon: ${escapeHtml(item.ten_kh || item.ma_kh || "")}
-                      </div>
-                      <div class="customer-product-subtitle">
-                        Mã KH: <b>${escapeHtml(maKh)}</b>
-                      </div>
-                      <div id="${escapeHtml(productRowId)}_salon_status" class="customer-product-status">
-                        Chưa tải dữ liệu.
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="customer-product-table-wrap">
-                    <table class="customer-product-table salon-analysis-table">
-                      <thead>
-                        <tr>
-                          <th>Số lượng gương ghế</th>
-                          <th>Mô tả</th>
-                        </tr>
-                      </thead>
-                      <tbody id="${escapeHtml(productRowId)}_salon_body">
-                        <tr>
-                          <td colspan="2" class="customer-product-empty">Bấm tab để tải phân tích salon.</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div id="${escapeHtml(productRowId)}_salon_footer" class="customer-product-footer"></div>
-                </div>
               </div>
             </td>
           </tr>
@@ -5552,135 +5527,6 @@ logoutBtn.addEventListener("click", function () {
         openedProductMaKh = "";
       }
     }
-
-    async function switchCustomerDetailTab(maKh, tabName) {
-      const cleanMaKh = String(maKh || "").trim();
-      const detailId = getCustomerProductRowId(cleanMaKh);
-      const productPanel = document.getElementById(detailId + "_panel_products");
-      const salonPanel = document.getElementById(detailId + "_panel_salon");
-      const productTab = document.getElementById(detailId + "_tab_products");
-      const salonTab = document.getElementById(detailId + "_tab_salon");
-
-      const showSalon = tabName === "salon";
-
-      // Ẩn/hiện PANEL thật sự để nội dung luôn khớp với tab đang xanh.
-      if (productPanel) {
-        productPanel.classList.toggle("hidden", showSalon);
-        productPanel.style.display = showSalon ? "none" : "block";
-      }
-
-      if (salonPanel) {
-        salonPanel.classList.toggle("hidden", !showSalon);
-        salonPanel.style.display = showSalon ? "block" : "none";
-      }
-
-      // Đổi trạng thái tab đang xem.
-      if (productTab) {
-        productTab.classList.toggle("active", !showSalon);
-        productTab.setAttribute("aria-selected", showSalon ? "false" : "true");
-      }
-
-      if (salonTab) {
-        salonTab.classList.toggle("active", showSalon);
-        salonTab.setAttribute("aria-selected", showSalon ? "true" : "false");
-      }
-
-      // Ghi nhớ tab đang mở của khách này.
-      const detailRow = document.getElementById(detailId);
-      if (detailRow) detailRow.dataset.activeDetailTab = showSalon ? "salon" : "products";
-
-      if (showSalon) {
-        await loadSalonAnalysis(cleanMaKh);
-      } else {
-        await loadCustomerProducts(cleanMaKh);
-      }
-    }
-
-    async function loadSalonAnalysis(maKh, forceReload = false) {
-      const cleanMaKh = String(maKh || "").trim();
-      const detailId = getCustomerProductRowId(cleanMaKh);
-      const bodyEl = document.getElementById(detailId + "_salon_body");
-      const statusEl = document.getElementById(detailId + "_salon_status");
-      const footerEl = document.getElementById(detailId + "_salon_footer");
-
-      if (!cleanMaKh || !bodyEl) return;
-
-      if (!forceReload && Object.prototype.hasOwnProperty.call(customerSalonCache, cleanMaKh)) {
-        renderSalonAnalysis(cleanMaKh);
-        return;
-      }
-
-      if (!supabaseClient) {
-        bodyEl.innerHTML = `<tr><td colspan="2" class="customer-product-empty">Supabase chưa sẵn sàng.</td></tr>`;
-        return;
-      }
-
-      bodyEl.innerHTML = `<tr><td colspan="2" class="customer-product-empty">Đang tải phân tích salon...</td></tr>`;
-      if (statusEl) statusEl.textContent = "Đang lọc theo mã KH: " + cleanMaKh;
-
-      try {
-        const { data, error } = await supabaseClient
-          .from(VIEW_PHANTICH_SALON)
-          .select("so_luong_guong_ghe, mo_ta")
-          .eq("ma_kh", cleanMaKh);
-
-        if (error) throw error;
-
-        customerSalonCache[cleanMaKh] = data || [];
-        renderSalonAnalysis(cleanMaKh);
-      } catch (error) {
-        console.error("Lỗi tải phân tích salon:", error);
-        bodyEl.innerHTML = `
-          <tr>
-            <td colspan="2" class="customer-product-empty">
-              Lỗi tải phân tích salon: ${escapeHtml(error.message || JSON.stringify(error))}
-            </td>
-          </tr>
-        `;
-        if (statusEl) statusEl.textContent = "Lỗi tải dữ liệu.";
-        if (footerEl) footerEl.textContent = "";
-      }
-    }
-
-    function renderSalonAnalysis(maKh) {
-      const cleanMaKh = String(maKh || "").trim();
-      const detailId = getCustomerProductRowId(cleanMaKh);
-      const bodyEl = document.getElementById(detailId + "_salon_body");
-      const statusEl = document.getElementById(detailId + "_salon_status");
-      const footerEl = document.getElementById(detailId + "_salon_footer");
-      const rows = customerSalonCache[cleanMaKh] || [];
-
-      if (!bodyEl) return;
-
-      if (!rows.length) {
-        bodyEl.innerHTML = `
-          <tr>
-            <td colspan="2" class="customer-product-empty">
-              Chưa có dữ liệu trong view ${escapeHtml(VIEW_PHANTICH_SALON)}.
-            </td>
-          </tr>
-        `;
-        if (statusEl) statusEl.textContent = "0 dữ liệu.";
-        if (footerEl) footerEl.textContent = "Đang lọc theo mã KH: " + cleanMaKh;
-        return;
-      }
-
-      bodyEl.innerHTML = rows.map(function (item) {
-        return `
-          <tr>
-            <td class="right" title="${escapeHtml(formatNumberSafe(item.so_luong_guong_ghe))}">
-              ${escapeHtml(formatNumberSafe(item.so_luong_guong_ghe))}
-            </td>
-            <td title="${escapeHtml(item.mo_ta || "")}">${escapeHtml(item.mo_ta || "")}</td>
-          </tr>
-        `;
-      }).join("");
-
-      if (statusEl) statusEl.textContent = rows.length + " dòng dữ liệu.";
-      if (footerEl) footerEl.textContent = "Đang lọc theo mã KH: " + cleanMaKh;
-    }
-
-    window.switchCustomerDetailTab = switchCustomerDetailTab;
 
     async function loadCustomerProducts(maKh, forceReload = false) {
       const cleanMaKh = String(maKh || "").trim();
