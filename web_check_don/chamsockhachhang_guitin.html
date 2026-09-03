@@ -2135,34 +2135,6 @@ async function sendRunWebhook() {
 
   }
 
-  /*
-    maNv hiện tại của hệ thống là số điện thoại đăng nhập.
-    Tra kv_nhan_vien.dien_thoai để lấy đúng cột id_nv.
-    Ví dụ: 0388396539 -> id_nv 461173.
-  */
-  const { data: nvIdRows, error: nvIdError } = await sb
-    .from(TABLE_NHAN_VIEN)
-    .select('id_nv, dien_thoai, ten_nv')
-    .eq('dien_thoai', maNv)
-    .limit(1);
-
-  if (nvIdError) {
-    throw new Error(
-      'Lỗi lấy id_nv theo điện thoại ' + maNv + ': ' +
-      (nvIdError.message || nvIdError)
-    );
-  }
-
-  const idNv = String(
-    nvIdRows?.[0]?.id_nv ?? ''
-  ).trim();
-
-  if (!idNv) {
-    throw new Error(
-      'Không tìm thấy id_nv trong kv_nhan_vien với dien_thoai = ' + maNv
-    );
-  }
-
 
   /*
     LẤY NỘI DUNG + FILE + THỜI GIAN TỪ FORM
@@ -2258,7 +2230,6 @@ async function sendRunWebhook() {
   formData.append('action', 'run');
   formData.append('nguon', 'auto_tinnhan');
   formData.append('ma_nv', maNv);
-  formData.append('id_nv', idNv);
 
   formData.append('run_id', currentRunId);
   formData.append('so_khach_hop_le', String(rows.length));
@@ -2353,37 +2324,6 @@ async function sendRunWebhook() {
     sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den
   );
 
-  /*
-    payload JSON để n8n có thể dùng theo dạng body.payload.
-    Đồng thời các field trực tiếp ở body vẫn được giữ để không phá workflow cũ.
-  */
-  const payload = {
-    action: 'run',
-    nguon: 'auto_tinnhan',
-    ma_nv: maNv,
-    id_nv: idNv,
-    run_id: currentRunId,
-    so_khach_hop_le: rows.length,
-    conversation_id: String(conversationId),
-    reminderid: String(reminderid),
-    message_type: 'outgoing',
-    loaigui: loaiGuiGuiWebhook,
-    che_do_gui: loaiGui,
-    loinhac: loiNhac,
-    gio_hen: gioHen,
-    noi_dung: noiDung,
-    icon: icon,
-    delay_mode: String(delayConfig.mode ?? 'random'),
-    fixed_seconds: delayConfig.fixed_seconds,
-    min_seconds: delayConfig.min_seconds,
-    max_seconds: delayConfig.max_seconds,
-    gio_gui_tu: sendWindow.gio_gui_tu,
-    gio_gui_den: sendWindow.gio_gui_den,
-    khung_gio_gui: sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den
-  };
-
-  formData.append('payload', JSON.stringify(payload));
-
   // Ảnh và video đều gửi với field multipart tên "data"
   if (imageFile) {
     formData.append('data', imageFile, imageFile.name);
@@ -2397,7 +2337,6 @@ async function sendRunWebhook() {
     action: 'run',
     nguon: 'auto_tinnhan',
     ma_nv: maNv,
-    id_nv: idNv,
     run_id: currentRunId,
     so_khach_hop_le: rows.length,
     conversation_id: String(conversationId),
