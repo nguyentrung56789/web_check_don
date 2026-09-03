@@ -1316,7 +1316,6 @@ async function loadData() {
         .select(`
           ma_kh,
           ma_nv,
-          id_nv,
           ten_kh,
           alias_name,
           ten_nv,
@@ -2136,6 +2135,34 @@ async function sendRunWebhook() {
 
   }
 
+  /*
+    maNv hiện tại của hệ thống là số điện thoại đăng nhập.
+    Tra kv_nhan_vien.dien_thoai để lấy đúng cột id_nv.
+    Ví dụ: 0388396539 -> id_nv 461173.
+  */
+  const { data: nvIdRows, error: nvIdError } = await sb
+    .from(TABLE_NHAN_VIEN)
+    .select('id_nv, dien_thoai, ten_nv')
+    .eq('dien_thoai', maNv)
+    .limit(1);
+
+  if (nvIdError) {
+    throw new Error(
+      'Lỗi lấy id_nv theo điện thoại ' + maNv + ': ' +
+      (nvIdError.message || nvIdError)
+    );
+  }
+
+  const idNv = String(
+    nvIdRows?.[0]?.id_nv ?? ''
+  ).trim();
+
+  if (!idNv) {
+    throw new Error(
+      'Không tìm thấy id_nv trong kv_nhan_vien với dien_thoai = ' + maNv
+    );
+  }
+
 
   /*
     LẤY NỘI DUNG + FILE + THỜI GIAN TỪ FORM
@@ -2224,69 +2251,140 @@ async function sendRunWebhook() {
   const formData = new FormData();
 
   /*
-    LẤY ĐÚNG DÒNG KHÁCH ĐANG GỬI
-    id_nv PHẢI lấy từ cột id_nv của chính dòng này.
+    KHÔNG CÒN payload.
+    Tất cả field được gửi thẳng vào body webhook.
   */
-  const currentRow =
-    rows.find(r =>
-      String(r.conversation_id ?? '').trim() ===
-      String(conversationId ?? '').trim()
-    ) || null;
 
-  const idNv = String(
-    currentRow?.id_nv ?? ''
-  ).trim();
+  formData.append('action', 'run');
+  formData.append('nguon', 'auto_tinnhan');
+  formData.append('ma_nv', maNv);
+  formData.append('id_nv', idNv);
+
+  formData.append('run_id', currentRunId);
+  formData.append('so_khach_hop_le', String(rows.length));
+
+  // conversation_id gửi trực tiếp, KHÔNG có dấu []
+  // Nếu đang có 1 khách hợp lệ thì n8n sẽ nhận ví dụ: 13546
+  const conversationId =
+    rows.find(r =>
+      r.conversation_id !== null &&
+      r.conversation_id !== undefined &&
+      String(r.conversation_id).trim() !== ''
+    )?.conversation_id ?? '';
+
+  formData.append('conversation_id', String(conversationId));
+
+  // ID nhắc hẹn - dùng tên cột mới reminderid
+  const reminderid =
+    rows.find(r =>
+      String(r.conversation_id ?? '').trim() === String(conversationId ?? '').trim()
+    )?.reminderid ?? '';
+
+  formData.append('reminderid', String(reminderid));
+
+  // Loại tin nhắn Chatwoot
+  formData.append('message_type', 'outgoing');
+
+  // LOẠI GỬI WEBHOOK:
+  // - Gửi thường:
+  //     + có video  => video
+  //     + có ảnh    => image
+  //     + không media => text
+  // - Nhắc hẹn         => nhachen
+  // - Xóa nhắc hẹn     => xoanhachen
+  // - Thông báo công nợ => thongbaocongno
+  const loaiGuiGuiWebhook =
+    loaiGui === 'guithuong'
+      ? loaiGuiWebhook
+      : loaiGui;
+
+  formData.append('loaigui', loaiGuiGuiWebhook);
+
+  // Chế độ nghiệp vụ:
+  // guithuong | nhachen | xoanhachen | thongbaocongno
+  formData.append('che_do_gui', loaiGui);
+
+  // Khi chọn "Xóa nhắc hẹn":
+  // n8n nhận body.loinhac = "xoanhachen"
+  formData.append('loinhac', loiNhac);
+
+  // Giờ hẹn: chỉ có giá trị khi che_do_gui = nhachen
+  formData.append('gio_hen', gioHen);
+
+  formData.append('noi_dung', noiDung);
+  formData.append('icon', icon);
+
+  formData.append(
+    'delay_mode',
+    String(delayConfig.mode ?? 'random')
+  );
+
+  formData.append(
+    'fixed_seconds',
+    delayConfig.fixed_seconds == null
+      ? ''
+      : String(delayConfig.fixed_seconds)
+  );
+
+  formData.append(
+    'min_seconds',
+    String(delayConfig.min_seconds)
+  );
+
+  formData.append(
+    'max_seconds',
+    String(delayConfig.max_seconds)
+  );
+
+  // Khung giờ được phép gửi - n8n nhận trực tiếp trong body webhook
+  formData.append(
+    'gio_gui_tu',
+    sendWindow.gio_gui_tu
+  );
+
+  formData.append(
+    'gio_gui_den',
+    sendWindow.gio_gui_den
+  );
+
+  // Chuỗi hiển thị tiện dùng/debug trong n8n
+  formData.append(
+    'khung_gio_gui',
+    sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den
+  );
 
   /*
-    PAYLOAD gửi sang n8n.
-    Các field chữ nằm trong body.payload dạng JSON string.
+    payload JSON để n8n có thể dùng theo dạng body.payload.
+    Đồng thời các field trực tiếp ở body vẫn được giữ để không phá workflow cũ.
   */
   const payload = {
     action: 'run',
     nguon: 'auto_tinnhan',
-
-    // ma_nv giữ nguyên logic cũ
     ma_nv: maNv,
-
-    // QUAN TRỌNG: lấy từ kv_khachhang_nhanvien_guitin.id_nv
-    // của đúng dòng conversation_id đang gửi
     id_nv: idNv,
-
     run_id: currentRunId,
     so_khach_hop_le: rows.length,
-
     conversation_id: String(conversationId),
     reminderid: String(reminderid),
-
     message_type: 'outgoing',
     loaigui: loaiGuiGuiWebhook,
     che_do_gui: loaiGui,
     loinhac: loiNhac,
     gio_hen: gioHen,
-
     noi_dung: noiDung,
     icon: icon,
-
     delay_mode: String(delayConfig.mode ?? 'random'),
-    fixed_seconds:
-      delayConfig.fixed_seconds == null
-        ? null
-        : delayConfig.fixed_seconds,
+    fixed_seconds: delayConfig.fixed_seconds,
     min_seconds: delayConfig.min_seconds,
     max_seconds: delayConfig.max_seconds,
-
     gio_gui_tu: sendWindow.gio_gui_tu,
     gio_gui_den: sendWindow.gio_gui_den,
-    khung_gio_gui:
-      sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den
+    khung_gio_gui: sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den
   };
 
-  formData.append(
-    'payload',
-    JSON.stringify(payload)
-  );
+  formData.append('payload', JSON.stringify(payload));
 
-  // Ảnh/video vẫn gửi multipart field "data"
+  // Ảnh và video đều gửi với field multipart tên "data"
   if (imageFile) {
     formData.append('data', imageFile, imageFile.name);
   }
@@ -2296,7 +2394,27 @@ async function sendRunWebhook() {
   }
 
   const bodyDebug = {
-    ...payload,
+    action: 'run',
+    nguon: 'auto_tinnhan',
+    ma_nv: maNv,
+    id_nv: idNv,
+    run_id: currentRunId,
+    so_khach_hop_le: rows.length,
+    conversation_id: String(conversationId),
+    message_type: 'outgoing',
+    loaigui: loaiGuiGuiWebhook,
+    che_do_gui: loaiGui,
+    loinhac: loiNhac,
+    gio_hen: gioHen,
+    noi_dung: noiDung,
+    icon: icon,
+    delay_mode: delayConfig.mode,
+    fixed_seconds: delayConfig.fixed_seconds,
+    min_seconds: delayConfig.min_seconds,
+    max_seconds: delayConfig.max_seconds,
+    gio_gui_tu: sendWindow.gio_gui_tu,
+    gio_gui_den: sendWindow.gio_gui_den,
+    khung_gio_gui: sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den,
     data_anh: imageFile
       ? {
           field: 'data',
