@@ -1267,53 +1267,6 @@ function getLoggedInMaNv() {
 
 }
 
-async function getLoggedInEmployeeByIdNv() {
-
-  const currentUser = getCurrentUser();
-
-  const idNv = String(
-    currentUser?.id_nv ??
-    currentUser?.id ??
-    ''
-  ).trim();
-
-  if (!idNv) {
-    throw new Error(
-      'Không lấy được id_nv của nhân viên đang đăng nhập.'
-    );
-  }
-
-  const { data, error } = await sb
-    .from(TABLE_NHAN_VIEN)
-    .select('id_nv, ma_nv, ten_nv')
-    .eq('id_nv', idNv)
-    .limit(1);
-
-  if (error) {
-    throw error;
-  }
-
-  const nv = data?.[0] || null;
-
-  const maNv = String(
-    nv?.ma_nv ??
-    ''
-  ).trim();
-
-  if (!maNv) {
-    throw new Error(
-      'Không tìm thấy ma_nv theo id_nv: ' + idNv
-    );
-  }
-
-  return {
-    id_nv: idNv,
-    ma_nv: maNv,
-    ten_nv: String(nv?.ten_nv ?? '').trim()
-  };
-
-}
-
 
 /* =========================================================
    TẢI DỮ LIỆU
@@ -1363,6 +1316,7 @@ async function loadData() {
         .select(`
           ma_kh,
           ma_nv,
+          id_nv,
           ten_kh,
           alias_name,
           ten_nv,
@@ -2170,15 +2124,17 @@ function bindComposerEvents() {
 
 async function sendRunWebhook() {
 
-  /*
-    NGUỒN CHÍNH: id_nv của nhân viên đang đăng nhập.
-    Sau đó tra kv_nhan_vien theo id_nv để lấy ma_nv.
-  */
-  const employee =
-    await getLoggedInEmployeeByIdNv();
+  const maNv =
+    getLoggedInMaNv();
 
-  const idNv = employee.id_nv;
-  const maNv = employee.ma_nv;
+
+  if (!maNv) {
+
+    throw new Error(
+      'Không lấy được ma_nv của nhân viên đang đăng nhập.'
+    );
+
+  }
 
 
   /*
@@ -2252,82 +2208,85 @@ async function sendRunWebhook() {
 
   /*
     PAYLOAD TEXT:
-    - Toàn bộ dữ liệu chữ được gom vào body.payload dưới dạng chuỗi JSON.
-    - id_nv nằm BÊN TRONG payload.
-    - ma_nv vẫn giữ lại để không ảnh hưởng logic cũ.
-    - Trong n8n lấy id_nv bằng:
-        {{ JSON.parse($json.body.payload).id_nv }}
+    n8n nhận body.payload là chuỗi JSON.
+    Parse trong n8n bằng:
+      $json.body
   */
-
   /*
     MULTIPART/FORM-DATA
-    - Ảnh/video vẫn gửi riêng bằng field binary tên "data".
     - Không convert ảnh/video sang Base64.
     - Browser tự đặt Content-Type + boundary.
+    - n8n nhận file trong binary với field chung:
+        $binary.data
+      Nếu gửi đồng thời nhiều file cùng tên field "data",
+      n8n có thể đánh số field tiếp theo tùy cách Webhook parse multipart.
   */
   const formData = new FormData();
 
-  // conversation_id KHÔNG có dấu []
-  const conversationId =
+  /*
+    LẤY ĐÚNG DÒNG KHÁCH ĐANG GỬI
+    id_nv PHẢI lấy từ cột id_nv của chính dòng này.
+  */
+  const currentRow =
     rows.find(r =>
-      r.conversation_id !== null &&
-      r.conversation_id !== undefined &&
-      String(r.conversation_id).trim() !== ''
-    )?.conversation_id ?? '';
+      String(r.conversation_id ?? '').trim() ===
+      String(conversationId ?? '').trim()
+    ) || null;
 
-  // ID nhắc hẹn - dùng tên cột reminderid
-  const reminderid =
-    rows.find(r =>
-      String(r.conversation_id ?? '').trim() === String(conversationId ?? '').trim()
-    )?.reminderid ?? '';
-
-  // LOẠI GỬI WEBHOOK:
-  // - Gửi thường + video => video
-  // - Gửi thường + ảnh   => image
-  // - Gửi thường không media => text
-  // - Nhắc hẹn => nhachen
-  // - Xóa nhắc hẹn => xoanhachen
-  // - Thông báo công nợ => thongbaocongno
-  const loaiGuiGuiWebhook =
-    loaiGui === 'guithuong'
-      ? loaiGuiWebhook
-      : loaiGui;
+  const idNv = String(
+    currentRow?.id_nv ?? ''
+  ).trim();
 
   /*
-    TOÀN BỘ FIELD CHỮ NẰM TRONG PAYLOAD.
-    Đây là object trước khi JSON.stringify().
+    PAYLOAD gửi sang n8n.
+    Các field chữ nằm trong body.payload dạng JSON string.
   */
   const payload = {
     action: 'run',
     nguon: 'auto_tinnhan',
+
+    // ma_nv giữ nguyên logic cũ
     ma_nv: maNv,
+
+    // QUAN TRỌNG: lấy từ kv_khachhang_nhanvien_guitin.id_nv
+    // của đúng dòng conversation_id đang gửi
     id_nv: idNv,
+
     run_id: currentRunId,
     so_khach_hop_le: rows.length,
+
     conversation_id: String(conversationId),
     reminderid: String(reminderid),
+
     message_type: 'outgoing',
     loaigui: loaiGuiGuiWebhook,
     che_do_gui: loaiGui,
     loinhac: loiNhac,
     gio_hen: gioHen,
+
     noi_dung: noiDung,
     icon: icon,
+
     delay_mode: String(delayConfig.mode ?? 'random'),
-    fixed_seconds: delayConfig.fixed_seconds == null
-      ? null
-      : delayConfig.fixed_seconds,
+    fixed_seconds:
+      delayConfig.fixed_seconds == null
+        ? null
+        : delayConfig.fixed_seconds,
     min_seconds: delayConfig.min_seconds,
     max_seconds: delayConfig.max_seconds,
+
     gio_gui_tu: sendWindow.gio_gui_tu,
     gio_gui_den: sendWindow.gio_gui_den,
-    khung_gio_gui: sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den
+    khung_gio_gui:
+      sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den
   };
 
-  // n8n nhận ở: $json.body.payload
-  formData.append('payload', JSON.stringify(payload));
+  formData.append(
+    'payload',
+    JSON.stringify(payload)
+  );
 
-  // Ảnh và video vẫn gửi với field multipart tên "data"
+  // Ảnh/video vẫn gửi multipart field "data"
   if (imageFile) {
     formData.append('data', imageFile, imageFile.name);
   }
@@ -2337,8 +2296,7 @@ async function sendRunWebhook() {
   }
 
   const bodyDebug = {
-    payload,
-    payload_json: JSON.stringify(payload),
+    ...payload,
     data_anh: imageFile
       ? {
           field: 'data',
@@ -2347,6 +2305,7 @@ async function sendRunWebhook() {
           size: imageFile.size
         }
       : null,
+
     data_video: videoFile
       ? {
           field: 'data',
@@ -2364,7 +2323,7 @@ async function sendRunWebhook() {
 
 
   console.log(
-    '[GUITIN_AUTOZALO] PAYLOAD + MULTIPART:',
+    '[GUITIN_AUTOZALO] MULTIPART:',
     bodyDebug
   );
 
@@ -2477,20 +2436,22 @@ async function startRun() {
 
 
   /*
-    Kiểm tra id_nv trước, sau đó tra ma_nv theo id_nv.
+    Kiểm tra ma_nv trước khi chạy
   */
 
-  let employee;
+  const maNv =
+    getLoggedInMaNv();
 
-  try {
-    employee = await getLoggedInEmployeeByIdNv();
-  } catch (employeeError) {
-    alert(employeeError.message || String(employeeError));
+
+  if (!maNv) {
+
+    alert(
+      'Không lấy được mã nhân viên đang đăng nhập.'
+    );
+
     return;
-  }
 
-  const idNv = employee.id_nv;
-  const maNv = employee.ma_nv;
+  }
 
   // Kiểm tra form TRƯỚC khi bật trạng thái "Đang chạy".
   // - Gửi thường: bắt buộc có nội dung
@@ -2566,9 +2527,7 @@ async function startRun() {
       'Đã gửi lệnh chạy ' +
       rows.length +
       ' khách. ' +
-      'id_nv: ' +
-      idNv +
-      ' | ma_nv: ' +
+      'ma_nv: ' +
       maNv +
       ' | Loại gửi: ' +
       loaiGui +
