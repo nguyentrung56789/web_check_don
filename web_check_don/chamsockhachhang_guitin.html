@@ -1144,9 +1144,31 @@ async function createSupabaseClient() {
 function getCurrentUser() {
 
   /*
-    1. Thử lấy từ localStorage "nv"
+    1. ƯU TIÊN ma_nv được truyền từ trang cha:
+       chamsockhachhang_guitin.html?ma_nv=NV001&duoc_xem=true
   */
+  try {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
 
+    const maNvUrl =
+      String(
+        params.get('ma_nv') || ''
+      ).trim();
+
+    if (maNvUrl) {
+      return {
+        ma_nv: maNvUrl
+      };
+    }
+  } catch (e) {}
+
+
+  /*
+    2. Thử lấy từ localStorage "nv"
+  */
   try {
 
     const nv =
@@ -1164,9 +1186,8 @@ function getCurrentUser() {
 
 
   /*
-    2. Thử kiểu đăng nhập Chatwoot cũ
+    3. Thử kiểu đăng nhập Chatwoot cũ
   */
-
   try {
 
     const nv =
@@ -1186,9 +1207,8 @@ function getCurrentUser() {
 
 
   /*
-    3. last_ma_nv
+    4. last_ma_nv
   */
-
   const lastMaNv =
     String(
       localStorage.getItem('last_ma_nv') ||
@@ -1205,33 +1225,9 @@ function getCurrentUser() {
 
 
   /*
-    4. URL ?ma_nv=...
-  */
-
-  const params =
-    new URLSearchParams(
-      window.location.search
-    );
-
-  const maNvUrl =
-    String(
-      params.get('ma_nv') || ''
-    ).trim();
-
-  if (maNvUrl) {
-
-    return {
-      ma_nv: maNvUrl
-    };
-
-  }
-
-
-  /*
     5. Nếu trang này được mở bằng popup
        thử lấy user từ trang cha.
   */
-
   try {
 
     if (
@@ -1269,130 +1265,43 @@ function getLoggedInMaNv() {
 
 
 /* =========================================================
-   QUYỀN XEM / LỌC TẤT CẢ NHÂN VIÊN
-   - Dùng đúng quyền staffDropdownBtn.duoc_xem
-   - true  => được load tất cả nhân viên
-   - false => chỉ load đúng ma_nv đang đăng nhập
+   QUYỀN LOAD TẤT CẢ NHÂN VIÊN
+   Trang cha truyền:
+   ?ma_nv=NV001&duoc_xem=true|false
+
+   true  = load tất cả nhân viên
+   false = chỉ load đúng ma_nv được truyền sang
 ========================================================= */
 
-function permissionValueIsTrue(value) {
-  if (value === true || value === 1) return true;
+function getDuocXemFromUrl() {
 
-  const normalized = String(value ?? '')
-    .trim()
-    .toLowerCase();
-
-  return (
-    normalized === 'true' ||
-    normalized === '1' ||
-    normalized === 't' ||
-    normalized === 'yes'
-  );
-}
-
-function normalizePermissionText(value) {
-  return String(value ?? '')
-    .trim()
-    .toLowerCase();
-}
-
-async function getDuocXemTatCaNhanVien() {
-
-  /*
-    ƯU TIÊN 1:
-    Trang gửi tin được mở từ chamsockhachhang.html bằng window.open().
-    Trang cha đã đọc quyền staffDropdownBtn.duoc_xem chính xác rồi.
-
-    - data-loc-theo-nhan-vien="true"  => được xem tất cả
-    - data-loc-theo-nhan-vien="false" => chỉ xem chính mình
-
-    Dùng quyền từ trang cha sẽ tránh việc phan_quyen.js tính quyền
-    theo tên trang chamsockhachhang_guitin.html và trả về sai / không có quyền.
-  */
   try {
-    if (window.opener && !window.opener.closed) {
-      const openerBtn =
-        window.opener.document.getElementById('staffDropdownBtn');
 
-      if (openerBtn) {
-        const flag = String(
-          openerBtn.dataset?.locTheoNhanVien || ''
-        ).trim().toLowerCase();
-
-        if (flag === 'true') {
-          console.log(
-            '[GUI_TIN - QUYỀN LỌC NV] Lấy từ trang cha: TRUE'
-          );
-          return true;
-        }
-
-        if (flag === 'false') {
-          console.log(
-            '[GUI_TIN - QUYỀN LỌC NV] Lấy từ trang cha: FALSE'
-          );
-          return false;
-        }
-      }
-    }
-  } catch (error) {
-    console.warn(
-      '[GUI_TIN] Không đọc được quyền từ trang cha:',
-      error
-    );
-  }
-
-  /*
-    ƯU TIÊN 2:
-    Nếu trang gửi tin được mở trực tiếp, không có window.opener,
-    mới thử đọc quyền bằng phan_quyen.js.
-  */
-  try {
-    const permissionModule = await import('./js/phan_quyen.js');
-    const layDanhSachQuyenTrang =
-      permissionModule.layDanhSachQuyenTrang;
-
-    if (typeof layDanhSachQuyenTrang !== 'function') {
-      throw new Error(
-        'phan_quyen.js không có hàm layDanhSachQuyenTrang'
-      );
-    }
-
-    const danhSachQuyen =
-      await layDanhSachQuyenTrang({
-        batBuocTaiLai: true
-      });
-
-    const quyenLocNhanVien =
-      (danhSachQuyen || []).find(function (item) {
-        return (
-          normalizePermissionText(item?.id_chucnang) ===
-          normalizePermissionText('staffDropdownBtn')
-        );
-      }) || null;
-
-    const duocXem =
-      permissionValueIsTrue(
-        quyenLocNhanVien?.duoc_xem
+    const params =
+      new URLSearchParams(
+        window.location.search
       );
 
-    console.log('[GUI_TIN - QUYỀN LỌC NV] Đọc trực tiếp:', {
-      ma_nv_dang_nhap: getLoggedInMaNv(),
-      id_chucnang: 'staffDropdownBtn',
-      duoc_xem: quyenLocNhanVien?.duoc_xem,
-      load_tat_ca_nhan_vien: duocXem
-    });
+    const value =
+      String(
+        params.get('duoc_xem') || ''
+      )
+      .trim()
+      .toLowerCase();
 
-    return duocXem;
-
-  } catch (error) {
-    console.error(
-      '[GUI_TIN - LỖI ĐỌC QUYỀN staffDropdownBtn]',
-      error
+    return (
+      value === 'true' ||
+      value === '1' ||
+      value === 't' ||
+      value === 'yes'
     );
 
-    // An toàn: không xác định được quyền thì chỉ load theo ma_nv.
+  } catch (e) {
+
     return false;
+
   }
+
 }
 
 
@@ -1435,52 +1344,43 @@ async function loadData() {
       ma_nv cần giữ lại để xử lý bên trong.
     */
 
+    const loggedInMaNv =
+      getLoggedInMaNv();
+
+    const duocXemTatCa =
+      getDuocXemFromUrl();
+
+    let dataQuery =
+      sb
+        .from(TABLE_NAME)
+        .select(`
+          ma_kh,
+          ma_nv,
+          ten_kh,
+          alias_name,
+          ten_nv,
+          uid_from,
+          conversation_id,
+          reminderid,
+          check,
+          trang_thai
+        `)
+        .not(
+          'conversation_id',
+          'is',
+          null
+        );
+
     /*
-      QUY TẮC LOAD:
-      -------------------------------
-      staffDropdownBtn.duoc_xem = true
-        => được LOAD TẤT CẢ nhân viên.
-
-      staffDropdownBtn.duoc_xem != true
-        => chỉ LOAD đúng ma_nv đang đăng nhập.
+      QUY TẮC:
+      - duoc_xem=true  => KHÔNG lọc ma_nv, load tất cả.
+      - duoc_xem=false => bắt buộc lọc đúng ma_nv truyền từ trang cha.
     */
-    const loggedInMaNv = getLoggedInMaNv();
-    const duocXemTatCaNhanVien =
-      await getDuocXemTatCaNhanVien();
+    if (!duocXemTatCa) {
 
-    console.log('[GUI_TIN - LOAD DATA]', {
-      loggedInMaNv,
-      duocXemTatCaNhanVien,
-      che_do: duocXemTatCaNhanVien
-        ? 'LOAD_TAT_CA'
-        : 'LOC_THEO_MA_NV'
-    });
-
-    let dataQuery = sb
-      .from(TABLE_NAME)
-      .select(`
-        ma_kh,
-        ma_nv,
-        ten_kh,
-        alias_name,
-        ten_nv,
-        uid_from,
-        conversation_id,
-        reminderid,
-        check,
-        trang_thai
-      `)
-      .not(
-        'conversation_id',
-        'is',
-        null
-      );
-
-    // Không có quyền xem tất cả => bắt buộc lọc đúng ma_nv.
-    if (!duocXemTatCaNhanVien) {
       if (!loggedInMaNv) {
         throw new Error(
-          'Không lấy được ma_nv của nhân viên đang đăng nhập.'
+          'Không lấy được ma_nv được truyền sang trang gửi tin.'
         );
       }
 
@@ -1499,7 +1399,19 @@ async function loadData() {
         }
       );
 
-    const { data, error } = await dataQuery;
+    console.log('[GUI_TIN - LOAD]', {
+      ma_nv: loggedInMaNv,
+      duoc_xem: duocXemTatCa,
+      che_do: duocXemTatCa
+        ? 'LOAD_TAT_CA'
+        : 'LOC_THEO_MA_NV'
+    });
+
+    const {
+      data,
+      error
+    } =
+      await dataQuery;
 
 
     if (error) {
