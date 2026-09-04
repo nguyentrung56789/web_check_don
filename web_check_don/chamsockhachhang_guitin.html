@@ -1269,6 +1269,86 @@ function getLoggedInMaNv() {
 
 
 /* =========================================================
+   QUYỀN XEM / LỌC TẤT CẢ NHÂN VIÊN
+   - Dùng đúng quyền staffDropdownBtn.duoc_xem
+   - true  => được load tất cả nhân viên
+   - false => chỉ load đúng ma_nv đang đăng nhập
+========================================================= */
+
+function permissionValueIsTrue(value) {
+  if (value === true || value === 1) return true;
+
+  const normalized = String(value ?? '')
+    .trim()
+    .toLowerCase();
+
+  return (
+    normalized === 'true' ||
+    normalized === '1' ||
+    normalized === 't' ||
+    normalized === 'yes'
+  );
+}
+
+function normalizePermissionText(value) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase();
+}
+
+async function getDuocXemTatCaNhanVien() {
+  try {
+    const permissionModule = await import('./js/phan_quyen.js');
+    const layDanhSachQuyenTrang =
+      permissionModule.layDanhSachQuyenTrang;
+
+    if (typeof layDanhSachQuyenTrang !== 'function') {
+      throw new Error(
+        'phan_quyen.js không có hàm layDanhSachQuyenTrang'
+      );
+    }
+
+    const danhSachQuyen =
+      await layDanhSachQuyenTrang({
+        batBuocTaiLai: true
+      });
+
+    const quyenLocNhanVien =
+      (danhSachQuyen || []).find(function (item) {
+        return (
+          normalizePermissionText(item?.id_chucnang) ===
+          normalizePermissionText('staffDropdownBtn')
+        );
+      }) || null;
+
+    const duocXem =
+      permissionValueIsTrue(
+        quyenLocNhanVien?.duoc_xem
+      );
+
+    console.log('[GUI_TIN - QUYỀN LỌC NV]', {
+      ma_nv_dang_nhap: getLoggedInMaNv(),
+      id_chucnang: 'staffDropdownBtn',
+      duoc_xem: quyenLocNhanVien?.duoc_xem,
+      load_tat_ca_nhan_vien: duocXem
+    });
+
+    return duocXem;
+
+  } catch (error) {
+    console.error(
+      '[GUI_TIN - LỖI ĐỌC QUYỀN staffDropdownBtn]',
+      error
+    );
+
+    // Nếu đọc quyền lỗi thì KHÔNG cho xem tất cả.
+    // Chỉ load đúng ma_nv đang đăng nhập để an toàn.
+    return false;
+  }
+}
+
+
+/* =========================================================
    TẢI DỮ LIỆU
 ========================================================= */
 
@@ -1308,19 +1388,17 @@ async function loadData() {
     */
 
     /*
-      LỌC THEO ma_nv ĐANG ĐĂNG NHẬP
-      --------------------------------
-      Mỗi nhân viên chỉ đọc đúng các dòng của mình trong
-      kv_khachhang_nhanvien_guitin. Như vậy NV1 bấm Chạy
-      sẽ không nhìn thấy / chạy nhầm danh sách của NV2.
+      QUY TẮC LOAD:
+      -------------------------------
+      staffDropdownBtn.duoc_xem = true
+        => được LOAD TẤT CẢ nhân viên.
+
+      staffDropdownBtn.duoc_xem != true
+        => chỉ LOAD đúng ma_nv đang đăng nhập.
     */
     const loggedInMaNv = getLoggedInMaNv();
-
-    if (!loggedInMaNv) {
-      throw new Error(
-        'Không lấy được ma_nv của nhân viên đang đăng nhập.'
-      );
-    }
+    const duocXemTatCaNhanVien =
+      await getDuocXemTatCaNhanVien();
 
     let dataQuery = sb
       .from(TABLE_NAME)
@@ -1336,13 +1414,29 @@ async function loadData() {
         check,
         trang_thai
       `)
-      .eq('ma_nv', loggedInMaNv)
       .not(
         'conversation_id',
         'is',
         null
-      )
-      .order(
+      );
+
+    // Không có quyền xem tất cả => bắt buộc lọc đúng ma_nv.
+    if (!duocXemTatCaNhanVien) {
+      if (!loggedInMaNv) {
+        throw new Error(
+          'Không lấy được ma_nv của nhân viên đang đăng nhập.'
+        );
+      }
+
+      dataQuery =
+        dataQuery.eq(
+          'ma_nv',
+          loggedInMaNv
+        );
+    }
+
+    dataQuery =
+      dataQuery.order(
         'conversation_id',
         {
           ascending: false
