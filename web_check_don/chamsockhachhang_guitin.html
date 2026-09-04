@@ -1252,14 +1252,167 @@ function getCurrentUser() {
    LẤY MA_NV ĐANG ĐĂNG NHẬP
 ========================================================= */
 
-function getLoggedInMaNv() {
+let loggedInMaNvCache = null;
 
-  const currentUser =
-    getCurrentUser();
 
-  return String(
-    currentUser?.ma_nv || ''
-  ).trim();
+/*
+  LẤY ID_NV CỦA TÀI KHOẢN ĐANG ĐĂNG NHẬP
+
+  Ưu tiên:
+  1. ?id_nv=... trên URL nếu trang cha có truyền sang
+  2. localStorage "nv"
+  3. localStorage "chatwoot_crm_user"
+  4. sessionStorage "nv_ctx"
+  5. window.opener.currentUser.id_nv
+*/
+function getLoggedInIdNv() {
+
+  try {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const idNvUrl =
+      String(
+        params.get('id_nv') || ''
+      ).trim();
+
+    if (idNvUrl) {
+      return idNvUrl;
+    }
+  } catch (e) {}
+
+
+  const storageCandidates = [
+    ['local', 'nv'],
+    ['local', 'chatwoot_crm_user'],
+    ['session', 'nv_ctx']
+  ];
+
+  for (const [storageType, key] of storageCandidates) {
+    try {
+      const storage =
+        storageType === 'session'
+          ? sessionStorage
+          : localStorage;
+
+      const obj =
+        JSON.parse(
+          storage.getItem(key) || 'null'
+        );
+
+      const idNv =
+        String(
+          obj?.id_nv || ''
+        ).trim();
+
+      if (idNv) {
+        return idNv;
+      }
+    } catch (e) {}
+  }
+
+
+  try {
+    const idNvOpener =
+      String(
+        window.opener?.currentUser?.id_nv || ''
+      ).trim();
+
+    if (idNvOpener) {
+      return idNvOpener;
+    }
+  } catch (e) {}
+
+
+  return '';
+
+}
+
+
+/*
+  KHÔNG lấy ma_nv trực tiếp từ currentUser nữa.
+
+  Luồng chuẩn:
+  id_nv đăng nhập
+      ↓
+  kv_nhan_vien.id_nv
+      ↓
+  lấy kv_nhan_vien.ma_nv
+*/
+async function getLoggedInMaNv() {
+
+  if (loggedInMaNvCache) {
+    return loggedInMaNvCache;
+  }
+
+  if (!sb) {
+    throw new Error(
+      'Supabase chưa được khởi tạo.'
+    );
+  }
+
+  const idNv =
+    getLoggedInIdNv();
+
+  if (!idNv) {
+    throw new Error(
+      'Không lấy được id_nv của nhân viên đang đăng nhập.'
+    );
+  }
+
+  const {
+    data,
+    error
+  } =
+    await sb
+      .from(TABLE_NHAN_VIEN)
+      .select(
+        'id_nv, ma_nv, ten_nv'
+      )
+      .eq(
+        'id_nv',
+        idNv
+      )
+      .limit(1);
+
+  if (error) {
+    throw error;
+  }
+
+  const nhanVien =
+    Array.isArray(data) && data.length
+      ? data[0]
+      : null;
+
+  const maNv =
+    String(
+      nhanVien?.ma_nv || ''
+    ).trim();
+
+  if (!maNv) {
+    throw new Error(
+      'Không tìm thấy ma_nv trong kv_nhan_vien theo id_nv = ' +
+      idNv
+    );
+  }
+
+  loggedInMaNvCache = maNv;
+
+  console.log(
+    '[NHÂN VIÊN ĐĂNG NHẬP - ĐỐI CHIẾU KV_NHAN_VIEN]',
+    {
+      id_nv: idNv,
+      ma_nv: maNv,
+      ten_nv:
+        String(
+          nhanVien?.ten_nv || ''
+        ).trim()
+    }
+  );
+
+  return maNv;
 
 }
 
@@ -1270,7 +1423,7 @@ function getLoggedInMaNv() {
    ?ma_nv=NV001&duoc_xem=true|false
 
    true  = load tất cả nhân viên
-   false = chỉ load đúng ma_nv được truyền sang
+   false = chỉ load đúng ma_nv tra từ kv_nhan_vien theo id_nv đăng nhập
 ========================================================= */
 
 function getDuocXemFromUrl() {
@@ -1345,7 +1498,7 @@ async function loadData() {
     */
 
     const loggedInMaNv =
-      getLoggedInMaNv();
+      await getLoggedInMaNv();
 
     const duocXemTatCa =
       getDuocXemFromUrl();
@@ -1374,13 +1527,13 @@ async function loadData() {
     /*
       QUY TẮC:
       - duoc_xem=true  => KHÔNG lọc ma_nv, load tất cả.
-      - duoc_xem=false => bắt buộc lọc đúng ma_nv truyền từ trang cha.
+      - duoc_xem=false => lọc đúng ma_nv lấy từ kv_nhan_vien theo id_nv đăng nhập.
     */
     if (!duocXemTatCa) {
 
       if (!loggedInMaNv) {
         throw new Error(
-          'Không lấy được ma_nv được truyền sang trang gửi tin.'
+          'Không lấy được ma_nv theo id_nv của nhân viên đăng nhập.'
         );
       }
 
@@ -2200,7 +2353,7 @@ function bindComposerEvents() {
 async function sendRunWebhook() {
 
   const maNv =
-    getLoggedInMaNv();
+    await getLoggedInMaNv();
 
 
   if (!maNv) {
@@ -2573,7 +2726,7 @@ async function startRun() {
   */
 
   const maNv =
-    getLoggedInMaNv();
+    await getLoggedInMaNv();
 
 
   if (!maNv) {
@@ -3091,7 +3244,7 @@ window.addEventListener('beforeunload', function () {
 
 
     const maNv =
-      getLoggedInMaNv();
+      await getLoggedInMaNv();
 
 
     console.log(
