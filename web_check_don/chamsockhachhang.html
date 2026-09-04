@@ -2315,7 +2315,48 @@ function normalizeBigintOrNull(value) {
 
         runSelectedBtn.textContent = "Đang mở...";
 
-        const popupUrl = "./chamsockhachhang_guitin.html";
+        /*
+          Truyền thông tin đăng nhập sang trang gửi tin.
+
+          - id_nv:
+              lấy từ currentUser.id_nv của tài khoản đang đăng nhập.
+
+          - duoc_xem:
+              dùng đúng kết quả quyền staffDropdownBtn.duoc_xem
+              đã được lưu trong biến duocLocTheoNhanVien.
+
+              true  = trang gửi tin được load tất cả nhân viên
+              false = trang gửi tin tra ma_nv theo id_nv và chỉ load NV đó
+        */
+        const idNvDangNhap =
+          String(
+            currentUser?.id_nv || ""
+          ).trim();
+
+        if (!idNvDangNhap) {
+          throw new Error(
+            "Không lấy được id_nv của nhân viên đang đăng nhập."
+          );
+        }
+
+        const popupParams =
+          new URLSearchParams();
+
+        popupParams.set(
+          "id_nv",
+          idNvDangNhap
+        );
+
+        popupParams.set(
+          "duoc_xem",
+          duocLocTheoNhanVien === true
+            ? "true"
+            : "false"
+        );
+
+        const popupUrl =
+          "./chamsockhachhang_guitin.html?" +
+          popupParams.toString();
 
         const popupWidth = 1100;
         const popupHeight = 700;
