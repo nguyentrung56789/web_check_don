@@ -1497,11 +1497,32 @@ async function loadData() {
       ma_nv cần giữ lại để xử lý bên trong.
     */
 
-    const loggedInMaNv =
-      await getLoggedInMaNv();
-
     const duocXemTatCa =
       getDuocXemFromUrl();
+
+    /*
+      Chỉ cần tìm ma_nv khi là NHÂN VIÊN RIÊNG.
+      Người duoc_xem=true không cần phụ thuộc id_nv / ma_nv để load danh sách.
+    */
+    let loggedInMaNv = '';
+    let loggedInIdNv = '';
+
+    if (!duocXemTatCa) {
+
+      loggedInIdNv =
+        String(
+          getLoggedInIdNv() || ''
+        ).trim();
+
+      loggedInMaNv =
+        await getLoggedInMaNv();
+
+      if (!loggedInMaNv) {
+        throw new Error(
+          'Không lấy được ma_nv theo id_nv của nhân viên đăng nhập.'
+        );
+      }
+    }
 
     let dataQuery =
       sb
@@ -1526,22 +1547,55 @@ async function loadData() {
 
     /*
       QUY TẮC:
-      - duoc_xem=true  => KHÔNG lọc ma_nv, load tất cả.
-      - duoc_xem=false => lọc đúng ma_nv lấy từ kv_nhan_vien theo id_nv đăng nhập.
+      ---------------------------------------------------
+      duoc_xem=true
+        => LOAD TẤT CẢ, không lọc ma_nv.
+
+      duoc_xem=false
+        => id_nv đăng nhập
+           -> kv_nhan_vien.id_nv
+           -> lấy kv_nhan_vien.ma_nv
+           -> chỉ load dòng của nhân viên đó.
+
+      Để tương thích dữ liệu cũ:
+      ma_nv trong bảng gửi tin có thể đang lưu:
+        - ma_nv chuẩn
+        - hoặc id_nv
+
+      Vì vậy lọc theo CẢ HAI giá trị.
     */
     if (!duocXemTatCa) {
 
-      if (!loggedInMaNv) {
+      const maNvFilterValues =
+        Array.from(
+          new Set(
+            [
+              String(loggedInMaNv || '').trim(),
+              String(loggedInIdNv || '').trim()
+            ].filter(Boolean)
+          )
+        );
+
+      if (!maNvFilterValues.length) {
         throw new Error(
-          'Không lấy được ma_nv theo id_nv của nhân viên đăng nhập.'
+          'Không xác định được nhân viên để lọc.'
         );
       }
 
       dataQuery =
-        dataQuery.eq(
+        dataQuery.in(
           'ma_nv',
-          loggedInMaNv
+          maNvFilterValues
         );
+
+      console.log(
+        '[GUI_TIN - NHÂN VIÊN RIÊNG]',
+        {
+          id_nv_dang_nhap: loggedInIdNv,
+          ma_nv_tra_tu_kv_nhan_vien: loggedInMaNv,
+          gia_tri_loc_ma_nv: maNvFilterValues
+        }
+      );
     }
 
     dataQuery =
@@ -1553,11 +1607,12 @@ async function loadData() {
       );
 
     console.log('[GUI_TIN - LOAD]', {
-      ma_nv: loggedInMaNv,
+      id_nv: loggedInIdNv || '',
+      ma_nv: loggedInMaNv || '',
       duoc_xem: duocXemTatCa,
       che_do: duocXemTatCa
         ? 'LOAD_TAT_CA'
-        : 'LOC_THEO_MA_NV'
+        : 'LOC_NHAN_VIEN_RIENG'
     });
 
     const {
