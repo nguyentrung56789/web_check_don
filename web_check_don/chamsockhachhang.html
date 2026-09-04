@@ -2300,38 +2300,90 @@ function normalizeBigintOrNull(value) {
     }
 
     async function runSelectedCustomers() {
+      if (!runSelectedBtn) return;
+
       const selectedRows = getSelectedCustomerRows();
 
-      if (!selectedRows || selectedRows.length === 0) {
-        showNotice("Chưa chọn dòng nào để chạy.", "error", 3000);
+      if (!selectedRows.length) {
+        showNotice(
+          "Bạn chưa chọn khách hàng nào.",
+          "error",
+          2500
+        );
+        return;
+      }
+
+      /*
+        QUAN TRỌNG:
+        Mở popup NGAY trong sự kiện click, trước mọi await.
+        Nếu mở sau await, Chrome có thể chặn popup.
+      */
+      const popupWidth = 1100;
+      const popupHeight = 700;
+
+      const popupLeft = Math.max(
+        0,
+        Math.round((window.screen.width - popupWidth) / 2)
+      );
+
+      const popupTop = Math.max(
+        0,
+        Math.round((window.screen.height - popupHeight) / 2)
+      );
+
+      const popupWindow = window.open(
+        "about:blank",
+        "guitinPopup",
+        [
+          "width=" + popupWidth,
+          "height=" + popupHeight,
+          "left=" + popupLeft,
+          "top=" + popupTop,
+          "resizable=yes",
+          "scrollbars=yes"
+        ].join(",")
+      );
+
+      if (!popupWindow) {
+        showNotice(
+          "Trình duyệt đang chặn popup. Hãy cho phép popup cho trang này.",
+          "error",
+          5000
+        );
         return;
       }
 
       try {
-        runSelectedBtn.disabled = true;
-        runSelectedBtn.textContent = "Đang cập nhật...";
+        popupWindow.document.title = "Đang chuẩn bị gửi tin...";
+        popupWindow.document.body.innerHTML =
+          '<div style="font-family:Arial;padding:24px">Đang chuẩn bị dữ liệu gửi tin...</div>';
+      } catch (e) {}
 
-        const count = await syncSelectedCustomersToGuiTin(selectedRows);
+      runSelectedBtn.disabled = true;
+      runSelectedBtn.textContent = "Đang mở...";
 
-        runSelectedBtn.textContent = "Đang mở...";
-
+      try {
         /*
-          Truyền thông tin đăng nhập sang trang gửi tin.
+          Lấy id_nv của người đăng nhập.
 
-          - id_nv:
-              lấy từ currentUser.id_nv của tài khoản đang đăng nhập.
-
-          - duoc_xem:
-              dùng đúng kết quả quyền staffDropdownBtn.duoc_xem
-              đã được lưu trong biến duocLocTheoNhanVien.
-
-              true  = trang gửi tin được load tất cả nhân viên
-              false = trang gửi tin tra ma_nv theo id_nv và chỉ load NV đó
+          Ưu tiên currentUser.id_nv.
+          Nếu currentUser chưa có id_nv thì lấy qua nhân viên
+          đã được xác định trong staffRows.
         */
-        const idNvDangNhap =
-          String(
+        let idNvDangNhap =
+          normalizeKiotStaffId(
             currentUser?.id_nv || ""
-          ).trim();
+          );
+
+        if (!idNvDangNhap) {
+          const currentStaff =
+            findCurrentStaffForPermission();
+
+          idNvDangNhap =
+            normalizeKiotStaffId(
+              currentStaff?.id_nv || ""
+            );
+        }
 
         if (!idNvDangNhap) {
           throw new Error(
@@ -2339,6 +2391,19 @@ function normalizeBigintOrNull(value) {
           );
         }
 
+        /*
+          Đồng bộ các khách đã chọn sang bảng gửi tin.
+        */
+        const count =
+          await syncSelectedCustomersToGuiTin(
+            selectedRows
+          );
+
+        /*
+          Truyền:
+          - id_nv đăng nhập
+          - quyền staffDropdownBtn.duoc_xem
+        */
         const popupParams =
           new URLSearchParams();
 
@@ -2358,50 +2423,49 @@ function normalizeBigintOrNull(value) {
           "./chamsockhachhang_guitin.html?" +
           popupParams.toString();
 
-        const popupWidth = 1100;
-        const popupHeight = 700;
-
-        const popupLeft = Math.max(
-          0,
-          Math.round((window.screen.width - popupWidth) / 2)
-        );
-
-        const popupTop = Math.max(
-          0,
-          Math.round((window.screen.height - popupHeight) / 2)
-        );
-
-        const popupWindow = window.open(
-          popupUrl,
-          "guitinPopup",
-          [
-            "width=" + popupWidth,
-            "height=" + popupHeight,
-            "left=" + popupLeft,
-            "top=" + popupTop,
-            "resizable=yes",
-            "scrollbars=yes"
-          ].join(",")
-        );
-
-        if (!popupWindow) {
-          throw new Error("Trình duyệt đang chặn popup.");
-        }
+        /*
+          Popup đã mở sẵn nên chỉ cần chuyển URL.
+        */
+        popupWindow.location.href =
+          popupUrl;
 
         popupWindow.focus();
 
+        console.log(
+          "[MỞ FORM GỬI TIN]",
+          {
+            id_nv: idNvDangNhap,
+            duoc_xem:
+              duocLocTheoNhanVien === true,
+            popupUrl: popupUrl,
+            so_khach: count
+          }
+        );
+
         showNotice(
-          "Đã cập nhật " + count + " khách. Đã mở form gửi tin.",
+          "Đã cập nhật " +
+          count +
+          " khách. Đã mở form gửi tin.",
           "success",
           1800
         );
 
       } catch (error) {
-        console.error("Lỗi mở form gửi tin:", error);
+        console.error(
+          "Lỗi mở form gửi tin:",
+          error
+        );
+
+        try {
+          popupWindow.close();
+        } catch (e) {}
 
         showNotice(
           "Không mở được form gửi tin: " +
-          (error.message || String(error)),
+          (
+            error.message ||
+            String(error)
+          ),
           "error",
           5000
         );
