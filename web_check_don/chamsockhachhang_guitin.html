@@ -1307,35 +1307,49 @@ async function loadData() {
       ma_nv cần giữ lại để xử lý bên trong.
     */
 
-    const {
-      data,
-      error
-    } =
-      await sb
-        .from(TABLE_NAME)
-        .select(`
-          ma_kh,
-          ma_nv,
-          ten_kh,
-          alias_name,
-          ten_nv,
-          uid_from,
-          conversation_id,
-          reminderid,
-          check,
-          trang_thai
-        `)
-        .not(
-          'conversation_id',
-          'is',
-          null
-        )
-        .order(
-          'conversation_id',
-          {
-            ascending: false
-          }
-        );
+    /*
+      LỌC THEO ma_nv ĐANG ĐĂNG NHẬP
+      --------------------------------
+      Mỗi nhân viên chỉ đọc đúng các dòng của mình trong
+      kv_khachhang_nhanvien_guitin. Như vậy NV1 bấm Chạy
+      sẽ không nhìn thấy / chạy nhầm danh sách của NV2.
+    */
+    const loggedInMaNv = getLoggedInMaNv();
+
+    if (!loggedInMaNv) {
+      throw new Error(
+        'Không lấy được ma_nv của nhân viên đang đăng nhập.'
+      );
+    }
+
+    let dataQuery = sb
+      .from(TABLE_NAME)
+      .select(`
+        ma_kh,
+        ma_nv,
+        ten_kh,
+        alias_name,
+        ten_nv,
+        uid_from,
+        conversation_id,
+        reminderid,
+        check,
+        trang_thai
+      `)
+      .eq('ma_nv', loggedInMaNv)
+      .not(
+        'conversation_id',
+        'is',
+        null
+      )
+      .order(
+        'conversation_id',
+        {
+          ascending: false
+        }
+      );
+
+    const { data, error } = await dataQuery;
 
 
     if (error) {
