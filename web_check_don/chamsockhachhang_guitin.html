@@ -1297,6 +1297,55 @@ function normalizePermissionText(value) {
 }
 
 async function getDuocXemTatCaNhanVien() {
+
+  /*
+    ƯU TIÊN 1:
+    Trang gửi tin được mở từ chamsockhachhang.html bằng window.open().
+    Trang cha đã đọc quyền staffDropdownBtn.duoc_xem chính xác rồi.
+
+    - data-loc-theo-nhan-vien="true"  => được xem tất cả
+    - data-loc-theo-nhan-vien="false" => chỉ xem chính mình
+
+    Dùng quyền từ trang cha sẽ tránh việc phan_quyen.js tính quyền
+    theo tên trang chamsockhachhang_guitin.html và trả về sai / không có quyền.
+  */
+  try {
+    if (window.opener && !window.opener.closed) {
+      const openerBtn =
+        window.opener.document.getElementById('staffDropdownBtn');
+
+      if (openerBtn) {
+        const flag = String(
+          openerBtn.dataset?.locTheoNhanVien || ''
+        ).trim().toLowerCase();
+
+        if (flag === 'true') {
+          console.log(
+            '[GUI_TIN - QUYỀN LỌC NV] Lấy từ trang cha: TRUE'
+          );
+          return true;
+        }
+
+        if (flag === 'false') {
+          console.log(
+            '[GUI_TIN - QUYỀN LỌC NV] Lấy từ trang cha: FALSE'
+          );
+          return false;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn(
+      '[GUI_TIN] Không đọc được quyền từ trang cha:',
+      error
+    );
+  }
+
+  /*
+    ƯU TIÊN 2:
+    Nếu trang gửi tin được mở trực tiếp, không có window.opener,
+    mới thử đọc quyền bằng phan_quyen.js.
+  */
   try {
     const permissionModule = await import('./js/phan_quyen.js');
     const layDanhSachQuyenTrang =
@@ -1326,7 +1375,7 @@ async function getDuocXemTatCaNhanVien() {
         quyenLocNhanVien?.duoc_xem
       );
 
-    console.log('[GUI_TIN - QUYỀN LỌC NV]', {
+    console.log('[GUI_TIN - QUYỀN LỌC NV] Đọc trực tiếp:', {
       ma_nv_dang_nhap: getLoggedInMaNv(),
       id_chucnang: 'staffDropdownBtn',
       duoc_xem: quyenLocNhanVien?.duoc_xem,
@@ -1341,8 +1390,7 @@ async function getDuocXemTatCaNhanVien() {
       error
     );
 
-    // Nếu đọc quyền lỗi thì KHÔNG cho xem tất cả.
-    // Chỉ load đúng ma_nv đang đăng nhập để an toàn.
+    // An toàn: không xác định được quyền thì chỉ load theo ma_nv.
     return false;
   }
 }
@@ -1399,6 +1447,14 @@ async function loadData() {
     const loggedInMaNv = getLoggedInMaNv();
     const duocXemTatCaNhanVien =
       await getDuocXemTatCaNhanVien();
+
+    console.log('[GUI_TIN - LOAD DATA]', {
+      loggedInMaNv,
+      duocXemTatCaNhanVien,
+      che_do: duocXemTatCaNhanVien
+        ? 'LOAD_TAT_CA'
+        : 'LOC_THEO_MA_NV'
+    });
 
     let dataQuery = sb
       .from(TABLE_NAME)
