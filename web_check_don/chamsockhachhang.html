@@ -1468,7 +1468,7 @@
   <div class="app">
     <main class="content">
       <div class="toolbar">
-        <input id="searchInput" type="text" placeholder="Tìm mã KH, tên KH, alias, SĐT, công nợ, nhân viên, conversation_id, ngày..." />
+        <input id="searchInput" type="text" placeholder="Tìm mã KH, tên Zalo, alias, SĐT, công nợ, nhân viên, conversation_id, ngày..." />
 
         <div class="staff-dropdown">
           <button id="staffDropdownBtn" type="button">Tất cả nhân viên</button>
@@ -1502,7 +1502,7 @@
             <col data-col="select" style="width:44px;">
             <col data-col="avatar" style="width: 58px;">
             <col data-col="ma_kh" style="width: 130px;">
-            <col data-col="ten_kh" style="width: 240px;">
+            <col data-col="zalo_name" style="width: 240px;">
             <col data-col="alias_name" style="width: 220px;">
             <col data-col="sdt" style="width: 150px;">
             <col data-col="xung_ho" style="width: 84px;">
@@ -1712,7 +1712,7 @@
     const CUSTOMER_TABLE_COLUMNS = [
       { key: "avatar", label: "Avatar" },
       { key: "ma_kh", label: "Mã KH", required: true },
-      { key: "ten_kh", label: "Tên khách hàng", required: true },
+      { key: "zalo_name", label: "Tên Zalo", required: true },
       { key: "alias_name", label: "Alias name" },
       { key: "sdt", label: "Số điện thoại" },
       { key: "xung_ho", label: "Xưng hô" },
@@ -2927,7 +2927,7 @@ function normalizeBigintOrNull(value) {
         CHỈ TÌM TRÊN NHỮNG CỘT ĐANG HIỂN THỊ Ở BẢNG:
 
         - Mã KH           -> ma_kh
-        - Tên khách hàng -> ten_kh
+        - Tên Zalo       -> zalo_name
         - Alias name      -> alias_name
         - Số điện thoại  -> dien_thoai
         - Công nợ         -> congno
@@ -2943,7 +2943,7 @@ function normalizeBigintOrNull(value) {
       // Các cột text đang hiển thị.
       [
         "ma_kh",
-        "ten_kh",
+        "zalo_name",
         "alias_name",
         "dien_thoai",
         "ten_nv",
@@ -4098,7 +4098,7 @@ showNotice(valueToSave
       if (sortField === "ngay_chat_cuoi") return "ngay_chat_cuoi";
       if (sortField === "conversation_id") return "conversation_id";
       if (sortField === "alias_name") return "alias_name";
-      if (sortField === "ten_kh") return "ten_kh";
+      if (sortField === "zalo_name") return "zalo_name";
       if (sortField === "ma_kh") return "ma_kh";
       if (sortField === "reminderid") return "reminderid";
       if (sortField === "gio_hen") return "gio_hen";
@@ -4212,7 +4212,7 @@ showNotice(valueToSave
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, alias_name, avatar, dien_thoai, xung_ho, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen", { count: "exact" })
+        .select("ma_kh, ten_kh, zalo_name, alias_name, avatar, dien_thoai, xung_ho, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false });
 
       query = applySearchAllColumns(query, keyword);
@@ -4257,6 +4257,7 @@ showNotice(valueToSave
         return {
           ma_kh: item.ma_kh || "",
           ten_kh: item.ten_kh || "",
+          zalo_name: item.zalo_name || "",
           alias_name: item.alias_name || "",
           avatar: item.avatar || "",
           sdt: item.dien_thoai || "",
@@ -4419,7 +4420,7 @@ showNotice(valueToSave
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, alias_name, avatar, dien_thoai, xung_ho, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen", { count: "exact" })
+        .select("ma_kh, ten_kh, zalo_name, alias_name, avatar, dien_thoai, xung_ho, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false })
         .range(from, to);
 
@@ -4450,6 +4451,7 @@ showNotice(valueToSave
         return {
           ma_kh: item.ma_kh || "",
           ten_kh: item.ten_kh || "",
+          zalo_name: item.zalo_name || "",
           alias_name: item.alias_name || "",
           avatar: item.avatar || "",
           sdt: item.dien_thoai || "",
@@ -5227,7 +5229,7 @@ logoutBtn.addEventListener("click", function () {
               }
             </td>
             <td data-col="ma_kh" title="${escapeHtml(item.ma_kh || "")}">${escapeHtml(item.ma_kh || "")}</td>
-            <td data-col="ten_kh" title="${escapeHtml(item.ten_kh || "")}">${escapeHtml(item.ten_kh || "")}</td>
+            <td data-col="zalo_name" title="${escapeHtml(item.zalo_name || "")}">${escapeHtml(item.zalo_name || "")}</td>
             <td data-col="alias_name" title="${escapeHtml(item.alias_name || "")}">${escapeHtml(item.alias_name || "")}</td>
             <td data-col="sdt" title="${escapeHtml(item.sdt || "")}">${escapeHtml(item.sdt || "")}</td>
             <td data-col="xung_ho" onclick="event.stopPropagation()">
