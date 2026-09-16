@@ -397,8 +397,11 @@
 
   const map = L.map("map", { zoomControl:false }).setView([20.85,106.68], 12);
 
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{
-    maxZoom:19
+  // Nền bản đồ OpenStreetMap phổ biến, không cần API key.
+  // Giữ attribution để tuân thủ điều khoản sử dụng của OpenStreetMap.
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
   function esc(v){
