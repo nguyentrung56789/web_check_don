@@ -1502,7 +1502,7 @@
             <col data-col="select" style="width:44px;">
             <col data-col="avatar" style="width: 58px;">
             <col data-col="ma_kh" style="width: 130px;">
-            <col data-col="zalo_name" style="width: 240px;">
+            <col data-col="ten_kh" style="width: 240px;">
             <col data-col="alias_name" style="width: 220px;">
             <col data-col="sdt" style="width: 150px;">
             <col data-col="xung_ho" style="width: 84px;">
@@ -1532,8 +1532,8 @@
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="ten_kh" data-sort="ten_kh" data-col-index="3">
-                Tên khách hàng <span class="sort-icon"></span>
+              <th class="sortable resizable" data-col="ten_kh" data-sort="zalo_name" data-col-index="3">
+                Tên Zalo <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
@@ -1712,7 +1712,7 @@
     const CUSTOMER_TABLE_COLUMNS = [
       { key: "avatar", label: "Avatar" },
       { key: "ma_kh", label: "Mã KH", required: true },
-      { key: "zalo_name", label: "Tên Zalo", required: true },
+      { key: "ten_kh", label: "Tên Zalo", required: true },
       { key: "alias_name", label: "Alias name" },
       { key: "sdt", label: "Số điện thoại" },
       { key: "xung_ho", label: "Xưng hô" },
@@ -4099,6 +4099,7 @@ showNotice(valueToSave
       if (sortField === "conversation_id") return "conversation_id";
       if (sortField === "alias_name") return "alias_name";
       if (sortField === "zalo_name") return "zalo_name";
+      if (sortField === "ten_kh") return "ten_kh";
       if (sortField === "ma_kh") return "ma_kh";
       if (sortField === "reminderid") return "reminderid";
       if (sortField === "gio_hen") return "gio_hen";
@@ -5229,7 +5230,7 @@ logoutBtn.addEventListener("click", function () {
               }
             </td>
             <td data-col="ma_kh" title="${escapeHtml(item.ma_kh || "")}">${escapeHtml(item.ma_kh || "")}</td>
-            <td data-col="zalo_name" title="${escapeHtml(item.zalo_name || "")}">${escapeHtml(item.zalo_name || "")}</td>
+            <td data-col="ten_kh" title="${escapeHtml(item.zalo_name || "")}">${escapeHtml(item.zalo_name || "")}</td>
             <td data-col="alias_name" title="${escapeHtml(item.alias_name || "")}">${escapeHtml(item.alias_name || "")}</td>
             <td data-col="sdt" title="${escapeHtml(item.sdt || "")}">${escapeHtml(item.sdt || "")}</td>
             <td data-col="xung_ho" onclick="event.stopPropagation()">
