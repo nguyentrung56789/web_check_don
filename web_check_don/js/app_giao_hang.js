@@ -1,4 +1,167 @@
+/*
+ * app_giao_hang.js
+ * Tách tự động từ app_giao_hang.html.
+ * Các khối JavaScript nội tuyến được giữ nguyên thứ tự xuất hiện trong file gốc.
+ */
+
+    /*
+     * KIỂM TRA ĐĂNG NHẬP CHUNG
+     * Đọc giống main.html:
+     *   1. localStorage["nv"]
+     *   2. localStorage["chatwoot_crm_user"]
+     * Ưu tiên ma_nv, nếu không có thì dùng id_nv.
+     */
+    (function kiemTraDangNhapChung() {
+      function readJsonStorage(key) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (!raw) return null;
+
+          const data = JSON.parse(raw);
+          return data && typeof data === "object"
+            ? data
+            : null;
+        } catch (error) {
+          console.warn(
+            `[GIAO HÀNG] Không đọc được localStorage "${key}":`,
+            error
+          );
+          return null;
+        }
+      }
+
+      const loginUser =
+        readJsonStorage("nv") ||
+        readJsonStorage("chatwoot_crm_user");
+
+      /*
+       * Không tìm thấy phiên đăng nhập:
+       * vẫn cho mở app, không chuyển về login.html.
+       */
+      if (!loginUser) {
+        const guestUser = {
+          ma_nv: "",
+          ten_nv: "Nhân viên",
+          ts: Date.now()
+        };
+
+        window.APP_LOGIN_USER = guestUser;
+        document.documentElement.classList.add("auth-ok");
+
+        console.warn(
+          "[GIAO HÀNG] Không tìm thấy phiên đăng nhập, vẫn mở ứng dụng."
+        );
+
+        return;
+      }
+
+      const maNv = String(
+        loginUser.ma_nv ||
+        loginUser.id_nv ||
+        ""
+      ).trim();
+
+      const tenNv = String(
+        loginUser.ten_nv ||
+        loginUser.name ||
+        maNv ||
+        ""
+      ).trim();
+
+      /*
+       * Có dữ liệu đăng nhập nhưng không có ma_nv:
+       * vẫn cho mở app, không chuyển về login.html.
+       */
+      if (!maNv) {
+        const fallbackUser = {
+          ...loginUser,
+          ma_nv: "",
+          ten_nv: tenNv || "Nhân viên",
+          ts: Date.now()
+        };
+
+        window.APP_LOGIN_USER = fallbackUser;
+        document.documentElement.classList.add("auth-ok");
+
+        console.warn(
+          "[GIAO HÀNG] Tài khoản không có ma_nv, vẫn mở ứng dụng."
+        );
+
+        return;
+      }
+
+      const normalizedUser = {
+        ...loginUser,
+        ma_nv: maNv,
+        ten_nv: tenNv,
+        ts: Date.now()
+      };
+
+      /*
+       * Chuẩn hóa lại key "nv" để app_giao_hang.js
+       * và các trang con luôn đọc cùng một cấu trúc.
+       */
+      localStorage.setItem(
+        "nv",
+        JSON.stringify(normalizedUser)
+      );
+
+      sessionStorage.setItem(
+        "nv_ctx",
+        JSON.stringify({
+          ma_nv: maNv,
+          ten_nv: tenNv,
+          ts: Date.now()
+        })
+      );
+
+      window.APP_LOGIN_USER = normalizedUser;
+      document.documentElement.classList.add("auth-ok");
+
+      console.log(
+        "[GIAO HÀNG] Đã nhận tài khoản từ hệ thống:",
+        {
+          ma_nv: maNv,
+          ten_nv: tenNv
+        }
+      );
+    })();
+  
+
+    if ("serviceWorker" in navigator) {
+      addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .catch(error => {
+            console.warn(
+              "[GIAO HÀNG] Không đăng ký được service worker:",
+              error
+            );
+          });
+      });
+    }
+  
+
+    /*
+     * Gắn thông tin nhân viên lên giao diện
+     * trước khi chạy app_giao_hang.js.
+     */
+    (function hienThiNhanVien() {
+      const user = window.APP_LOGIN_USER;
+
+      if (!user) return;
+
+      const who = document.getElementById("who");
+
+      if (who) {
+        who.textContent =
+          `👤 ${user.ten_nv || user.ma_nv}`;
+      }
+    })();
+  
+
 /* global ZXing */
+window.APP_GIAO_HANG_BUILD = '2026-08-06-fix-trim-v3';
 /* ====================== app_giao_hang.js — build r7 (NO-GEO, CHECK-IN OVERLAY, SCAN BEEP, NOTIFY PANEL) ======================
  * - KHÔNG xin GPS, KHÔNG gửi vị trí/webhook tại file này
  * - Khi lên "Giao thành công": mở checkin.html full-screen từ TRÊN xuống (truyền đúng ma_kh & ma_hd)
@@ -13,13 +176,141 @@ const installBtn=document.getElementById('installBtn');
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;installBtn&&(installBtn.style.display='inline-flex');});
 installBtn?.addEventListener('click',async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installBtn.style.display='none';});
 
-/* ===== Supabase (DB/Auth) ===== */
-const confNV=(window.getConfig?window.getConfig('index'):window.COD_BASE)||{};
-if(!confNV?.url||!confNV?.key){alert('Thiếu cấu hình Supabase');throw new Error('Missing config');}
-const supa=window.supabase.createClient(confNV.url,confNV.key);
+/* ===== Supabase (DB/Auth) - chờ internal_key.js tải cấu hình ===== */
+let supa = null;
+
+const confNV = {
+  table: 'kv_nhan_vien',
+  url: '',
+  key: ''
+};
+
+const CFG = {
+  ...(window.COD_CONFIG || {})
+};
+
+function safeTrim(value) {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value).trim();
+  return '';
+}
+
+function readConfigString(value, keys = []) {
+  const direct = safeTrim(value);
+  if (direct) return direct;
+
+  if (value && typeof value === 'object') {
+    for (const key of keys) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        const nested = safeTrim(value[key]);
+        if (nested) return nested;
+      }
+    }
+  }
+
+  return '';
+}
+
+async function resolveSupabaseConfig() {
+  if (window.configReady && typeof window.configReady.then === 'function') {
+    await window.configReady;
+  }
+
+  let rawUrl = window.getConfig?.('url');
+  let rawAnon = window.getConfig?.('anon');
+
+  let url = readConfigString(rawUrl, [
+    'url', 'value', 'SUPABASE_URL', 'supabaseUrl', 'supabase_url'
+  ]);
+
+  let anon = readConfigString(rawAnon, [
+    'anon', 'key', 'value', 'SUPABASE_ANON', 'SUPABASE_ANON_KEY',
+    'supabaseAnon', 'supabaseKey', 'supabase_anon_key'
+  ]);
+
+  if (!url || !anon) {
+    const internalKey = typeof window.getInternalKey === 'function'
+      ? safeTrim(window.getInternalKey())
+      : '';
+
+    const response = await fetch('/api/getConfig', {
+      method: 'GET',
+      headers: {
+        'x-internal-key': internalKey,
+        'Accept': 'application/json'
+      },
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(`Không lấy được cấu hình Supabase: HTTP ${response.status} ${detail}`);
+    }
+
+    const config = await response.json();
+
+    if (!url) {
+      url = readConfigString(config, [
+        'url', 'SUPABASE_URL', 'supabaseUrl', 'supabase_url'
+      ]);
+    }
+
+    if (!anon) {
+      anon = readConfigString(config, [
+        'anon', 'key', 'SUPABASE_ANON', 'SUPABASE_ANON_KEY',
+        'supabaseAnon', 'supabaseKey', 'supabase_anon_key'
+      ]);
+    }
+  }
+
+  url = safeTrim(url).replace(/\/+$/, '');
+  anon = safeTrim(anon);
+
+  if (!url) throw new Error('Thiếu URL Supabase');
+  if (!anon) throw new Error('Thiếu anon key Supabase');
+  if (!/^https:\/\//i.test(url)) throw new Error(`URL Supabase không hợp lệ: ${url}`);
+
+  console.log('[GIAO HÀNG] Cấu hình Supabase hợp lệ:', {
+    url,
+    urlType: typeof url,
+    anonType: typeof anon,
+    anonLength: anon.length
+  });
+
+  return { url, anon };
+}
+
+const supabaseReady = (async () => {
+  const { url, anon } = await resolveSupabaseConfig();
+
+  if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+    throw new Error('Thư viện Supabase chưa được tải');
+  }
+
+  supa = window.supabase.createClient(String(url), String(anon), {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  });
+
+  confNV.url = String(url);
+  confNV.key = String(anon);
+  CFG.url = String(url);
+  CFG.key = String(anon);
+
+  console.log('[GIAO HÀNG] Supabase sẵn sàng:', CFG.url);
+  return supa;
+})().catch(error => {
+  console.error('[GIAO HÀNG] Lỗi khởi tạo Supabase:', error);
+  const message = error instanceof Error ? error.message : String(error);
+  alert(message || 'Không thể khởi tạo Supabase');
+  throw error;
+});
 
 /* ===== Cấu hình động từ cod_config.js ===== */
-const CFG=(window.COD_CONFIG?window.COD_CONFIG:(window.getConfig?window.getConfig('cod'):window.COD_BASE))||{};
 const KEY_VD        = CFG.keyColVD   || CFG.keyCol   || 'ma_vd';
 const KEY_DON_HD    = CFG.keyColHD   || 'ma_hd';
 const KEY_KH        = CFG.keyColKH   || 'ma_kh';
@@ -27,7 +318,6 @@ const DATE_COL      = CFG.dateCol    || 'ngay_chuan_bi_don';
 const TABLE_VD_KIOT = CFG.tableVD    || (CFG.table && CFG.table.vd) || 'don_hang_kiot_cod';
 const TABLE_DON     = CFG.tableHD    || (CFG.table && CFG.table.hd) || 'don_hang';
 const TABLE_CT      = CFG.tableCT    || (CFG.table && CFG.table.ct) || 'don_hang_chitiet';
-if(!CFG.url||!CFG.key){ Object.assign(CFG,{url:confNV.url,key:confNV.key}); }
 
 /* ===== Helpers ===== */
 const $=s=>document.querySelector(s);
@@ -187,11 +477,13 @@ function nowVN_ddmmyyyy_hhmm(){
 
 /* ===== Supabase REST helpers ===== */
 async function sbSelect(table,filterObj,selectCols='*'){
+  await supabaseReady;
   const qs=new URLSearchParams({select:selectCols,...filterObj}).toString();
   const res=await fetch(`${CFG.url}/rest/v1/${table}?${qs}`,{headers:{apikey:CFG.key,Authorization:`Bearer ${CFG.key}`}});
   if(!res.ok)throw new Error(await res.text());return res.json();
 }
 async function sbSelectWithCount(table,filterObj,selectCols='*'){
+  await supabaseReady;
   const qs=new URLSearchParams({select:selectCols,...filterObj}).toString();
   const res=await fetch(`${CFG.url}/rest/v1/${table}?${qs}`,{headers:{apikey:CFG.key,Authorization:`Bearer ${CFG.key}`,'Prefer':'count=exact'}});
   if(!res.ok)throw new Error(await res.text());
@@ -202,6 +494,7 @@ async function sbSelectWithCount(table,filterObj,selectCols='*'){
   return {rows,total};
 }
 async function sbPatch(table,filterObj,bodyObj){
+  await supabaseReady;
   const qs=new URLSearchParams(filterObj).toString();
   const res=await fetch(`${CFG.url}/rest/v1/${table}?${qs}`,{
     method:'PATCH',
@@ -232,8 +525,8 @@ async function getMaKhByMaHd(ma_hd){
   function showLogin(){el.appSec&&(el.appSec.style.display='none');el.loginSec&&(el.loginSec.style.display='block');}
   function setMsg(text,type='err'){el.msg&&(el.msg.textContent=text||'');showSlide(text,type==='err'?'err':(type==='ok'?'ok':'info'));}
   function lockBtn(on=true,label='Đang kiểm tra...'){el.btn&&(el.btn.disabled=!!on,el.btn.textContent=on?label:'Đăng nhập');}
-  function readInput(){const ma=(el.ma.value||'').trim(),mk=el.mk.value||'';if(!ma||!mk){setMsg('Vui lòng nhập đủ thông tin','err');return null;}return{ma,mk};}
-  async function fetchUser(ma,mk){const table=confNV?.table||'kv_nhan_vien';const {data,error}=await supa.from(table).select('ma_nv,ten_nv').eq('ma_nv',ma).eq('mat_khau',mk).maybeSingle();return error||!data?null:data;}
+  function readInput(){const ma=safeTrim(el.ma?.value),mk=el.mk?.value||'';if(!ma||!mk){setMsg('Vui lòng nhập đủ thông tin','err');return null;}return{ma,mk};}
+  async function fetchUser(ma,mk){await supabaseReady;const table=confNV?.table||'kv_nhan_vien';const {data,error}=await supa.from(table).select('ma_nv,ten_nv').eq('ma_nv',ma).eq('mat_khau',mk).maybeSingle();return error||!data?null:data;}
   let logging=false;
   async function doLogin(){ if(logging) return; const inp=readInput(); if(!inp) return; logging=true; lockBtn(true); setMsg('');
     try{const user=await fetchUser(inp.ma,inp.mk); if(!user){setMsg('Sai mã nhân viên hoặc mật khẩu','err');return;} saveCase(user); showApp(user); setMsg('Đăng nhập thành công','ok');}
@@ -412,7 +705,7 @@ function renderStatus(t){statusText&&(statusText.textContent=t||'Trạng thái g
 
 /* ===== Trạng thái tuyến tính ===== */
 function nextStatusNew(cur){
-  const c=(cur||'').trim();
+  const c=safeTrim(cur);
   if(c==='Đã kiểm đơn')return 'Đang giao hàng';
   if(c==='Đang giao hàng')return 'Giao thành công';
   if(c==='Giao thành công')return null;
@@ -422,14 +715,14 @@ function nextStatusNew(cur){
 /* ===== LƯU (NO-GEO) — MỞ CHECK-IN KHI “GIAO THÀNH CÔNG” ===== */
 async function doSaveByMode(codeScanned){
   if(MODE==='hang'){
-    const code=codeScanned||(madon?.value||'').trim();
+    const code=safeTrim(codeScanned || madon?.value);
     if(!code){ setInfo('err','Thiếu mã đơn'); showSlide('THIẾU MÃ HÓA ĐƠN','err'); return; }
     if(isBlocked(code)){ setInfo('','Mã này vừa quét rồi — chờ 2 phút.'); showSlide('MÃ VỪA QUÉT — CHỜ 2 PHÚT','warn'); vibrate([60,40,60]); return; }
 
     const rows=await sbSelect(TABLE_DON,{[KEY_DON_HD]:`eq.${code}`,limit:1},'id,trang_thai');
     if(!rows.length){ setInfo('err','Không tìm thấy mã hóa đơn'); showSlide('KHÔNG TÌM THẤY HÓA ĐƠN','err'); return; }
 
-    const cur=(rows[0].trang_thai||'').trim();
+    const cur=safeTrim(rows?.[0]?.trang_thai);
     const nxt=nextStatusNew(cur);
 
     // ĐÃ giao thành công từ trước → chỉ báo & dừng
@@ -461,7 +754,7 @@ async function doSaveByMode(codeScanned){
 
   }else{
     // === QUÉT MÃ VẬN ĐƠN
-    const code = codeScanned || (mavd?.value || '').trim();
+    const code = safeTrim(codeScanned || mavd?.value);
     if (!code) {
       setInfo('err','Thiếu mã vận đơn');
       showSlide('THIẾU MÃ VẬN ĐƠN','err');
@@ -514,7 +807,7 @@ async function doSaveByMode(codeScanned){
         return;
       }
 
-      const cur = (existed[0]?.trang_thai || '').trim();
+      const cur = safeTrim(existed?.[0]?.trang_thai);
 
       // ĐÃ “Giao thành công” → chỉ báo & dừng
       if (cur === 'Giao thành công') {
@@ -571,7 +864,7 @@ async function doSaveByMode(codeScanned){
 /* ===== onScan ===== */
 async function onScan(res){
   if(!res)return;
-  const code=(res.text||'').trim(); if(!code||code===last||scanLock)return;
+  const code=safeTrim(res?.text); if(!code||code===last||scanLock)return;
   if(isBlocked(code)){setInfo('','Mã này vừa quét rồi — chờ 2 phút.');showSlide('MÃ VỪA QUÉT — CHỜ 2 PHÚT','warn');vibrate([40,40,40]);return;}
   clearTimeout(noScanTimer);startNoScanTimer();
   last=code;scanLock=true;
@@ -664,7 +957,7 @@ attachSwipe(ordersWrap,ordersSheet);attachSwipe(detailWrap,detailSheet);
         const input=d.querySelector('#q,#search,#query,input[name="q"],input[type="search"]');
         if(!input) return false;
         input.value=queryText; ['input','change','keyup'].forEach(t=>input.dispatchEvent(new Event(t,{bubbles:true})));
-        let reloadBtn=d.querySelector('#btnReload,[data-reload]')||Array.from(d.querySelectorAll('button,a')).find(el=>(el.textContent||'').trim().toLowerCase().includes('tải lại'));
+        let reloadBtn=d.querySelector('#btnReload,[data-reload]')||Array.from(d.querySelectorAll('button,a')).find(el=>safeTrim(el.textContent).toLowerCase().includes('tải lại'));
         if(reloadBtn){reloadBtn.click();return true;}
         const form=input.form||input.closest('form'); if(form){form.requestSubmit?form.requestSubmit():form.submit();return true;}
         input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
@@ -680,7 +973,7 @@ attachSwipe(ordersWrap,ordersSheet);attachSwipe(detailWrap,detailSheet);
     if(!ordersList) return [];
     return [...ordersList.querySelectorAll('.order')]
       .filter(el=>getComputedStyle(el).display!=='none')
-      .map(el=>(el.dataset.kh||'').trim())
+      .map(el=>safeTrim(el.dataset.kh))
       .filter(Boolean)
       .filter((v,i,a)=>a.indexOf(v)===i);
   }
@@ -692,8 +985,8 @@ attachSwipe(ordersWrap,ordersSheet);attachSwipe(detailWrap,detailSheet);
   $('#tabMap')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openMapByCurrentFilter();});
   $('#ordersMapLink')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openMapByCurrentFilter();});
   window.__openMapForOneCustomer = (ma_kh) => {
-    const q='ma: '+String(ma_kh||'').trim();
-    if(!q.trim()) return;
+    const q='ma: '+safeTrim(ma_kh);
+    if(!safeTrim(q)) return;
     openMapSheet(q);
   };
 })();
@@ -770,7 +1063,7 @@ function toTelLink(v){
 }
 async function loadOrders(){
   ensurePaginationUI();
-  const f=statusFilter?.value.trim();
+  const f=safeTrim(statusFilter?.value);
   const offset=(CURRENT_PAGE-1)*PAGE_SIZE;
   const params={order:`${DATE_COL}.desc.nullslast`,limit:PAGE_SIZE,offset};
   if(f) params.trang_thai=`eq.${f}`;
@@ -801,7 +1094,7 @@ function renderOrders(rows){
   if(!rows.length){ordersEmpty&&(ordersEmpty.style.display='block');return;}
   ordersEmpty&&(ordersEmpty.style.display='none');
   rows.forEach(r=>{
-    const ma=r[KEY_DON_HD]||'';const st=(r.trang_thai||'').trim()||'Chưa rõ';
+    const ma=safeTrim(r?.[KEY_DON_HD]);const st=safeTrim(r?.trang_thai)||'Chưa rõ';
     const ma_kh=r[KEY_KH]||'';
     const div=document.createElement('div');
     div.className='order';div.dataset.kh=ma_kh;
@@ -827,7 +1120,7 @@ function renderOrders(rows){
     div.querySelector('.hd-link')?.addEventListener('click',async(e)=>{e.preventDefault();await openDetail(ma);});
     div.querySelector('.map-link')?.addEventListener('click',(e)=>{
       e.preventDefault();e.stopPropagation();
-      const kh=(ma_kh||'').trim();if(!kh){showSlide('KHÔNG CÓ MÃ KHÁCH','warn');return;}
+      const kh=safeTrim(ma_kh);if(!kh){showSlide('KHÔNG CÓ MÃ KHÁCH','warn');return;}
       window.__openMapForOneCustomer(kh);
     });
     ordersList.appendChild(div);
@@ -861,22 +1154,67 @@ function renderCT(rows){
 backOrders?.addEventListener('click',()=>{closeSheet(detailWrap,detailSheet);});
 
 /* ===== Realtime (nhẹ) ===== */
-const ch=supa.channel('rt-don-hang')
-  .on('postgres_changes',{event:'INSERT',schema:'public',table:TABLE_DON},p=>{
-    if(ordersWrap?.style.display==='block') loadOrders();
-    try{ pushNotify(`➕ Thêm đơn mới ${p.new?.[KEY_DON_HD]||''}`); }catch{}
-  })
-  .on('postgres_changes',{event:'UPDATE',schema:'public',table:TABLE_DON},p=>{
-    if(ordersWrap?.style.display==='block') loadOrders();
-    try{
-      const ma = p.new?.[KEY_DON_HD] || p.old?.[KEY_DON_HD] || '';
-      const tt = (p.new?.trang_thai || '').trim();
-      pushNotify(`🔄 Cập nhật đơn ${ma}${tt?` → “${tt}”`:''}`);
-    }catch{}
-  })
-  .subscribe();
+let ch = null;
+supabaseReady.then(() => {
+  ch = supa.channel('rt-don-hang')
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:TABLE_DON},p=>{
+      if(ordersWrap?.style.display==='block') loadOrders();
+      try{ pushNotify(`➕ Thêm đơn mới ${p.new?.[KEY_DON_HD]||''}`); }catch{}
+    })
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:TABLE_DON},p=>{
+      if(ordersWrap?.style.display==='block') loadOrders();
+      try{
+        const ma = p.new?.[KEY_DON_HD] || p.old?.[KEY_DON_HD] || '';
+        const tt = safeTrim(p?.new?.trang_thai);
+        pushNotify(`🔄 Cập nhật đơn ${ma}${tt?` → “${tt}”`:''}`);
+      }catch{}
+    })
+    .subscribe(status => {
+      console.log('[GIAO HÀNG] Realtime:', status);
+    });
+}).catch(error => {
+  console.error('[REALTIME] Không khởi tạo được:', error);
+});
 
 /* ===== Nút nổi scan ===== */
 fabScan?.addEventListener('click',()=>{if(document.getElementById('app')?.style.display!=='block')return;$('#startBtn')?.click();showSlide('MỞ CAMERA QUÉT','info');});
 
 /* Ghi chú: KHÔNG xin/quản lý vị trí tại file này. Check-in mở full-screen từ TRÊN xuống. */
+
+    /*
+     * Đăng xuất chung.
+     * Dùng capture=true để xử lý trước sự kiện đăng xuất cũ
+     * trong app_giao_hang.js nếu vẫn còn.
+     */
+    document
+      .getElementById("logout")
+      ?.addEventListener(
+        "click",
+        event => {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+
+          try {
+            localStorage.removeItem("nv");
+            localStorage.removeItem(
+              "chatwoot_crm_user"
+            );
+
+            sessionStorage.removeItem(
+              "nv_ctx"
+            );
+
+            sessionStorage.removeItem(
+              "APP_ACCESS"
+            );
+          } catch (error) {
+            console.warn(
+              "[GIAO HÀNG] Lỗi khi xóa phiên đăng nhập:",
+              error
+            );
+          }
+
+          location.replace("./login.html");
+        },
+        true
+      );
