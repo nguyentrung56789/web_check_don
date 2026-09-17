@@ -592,6 +592,32 @@
       pointer-events: none;
     }
 
+    /* ===================== MÔ TẢ: NHẬP TRỰC TIẾP + TỰ LƯU ===================== */
+    .mo-ta-input {
+      width: 100%;
+      min-width: 220px;
+      height: 32px;
+      border: 1px solid #d1d5db;
+      border-radius: 7px;
+      background: #ffffff;
+      color: #111827;
+      font-size: 13px;
+      padding: 0 8px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .mo-ta-input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+    }
+
+    .mo-ta-input.saving {
+      opacity: .6;
+      background: #f3f4f6;
+      pointer-events: none;
+    }
+
     .staff-chip-editor {
       min-height: 38px;
       width: 100%;
@@ -4075,6 +4101,126 @@ showNotice(valueToSave
 
     window.saveCustomerXungHo = saveCustomerXungHo;
 
+    // =========================================================
+    // MÔ TẢ: NHẬP TRỰC TIẾP, RỜI Ô / ENTER THÌ TỰ LƯU
+    // Ghi vào kv_khachhang_nhanvien.mo_ta, cùng cách xác định dòng như xung_ho.
+    // =========================================================
+    async function saveCustomerMoTa(maKh, conversationId, maNv, value, inputEl) {
+      const maKhText = String(maKh || "").trim();
+      const conversationText = String(conversationId || "").trim();
+      const maNvText = String(maNv || "").trim();
+      const moTa = String(value || "").trim();
+      const oldValue = String(inputEl?.dataset?.oldValue || "").trim();
+
+      if (!maKhText) {
+        showNotice("Thiếu mã khách hàng.", "error", 2500);
+        return;
+      }
+
+      if (!supabaseClient) {
+        showNotice("Supabase chưa sẵn sàng.", "error", 2500);
+        return;
+      }
+
+      // Không thay đổi thì không gửi UPDATE.
+      if (oldValue === moTa) {
+        return;
+      }
+
+      if (inputEl) {
+        inputEl.classList.add("saving");
+        inputEl.disabled = true;
+      }
+
+      try {
+        let query = supabaseClient
+          .from(TABLE_KHACH_HANG_NHANVIEN)
+          .update({ mo_ta: moTa || null })
+          .eq("ma_kh", maKhText);
+
+        // Ưu tiên conversation_id để cập nhật đúng dòng.
+        if (conversationText) {
+          query = query.eq("conversation_id", conversationText);
+        } else if (maNvText) {
+          query = query.eq("ma_nv", maNvText);
+        } else {
+          throw new Error("Không xác định được dòng cần cập nhật.");
+        }
+
+        const { error } = await query;
+
+        if (error) {
+          throw error;
+        }
+
+        // Đồng bộ dữ liệu đang hiển thị trong RAM.
+        customers.forEach(function (item) {
+          const sameMaKh = String(item.ma_kh || "").trim() === maKhText;
+          const sameConversation =
+            conversationText &&
+            String(item.conversation_id || "").trim() === conversationText;
+          const sameMaNv =
+            !conversationText &&
+            maNvText &&
+            String(item.ma_nv || "").trim() === maNvText;
+
+          if (sameMaKh && (sameConversation || sameMaNv)) {
+            item.mo_ta = moTa;
+          }
+        });
+
+        // Đồng bộ cả danh sách khách đã tick chọn.
+        selectedCustomerRowsMap.forEach(function (item, key) {
+          const sameMaKh = String(item.ma_kh || "").trim() === maKhText;
+          const sameConversation =
+            conversationText &&
+            String(item.conversation_id || "").trim() === conversationText;
+          const sameMaNv =
+            !conversationText &&
+            maNvText &&
+            String(item.ma_nv || "").trim() === maNvText;
+
+          if (sameMaKh && (sameConversation || sameMaNv)) {
+            item.mo_ta = moTa;
+            selectedCustomerRowsMap.set(key, item);
+          }
+        });
+
+        if (inputEl) {
+          inputEl.dataset.oldValue = moTa;
+          inputEl.title = moTa;
+        }
+
+        showNotice(
+          moTa ? "Đã cập nhật mô tả." : "Đã xóa mô tả.",
+          "ok",
+          1400
+        );
+
+      } catch (error) {
+        console.error("[MO_TA UPDATE ERROR]", error);
+
+        if (inputEl) {
+          inputEl.value = oldValue;
+        }
+
+        showNotice(
+          "Lỗi cập nhật mô tả: " +
+          (error.message || JSON.stringify(error)),
+          "error",
+          4500
+        );
+
+      } finally {
+        if (inputEl) {
+          inputEl.classList.remove("saving");
+          inputEl.disabled = false;
+        }
+      }
+    }
+
+    window.saveCustomerMoTa = saveCustomerMoTa;
+
 
     function updateFloatingSaveBar() {
       const count = Object.keys(pendingStaffChanges).length;
@@ -4277,6 +4423,7 @@ showNotice(valueToSave
 
       await loadCustomerStaffAssignments(customers.map(function (item) { return item.ma_kh; }));
       await loadSalonInfoForCustomers(customers);
+      await loadCustomerDescriptions(customers);
       await loadReminderInfoForCustomers(customers);
       rememberSelectedRowsFromCurrentPage();
       renderCustomers();
@@ -4343,6 +4490,75 @@ showNotice(valueToSave
 
         item.so_luong_guong_ghe = salon?.so_luong_guong_ghe ?? null;
         item.mo_ta = salon?.mo_ta ?? "";
+      });
+    }
+
+
+    // Đọc mô tả đã chỉnh tay từ bảng thật kv_khachhang_nhanvien.
+    // Hàm này chạy SAU loadSalonInfoForCustomers để mô tả chỉnh tay luôn được ưu tiên,
+    // không bị sql_phantich_salon ghi đè sau khi F5 / tải lại trang.
+    async function loadCustomerDescriptions(customerRows) {
+      if (!supabaseClient || !Array.isArray(customerRows) || customerRows.length === 0) {
+        return;
+      }
+
+      const maKhList = Array.from(new Set(
+        customerRows
+          .map(function (item) { return String(item?.ma_kh || "").trim(); })
+          .filter(Boolean)
+      ));
+
+      if (maKhList.length === 0) return;
+
+      const { data, error } = await supabaseClient
+        .from(TABLE_KHACH_HANG_NHANVIEN)
+        .select("ma_kh, conversation_id, ma_nv, mo_ta")
+        .in("ma_kh", maKhList);
+
+      if (error) {
+        console.warn("[MO_TA] Không tải được mô tả từ kv_khachhang_nhanvien:", error);
+        return;
+      }
+
+      const rows = Array.isArray(data) ? data : [];
+
+      customerRows.forEach(function (item) {
+        const maKh = String(item?.ma_kh || "").trim();
+        const conversationId = String(item?.conversation_id || "").trim();
+        const maNv = String(item?.ma_nv || "").trim();
+
+        // 1) Khớp chính xác theo ma_kh + conversation_id.
+        let found = conversationId
+          ? rows.find(function (row) {
+              return String(row?.ma_kh || "").trim() === maKh &&
+                     String(row?.conversation_id || "").trim() === conversationId;
+            })
+          : null;
+
+        // 2) Nếu không có conversation_id thì fallback ma_kh + ma_nv.
+        if (!found && maNv) {
+          found = rows.find(function (row) {
+            return String(row?.ma_kh || "").trim() === maKh &&
+                   String(row?.ma_nv || "").trim() === maNv;
+          });
+        }
+
+        // 3) Cuối cùng fallback theo ma_kh nếu chỉ có đúng một dòng.
+        if (!found) {
+          const sameMaKhRows = rows.filter(function (row) {
+            return String(row?.ma_kh || "").trim() === maKh;
+          });
+
+          if (sameMaKhRows.length === 1) {
+            found = sameMaKhRows[0];
+          }
+        }
+
+        // Chỉ ghi đè khi bảng thật có giá trị mo_ta khác null/undefined.
+        // Chuỗi rỗng vẫn hợp lệ vì người dùng có thể chủ động xóa mô tả.
+        if (found && found.mo_ta !== undefined && found.mo_ta !== null) {
+          item.mo_ta = String(found.mo_ta);
+        }
       });
     }
 
@@ -4471,6 +4687,7 @@ showNotice(valueToSave
 
       await loadCustomerStaffAssignments(customers.map(function (item) { return item.ma_kh; }));
       await loadSalonInfoForCustomers(customers);
+      await loadCustomerDescriptions(customers);
       await loadReminderInfoForCustomers(customers);
       rememberSelectedRowsFromCurrentPage();
       renderCustomers();
@@ -5261,8 +5478,34 @@ logoutBtn.addEventListener("click", function () {
             <td data-col="so_luong_guong_ghe" title="${escapeHtml(item.so_luong_guong_ghe ?? "")}">
               ${escapeHtml(item.so_luong_guong_ghe ?? "")}
             </td>
-            <td data-col="mo_ta" title="${escapeHtml(item.mo_ta || "")}">
-              ${escapeHtml(item.mo_ta || "")}
+            <td data-col="mo_ta" onclick="event.stopPropagation()">
+              <input
+                type="text"
+                class="mo-ta-input"
+                value="${escapeHtml(item.mo_ta || "")}"
+                data-old-value="${escapeHtml(item.mo_ta || "")}"
+                title="${escapeHtml(item.mo_ta || "")}"
+                placeholder="Nhập mô tả..."
+                onfocus="this.dataset.oldValue = this.value"
+                onblur="saveCustomerMoTa(
+                  '${escapeJs(maKh)}',
+                  '${escapeJs(String(item.conversation_id || ""))}',
+                  '${escapeJs(String(item.ma_nv || ""))}',
+                  this.value,
+                  this
+                )"
+                onkeydown="
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    this.blur();
+                  } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    this.value = this.dataset.oldValue || '';
+                    this.blur();
+                  }
+                "
+                onclick="event.stopPropagation()"
+              >
             </td>
             <td data-col="ma_nv" title="${escapeHtml(staffTitle)}">
               ${escapeHtml(staffTitle || "")}
