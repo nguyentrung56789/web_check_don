@@ -4103,17 +4103,16 @@ showNotice(valueToSave
 
     // =========================================================
     // MÔ TẢ: NHẬP TRỰC TIẾP, RỜI Ô / ENTER THÌ TỰ LƯU
-    // Ghi vào kv_khachhang_nhanvien.mo_ta, cùng cách xác định dòng như xung_ho.
+    // Dùng uid_from làm KEY duy nhất để xác định đúng dòng cần UPDATE.
     // =========================================================
-    async function saveCustomerMoTa(maKh, conversationId, maNv, value, inputEl) {
-      const maKhText = String(maKh || "").trim();
-      const conversationText = String(conversationId || "").trim();
-      const maNvText = String(maNv || "").trim();
+    async function saveCustomerMoTa(uidFrom, value, inputEl) {
+      const uidFromText = String(uidFrom || "").trim();
       const moTa = String(value || "").trim();
       const oldValue = String(inputEl?.dataset?.oldValue || "").trim();
 
-      if (!maKhText) {
-        showNotice("Thiếu mã khách hàng.", "error", 2500);
+      if (!uidFromText) {
+        showNotice("Thiếu uid_from nên không thể cập nhật mô tả.", "error", 3000);
+        if (inputEl) inputEl.value = oldValue;
         return;
       }
 
@@ -4133,54 +4132,25 @@ showNotice(valueToSave
       }
 
       try {
-        let query = supabaseClient
+        const { error } = await supabaseClient
           .from(TABLE_KHACH_HANG_NHANVIEN)
           .update({ mo_ta: moTa || null })
-          .eq("ma_kh", maKhText);
-
-        // Ưu tiên conversation_id để cập nhật đúng dòng.
-        if (conversationText) {
-          query = query.eq("conversation_id", conversationText);
-        } else if (maNvText) {
-          query = query.eq("ma_nv", maNvText);
-        } else {
-          throw new Error("Không xác định được dòng cần cập nhật.");
-        }
-
-        const { error } = await query;
+          .eq("uid_from", uidFromText);
 
         if (error) {
           throw error;
         }
 
-        // Đồng bộ dữ liệu đang hiển thị trong RAM.
+        // Đồng bộ dữ liệu đang hiển thị trong RAM theo đúng uid_from.
         customers.forEach(function (item) {
-          const sameMaKh = String(item.ma_kh || "").trim() === maKhText;
-          const sameConversation =
-            conversationText &&
-            String(item.conversation_id || "").trim() === conversationText;
-          const sameMaNv =
-            !conversationText &&
-            maNvText &&
-            String(item.ma_nv || "").trim() === maNvText;
-
-          if (sameMaKh && (sameConversation || sameMaNv)) {
+          if (String(item.uid_from || "").trim() === uidFromText) {
             item.mo_ta = moTa;
           }
         });
 
         // Đồng bộ cả danh sách khách đã tick chọn.
         selectedCustomerRowsMap.forEach(function (item, key) {
-          const sameMaKh = String(item.ma_kh || "").trim() === maKhText;
-          const sameConversation =
-            conversationText &&
-            String(item.conversation_id || "").trim() === conversationText;
-          const sameMaNv =
-            !conversationText &&
-            maNvText &&
-            String(item.ma_nv || "").trim() === maNvText;
-
-          if (sameMaKh && (sameConversation || sameMaNv)) {
+          if (String(item.uid_from || "").trim() === uidFromText) {
             item.mo_ta = moTa;
             selectedCustomerRowsMap.set(key, item);
           }
@@ -4495,69 +4465,49 @@ showNotice(valueToSave
 
 
     // Đọc mô tả đã chỉnh tay từ bảng thật kv_khachhang_nhanvien.
-    // Hàm này chạy SAU loadSalonInfoForCustomers để mô tả chỉnh tay luôn được ưu tiên,
-    // không bị sql_phantich_salon ghi đè sau khi F5 / tải lại trang.
+    // uid_from là KEY dùng để ghép đúng dòng, không ghép theo ma_kh/conversation_id/ma_nv.
+    // Hàm này chạy SAU loadSalonInfoForCustomers để mô tả chỉnh tay luôn được ưu tiên.
     async function loadCustomerDescriptions(customerRows) {
       if (!supabaseClient || !Array.isArray(customerRows) || customerRows.length === 0) {
         return;
       }
 
-      const maKhList = Array.from(new Set(
+      const uidFromList = Array.from(new Set(
         customerRows
-          .map(function (item) { return String(item?.ma_kh || "").trim(); })
+          .map(function (item) { return String(item?.uid_from || "").trim(); })
           .filter(Boolean)
       ));
 
-      if (maKhList.length === 0) return;
+      if (uidFromList.length === 0) return;
 
       const { data, error } = await supabaseClient
         .from(TABLE_KHACH_HANG_NHANVIEN)
-        .select("ma_kh, conversation_id, ma_nv, mo_ta")
-        .in("ma_kh", maKhList);
+        .select("uid_from, mo_ta")
+        .in("uid_from", uidFromList);
 
       if (error) {
         console.warn("[MO_TA] Không tải được mô tả từ kv_khachhang_nhanvien:", error);
         return;
       }
 
-      const rows = Array.isArray(data) ? data : [];
+      const moTaByUid = new Map();
+
+      (data || []).forEach(function (row) {
+        const uid = String(row?.uid_from || "").trim();
+        if (!uid) return;
+        moTaByUid.set(uid, row.mo_ta);
+      });
 
       customerRows.forEach(function (item) {
-        const maKh = String(item?.ma_kh || "").trim();
-        const conversationId = String(item?.conversation_id || "").trim();
-        const maNv = String(item?.ma_nv || "").trim();
+        const uid = String(item?.uid_from || "").trim();
+        if (!uid || !moTaByUid.has(uid)) return;
 
-        // 1) Khớp chính xác theo ma_kh + conversation_id.
-        let found = conversationId
-          ? rows.find(function (row) {
-              return String(row?.ma_kh || "").trim() === maKh &&
-                     String(row?.conversation_id || "").trim() === conversationId;
-            })
-          : null;
+        const value = moTaByUid.get(uid);
 
-        // 2) Nếu không có conversation_id thì fallback ma_kh + ma_nv.
-        if (!found && maNv) {
-          found = rows.find(function (row) {
-            return String(row?.ma_kh || "").trim() === maKh &&
-                   String(row?.ma_nv || "").trim() === maNv;
-          });
-        }
-
-        // 3) Cuối cùng fallback theo ma_kh nếu chỉ có đúng một dòng.
-        if (!found) {
-          const sameMaKhRows = rows.filter(function (row) {
-            return String(row?.ma_kh || "").trim() === maKh;
-          });
-
-          if (sameMaKhRows.length === 1) {
-            found = sameMaKhRows[0];
-          }
-        }
-
-        // Chỉ ghi đè khi bảng thật có giá trị mo_ta khác null/undefined.
-        // Chuỗi rỗng vẫn hợp lệ vì người dùng có thể chủ động xóa mô tả.
-        if (found && found.mo_ta !== undefined && found.mo_ta !== null) {
-          item.mo_ta = String(found.mo_ta);
+        // null nghĩa là chưa có mô tả chỉnh tay; giữ mô tả từ sql_phantich_salon.
+        // Chuỗi rỗng vẫn là giá trị hợp lệ nếu dữ liệu thực tế lưu chuỗi rỗng.
+        if (value !== undefined && value !== null) {
+          item.mo_ta = String(value);
         }
       });
     }
@@ -5488,9 +5438,7 @@ logoutBtn.addEventListener("click", function () {
                 placeholder="Nhập mô tả..."
                 onfocus="this.dataset.oldValue = this.value"
                 onblur="saveCustomerMoTa(
-                  '${escapeJs(maKh)}',
-                  '${escapeJs(String(item.conversation_id || ""))}',
-                  '${escapeJs(String(item.ma_nv || ""))}',
+                  '${escapeJs(String(item.uid_from || ""))}',
                   this.value,
                   this
                 )"
