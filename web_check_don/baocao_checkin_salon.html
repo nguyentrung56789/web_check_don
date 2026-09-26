@@ -13,34 +13,38 @@
   <style>
     :root{
       --bg:#f3f4f6;
-      --panel:#fff;
+      --panel:#ffffff;
       --panel-soft:#f9fafb;
       --muted:#6b7280;
       --text:#111827;
       --accent:#2563eb;
-      --accent-soft:rgba(37,99,235,.14);
+      --accent-soft:rgba(37,99,235,0.16);
       --border:#e5e7eb;
       --warn:#f59e0b;
       --err:#ef4444;
-      --ok:#059669;
     }
 
-    *{box-sizing:border-box}
+    *{box-sizing:border-box;}
 
     html,body{
       margin:0;
       padding:0;
       background:var(--bg);
       color:var(--text);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
     }
 
-    body{visibility:hidden}
-    body.ready{visibility:visible}
+    body{
+      visibility:hidden;
+    }
+
+    body.ready{
+      visibility:visible;
+    }
 
     .wrap{
-      max-width:980px;
-      margin:16px auto 40px;
+      max-width:480px;
+      margin:16px auto 32px;
       padding:0 12px;
     }
 
@@ -52,166 +56,191 @@
       margin-bottom:12px;
     }
 
-    h1{
+    .top-left h1{
       margin:0;
       font-size:22px;
+      letter-spacing:0.01em;
     }
 
     .top-right{
       display:flex;
+      align-items:center;
       gap:8px;
+      flex-shrink:0;
     }
 
     .btn{
-      border:0;
+      padding:8px 18px;
       border-radius:999px;
-      padding:9px 17px;
+      border:none;
       cursor:pointer;
+      font-size:14px;
       background:var(--accent);
       color:#fff;
-      font-size:14px;
+      white-space:nowrap;
       display:inline-flex;
       align-items:center;
       justify-content:center;
       gap:6px;
     }
 
-    .btn:hover{opacity:.93}
-    .btn:disabled{opacity:.5;cursor:default}
-
-    .btn-secondary{
-      background:#fff;
-      color:var(--accent);
-      border:1px solid var(--accent);
-    }
+    .btn:hover{opacity:.94;}
+    .btn:disabled{opacity:.55;cursor:default;}
 
     .btn-map{
       background:#eff6ff;
-      color:var(--accent);
       border:1px solid var(--accent);
-    }
-
-    .filter-bar,
-    .analysis-panel{
-      background:#fff;
-      border:1px solid var(--border);
-      border-radius:18px;
-      box-shadow:0 10px 25px rgba(15,23,42,.05);
+      color:var(--accent);
+      padding-inline:18px;
+      font-weight:500;
     }
 
     .filter-bar{
       display:flex;
       flex-wrap:wrap;
       gap:12px;
-      padding:14px;
+      background:var(--panel);
+      border-radius:18px;
+      padding:14px 16px;
+      border:1px solid var(--border);
       margin-bottom:10px;
+      box-shadow:0 10px 20px rgba(15,23,42,0.04);
     }
 
     .filter-item{
-      min-width:220px;
-      flex:1;
       display:flex;
       flex-direction:column;
       gap:6px;
+      min-width:200px;
+      flex:1 1 220px;
     }
 
-    label{
+    .filter-item label{
       font-size:13px;
       color:var(--muted);
     }
 
-    select,input{
-      width:100%;
-      padding:9px 10px;
+    .filter-item select,
+    .filter-item input{
+      padding:8px 10px;
       border-radius:10px;
       border:1px solid var(--border);
       background:#f9fafb;
-      font-size:14px;
       color:var(--text);
+      font-size:14px;
     }
 
-    select:focus,input:focus{
+    .filter-item select:focus,
+    .filter-item input:focus{
       outline:none;
       border-color:var(--accent);
       box-shadow:0 0 0 1px var(--accent-soft);
-      background:#fff;
+      background:#ffffff;
+    }
+
+    .filter-actions{
+      justify-content:flex-end;
+      align-items:flex-end;
     }
 
     .range-presets{
       display:flex;
       flex-wrap:wrap;
-      gap:5px;
+      gap:6px;
     }
 
     .range-pill{
+      padding:6px 10px;
+      border-radius:999px;
       border:1px solid var(--border);
       background:#f9fafb;
-      color:var(--muted);
-      border-radius:999px;
-      padding:6px 9px;
-      cursor:pointer;
       font-size:12px;
+      cursor:pointer;
+      color:var(--muted);
+      white-space:nowrap;
     }
 
     .range-pill.active{
-      color:var(--accent);
-      border-color:var(--accent);
       background:var(--accent-soft);
-      font-weight:600;
+      border-color:var(--accent);
+      color:var(--accent);
+      font-weight:500;
     }
 
     .range-custom{
       display:flex;
-      gap:10px;
-      margin-top:5px;
+      align-items:center;
+      gap:12px;
+      margin-top:6px;
+      font-size:13px;
+      color:var(--muted);
+      flex-wrap:wrap;
     }
 
-    .range-custom > div{
+    .range-custom .row-item{
       flex:1;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+
+    .range-custom .row-item label{
+      font-size:13px;
+      color:var(--muted);
     }
 
     .multi-select{
       position:relative;
+      width:100%;
     }
 
     .multi-select-btn{
       width:100%;
       min-height:42px;
-      padding:8px 38px 8px 12px;
+      padding:8px 40px 8px 12px;
       border-radius:10px;
       border:1px solid var(--border);
       background:#f9fafb;
+      color:var(--text);
+      font-size:14px;
       text-align:left;
       cursor:pointer;
-      position:relative;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
+      position:relative;
     }
 
-    .multi-select-btn:after{
+    .multi-select-btn::after{
       content:"⌄";
       position:absolute;
       right:12px;
-      top:8px;
+      top:50%;
+      transform:translateY(-55%);
       font-size:18px;
       color:var(--muted);
+    }
+
+    .multi-select.open .multi-select-btn{
+      border-color:var(--accent);
+      box-shadow:0 0 0 1px var(--accent-soft);
+      background:#fff;
     }
 
     .multi-select-menu{
       display:none;
       position:absolute;
-      z-index:100;
-      top:calc(100% + 5px);
       left:0;
       right:0;
+      top:calc(100% + 6px);
+      z-index:50;
       background:#fff;
       border:1px solid var(--border);
       border-radius:12px;
-      box-shadow:0 15px 35px rgba(0,0,0,.15);
+      box-shadow:0 18px 35px rgba(15,23,42,0.16);
       max-height:320px;
       overflow:auto;
-      padding:7px 0;
+      padding:10px 0;
     }
 
     .multi-select.open .multi-select-menu{
@@ -221,9 +250,11 @@
     .multi-option{
       display:flex;
       align-items:center;
-      gap:8px;
-      padding:8px 12px;
+      gap:10px;
+      padding:8px 14px;
+      font-size:14px;
       cursor:pointer;
+      user-select:none;
       color:var(--text);
     }
 
@@ -232,2911 +263,1057 @@
     }
 
     .multi-option input{
-      width:17px;
-      height:17px;
+      width:18px;
+      height:18px;
+      cursor:pointer;
     }
 
     .status{
-      margin:8px 3px;
+      margin:6px 2px 8px;
       font-size:13px;
+      display:flex;
+      align-items:center;
+      gap:6px;
       color:var(--muted);
     }
 
-    .status.ok{color:var(--ok)}
-    .status.err{color:var(--err)}
-    .status.warn{color:var(--warn)}
+    .status-dot{
+      width:8px;
+      height:8px;
+      border-radius:999px;
+      background:var(--muted);
+    }
+
+    .status.ok{color:#059669;}
+    .status.warn{color:var(--warn);}
+    .status.err{color:var(--err);}
+
+    .status.ok .status-dot{background:#22c55e;}
+    .status.warn .status-dot{background:var(--warn);}
+    .status.err .status-dot{background:var(--err);}
 
     .table-wrap{
+      margin-top:4px;
+      border-radius:18px;
+      overflow:hidden;
       border:1px solid var(--border);
-      background:#fff;
-      border-radius:16px;
-      overflow:auto;
+      background:var(--panel);
+      box-shadow:0 18px 30px rgba(15,23,42,0.04);
     }
 
     table{
       width:100%;
       border-collapse:collapse;
-      font-size:13px;
+      font-size:14px;
+      table-layout:fixed;
+    }
+
+    thead{
+      background:#f9fafb;
     }
 
     th,td{
-      padding:9px 10px;
+      padding:8px 10px;
       border-bottom:1px solid var(--border);
-      text-align:left;
-      vertical-align:top;
     }
 
     th{
-      background:#f9fafb;
-      color:var(--muted);
+      text-align:left;
       font-weight:600;
-    }
-
-    tbody tr:hover{
-      background:#eff6ff;
-    }
-
-    .pagination-bar{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:8px;
-      margin-top:10px;
-    }
-
-    .page-btn{
-      border:1px solid var(--border);
-      background:#fff;
-      color:var(--accent);
-      border-radius:999px;
-      padding:7px 12px;
-      cursor:pointer;
-    }
-
-    .page-btn:disabled{
-      opacity:.4;
-      cursor:default;
-    }
-
-    .page-info{
-      color:var(--muted);
       font-size:13px;
-    }
-
-    /* ===== PHÂN TÍCH ===== */
-
-    .analysis-panel{
-      margin-top:18px;
-      padding:16px;
-    }
-
-    .analysis-title{
-      margin:0;
-      font-size:19px;
-    }
-
-    .analysis-subtitle{
       color:var(--muted);
-      font-size:12px;
-      line-height:1.5;
-      margin:5px 0 14px;
     }
 
-    .kpi-grid{
-      display:grid;
-      grid-template-columns:repeat(4,1fr);
-      gap:8px;
-      margin-bottom:14px;
-    }
+    tbody tr:nth-child(even){background:var(--panel-soft);}
+    tbody tr:hover{background:#eff6ff;}
 
-    .kpi{
-      background:#f9fafb;
-      border:1px solid var(--border);
-      border-radius:12px;
-      padding:11px;
-    }
-
-    .kpi span{
-      display:block;
-      color:var(--muted);
-      font-size:11px;
-      margin-bottom:4px;
-    }
-
-    .kpi strong{
-      font-size:22px;
-    }
-
-    .analysis-controls{
-      display:grid;
-      grid-template-columns:1.1fr .7fr 1.2fr;
-      gap:10px;
-      margin-bottom:10px;
-    }
-
-    .analysis-actions{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin:10px 0;
-    }
-
-    .analysis-status{
-      color:var(--muted);
-      font-size:12px;
-      margin:8px 0;
-    }
-
-    .analysis-result{
-      border:1px solid var(--border);
-      border-radius:12px;
-      overflow:auto;
-      max-height:600px;
-      background:#fff;
-    }
-
-    .analysis-empty{
-      padding:20px;
+    th:nth-child(1),
+    td:nth-child(1){
+      width:40px;
       text-align:center;
       color:var(--muted);
     }
 
-    .risk-high{
-      color:#b91c1c;
-      font-weight:700;
+    th:nth-child(2), td:nth-child(2),
+    th:nth-child(3), td:nth-child(3){
+      width:120px;
+      white-space:normal;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
 
-    .risk-mid{
-      color:#b45309;
-      font-weight:700;
+    .col-diachi{
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+      word-break:break-word;
     }
 
-    .risk-ok{
-      color:#047857;
-      font-weight:700;
-    }
-
-    .customer-card{
-      padding:15px;
-    }
-
-    .customer-card h3{
-      margin:0 0 12px;
-    }
-
-    .customer-grid{
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-      gap:8px;
-    }
-
-    .customer-item{
-      border:1px solid var(--border);
-      border-radius:10px;
-      background:#f9fafb;
-      padding:9px;
-    }
-
-    .customer-item span{
+    .col-date-main{
       display:block;
+    }
+
+    .col-date-time{
+      display:block;
+      font-size:12px;
       color:var(--muted);
-      font-size:11px;
-      margin-bottom:3px;
+      margin-top:2px;
     }
 
-    .followup-box{
-      margin-top:12px;
-      padding:13px;
-      background:#eff6ff;
-      border:1px solid #bfdbfe;
-      border-radius:10px;
-      line-height:1.55;
-      white-space:pre-wrap;
-    }
-
-    .analysis-note{
+    .pagination-bar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
       margin-top:10px;
-      font-size:11px;
-      color:var(--muted);
+      padding:10px 2px;
     }
 
-    @media(max-width:700px){
-      .wrap{padding:0 8px}
+    .page-btn{
+      border:1px solid var(--border);
+      background:#ffffff;
+      color:var(--accent);
+      border-radius:999px;
+      padding:8px 12px;
+      font-size:13px;
+      cursor:pointer;
+      font-weight:500;
+      white-space:nowrap;
+    }
+
+    .page-btn:hover{
+      background:#eff6ff;
+      border-color:var(--accent);
+    }
+
+    .page-btn:disabled{
+      opacity:.45;
+      cursor:default;
+      background:#f9fafb;
+      color:var(--muted);
+      border-color:var(--border);
+    }
+
+    .page-info{
+      font-size:13px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+
+    @media (max-width:640px){
+      .wrap{
+        margin:8px auto 16px;
+        padding:0 8px;
+      }
 
       .top-bar{
         flex-direction:column;
-        align-items:stretch;
+        align-items:flex-start;
+        gap:6px;
+      }
+
+      .top-left h1{
+        font-size:20px;
+      }
+
+      .top-right{
+        align-self:stretch;
+        justify-content:flex-end;
+        gap:8px;
       }
 
       .top-right .btn{
         flex:1;
+        justify-content:center;
+        padding-inline:12px;
       }
 
-      .analysis-controls{
-        grid-template-columns:1fr;
+      .filter-bar{
+        padding:10px 10px;
+        border-radius:14px;
       }
 
-      .kpi-grid{
-        grid-template-columns:repeat(2,1fr);
+      .filter-item{
+        min-width:100%;
+        flex:1 1 100%;
       }
 
-      .customer-grid{
-        grid-template-columns:1fr 1fr;
+      .filter-actions{
+        align-items:center;
+      }
+
+      .filter-item select,
+      .filter-item input{
+        font-size:13px;
+        padding:7px 9px;
+      }
+
+      .range-presets{
+        gap:4px;
+      }
+
+      .range-pill{
+        padding:5px 8px;
+        font-size:11px;
+      }
+
+      .multi-select-menu{
+        max-height:300px;
+      }
+
+      .status{
+        font-size:12px;
+        margin-top:6px;
+      }
+
+      .table-wrap{
+        border-radius:14px;
+      }
+
+      table{
+        font-size:13px;
+      }
+
+      th,td{
+        padding:7px 8px;
+      }
+
+      .pagination-bar{
+        gap:6px;
+      }
+
+      .page-btn{
+        padding:7px 10px;
+        font-size:12px;
+      }
+
+      .page-info{
+        font-size:12px;
       }
     }
   </style>
 </head>
 
 <body>
+  <div class="wrap">
+    <header class="top-bar">
+      <div class="top-left">
+        <h1>Báo cáo check-in</h1>
+      </div>
 
-<div class="wrap">
-
-  <header class="top-bar">
-    <h1>Báo cáo check-in</h1>
-
-    <div class="top-right">
-      <button id="btnFilter" class="btn">Lọc dữ liệu</button>
-      <button id="btnMap" class="btn btn-map">📍 Xem bản đồ</button>
-    </div>
-  </header>
-
-  <section class="filter-bar">
-
-    <div class="filter-item">
-      <label>Nhân viên</label>
-
-      <div class="multi-select" id="maNvMulti">
-
-        <button
-          id="maNvMultiBtn"
-          class="multi-select-btn"
-          type="button">
-          Tất cả nhân viên
+      <div class="top-right">
+        <button id="btnFilter" class="btn" type="button">
+          Lọc dữ liệu
         </button>
 
-        <div
-          id="maNvMultiMenu"
-          class="multi-select-menu">
-
-          <label class="multi-option">
-            <input
-              id="maNvAllCheck"
-              type="checkbox"
-              checked>
-            <span>Tất cả nhân viên</span>
-          </label>
-
-          <div id="maNvOptionList"></div>
-
-        </div>
+        <button id="btnMap" class="btn btn-map" type="button">
+          📍 <span>Xem bản đồ</span>
+        </button>
       </div>
-    </div>
+    </header>
 
-    <div class="filter-item">
+    <section class="filter-bar">
+      <div class="filter-item">
+        <label>Nhân viên</label>
 
-      <label>Thời gian</label>
+        <div class="multi-select" id="maNvMulti">
+          <button type="button" class="multi-select-btn" id="maNvMultiBtn">
+            Tất cả nhân viên
+          </button>
 
-      <div class="range-presets">
-        <button class="range-pill" data-range="today">Hôm nay</button>
-        <button class="range-pill" data-range="yesterday">Hôm qua</button>
-        <button class="range-pill" data-range="thisWeek">Tuần này</button>
-        <button class="range-pill" data-range="lastWeek">Tuần trước</button>
-        <button class="range-pill" data-range="thisMonth">Tháng này</button>
-        <button class="range-pill" data-range="lastMonth">Tháng trước</button>
-        <button class="range-pill" data-range="7d">7 ngày qua</button>
-        <button class="range-pill" data-range="30d">30 ngày qua</button>
-        <button class="range-pill" data-range="custom">Tùy chọn</button>
-      </div>
+          <div class="multi-select-menu" id="maNvMultiMenu">
+            <label class="multi-option">
+              <input type="checkbox" id="maNvAllCheck" checked />
+              <span>Tất cả nhân viên</span>
+            </label>
 
-      <div class="range-custom">
-        <div>
-          <label>Từ</label>
-          <input id="fromDate" type="date">
-        </div>
-
-        <div>
-          <label>Đến</label>
-          <input id="toDate" type="date">
+            <div id="maNvOptionList"></div>
+          </div>
         </div>
       </div>
 
-    </div>
-
-  </section>
-
-  <div id="status" class="status">
-    Đang khởi tạo...
-  </div>
-
-  <div class="table-wrap">
-    <table>
-
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Ngày</th>
-          <th>Tên KH</th>
-          <th>Mã KH</th>
-          <th>Địa chỉ</th>
-        </tr>
-      </thead>
-
-      <tbody id="tbodyKh"></tbody>
-
-    </table>
-  </div>
-
-  <div class="pagination-bar">
-
-    <button
-      id="btnPrevPage"
-      class="page-btn">
-      ← Trang trước
-    </button>
-
-    <span
-      id="pageInfo"
-      class="page-info">
-      Trang 1 / 1
-    </span>
-
-    <button
-      id="btnNextPage"
-      class="page-btn">
-      Trang sau →
-    </button>
-
-  </div>
-
-  <!-- ============================== -->
-  <!-- PHÂN TÍCH KHÁCH HÀNG -->
-  <!-- ============================== -->
-
-  <section class="analysis-panel">
-
-    <h2 class="analysis-title">
-      🤖 Phân tích khách hàng
-    </h2>
-
-    <div class="analysis-subtitle">
-      Phân tích trực tiếp lịch sử check-in trong Supabase.
-      Không qua n8n và không cần OpenAI API.
-      Nếu chọn nhân viên phía trên, dữ liệu phân tích sẽ theo nhân viên đó.
-    </div>
-
-    <div class="kpi-grid">
-
-      <div class="kpi">
-        <span>Tổng khách có check-in</span>
-        <strong id="kpiCustomers">—</strong>
-      </div>
-
-      <div class="kpi">
-        <span>Ghé trong 30 ngày</span>
-        <strong id="kpiRecent30">—</strong>
-      </div>
-
-      <div class="kpi">
-        <span>≥ 60 ngày chưa ghé</span>
-        <strong id="kpiInactive60">—</strong>
-      </div>
-
-      <div class="kpi">
-        <span>Nguy cơ mất khách</span>
-        <strong id="kpiRisk">—</strong>
-      </div>
-
-    </div>
-
-    <div class="analysis-controls">
-
-      <div>
-        <label>Form phân tích</label>
-
-        <select id="analysisType">
-          <option value="frequent">
-            Khách đi nhiều nhất
-          </option>
-
-          <option value="inactive">
-            Khách lâu chưa đi
-          </option>
-
-          <option value="risk">
-            Khách có nguy cơ mất
-          </option>
-
-          <option value="customer">
-            Phân tích một khách
-          </option>
-
-          <option value="followup">
-            Gợi ý hỏi thăm một khách
-          </option>
-        </select>
-      </div>
-
-      <div>
-        <label>Mốc thời gian</label>
-
-        <select id="analysisDays">
-          <option value="30">30 ngày</option>
-          <option value="60" selected>60 ngày</option>
-          <option value="90">90 ngày</option>
-          <option value="180">180 ngày</option>
-          <option value="365">365 ngày</option>
-        </select>
-      </div>
-
-      <div>
-        <label>Khách hàng / mã KH</label>
-
-        <input
-          id="analysisCustomer"
-          list="analysisCustomerList"
-          placeholder="VD: KH020941 hoặc tên khách">
-
-        <datalist id="analysisCustomerList"></datalist>
-      </div>
-
-    </div>
-
-    <div class="analysis-actions">
-
-      <button
-        id="btnRunAnalysis"
-        class="btn">
-        Phân tích
-      </button>
-
-      <button
-        id="btnCopyAnalysis"
-        class="btn btn-secondary">
-        Sao chép kết quả
-      </button>
-
-      <button
-        id="btnReloadAnalysis"
-        class="btn btn-secondary">
-        Tải lại dữ liệu
-      </button>
-
-    </div>
-
-    <div
-      id="analysisStatus"
-      class="analysis-status">
-      Chưa tải dữ liệu phân tích.
-    </div>
-
-    <div
-      id="analysisResult"
-      class="analysis-result">
-
-      <div class="analysis-empty">
-        Chọn form rồi bấm <b>Phân tích</b>.
-      </div>
-
-    </div>
-
-    <div class="analysis-note">
-      Nguy cơ mất khách = khách từng được ghé từ 3 lần trở lên,
-      hiện đã trên 30 ngày chưa ghé và thời gian bỏ trống lớn hơn
-      khoảng 2 lần nhịp ghé trung bình trước đây.
-    </div>
-
-  </section>
-
-</div>
-
-<script>
-
-const CFG_CACHE_KEY =
-  'nv_checkin_cfg_v5';
-
-const FILTER_CACHE_KEY =
-  'nv_checkin_filters_v2';
-
-const PAGE_SIZE = 100;
-
-let supa = null;
-
-let nhanVienOptions = [];
-let selectedMaNvList = [];
-
-let currentPage = 1;
-let totalRows = 0;
-let totalPages = 1;
-
-let analysisRows = null;
-let analysisStats = [];
-let analysisEmployeeKey = '';
-
-const $ = s =>
-  document.querySelector(s);
-
-const btnFilter =
-  $('#btnFilter');
-
-const btnMap =
-  $('#btnMap');
-
-const tbodyKh =
-  $('#tbodyKh');
-
-const fromDateEl =
-  $('#fromDate');
-
-const toDateEl =
-  $('#toDate');
-
-const btnPrevPage =
-  $('#btnPrevPage');
-
-const btnNextPage =
-  $('#btnNextPage');
-
-const pageInfo =
-  $('#pageInfo');
-
-const maNvMulti =
-  $('#maNvMulti');
-
-const maNvMultiBtn =
-  $('#maNvMultiBtn');
-
-const maNvMultiMenu =
-  $('#maNvMultiMenu');
-
-const maNvAllCheck =
-  $('#maNvAllCheck');
-
-const maNvOptionList =
-  $('#maNvOptionList');
-
-const presetBtns =
-  document.querySelectorAll('.range-pill');
-
-
-/* =========================
-   LOGIN
-========================= */
-
-async function checkCurrentLogin(){
-
-  if(
-    typeof window.checkLogin !== 'function'
-  ){
-    throw new Error(
-      'Không tìm thấy check_login.js'
-    );
-  }
-
-  const loginOk =
-    await window.checkLogin();
-
-  if(!loginOk){
-    throw new Error(
-      'Not logged in'
-    );
-  }
-
-  return loginOk;
-}
-
-
-/* =========================
-   SUPABASE
-========================= */
-
-async function getSbConfig(){
-
-  try{
-
-    const raw =
-      localStorage.getItem(
-        CFG_CACHE_KEY
-      );
-
-    if(raw){
-
-      const c =
-        JSON.parse(raw);
-
-      if(
-        c &&
-        c.url &&
-        (c.anon || c.role)
-      ){
-        return c;
-      }
-    }
-
-  }catch(_){}
-
-  const keyHeader =
-    typeof window.getInternalKey === 'function'
-      ? window.getInternalKey()
-      : '';
-
-  const resp =
-    await fetch(
-      '/api/getConfig',
-      {
-        headers:{
-          'x-internal-key':
-            keyHeader
-        }
-      }
-    );
-
-  if(!resp.ok){
-    throw new Error(
-      'Không lấy được config hệ thống'
-    );
-  }
-
-  const cfg =
-    await resp.json();
-
-  const result = {
-    url:cfg.url,
-    anon:cfg.anon,
-    role:cfg.role || null
-  };
-
-  localStorage.setItem(
-    CFG_CACHE_KEY,
-    JSON.stringify(result)
-  );
-
-  return result;
-}
-
-
-async function ensureSupa(){
-
-  if(supa){
-    return supa;
-  }
-
-  const cfg =
-    await getSbConfig();
-
-  const key =
-    cfg.role || cfg.anon;
-
-  supa =
-    window.supabase.createClient(
-      cfg.url,
-      key,
-      {
-        auth:{
-          persistSession:false
-        }
-      }
-    );
-
-  return supa;
-}
-
-
-/* =========================
-   HELPERS
-========================= */
-
-function escapeHtml(v){
-
-  return String(v ?? '')
-    .replaceAll('&','&amp;')
-    .replaceAll('<','&lt;')
-    .replaceAll('>','&gt;')
-    .replaceAll('"','&quot;')
-    .replaceAll("'","&#039;");
-}
-
-
-function setStatus(text,mode=''){
-
-  const el =
-    $('#status');
-
-  el.textContent = text;
-
-  el.className =
-    'status ' + mode;
-}
-
-
-function fmtYmd(d){
-
-  const y =
-    d.getFullYear();
-
-  const m =
-    String(
-      d.getMonth()+1
-    ).padStart(2,'0');
-
-  const day =
-    String(
-      d.getDate()
-    ).padStart(2,'0');
-
-  return `${y}-${m}-${day}`;
-}
-
-
-function ymdToDmy(s){
-
-  if(!s) return '';
-
-  const [y,m,d] =
-    s.split('-');
-
-  return `${d}/${m}/${y}`;
-}
-
-
-function listDates(from,to){
-
-  if(!from || !to){
-    return [];
-  }
-
-  const result = [];
-
-  let d =
-    new Date(from);
-
-  const end =
-    new Date(to);
-
-  while(d <= end){
-
-    result.push(
-      fmtYmd(d)
-    );
-
-    d.setDate(
-      d.getDate()+1
-    );
-  }
-
-  return result;
-}
-
-
-function parseCheckinDate(value){
-
-  const s =
-    String(value || '')
-      .trim();
-
-  if(!s) return null;
-
-  const m =
-    s.match(
-      /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/
-    );
-
-  if(m){
-
-    const dt =
-      new Date(
-        Number(m[3]),
-        Number(m[2])-1,
-        Number(m[1]),
-        Number(m[4] || 0),
-        Number(m[5] || 0),
-        Number(m[6] || 0)
-      );
-
-    return isNaN(dt)
-      ? null
-      : dt;
-  }
-
-  const dt =
-    new Date(s);
-
-  return isNaN(dt)
-    ? null
-    : dt;
-}
-
-
-function diffDays(date){
-
-  const a =
-    new Date(date);
-
-  const b =
-    new Date();
-
-  a.setHours(0,0,0,0);
-  b.setHours(0,0,0,0);
-
-  return Math.max(
-    0,
-    Math.floor(
-      (b-a) /
-      86400000
-    )
-  );
-}
-
-
-function formatDateVN(date){
-
-  if(!date){
-    return '';
-  }
-
-  return date.toLocaleDateString(
-    'vi-VN'
-  );
-}
-
-
-/* =========================
-   DATE PRESETS
-========================= */
-
-function applyPreset(key){
-
-  const today =
-    new Date();
-
-  let start =
-    new Date(today);
-
-  let end =
-    new Date(today);
-
-  start.setHours(0,0,0,0);
-  end.setHours(0,0,0,0);
-
-  if(key === 'yesterday'){
-
-    start.setDate(
-      start.getDate()-1
-    );
-
-    end =
-      new Date(start);
-
-  }
-
-  else if(
-    key === 'thisWeek' ||
-    key === 'lastWeek'
-  ){
-
-    const day =
-      today.getDay();
-
-    const diff =
-      day === 0
-        ? -6
-        : 1-day;
-
-    start =
-      new Date(today);
-
-    start.setDate(
-      today.getDate() +
-      diff +
-      (
-        key === 'lastWeek'
-          ? -7
-          : 0
-      )
-    );
-
-    end =
-      new Date(start);
-
-    end.setDate(
-      start.getDate()+6
-    );
-
-  }
-
-  else if(
-    key === 'thisMonth'
-  ){
-
-    start =
-      new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        1
-      );
-
-    end =
-      new Date(
-        today.getFullYear(),
-        today.getMonth()+1,
-        0
-      );
-
-  }
-
-  else if(
-    key === 'lastMonth'
-  ){
-
-    start =
-      new Date(
-        today.getFullYear(),
-        today.getMonth()-1,
-        1
-      );
-
-    end =
-      new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        0
-      );
-
-  }
-
-  else if(key === '7d'){
-
-    start.setDate(
-      start.getDate()-6
-    );
-
-  }
-
-  else if(key === '30d'){
-
-    start.setDate(
-      start.getDate()-29
-    );
-
-  }
-
-  else if(key === 'custom'){
-
-    return;
-  }
-
-  fromDateEl.value =
-    fmtYmd(start);
-
-  toDateEl.value =
-    fmtYmd(end);
-}
-
-
-function setPresetActive(btn){
-
-  presetBtns.forEach(
-    x =>
-      x.classList.remove(
-        'active'
-      )
-  );
-
-  if(btn){
-    btn.classList.add(
-      'active'
-    );
-  }
-}
-
-
-/* =========================
-   NHÂN VIÊN
-========================= */
-
-async function loadNhanVien(){
-
-  const sb =
-    await ensureSupa();
-
-  const {
-    data,
-    error
-  } =
-    await sb
-      .from(
-        'kv_nhan_vien'
-      )
-      .select(
-        'ma_nv,ten_nv'
-      )
-      .not(
-        'ma_nv',
-        'is',
-        null
-      )
-      .order(
-        'ten_nv',
-        {
-          ascending:true
-        }
-      );
-
-  if(error){
-    throw error;
-  }
-
-  const map =
-    new Map();
-
-  (data || [])
-    .forEach(r=>{
-
-      const ma =
-        String(
-          r.ma_nv || ''
-        ).trim();
-
-      if(!ma) return;
-
-      if(!map.has(ma)){
-        map.set(
-          ma,
-          r.ten_nv || ''
-        );
-      }
-    });
-
-  nhanVienOptions =
-    [...map.entries()]
-      .map(
-        ([ma_nv,ten_nv])=>({
-          ma_nv,
-          ten_nv
-        })
-      );
-
-  renderNhanVien();
-}
-
-
-function renderNhanVien(){
-
-  maNvOptionList.innerHTML =
-    '';
-
-  nhanVienOptions
-    .forEach(nv=>{
-
-      const label =
-        document.createElement(
-          'label'
-        );
-
-      label.className =
-        'multi-option';
-
-      const checked =
-        selectedMaNvList.includes(
-          nv.ma_nv
-        )
-        ? 'checked'
-        : '';
-
-      label.innerHTML = `
-        <input
-          type="checkbox"
-          class="ma-nv-check"
-          value="${escapeHtml(nv.ma_nv)}"
-          ${checked}>
-
-        <span>
-          ${escapeHtml(
-            nv.ten_nv ||
-            nv.ma_nv
-          )}
-        </span>
-      `;
-
-      maNvOptionList.appendChild(
-        label
-      );
-    });
-
-  maNvAllCheck.checked =
-    selectedMaNvList.length === 0;
-
-  updateNhanVienText();
-}
-
-
-function updateNhanVienText(){
-
-  if(
-    selectedMaNvList.length === 0
-  ){
-
-    maNvMultiBtn.textContent =
-      'Tất cả nhân viên';
-
-    return;
-  }
-
-  const names =
-    selectedMaNvList.map(ma=>{
-
-      const nv =
-        nhanVienOptions.find(
-          x => x.ma_nv === ma
-        );
-
-      return nv
-        ? nv.ten_nv
-        : ma;
-    });
-
-  maNvMultiBtn.textContent =
-    names.join(', ');
-}
-
-
-function invalidateAnalysis(){
-
-  analysisRows = null;
-  analysisStats = [];
-  analysisEmployeeKey = '';
-}
-
-
-/* =========================
-   BÁO CÁO CHECK-IN
-========================= */
-
-async function fetchData(){
-
-  const sb =
-    await ensureSupa();
-
-  const from =
-    fromDateEl.value;
-
-  const to =
-    toDateEl.value;
-
-  const fromIndex =
-    (currentPage-1) *
-    PAGE_SIZE;
-
-  const toIndex =
-    fromIndex +
-    PAGE_SIZE-1;
-
-  setStatus(
-    'Đang tải dữ liệu...',
-    'warn'
-  );
-
-  let q =
-    sb
-      .from(
-        'nv_checkin'
-      )
-      .select(
-        '*',
-        {
-          count:'exact'
-        }
-      )
-      .order(
-        'ngay',
-        {
-          ascending:false
-        }
-      )
-      .range(
-        fromIndex,
-        toIndex
-      );
-
-  const dates =
-    listDates(
-      from,
-      to
-    );
-
-  if(dates.length === 1){
-
-    q =
-      q.like(
-        'ngay',
-        ymdToDmy(
-          dates[0]
-        ) + '%'
-      );
-
-  }
-
-  else if(
-    dates.length > 1
-  ){
-
-    const or =
-      dates
-        .map(
-          d =>
-            `ngay.like.${ymdToDmy(d)}%`
-        )
-        .join(',');
-
-    q =
-      q.or(or);
-  }
-
-  if(
-    selectedMaNvList.length
-  ){
-
-    q =
-      q.in(
-        'ma_nv',
-        selectedMaNvList
-      );
-  }
-
-  const {
-    data,
-    error,
-    count
-  } =
-    await q;
-
-  if(error){
-
-    setStatus(
-      error.message,
-      'err'
-    );
-
-    return;
-  }
-
-  totalRows =
-    count || 0;
-
-  totalPages =
-    Math.max(
-      1,
-      Math.ceil(
-        totalRows /
-        PAGE_SIZE
-      )
-    );
-
-  renderRows(
-    data || [],
-    fromIndex
-  );
-
-  updatePagination();
-
-  setStatus(
-    `Đang hiển thị ${(data||[]).length} / ${totalRows} lượt check-in`,
-    'ok'
-  );
-}
-
-
-function renderRows(rows,startIndex){
-
-  tbodyKh.innerHTML =
-    '';
-
-  if(!rows.length){
-
-    tbodyKh.innerHTML = `
-      <tr>
-        <td
-          colspan="5"
-          style="text-align:center;color:#9ca3af">
-          Không có dữ liệu
-        </td>
-      </tr>
-    `;
-
-    return;
-  }
-
-  rows.forEach(
-    (r,index)=>{
-
-      const tr =
-        document.createElement(
-          'tr'
-        );
-
-      tr.innerHTML = `
-        <td>
-          ${startIndex+index+1}
-        </td>
-
-        <td>
-          ${escapeHtml(
-            r.ngay || ''
-          )}
-        </td>
-
-        <td>
-          ${escapeHtml(
-            r.ten_kh || ''
-          )}
-        </td>
-
-        <td>
-          ${escapeHtml(
-            r.ma_kh || ''
-          )}
-        </td>
-
-        <td>
-          ${escapeHtml(
-            r.dia_chi || ''
-          )}
-        </td>
-      `;
-
-      tbodyKh.appendChild(
-        tr
-      );
-    });
-}
-
-
-function updatePagination(){
-
-  pageInfo.textContent =
-    `Trang ${currentPage} / ${totalPages}`;
-
-  btnPrevPage.disabled =
-    currentPage <= 1;
-
-  btnNextPage.disabled =
-    currentPage >= totalPages;
-}
-
-
-/* =========================
-   LOAD TOÀN BỘ CHECKIN
-========================= */
-
-async function loadAllAnalysisRows(
-  force=false
-){
-
-  const employeeKey =
-    selectedMaNvList
-      .slice()
-      .sort()
-      .join(',');
-
-  if(
-    !force &&
-    analysisRows &&
-    analysisEmployeeKey === employeeKey
-  ){
-    return analysisRows;
-  }
-
-  const sb =
-    await ensureSupa();
-
-  $('#analysisStatus')
-    .textContent =
-      'Đang tải toàn bộ lịch sử check-in...';
-
-  const all = [];
-
-  const limit = 1000;
-
-  let from = 0;
-
-  while(true){
-
-    let q =
-      sb
-        .from(
-          'nv_checkin'
-        )
-        .select('*')
-        .range(
-          from,
-          from+limit-1
-        );
-
-    if(
-      selectedMaNvList.length
-    ){
-
-      q =
-        q.in(
-          'ma_nv',
-          selectedMaNvList
-        );
-    }
-
-    const {
-      data,
-      error
-    } =
-      await q;
-
-    if(error){
-      throw error;
-    }
-
-    const rows =
-      data || [];
-
-    all.push(...rows);
-
-    if(
-      rows.length <
-      limit
-    ){
-      break;
-    }
-
-    from += limit;
-
-    if(
-      from >= 50000
-    ){
-      break;
-    }
-  }
-
-  analysisRows =
-    all;
-
-  analysisEmployeeKey =
-    employeeKey;
-
-  return all;
-}
-
-
-/* =========================
-   THỐNG KÊ KHÁCH
-========================= */
-
-function customerKey(r){
-
-  const ma =
-    String(
-      r.ma_kh || ''
-    ).trim();
-
-  if(ma){
-    return 'MA:'+ma;
-  }
-
-  return (
-    'TEN:' +
-    String(
-      r.ten_kh || ''
-    ).trim() +
-    '|' +
-    String(
-      r.dia_chi || ''
-    ).trim()
-  );
-}
-
-
-function buildAnalysisStats(rows){
-
-  const map =
-    new Map();
-
-  rows.forEach(r=>{
-
-    const date =
-      parseCheckinDate(
-        r.ngay
-      );
-
-    if(!date){
-      return;
-    }
-
-    const key =
-      customerKey(r);
-
-    if(
-      key === 'TEN:|'
-    ){
-      return;
-    }
-
-    if(!map.has(key)){
-
-      map.set(
-        key,
-        {
-          ma_kh:
-            r.ma_kh || '',
-
-          ten_kh:
-            r.ten_kh || '',
-
-          dia_chi:
-            r.dia_chi || '',
-
-          visits:[],
-
-          employeeMap:
-            new Map()
-        }
-      );
-    }
-
-    const x =
-      map.get(key);
-
-    x.visits.push(date);
-
-    const nv =
-      String(
-        r.ma_nv || ''
-      ).trim();
-
-    if(nv){
-
-      x.employeeMap.set(
-        nv,
-        (
-          x.employeeMap.get(
-            nv
-          ) || 0
-        ) + 1
-      );
-    }
-  });
-
-  const today =
-    new Date();
-
-  today.setHours(
-    0,0,0,0
-  );
-
-  return [...map.values()]
-    .map(x=>{
-
-      x.visits.sort(
-        (a,b)=>a-b
-      );
-
-      const count =
-        x.visits.length;
-
-      const lastDate =
-        x.visits[
-          count-1
-        ];
-
-      const daysSinceLast =
-        diffDays(
-          lastDate
-        );
-
-      const gaps = [];
-
-      for(
-        let i=1;
-        i<count;
-        i++
-      ){
-
-        const gap =
-          Math.round(
-            (
-              x.visits[i] -
-              x.visits[i-1]
-            ) /
-            86400000
-          );
-
-        if(gap > 0){
-          gaps.push(gap);
-        }
-      }
-
-      const avgGap =
-        gaps.length
-        ? gaps.reduce(
-            (a,b)=>a+b,
-            0
-          ) /
-          gaps.length
-        : null;
-
-      const countWithin =
-        days => {
-
-          const start =
-            new Date(today);
-
-          start.setDate(
-            start.getDate() -
-            days
-          );
-
-          return x.visits
-            .filter(
-              d =>
-                d >= start &&
-                d <= today
-            )
-            .length;
-        };
-
-      let topEmployee =
-        '';
-
-      let topEmployeeCount =
-        0;
-
-      x.employeeMap
-        .forEach(
-          (n,ma)=>{
-            if(
-              n >
-              topEmployeeCount
-            ){
-              topEmployeeCount =
-                n;
-
-              topEmployee =
-                ma;
-            }
-          }
-        );
-
-      const isRisk =
-        count >= 3 &&
-        daysSinceLast >= 30 &&
-        (
-          avgGap
-          ? daysSinceLast >
-            avgGap * 2
-          : daysSinceLast >= 60
-        );
-
-      return {
-        ...x,
-        count,
-        lastDate,
-        daysSinceLast,
-        avgGap,
-        count30:
-          countWithin(30),
-        count60:
-          countWithin(60),
-        count90:
-          countWithin(90),
-        count180:
-          countWithin(180),
-        count365:
-          countWithin(365),
-        topEmployee,
-        isRisk
-      };
-    });
-}
-
-
-function updateAnalysisKPIs(){
-
-  $('#kpiCustomers')
-    .textContent =
-      analysisStats.length;
-
-  $('#kpiRecent30')
-    .textContent =
-      analysisStats
-        .filter(
-          x =>
-            x.daysSinceLast <= 30
-        )
-        .length;
-
-  $('#kpiInactive60')
-    .textContent =
-      analysisStats
-        .filter(
-          x =>
-            x.daysSinceLast >= 60
-        )
-        .length;
-
-  $('#kpiRisk')
-    .textContent =
-      analysisStats
-        .filter(
-          x =>
-            x.isRisk
-        )
-        .length;
-}
-
-
-function fillCustomerList(){
-
-  const list =
-    $('#analysisCustomerList');
-
-  list.innerHTML =
-    '';
-
-  analysisStats
-    .slice()
-    .sort(
-      (a,b)=>
-        String(
-          a.ten_kh ||
-          a.ma_kh
-        )
-        .localeCompare(
-          String(
-            b.ten_kh ||
-            b.ma_kh
-          ),
-          'vi'
-        )
-    )
-    .forEach(x=>{
-
-      const option =
-        document.createElement(
-          'option'
-        );
-
-      option.value =
-        [
-          x.ma_kh,
-          x.ten_kh
-        ]
-        .filter(Boolean)
-        .join(' - ');
-
-      list.appendChild(
-        option
-      );
-    });
-}
-
-
-/* =========================
-   RENDER ANALYSIS
-========================= */
-
-function renderAnalysisTable(
-  headers,
-  rows
-){
-
-  if(!rows.length){
-
-    $('#analysisResult')
-      .innerHTML = `
-        <div class="analysis-empty">
-          Không có khách phù hợp.
+      <div class="filter-item">
+        <label>Thời gian</label>
+
+        <div class="range-presets">
+          <button type="button" class="range-pill" data-range="today">Hôm nay</button>
+          <button type="button" class="range-pill" data-range="yesterday">Hôm qua</button>
+          <button type="button" class="range-pill" data-range="thisWeek">Tuần này</button>
+          <button type="button" class="range-pill" data-range="lastWeek">Tuần trước</button>
+          <button type="button" class="range-pill" data-range="thisMonth">Tháng này</button>
+          <button type="button" class="range-pill" data-range="lastMonth">Tháng trước</button>
+          <button type="button" class="range-pill" data-range="7d">7 ngày qua</button>
+          <button type="button" class="range-pill" data-range="30d">30 ngày qua</button>
+          <button type="button" class="range-pill" data-range="custom">Tùy chọn</button>
         </div>
-      `;
 
-    return;
-  }
+        <div class="range-custom">
+          <div class="row-item">
+            <label for="fromDate">Từ:</label>
+            <input type="date" id="fromDate" />
+          </div>
 
-  $('#analysisResult')
-    .innerHTML = `
+          <div class="row-item">
+            <label for="toDate">Đến:</label>
+            <input type="date" id="toDate" />
+          </div>
+        </div>
+      </div>
+    </section>
 
+    <div id="status" class="status">
+      <span class="status-dot"></span>
+      <span>Đang khởi tạo...</span>
+    </div>
+
+    <section class="table-wrap">
       <table>
-
         <thead>
           <tr>
-            ${headers
-              .map(
-                h =>
-                  `<th>${escapeHtml(h)}</th>`
-              )
-              .join('')
-            }
+            <th>#</th>
+            <th>Ngày</th>
+            <th>Tên KH</th>
+            <th>Địa chỉ</th>
           </tr>
         </thead>
-
-        <tbody>
-
-          ${rows
-            .map(
-              row => `
-                <tr>
-                  ${row
-                    .map(
-                      v =>
-                        `<td>${v}</td>`
-                    )
-                    .join('')
-                  }
-                </tr>
-              `
-            )
-            .join('')
-          }
-
-        </tbody>
-
+        <tbody id="tbodyKh"></tbody>
       </table>
-    `;
-}
+    </section>
 
+    <div class="pagination-bar">
+      <button id="btnPrevPage" class="page-btn" type="button">← Trang trước</button>
+      <span id="pageInfo" class="page-info">Trang 1 / 1</span>
+      <button id="btnNextPage" class="page-btn" type="button">Trang sau →</button>
+    </div>
+  </div>
 
-function getCountPeriod(
-  x,
-  days
-){
+  <script>
+    const CFG_CACHE_KEY    = 'nv_checkin_cfg_v5';
+    const FILTER_CACHE_KEY = 'nv_checkin_filters_v2';
+    const ROW_CACHE_KEY    = 'nv_checkin_last_rows';
 
-  if(days === 30)
-    return x.count30;
+    const PAGE_SIZE = 100;
 
-  if(days === 60)
-    return x.count60;
+    let supa = null;
+    let nhanVienOptions = [];
+    let selectedMaNvList = [];
 
-  if(days === 90)
-    return x.count90;
+    let currentPage = 1;
+    let totalRows = 0;
+    let totalPages = 1;
 
-  if(days === 180)
-    return x.count180;
+    const $ = s => document.querySelector(s);
 
-  if(days === 365)
-    return x.count365;
+    const maNvMulti      = $('#maNvMulti');
+    const maNvMultiBtn   = $('#maNvMultiBtn');
+    const maNvMultiMenu  = $('#maNvMultiMenu');
+    const maNvAllCheck   = $('#maNvAllCheck');
+    const maNvOptionList = $('#maNvOptionList');
 
-  return x.count;
-}
+    const btnFilter  = $('#btnFilter');
+    const btnMap     = $('#btnMap');
+    const tbody      = $('#tbodyKh');
+    const fromDateEl = $('#fromDate');
+    const toDateEl   = $('#toDate');
+    const presetBtns = document.querySelectorAll('.range-pill');
 
+    const btnPrevPage = $('#btnPrevPage');
+    const btnNextPage = $('#btnNextPage');
+    const pageInfo    = $('#pageInfo');
 
-function renderFrequent(){
+    let currentMaNV = '';
+    let currentTenNV = '';
 
-  const days =
-    Number(
-      $('#analysisDays')
-        .value
-    );
-
-  const data =
-    analysisStats
-      .map(
-        x=>({
-          ...x,
-          period:
-            getCountPeriod(
-              x,
-              days
-            )
-        })
-      )
-      .filter(
-        x =>
-          x.period > 0
-      )
-      .sort(
-        (a,b)=>
-          b.period -
-          a.period
-      )
-      .slice(
-        0,
-        100
-      );
-
-  renderAnalysisTable(
-    [
-      '#',
-      'Khách',
-      'Mã KH',
-      `${days} ngày`,
-      'Tổng lần',
-      'Lần gần nhất',
-      'NV ghé nhiều'
-    ],
-    data.map(
-      (x,i)=>[
-        i+1,
-
-        escapeHtml(
-          x.ten_kh || ''
-        ),
-
-        escapeHtml(
-          x.ma_kh || ''
-        ),
-
-        x.period,
-
-        x.count,
-
-        formatDateVN(
-          x.lastDate
-        ),
-
-        escapeHtml(
-          x.topEmployee || ''
-        )
-      ]
-    )
-  );
-}
-
-
-function renderInactive(){
-
-  const days =
-    Number(
-      $('#analysisDays')
-        .value
-    );
-
-  const data =
-    analysisStats
-      .filter(
-        x =>
-          x.daysSinceLast >=
-          days
-      )
-      .sort(
-        (a,b)=>
-          b.daysSinceLast -
-          a.daysSinceLast
-      )
-      .slice(
-        0,
-        300
-      );
-
-  renderAnalysisTable(
-    [
-      '#',
-      'Khách',
-      'Mã KH',
-      'Lần gần nhất',
-      'Số ngày chưa ghé',
-      'Tổng lần',
-      'Địa chỉ'
-    ],
-    data.map(
-      (x,i)=>[
-        i+1,
-
-        escapeHtml(
-          x.ten_kh || ''
-        ),
-
-        escapeHtml(
-          x.ma_kh || ''
-        ),
-
-        formatDateVN(
-          x.lastDate
-        ),
-
-        `<b>${x.daysSinceLast}</b> ngày`,
-
-        x.count,
-
-        escapeHtml(
-          x.dia_chi || ''
-        )
-      ]
-    )
-  );
-}
-
-
-function riskLevel(x){
-
-  if(!x.isRisk){
-
-    return {
-      text:'Bình thường',
-      cls:'risk-ok'
-    };
-  }
-
-  if(
-    x.daysSinceLast >= 90 ||
-    (
-      x.avgGap &&
-      x.daysSinceLast >
-      x.avgGap * 4
-    )
-  ){
-
-    return {
-      text:'Cao',
-      cls:'risk-high'
-    };
-  }
-
-  return {
-    text:'Cần chú ý',
-    cls:'risk-mid'
-  };
-}
-
-
-function renderRisk(){
-
-  const data =
-    analysisStats
-      .filter(
-        x =>
-          x.isRisk
-      )
-      .sort(
-        (a,b)=>
-          b.daysSinceLast -
-          a.daysSinceLast
-      );
-
-  renderAnalysisTable(
-    [
-      '#',
-      'Khách',
-      'Mã KH',
-      'Chưa ghé',
-      'Nhịp TB',
-      'Tổng lần',
-      'Mức'
-    ],
-    data.map(
-      (x,i)=>{
-
-        const r =
-          riskLevel(x);
-
-        return [
-          i+1,
-
-          escapeHtml(
-            x.ten_kh || ''
-          ),
-
-          escapeHtml(
-            x.ma_kh || ''
-          ),
-
-          `${x.daysSinceLast} ngày`,
-
-          x.avgGap
-            ? Math.round(
-                x.avgGap
-              ) + ' ngày'
-            : '—',
-
-          x.count,
-
-          `<span class="${r.cls}">
-            ${r.text}
-          </span>`
-        ];
+    async function checkCurrentLogin(){
+      if(typeof window.checkLogin !== 'function'){
+        throw new Error('Không tìm thấy check_login.js');
       }
-    )
-  );
-}
 
+      const loginOk = await window.checkLogin();
 
-/* =========================
-   TÌM 1 KHÁCH
-========================= */
+      if(!loginOk){
+        throw new Error('Not logged in');
+      }
 
-function normalizeText(s){
+      currentMaNV = String(loginOk.ma_nv || '').trim();
+      currentTenNV = String(loginOk.ten_nv || '').trim();
 
-  return String(
-    s || ''
-  )
-  .toLowerCase()
-  .normalize('NFD')
-  .replace(
-    /[\u0300-\u036f]/g,
-    ''
-  )
-  .trim();
-}
+      if(!currentMaNV){
+        throw new Error('Missing ma_nv');
+      }
 
+      console.log(
+        '[BAO_CAO_CHECKIN] LOGIN OK:',
+        currentMaNV,
+        currentTenNV
+      );
 
-function findAnalysisCustomer(){
+      return loginOk;
+    }
 
-  const q =
-    normalizeText(
-      $('#analysisCustomer')
-        .value
-    );
+    function setStatus(text, mode){
+      const box = document.getElementById('status');
+      if(!box) return;
 
-  if(!q){
-    return null;
-  }
+      const dot = box.querySelector('.status-dot');
+      const spans = box.querySelectorAll('span');
+      const msgSpan = spans[spans.length - 1];
 
-  let found =
-    analysisStats.find(
-      x =>
-        normalizeText(
-          x.ma_kh
-        ) === q
-    );
+      if(msgSpan) msgSpan.textContent = text;
 
-  if(found){
-    return found;
-  }
+      box.classList.remove('ok','warn','err');
+      if(mode) box.classList.add(mode);
 
-  found =
-    analysisStats.find(
-      x =>
-        normalizeText(
-          x.ten_kh
-        ) === q
-    );
+      if(dot){
+        if(mode === 'ok') dot.style.background = '#22c55e';
+        else if(mode === 'warn') dot.style.background = '#f59e0b';
+        else if(mode === 'err') dot.style.background = '#ef4444';
+        else dot.style.background = '#9ca3af';
+      }
+    }
 
-  if(found){
-    return found;
-  }
+    async function getSbConfig(){
+      try{
+        const raw = localStorage.getItem(CFG_CACHE_KEY);
 
-  return analysisStats.find(
-    x =>
-      normalizeText(
-        x.ma_kh
-      ).includes(q) ||
-      normalizeText(
-        x.ten_kh
-      ).includes(q) ||
-      normalizeText(
-        `${x.ma_kh} - ${x.ten_kh}`
-      ).includes(q)
-  );
-}
+        if(raw){
+          const c = JSON.parse(raw);
 
-
-function followupMessage(x){
-
-  const name =
-    x.ten_kh
-      ? ' ' + x.ten_kh
-      : '';
-
-  if(
-    x.isRisk ||
-    x.daysSinceLast >= 90
-  ){
-
-    return (
-      `Anh/chị${name} ơi, ` +
-      `lâu rồi bên em chưa có dịp ghé thăm. ` +
-      `Dạo này công việc bên mình thế nào ạ? ` +
-      `Có gì cần bên em hỗ trợ anh/chị cứ nhắn em nhé.`
-    );
-  }
-
-  if(
-    x.daysSinceLast >= 60
-  ){
-
-    return (
-      `Anh/chị${name} ơi, ` +
-      `dạo này bên mình công việc ổn không ạ? ` +
-      `Cũng một thời gian rồi em chưa ghé nên em hỏi thăm anh/chị một chút.`
-    );
-  }
-
-  if(
-    x.daysSinceLast >= 30
-  ){
-
-    return (
-      `Anh/chị${name} ơi, ` +
-      `dạo này bên mình làm ăn thế nào ạ? ` +
-      `Em hỏi thăm xem gần đây có gì bên em hỗ trợ được cho anh/chị không.`
-    );
-  }
-
-  return (
-    `Anh/chị${name} ơi, ` +
-    `dạo này công việc bên mình ổn chứ ạ? ` +
-    `Có gì cần bên em hỗ trợ anh/chị cứ nhắn em nhé.`
-  );
-}
-
-
-function renderCustomer(
-  withFollowup=false
-){
-
-  const x =
-    findAnalysisCustomer();
-
-  if(!x){
-
-    $('#analysisResult')
-      .innerHTML = `
-        <div class="analysis-empty">
-          Không tìm thấy khách.
-          Hãy nhập mã KH hoặc tên khách.
-        </div>
-      `;
-
-    return;
-  }
-
-  const risk =
-    riskLevel(x);
-
-  let assessment =
-    'Tần suất chăm sóc bình thường.';
-
-  if(x.isRisk){
-
-    assessment =
-      'Khách có dấu hiệu giảm tần suất chăm sóc và có nguy cơ mất khách.';
-
-  }
-
-  else if(
-    x.daysSinceLast >= 60
-  ){
-
-    assessment =
-      'Đã khá lâu chưa được ghé, nên ưu tiên hỏi thăm.';
-
-  }
-
-  else if(
-    x.daysSinceLast <= 30
-  ){
-
-    assessment =
-      'Khách đang được chăm sóc khá gần đây.';
-
-  }
-
-  $('#analysisResult')
-    .innerHTML = `
-
-      <div class="customer-card">
-
-        <h3>
-          ${escapeHtml(
-            x.ten_kh ||
-            x.ma_kh
-          )}
-        </h3>
-
-        <div class="customer-grid">
-
-          <div class="customer-item">
-            <span>Mã KH</span>
-            <strong>
-              ${escapeHtml(
-                x.ma_kh || '—'
-              )}
-            </strong>
-          </div>
-
-          <div class="customer-item">
-            <span>Tổng lượt check-in</span>
-            <strong>
-              ${x.count}
-            </strong>
-          </div>
-
-          <div class="customer-item">
-            <span>Lần gần nhất</span>
-            <strong>
-              ${formatDateVN(
-                x.lastDate
-              )}
-            </strong>
-          </div>
-
-          <div class="customer-item">
-            <span>Ngày chưa ghé</span>
-            <strong>
-              ${x.daysSinceLast}
-            </strong>
-          </div>
-
-          <div class="customer-item">
-            <span>Nhịp ghé trung bình</span>
-            <strong>
-              ${
-                x.avgGap
-                ? Math.round(
-                    x.avgGap
-                  ) + ' ngày'
-                : 'Chưa đủ dữ liệu'
-              }
-            </strong>
-          </div>
-
-          <div class="customer-item">
-            <span>Mức nguy cơ</span>
-
-            <strong
-              class="${risk.cls}">
-              ${risk.text}
-            </strong>
-          </div>
-
-        </div>
-
-        <div class="followup-box">
-
-          ${escapeHtml(
-            assessment
-          )}
-
-          ${
-            withFollowup
-            ? `
-              <br><br>
-              <b>Gợi ý hỏi thăm:</b>
-              <br>
-              ${escapeHtml(
-                followupMessage(x)
-              )}
-            `
-            : ''
+          if(c && c.url && (c.anon || c.role)){
+            return c;
           }
-
-        </div>
-
-      </div>
-    `;
-}
-
-
-/* =========================
-   RUN ANALYSIS
-========================= */
-
-async function ensureAnalysis(
-  force=false
-){
-
-  const rows =
-    await loadAllAnalysisRows(
-      force
-    );
-
-  analysisStats =
-    buildAnalysisStats(
-      rows
-    );
-
-  updateAnalysisKPIs();
-  fillCustomerList();
-
-  $('#analysisStatus')
-    .textContent =
-      `Đã phân tích ${analysisStats.length} khách từ ${rows.length} lượt check-in.`;
-}
-
-
-async function runAnalysis(){
-
-  const btn =
-    $('#btnRunAnalysis');
-
-  btn.disabled = true;
-
-  try{
-
-    await ensureAnalysis(
-      false
-    );
-
-    const type =
-      $('#analysisType')
-        .value;
-
-    if(type === 'frequent'){
-      renderFrequent();
-    }
-
-    else if(
-      type === 'inactive'
-    ){
-      renderInactive();
-    }
-
-    else if(
-      type === 'risk'
-    ){
-      renderRisk();
-    }
-
-    else if(
-      type === 'customer'
-    ){
-      renderCustomer(
-        false
-      );
-    }
-
-    else if(
-      type === 'followup'
-    ){
-      renderCustomer(
-        true
-      );
-    }
-
-  }catch(e){
-
-    console.error(e);
-
-    $('#analysisStatus')
-      .textContent =
-        'Lỗi: ' +
-        (
-          e.message ||
-          e
-        );
-
-  }finally{
-
-    btn.disabled = false;
-  }
-}
-
-
-/* =========================
-   COPY
-========================= */
-
-async function copyAnalysis(){
-
-  const text =
-    $('#analysisResult')
-      .innerText
-      .trim();
-
-  if(!text){
-    return;
-  }
-
-  try{
-
-    await navigator.clipboard
-      .writeText(text);
-
-    $('#analysisStatus')
-      .textContent =
-        '✅ Đã sao chép kết quả';
-
-  }catch(_){
-
-    const ta =
-      document.createElement(
-        'textarea'
-      );
-
-    ta.value = text;
-
-    document.body
-      .appendChild(ta);
-
-    ta.select();
-
-    document.execCommand(
-      'copy'
-    );
-
-    ta.remove();
-
-    $('#analysisStatus')
-      .textContent =
-        '✅ Đã sao chép kết quả';
-  }
-}
-
-
-/* =========================
-   EVENTS
-========================= */
-
-function bindEvents(){
-
-  maNvMultiBtn
-    .addEventListener(
-      'click',
-      e=>{
-
-        e.stopPropagation();
-
-        maNvMulti
-          .classList
-          .toggle(
-            'open'
-          );
-      }
-    );
-
-
-  maNvMultiMenu
-    .addEventListener(
-      'click',
-      e =>
-        e.stopPropagation()
-    );
-
-
-  document
-    .addEventListener(
-      'click',
-      ()=>{
-
-        maNvMulti
-          .classList
-          .remove(
-            'open'
-          );
-      }
-    );
-
-
-  maNvAllCheck
-    .addEventListener(
-      'change',
-      ()=>{
-
-        if(
-          maNvAllCheck.checked
-        ){
-
-          selectedMaNvList =
-            [];
-
-          document
-            .querySelectorAll(
-              '.ma-nv-check'
-            )
-            .forEach(
-              x =>
-                x.checked = false
-            );
-
-          updateNhanVienText();
-
-          invalidateAnalysis();
-
-          currentPage = 1;
-
-          fetchData();
         }
+      }catch(_){}
+
+      const keyHeader = (typeof window.getInternalKey === 'function')
+        ? window.getInternalKey()
+        : '';
+
+      const resp = await fetch('/api/getConfig', {
+        headers: {
+          'x-internal-key': keyHeader
+        }
+      });
+
+      if(!resp.ok){
+        throw new Error('Không lấy được config hệ thống');
       }
-    );
 
+      const cfg = await resp.json();
 
-  maNvOptionList
-    .addEventListener(
-      'change',
-      e=>{
+      const result = {
+        url: cfg.url,
+        anon: cfg.anon,
+        role: cfg.role || null
+      };
 
-        if(
-          !e.target
-            .classList
-            .contains(
-              'ma-nv-check'
-            )
-        ){
+      if(!result.url || !(result.anon || result.role)){
+        throw new Error('Config thiếu url / apiKey');
+      }
+
+      try{
+        localStorage.setItem(CFG_CACHE_KEY, JSON.stringify(result));
+      }catch(_){}
+
+      return result;
+    }
+
+    async function ensureSupa(){
+      if(supa) return supa;
+
+      const cfg = await getSbConfig();
+      const apiKey = cfg.role || cfg.anon;
+
+      supa = window.supabase.createClient(cfg.url, apiKey, {
+        auth: {
+          persistSession:false
+        }
+      });
+
+      return supa;
+    }
+
+    function getActivePresetKey(){
+      const btn = document.querySelector('.range-pill.active');
+      return btn ? btn.dataset.range : '';
+    }
+
+    function saveFilters(presetOverride){
+      try{
+        const activePreset = presetOverride || getActivePresetKey() || '';
+
+        const state = {
+          ma_nv_list: selectedMaNvList || [],
+          from: fromDateEl.value || '',
+          to: toDateEl.value || '',
+          preset: activePreset
+        };
+
+        localStorage.setItem(FILTER_CACHE_KEY, JSON.stringify(state));
+      }catch(_){}
+    }
+
+    function restoreFilters(){
+      try{
+        const raw = localStorage.getItem(FILTER_CACHE_KEY);
+        if(!raw) return false;
+
+        const s = JSON.parse(raw);
+        if(!s) return false;
+
+        if(Array.isArray(s.ma_nv_list)){
+          selectedMaNvList = s.ma_nv_list
+            .map(x => String(x || '').trim())
+            .filter(Boolean);
+        }else if(typeof s.ma_nv === 'string' && s.ma_nv){
+          selectedMaNvList = [s.ma_nv];
+        }else{
+          selectedMaNvList = [];
+        }
+
+        if(typeof s.from === 'string'){
+          fromDateEl.value = s.from || '';
+        }
+
+        if(typeof s.to === 'string'){
+          toDateEl.value = s.to || '';
+        }
+
+        presetBtns.forEach(b => b.classList.remove('active'));
+
+        if(s.preset){
+          const btn = document.querySelector(`.range-pill[data-range="${s.preset}"]`);
+          if(btn) btn.classList.add('active');
+        }
+
+        renderNhanVienChecks();
+        updateNhanVienButtonText();
+
+        return true;
+      }catch(_){
+        return false;
+      }
+    }
+
+    function ymdToDmy(ymd){
+      if(!ymd || !ymd.includes('-')) return '';
+
+      const [y,m,d] = ymd.split('-');
+      return `${d}/${m}/${y}`;
+    }
+
+    function listDates(fromYmd, toYmd){
+      const res = [];
+
+      if(!fromYmd || !toYmd) return res;
+
+      let d = new Date(fromYmd);
+      const end = new Date(toYmd);
+
+      if(isNaN(d) || isNaN(end)) return res;
+
+      while(d <= end){
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2,'0');
+        const dd = String(d.getDate()).padStart(2,'0');
+
+        res.push(`${yyyy}-${mm}-${dd}`);
+
+        d.setDate(d.getDate() + 1);
+      }
+
+      return res;
+    }
+
+    function applyPreset(key){
+      const today = new Date();
+
+      let start = new Date(today);
+      let end = new Date(today);
+
+      start.setHours(0,0,0,0);
+      end.setHours(0,0,0,0);
+
+      if(key === 'today'){
+        // Hôm nay
+      }else if(key === 'yesterday'){
+        start.setDate(start.getDate() - 1);
+        end.setDate(end.getDate() - 1);
+
+      }else if(key === 'thisWeek'){
+        // Tuần hiện tại: Thứ 2 -> Chủ nhật
+        const day = today.getDay(); // CN=0, T2=1...
+        const diffToMonday = day === 0 ? -6 : 1 - day;
+
+        start = new Date(today);
+        start.setHours(0,0,0,0);
+        start.setDate(today.getDate() + diffToMonday);
+
+        end = new Date(start);
+        end.setDate(start.getDate() + 6);
+
+      }else if(key === 'lastWeek'){
+        // Tuần trước: Thứ 2 -> Chủ nhật
+        const day = today.getDay();
+        const diffToMonday = day === 0 ? -6 : 1 - day;
+
+        start = new Date(today);
+        start.setHours(0,0,0,0);
+        start.setDate(today.getDate() + diffToMonday - 7);
+
+        end = new Date(start);
+        end.setDate(start.getDate() + 6);
+
+      }else if(key === 'thisMonth'){
+        // Từ ngày 01 đến ngày cuối tháng hiện tại
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+      }else if(key === 'lastMonth'){
+        // Từ ngày 01 đến ngày cuối tháng trước
+        start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        end = new Date(today.getFullYear(), today.getMonth(), 0);
+
+      }else if(key === '7d'){
+        start.setDate(start.getDate() - 6);
+
+      }else if(key === '30d'){
+        start.setDate(start.getDate() - 29);
+
+      }else if(key === 'custom'){
+        // Giữ nguyên ngày người dùng đang chọn
+        return;
+      }
+
+      const fmtYmd = d => {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2,'0');
+        const dd = String(d.getDate()).padStart(2,'0');
+
+        return `${yyyy}-${mm}-${dd}`;
+      };
+
+      fromDateEl.value = fmtYmd(start);
+      toDateEl.value = fmtYmd(end);
+    }
+
+    function setActivePreset(btn){
+      presetBtns.forEach(b => b.classList.remove('active'));
+
+      if(btn){
+        btn.classList.add('active');
+      }
+    }
+
+    async function loadMaNvOptions(){
+      const sb = await ensureSupa();
+
+      setStatus('Đang tải danh sách nhân viên từ kv_nhan_vien...', 'warn');
+
+      const { data, error } = await sb
+        .from('kv_nhan_vien')
+        .select('ma_nv,ten_nv')
+        .not('ma_nv','is',null)
+        .order('ten_nv', { ascending:true });
+
+      if(error){
+        console.error(error);
+        setStatus('⚠️ Lỗi lấy danh sách nhân viên: ' + error.message, 'err');
+        return;
+      }
+
+      const map = new Map();
+
+      (data || []).forEach(r => {
+        const ma = String(r.ma_nv || '').trim();
+        const ten = String(r.ten_nv || '').trim();
+
+        if(!ma) return;
+
+        if(!map.has(ma)){
+          map.set(ma, ten);
+        }
+      });
+
+      nhanVienOptions = Array.from(map.entries()).map(([ma_nv, ten_nv]) => ({
+        ma_nv,
+        ten_nv
+      }));
+
+      renderNhanVienChecks();
+      updateNhanVienButtonText();
+
+      setStatus('Supabase sẵn sàng. Mời chọn thời gian / nhân viên.', 'ok');
+    }
+
+    function renderNhanVienChecks(){
+      maNvOptionList.innerHTML = '';
+
+      nhanVienOptions.forEach(nv => {
+        const label = document.createElement('label');
+        label.className = 'multi-option';
+
+        const checked = selectedMaNvList.includes(nv.ma_nv) ? 'checked' : '';
+        const tenHienThi = nv.ten_nv || 'Chưa có tên';
+
+        label.innerHTML = `
+          <input type="checkbox" class="ma-nv-check" value="${escapeHtml(nv.ma_nv)}" ${checked} />
+          <span>${escapeHtml(tenHienThi)}</span>
+        `;
+
+        maNvOptionList.appendChild(label);
+      });
+
+      updateAllCheckState();
+    }
+
+    function updateNhanVienButtonText(){
+      if(!selectedMaNvList.length){
+        maNvMultiBtn.textContent = 'Tất cả nhân viên';
+        return;
+      }
+
+      const names = selectedMaNvList.map(ma => {
+        const found = nhanVienOptions.find(x => x.ma_nv === ma);
+        return found ? (found.ten_nv || 'Chưa có tên') : 'Chưa có tên';
+      });
+
+      maNvMultiBtn.textContent = names.join(', ');
+    }
+
+    function updateAllCheckState(){
+      if(!maNvAllCheck) return;
+      maNvAllCheck.checked = selectedMaNvList.length === 0;
+    }
+
+    function updatePaginationUI(){
+      totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+
+      if(currentPage > totalPages){
+        currentPage = totalPages;
+      }
+
+      if(pageInfo){
+        pageInfo.textContent = `Trang ${currentPage} / ${totalPages}`;
+      }
+
+      if(btnPrevPage){
+        btnPrevPage.disabled = currentPage <= 1;
+      }
+
+      if(btnNextPage){
+        btnNextPage.disabled = currentPage >= totalPages;
+      }
+    }
+
+    function escapeHtml(value){
+      return String(value ?? '')
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'","&#039;");
+    }
+
+    async function fetchData(){
+      const sb = await ensureSupa();
+
+      const nvList = selectedMaNvList || [];
+      const fYmd = fromDateEl.value;
+      const tYmd = toDateEl.value;
+
+      if(fYmd && tYmd && fYmd > tYmd){
+        setStatus('⚠️ Ngày "Từ" không được lớn hơn ngày "Đến".', 'warn');
+        return;
+      }
+
+      const fromIndex = (currentPage - 1) * PAGE_SIZE;
+      const toIndex = fromIndex + PAGE_SIZE - 1;
+
+      setStatus('Đang tải dữ liệu từ nv_checkin...', 'warn');
+      btnFilter.disabled = true;
+
+      try{
+        let q = sb
+          .from('nv_checkin')
+          .select('*', { count:'exact' })
+          .order('ngay', { ascending:false })
+          .range(fromIndex, toIndex);
+
+        const days = listDates(fYmd, tYmd);
+
+        if(days.length === 1){
+          const d = ymdToDmy(days[0]);
+          q = q.like('ngay', d + '%');
+        }else if(days.length > 1){
+          const orStr = days.map(d => {
+            const ddmmyyyy = ymdToDmy(d);
+            return `ngay.like.${ddmmyyyy}%`;
+          }).join(',');
+
+          q = q.or(orStr);
+        }
+
+        if(nvList.length > 0){
+          q = q.in('ma_nv', nvList);
+        }
+
+        const { data, error, count } = await q;
+
+        if(error){
+          console.error(error);
+          tbody.innerHTML = '';
+          totalRows = 0;
+          updatePaginationUI();
+          setStatus('⚠️ Lỗi truy vấn nv_checkin: ' + error.message, 'err');
           return;
         }
 
-        const ma =
-          e.target.value;
+        totalRows = count || 0;
+        updatePaginationUI();
 
-        if(
-          e.target.checked
-        ){
+        try{
+          localStorage.setItem(ROW_CACHE_KEY, JSON.stringify(data || []));
+        }catch(_){}
 
-          if(
-            !selectedMaNvList
-              .includes(ma)
-          ){
+        renderRows(data || [], fromIndex);
 
-            selectedMaNvList
-              .push(ma);
+        setStatus(
+          `Đang hiển thị ${(data || []).length} / ${totalRows} dòng check-in.`,
+          'ok'
+        );
+      }finally{
+        btnFilter.disabled = false;
+      }
+    }
+
+    function renderRows(rows, startIndex = 0){
+      tbody.innerHTML = '';
+
+      if(!rows.length){
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+
+        td.colSpan = 4;
+        td.textContent = 'Không có dữ liệu.';
+        td.style.textAlign = 'center';
+        td.style.color = '#9ca3af';
+
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+
+        return;
+      }
+
+      rows.forEach((r, idx) => {
+        const tr = document.createElement('tr');
+
+        const td1 = document.createElement('td');
+        const td2 = document.createElement('td');
+        const td3 = document.createElement('td');
+        const td4 = document.createElement('td');
+
+        td1.textContent = startIndex + idx + 1;
+
+        const ngayRaw = r.ngay || '';
+        const parts = ngayRaw.split(' ');
+        const dayPart = parts[0] || '';
+        const timePart = parts[1] || '';
+
+        td2.innerHTML =
+          `<span class="col-date-main">${escapeHtml(dayPart)}</span>` +
+          (timePart ? `<span class="col-date-time">${escapeHtml(timePart)}</span>` : '');
+
+        const tenKh = r.ten_kh || r.ma_kh || '';
+        td3.textContent = tenKh;
+
+        td4.textContent = r.dia_chi || '';
+        td4.className = 'col-diachi';
+
+        tr.appendChild(td1);
+        tr.appendChild(td2);
+        tr.appendChild(td3);
+        tr.appendChild(td4);
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function bindNhanVienMultiSelectEvents(){
+      maNvMultiBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        maNvMulti.classList.toggle('open');
+      });
+
+      maNvMultiMenu.addEventListener('click', e => {
+        e.stopPropagation();
+      });
+
+      maNvAllCheck.addEventListener('change', () => {
+        if(maNvAllCheck.checked){
+          selectedMaNvList = [];
+
+          document.querySelectorAll('.ma-nv-check').forEach(chk => {
+            chk.checked = false;
+          });
+
+          currentPage = 1;
+          updateNhanVienButtonText();
+          updateAllCheckState();
+          saveFilters();
+          fetchData();
+        }
+      });
+
+      maNvOptionList.addEventListener('change', e => {
+        const target = e.target;
+
+        if(!(target instanceof HTMLInputElement)) return;
+        if(!target.classList.contains('ma-nv-check')) return;
+
+        const ma = String(target.value || '').trim();
+
+        if(target.checked){
+          if(!selectedMaNvList.includes(ma)){
+            selectedMaNvList.push(ma);
           }
-
         }else{
-
-          selectedMaNvList =
-            selectedMaNvList
-              .filter(
-                x =>
-                  x !== ma
-              );
+          selectedMaNvList = selectedMaNvList.filter(x => x !== ma);
         }
 
-        maNvAllCheck.checked =
-          selectedMaNvList
-            .length === 0;
-
-        updateNhanVienText();
-
-        invalidateAnalysis();
-
         currentPage = 1;
-
+        updateNhanVienButtonText();
+        updateAllCheckState();
+        saveFilters();
         fetchData();
-      }
-    );
+      });
 
+      document.addEventListener('click', () => {
+        maNvMulti.classList.remove('open');
+      });
+    }
 
-  presetBtns
-    .forEach(
-      btn=>{
+    function bindPaginationEvents(){
+      btnPrevPage.addEventListener('click', () => {
+        if(currentPage <= 1) return;
 
-        btn.addEventListener(
-          'click',
-          ()=>{
+        currentPage -= 1;
+        fetchData();
+      });
 
-            setPresetActive(
-              btn
+      btnNextPage.addEventListener('click', () => {
+        if(currentPage >= totalPages) return;
+
+        currentPage += 1;
+        fetchData();
+      });
+    }
+
+    async function init(){
+      let daXacThuc = false;
+
+      try{
+        const loginOk = await checkCurrentLogin();
+
+        if(!loginOk){
+          return;
+        }
+
+        daXacThuc = true;
+
+        document.body.classList.add('ready');
+
+        await ensureSupa();
+        setStatus('✅ Supabase sẵn sàng.', 'ok');
+
+      }catch(e){
+        console.error('[BAO_CAO_CHECKIN] INIT ERROR:', e);
+
+        if(!daXacThuc){
+          if(typeof window.logoutCheck === 'function'){
+            window.logoutCheck(
+              e?.message || 'Không kiểm tra được đăng nhập'
             );
-
-            applyPreset(
-              btn.dataset.range
-            );
-
-            if(
-              btn.dataset.range !==
-              'custom'
-            ){
-
-              currentPage = 1;
-
-              fetchData();
-            }
+          }else{
+            location.replace('./login.html');
           }
-        );
+
+          return;
+        }
+
+        document.body.classList.add('ready');
+        setStatus('❌ Không thể kết nối Supabase: ' + (e.message || e), 'err');
+        return;
       }
-    );
 
+      bindNhanVienMultiSelectEvents();
+      bindPaginationEvents();
 
-  btnFilter
-    .addEventListener(
-      'click',
-      ()=>{
+      await loadMaNvOptions();
 
+      const restored = restoreFilters();
+
+      if(!restored){
+        const todayBtn = document.querySelector('.range-pill[data-range="today"]');
+        applyPreset('today');
+        setActivePreset(todayBtn);
+      }
+
+      presetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.range;
+
+          setActivePreset(btn);
+          applyPreset(key);
+          saveFilters(key);
+
+          if(key !== 'custom'){
+            currentPage = 1;
+            fetchData();
+          }
+        });
+      });
+
+      btnFilter.addEventListener('click', () => {
         currentPage = 1;
-
+        saveFilters();
         fetchData();
-      }
-    );
+      });
 
+      fromDateEl.addEventListener('change', () => {
+        const customBtn = document.querySelector('.range-pill[data-range="custom"]');
 
-  btnPrevPage
-    .addEventListener(
-      'click',
-      ()=>{
+        setActivePreset(customBtn);
+        saveFilters('custom');
 
-        if(
-          currentPage > 1
-        ){
-
-          currentPage--;
-
+        if(fromDateEl.value && toDateEl.value){
+          currentPage = 1;
           fetchData();
         }
-      }
-    );
+      });
 
+      toDateEl.addEventListener('change', () => {
+        const customBtn = document.querySelector('.range-pill[data-range="custom"]');
 
-  btnNextPage
-    .addEventListener(
-      'click',
-      ()=>{
+        setActivePreset(customBtn);
+        saveFilters('custom');
 
-        if(
-          currentPage <
-          totalPages
-        ){
-
-          currentPage++;
-
+        if(fromDateEl.value && toDateEl.value){
+          currentPage = 1;
           fetchData();
         }
-      }
-    );
+      });
 
+      btnMap.addEventListener('click', () => {
+        saveFilters();
+        location.href = './bando_checkin.html';
+      });
 
-  btnMap
-    .addEventListener(
-      'click',
-      ()=>{
-
-        location.href =
-          './bando_checkin.html';
-      }
-    );
-
-
-  $('#btnRunAnalysis')
-    .addEventListener(
-      'click',
-      runAnalysis
-    );
-
-
-  $('#btnReloadAnalysis')
-    .addEventListener(
-      'click',
-      async ()=>{
-
-        invalidateAnalysis();
-
-        await ensureAnalysis(
-          true
-        );
-      }
-    );
-
-
-  $('#btnCopyAnalysis')
-    .addEventListener(
-      'click',
-      copyAnalysis
-    );
-
-
-  $('#analysisCustomer')
-    .addEventListener(
-      'keydown',
-      e=>{
-
-        if(
-          e.key === 'Enter'
-        ){
-          runAnalysis();
-        }
-      }
-    );
-
-
-  $('#analysisType')
-    .addEventListener(
-      'change',
-      ()=>{
-
-        const type =
-          $('#analysisType')
-            .value;
-
-        const needCustomer =
-          type === 'customer' ||
-          type === 'followup';
-
-        $('#analysisCustomer')
-          .disabled =
-            !needCustomer;
-
-        $('#analysisDays')
-          .disabled =
-            type === 'risk' ||
-            needCustomer;
-      }
-    );
-}
-
-
-/* =========================
-   INIT
-========================= */
-
-async function init(){
-
-  let loginOk = false;
-
-  try{
-
-    const login =
-      await checkCurrentLogin();
-
-    if(!login){
-      return;
+      await fetchData();
     }
 
-    loginOk = true;
-
-    document.body
-      .classList
-      .add(
-        'ready'
-      );
-
-    await ensureSupa();
-
-    await loadNhanVien();
-
-    bindEvents();
-
-    const today =
-      document.querySelector(
-        '.range-pill[data-range="today"]'
-      );
-
-    setPresetActive(
-      today
-    );
-
-    applyPreset(
-      'today'
-    );
-
-    $('#analysisCustomer')
-      .disabled =
-        true;
-
-    await fetchData();
-
-    setStatus(
-      '✅ Supabase sẵn sàng',
-      'ok'
-    );
-
-  }catch(e){
-
-    console.error(e);
-
-    if(!loginOk){
-
-      if(
-        typeof window.logoutCheck ===
-        'function'
-      ){
-
-        window.logoutCheck(
-          e.message ||
-          'Không kiểm tra được đăng nhập'
-        );
-
-      }else{
-
-        location.replace(
-          './login.html'
-        );
-      }
-
-      return;
-    }
-
-    document.body
-      .classList
-      .add(
-        'ready'
-      );
-
-    setStatus(
-      '❌ ' +
-      (
-        e.message ||
-        e
-      ),
-      'err'
-    );
-  }
-}
-
-init();
-
-</script>
-
+    init();
+  </script>
 </body>
 </html>
