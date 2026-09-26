@@ -1,0 +1,1321 @@
+from pathlib import Path
+
+out = Path("/mnt/data/phantichnhanviencheckin_khachhang.html")
+
+html = r'''<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Phân tích nhân viên check-in khách hàng</title>
+
+  <script src="./js/internal_key.js"></script>
+  <script src="./js/cod_config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/check_login.js"></script>
+
+  <style>
+    :root{
+      --bg:#f3f4f6;
+      --panel:#ffffff;
+      --panel-soft:#f9fafb;
+      --muted:#6b7280;
+      --text:#111827;
+      --accent:#2563eb;
+      --accent-soft:rgba(37,99,235,.14);
+      --border:#e5e7eb;
+      --ok:#059669;
+      --warn:#b45309;
+      --err:#b91c1c;
+    }
+
+    *{box-sizing:border-box}
+
+    html,body{
+      margin:0;
+      min-height:100%;
+      background:var(--bg);
+      color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    }
+
+    body{visibility:hidden}
+    body.ready{visibility:visible}
+
+    .wrap{
+      max-width:980px;
+      margin:16px auto 40px;
+      padding:0 12px;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:14px;
+    }
+
+    .title-wrap h1{
+      margin:0;
+      font-size:22px;
+    }
+
+    .title-wrap p{
+      margin:4px 0 0;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .btn{
+      border:0;
+      border-radius:999px;
+      padding:9px 16px;
+      cursor:pointer;
+      background:var(--accent);
+      color:#fff;
+      font-size:14px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+    }
+
+    .btn:hover{opacity:.94}
+    .btn:disabled{opacity:.5;cursor:default}
+
+    .btn-secondary{
+      background:#fff;
+      color:var(--accent);
+      border:1px solid var(--accent);
+    }
+
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:18px;
+      box-shadow:0 10px 25px rgba(15,23,42,.05);
+      padding:16px;
+      margin-bottom:14px;
+    }
+
+    .filters{
+      display:grid;
+      grid-template-columns:1.2fr .8fr 1.2fr;
+      gap:10px;
+    }
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:5px;
+    }
+
+    label{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    select,input{
+      width:100%;
+      min-height:40px;
+      padding:8px 10px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      background:#f9fafb;
+      color:var(--text);
+      font-size:14px;
+    }
+
+    select:focus,input:focus{
+      outline:none;
+      border-color:var(--accent);
+      box-shadow:0 0 0 1px var(--accent-soft);
+      background:#fff;
+    }
+
+    .multi-select{
+      position:relative;
+    }
+
+    .multi-select-btn{
+      width:100%;
+      min-height:40px;
+      padding:8px 38px 8px 10px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      background:#f9fafb;
+      color:var(--text);
+      text-align:left;
+      cursor:pointer;
+      position:relative;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .multi-select-btn::after{
+      content:"⌄";
+      position:absolute;
+      right:12px;
+      top:8px;
+      font-size:18px;
+      color:var(--muted);
+    }
+
+    .multi-select-menu{
+      display:none;
+      position:absolute;
+      z-index:100;
+      top:calc(100% + 5px);
+      left:0;
+      right:0;
+      max-height:320px;
+      overflow:auto;
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:12px;
+      box-shadow:0 15px 35px rgba(0,0,0,.15);
+      padding:7px 0;
+    }
+
+    .multi-select.open .multi-select-menu{
+      display:block;
+    }
+
+    .multi-option{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      cursor:pointer;
+      font-size:14px;
+    }
+
+    .multi-option:hover{background:#eff6ff}
+
+    .multi-option input{
+      width:17px;
+      height:17px;
+      min-height:auto;
+    }
+
+    .actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:12px;
+    }
+
+    .status{
+      margin-top:10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .kpi-grid{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:8px;
+    }
+
+    .kpi{
+      background:var(--panel-soft);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:11px;
+    }
+
+    .kpi span{
+      display:block;
+      color:var(--muted);
+      font-size:11px;
+      margin-bottom:4px;
+    }
+
+    .kpi strong{
+      font-size:22px;
+    }
+
+    .result{
+      overflow:auto;
+      max-height:650px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:#fff;
+    }
+
+    .empty{
+      padding:22px;
+      text-align:center;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+    }
+
+    th,td{
+      padding:9px 10px;
+      border-bottom:1px solid var(--border);
+      text-align:left;
+      vertical-align:top;
+      white-space:nowrap;
+    }
+
+    th{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:#f9fafb;
+      color:var(--muted);
+      font-weight:600;
+    }
+
+    td.wraptext{
+      min-width:160px;
+      max-width:280px;
+      white-space:normal;
+    }
+
+    .risk-high{color:#b91c1c;font-weight:700}
+    .risk-mid{color:#b45309;font-weight:700}
+    .risk-ok{color:#047857;font-weight:700}
+
+    .customer-card{
+      padding:15px;
+    }
+
+    .customer-card h3{
+      margin:0 0 12px;
+    }
+
+    .customer-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:8px;
+    }
+
+    .customer-item{
+      border:1px solid var(--border);
+      background:#f9fafb;
+      border-radius:10px;
+      padding:9px;
+    }
+
+    .customer-item span{
+      display:block;
+      font-size:11px;
+      color:var(--muted);
+      margin-bottom:3px;
+    }
+
+    .followup{
+      margin-top:12px;
+      padding:13px;
+      background:#eff6ff;
+      border:1px solid #bfdbfe;
+      border-radius:10px;
+      line-height:1.55;
+      white-space:pre-wrap;
+    }
+
+    .note{
+      margin-top:10px;
+      font-size:11px;
+      color:var(--muted);
+      line-height:1.45;
+    }
+
+    @media(max-width:760px){
+      .topbar{
+        flex-direction:column;
+        align-items:stretch;
+      }
+
+      .filters{
+        grid-template-columns:1fr;
+      }
+
+      .kpi-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .customer-grid{
+        grid-template-columns:1fr 1fr;
+      }
+    }
+
+    @media(max-width:480px){
+      .kpi-grid,
+      .customer-grid{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <div class="title-wrap">
+        <h1>Phân tích nhân viên check-in khách hàng</h1>
+        <p>Phân tích trực tiếp từ bảng <b>nv_checkin</b> trong Supabase.</p>
+      </div>
+
+      <button id="btnBack" class="btn btn-secondary" type="button">
+        ← Quay lại báo cáo
+      </button>
+    </header>
+
+    <section class="panel">
+      <div class="filters">
+        <div class="field">
+          <label>Nhân viên</label>
+
+          <div class="multi-select" id="maNvMulti">
+            <button id="maNvMultiBtn" class="multi-select-btn" type="button">
+              Tất cả nhân viên
+            </button>
+
+            <div id="maNvMultiMenu" class="multi-select-menu">
+              <label class="multi-option">
+                <input id="maNvAllCheck" type="checkbox" checked />
+                <span>Tất cả nhân viên</span>
+              </label>
+
+              <div id="maNvOptionList"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Form phân tích</label>
+
+          <select id="analysisType">
+            <option value="frequent">Khách đi nhiều nhất</option>
+            <option value="inactive">Khách lâu chưa đi</option>
+            <option value="risk">Khách có nguy cơ mất</option>
+            <option value="customer">Phân tích một khách</option>
+            <option value="followup">Gợi ý hỏi thăm một khách</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Mốc thời gian / khách hàng</label>
+
+          <select id="analysisDays">
+            <option value="30">30 ngày</option>
+            <option value="60" selected>60 ngày</option>
+            <option value="90">90 ngày</option>
+            <option value="180">180 ngày</option>
+            <option value="365">365 ngày</option>
+          </select>
+
+          <input
+            id="analysisCustomer"
+            list="analysisCustomerList"
+            placeholder="Mã KH hoặc tên khách"
+            disabled
+          />
+
+          <datalist id="analysisCustomerList"></datalist>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="btnRunAnalysis" class="btn" type="button">Phân tích</button>
+        <button id="btnCopyAnalysis" class="btn btn-secondary" type="button">Sao chép kết quả</button>
+        <button id="btnReloadAnalysis" class="btn btn-secondary" type="button">Tải lại dữ liệu</button>
+      </div>
+
+      <div id="analysisStatus" class="status">
+        Đang khởi tạo...
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <span>Tổng khách có check-in</span>
+          <strong id="kpiCustomers">—</strong>
+        </div>
+
+        <div class="kpi">
+          <span>Có ghé trong 30 ngày</span>
+          <strong id="kpiRecent30">—</strong>
+        </div>
+
+        <div class="kpi">
+          <span>≥ 60 ngày chưa ghé</span>
+          <strong id="kpiInactive60">—</strong>
+        </div>
+
+        <div class="kpi">
+          <span>Nguy cơ mất khách</span>
+          <strong id="kpiRisk">—</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div id="analysisResult" class="result">
+        <div class="empty">
+          Chọn loại phân tích rồi bấm <b>Phân tích</b>.
+        </div>
+      </div>
+
+      <div class="note">
+        Quy tắc “Có nguy cơ mất”: khách có ít nhất 3 lần check-in, đã quá 30 ngày chưa ghé
+        và thời gian chưa ghé hiện tại lớn hơn khoảng 2 lần nhịp ghé trung bình trước đây.
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const CFG_CACHE_KEY = 'nv_checkin_cfg_v5';
+    const ANALYSIS_FETCH_SIZE = 1000;
+    const ANALYSIS_MAX_ROWS = 50000;
+
+    let supa = null;
+    let nhanVienOptions = [];
+    let selectedMaNvList = [];
+
+    let analysisRows = null;
+    let analysisStats = [];
+    let analysisEmployeeKey = '';
+
+    const $ = s => document.querySelector(s);
+
+    const maNvMulti = $('#maNvMulti');
+    const maNvMultiBtn = $('#maNvMultiBtn');
+    const maNvMultiMenu = $('#maNvMultiMenu');
+    const maNvAllCheck = $('#maNvAllCheck');
+    const maNvOptionList = $('#maNvOptionList');
+
+    const analysisTypeEl = $('#analysisType');
+    const analysisDaysEl = $('#analysisDays');
+    const analysisCustomerEl = $('#analysisCustomer');
+    const analysisCustomerListEl = $('#analysisCustomerList');
+    const analysisStatusEl = $('#analysisStatus');
+    const analysisResultEl = $('#analysisResult');
+
+    const btnRunAnalysis = $('#btnRunAnalysis');
+    const btnCopyAnalysis = $('#btnCopyAnalysis');
+    const btnReloadAnalysis = $('#btnReloadAnalysis');
+    const btnBack = $('#btnBack');
+
+    const kpiCustomers = $('#kpiCustomers');
+    const kpiRecent30 = $('#kpiRecent30');
+    const kpiInactive60 = $('#kpiInactive60');
+    const kpiRisk = $('#kpiRisk');
+
+    function escapeHtml(value){
+      return String(value ?? '')
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'","&#039;");
+    }
+
+    function normalizeText(value){
+      return String(value || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g,'');
+    }
+
+    async function checkCurrentLogin(){
+      if(typeof window.checkLogin !== 'function'){
+        throw new Error('Không tìm thấy check_login.js');
+      }
+
+      const loginOk = await window.checkLogin();
+
+      if(!loginOk){
+        throw new Error('Not logged in');
+      }
+
+      return loginOk;
+    }
+
+    async function getSbConfig(){
+      try{
+        const raw = localStorage.getItem(CFG_CACHE_KEY);
+
+        if(raw){
+          const c = JSON.parse(raw);
+
+          if(c && c.url && (c.anon || c.role)){
+            return c;
+          }
+        }
+      }catch(_){}
+
+      const keyHeader =
+        typeof window.getInternalKey === 'function'
+          ? window.getInternalKey()
+          : '';
+
+      const resp = await fetch('/api/getConfig', {
+        headers:{
+          'x-internal-key': keyHeader
+        }
+      });
+
+      if(!resp.ok){
+        throw new Error('Không lấy được config hệ thống');
+      }
+
+      const cfg = await resp.json();
+
+      const result = {
+        url: cfg.url,
+        anon: cfg.anon,
+        role: cfg.role || null
+      };
+
+      if(!result.url || !(result.anon || result.role)){
+        throw new Error('Config thiếu url / apiKey');
+      }
+
+      try{
+        localStorage.setItem(
+          CFG_CACHE_KEY,
+          JSON.stringify(result)
+        );
+      }catch(_){}
+
+      return result;
+    }
+
+    async function ensureSupa(){
+      if(supa) return supa;
+
+      const cfg = await getSbConfig();
+      const key = cfg.role || cfg.anon;
+
+      supa = window.supabase.createClient(
+        cfg.url,
+        key,
+        {
+          auth:{
+            persistSession:false
+          }
+        }
+      );
+
+      return supa;
+    }
+
+    function parseCheckinDate(raw){
+      const s = String(raw || '').trim();
+
+      if(!s) return null;
+
+      const m = s.match(
+        /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/
+      );
+
+      if(m){
+        const dt = new Date(
+          Number(m[3]),
+          Number(m[2]) - 1,
+          Number(m[1]),
+          Number(m[4] || 0),
+          Number(m[5] || 0),
+          Number(m[6] || 0)
+        );
+
+        return isNaN(dt.getTime()) ? null : dt;
+      }
+
+      const dt = new Date(s);
+
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+
+    function diffDays(date){
+      const a = new Date(date);
+      const b = new Date();
+
+      a.setHours(0,0,0,0);
+      b.setHours(0,0,0,0);
+
+      return Math.max(
+        0,
+        Math.floor((b - a) / 86400000)
+      );
+    }
+
+    function formatDateVN(date){
+      if(!date) return '';
+      return date.toLocaleDateString('vi-VN');
+    }
+
+    async function loadNhanVien(){
+      const sb = await ensureSupa();
+
+      const { data, error } = await sb
+        .from('kv_nhan_vien')
+        .select('ma_nv,ten_nv')
+        .not('ma_nv','is',null)
+        .order('ten_nv', { ascending:true });
+
+      if(error){
+        throw error;
+      }
+
+      const map = new Map();
+
+      (data || []).forEach(r => {
+        const ma = String(r.ma_nv || '').trim();
+        const ten = String(r.ten_nv || '').trim();
+
+        if(!ma) return;
+
+        if(!map.has(ma)){
+          map.set(ma,ten);
+        }
+      });
+
+      nhanVienOptions =
+        Array.from(map.entries()).map(([ma_nv,ten_nv]) => ({
+          ma_nv,
+          ten_nv
+        }));
+
+      renderNhanVien();
+    }
+
+    function renderNhanVien(){
+      maNvOptionList.innerHTML = '';
+
+      nhanVienOptions.forEach(nv => {
+        const label = document.createElement('label');
+        label.className = 'multi-option';
+
+        const checked =
+          selectedMaNvList.includes(nv.ma_nv)
+            ? 'checked'
+            : '';
+
+        label.innerHTML = `
+          <input
+            type="checkbox"
+            class="ma-nv-check"
+            value="${escapeHtml(nv.ma_nv)}"
+            ${checked}
+          />
+          <span>${escapeHtml(nv.ten_nv || nv.ma_nv)}</span>
+        `;
+
+        maNvOptionList.appendChild(label);
+      });
+
+      maNvAllCheck.checked =
+        selectedMaNvList.length === 0;
+
+      updateNhanVienText();
+    }
+
+    function updateNhanVienText(){
+      if(!selectedMaNvList.length){
+        maNvMultiBtn.textContent = 'Tất cả nhân viên';
+        return;
+      }
+
+      const names = selectedMaNvList.map(ma => {
+        const nv = nhanVienOptions.find(x => x.ma_nv === ma);
+        return nv ? (nv.ten_nv || ma) : ma;
+      });
+
+      maNvMultiBtn.textContent = names.join(', ');
+    }
+
+    function invalidateAnalysis(){
+      analysisRows = null;
+      analysisStats = [];
+      analysisEmployeeKey = '';
+    }
+
+    async function loadAllAnalysisRows(force = false){
+      const employeeKey =
+        selectedMaNvList
+          .slice()
+          .sort()
+          .join(',');
+
+      if(
+        !force &&
+        analysisRows &&
+        analysisEmployeeKey === employeeKey
+      ){
+        return analysisRows;
+      }
+
+      const sb = await ensureSupa();
+
+      analysisStatusEl.textContent =
+        'Đang tải toàn bộ lịch sử check-in...';
+
+      const all = [];
+      let from = 0;
+
+      while(from < ANALYSIS_MAX_ROWS){
+        let q = sb
+          .from('nv_checkin')
+          .select('*')
+          .range(
+            from,
+            from + ANALYSIS_FETCH_SIZE - 1
+          );
+
+        if(selectedMaNvList.length){
+          q = q.in('ma_nv', selectedMaNvList);
+        }
+
+        const { data, error } = await q;
+
+        if(error){
+          throw error;
+        }
+
+        const rows = data || [];
+        all.push(...rows);
+
+        if(rows.length < ANALYSIS_FETCH_SIZE){
+          break;
+        }
+
+        from += ANALYSIS_FETCH_SIZE;
+      }
+
+      analysisRows = all;
+      analysisEmployeeKey = employeeKey;
+
+      return all;
+    }
+
+    function customerKey(row){
+      const ma = String(row.ma_kh || '').trim();
+
+      if(ma){
+        return 'MA:' + ma;
+      }
+
+      return (
+        'TEN:' +
+        String(row.ten_kh || '').trim() +
+        '|' +
+        String(row.dia_chi || '').trim()
+      );
+    }
+
+    function buildAnalysisStats(rows){
+      const map = new Map();
+
+      (rows || []).forEach(row => {
+        const dt = parseCheckinDate(row.ngay);
+        if(!dt) return;
+
+        const key = customerKey(row);
+
+        if(key === 'TEN:|'){
+          return;
+        }
+
+        if(!map.has(key)){
+          map.set(key,{
+            ma_kh: row.ma_kh || '',
+            ten_kh: row.ten_kh || '',
+            dia_chi: row.dia_chi || '',
+            visits: [],
+            employeeMap: new Map()
+          });
+        }
+
+        const item = map.get(key);
+
+        item.visits.push(dt);
+
+        const maNv =
+          String(row.ma_nv || '').trim();
+
+        if(maNv){
+          item.employeeMap.set(
+            maNv,
+            (item.employeeMap.get(maNv) || 0) + 1
+          );
+        }
+      });
+
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      return Array.from(map.values()).map(item => {
+        item.visits.sort((a,b) => a - b);
+
+        const count = item.visits.length;
+        const lastDate = item.visits[count - 1];
+        const daysSinceLast = diffDays(lastDate);
+
+        const gaps = [];
+
+        for(let i = 1; i < count; i++){
+          const gap = Math.round(
+            (item.visits[i] - item.visits[i - 1]) / 86400000
+          );
+
+          if(gap > 0){
+            gaps.push(gap);
+          }
+        }
+
+        const avgGap =
+          gaps.length
+            ? gaps.reduce((a,b) => a + b, 0) / gaps.length
+            : null;
+
+        const countWithin = days => {
+          const start = new Date(today);
+          start.setDate(start.getDate() - days);
+
+          return item.visits.filter(
+            d => d >= start && d <= today
+          ).length;
+        };
+
+        let topEmployee = '';
+        let topEmployeeCount = 0;
+
+        item.employeeMap.forEach((n,ma) => {
+          if(n > topEmployeeCount){
+            topEmployeeCount = n;
+            topEmployee = ma;
+          }
+        });
+
+        const isRisk =
+          count >= 3 &&
+          daysSinceLast >= 30 &&
+          (
+            avgGap
+              ? daysSinceLast > avgGap * 2
+              : daysSinceLast >= 60
+          );
+
+        return {
+          ...item,
+          count,
+          lastDate,
+          daysSinceLast,
+          avgGap,
+          count30: countWithin(30),
+          count60: countWithin(60),
+          count90: countWithin(90),
+          count180: countWithin(180),
+          count365: countWithin(365),
+          topEmployee,
+          isRisk
+        };
+      });
+    }
+
+    function updateKPIs(){
+      kpiCustomers.textContent =
+        analysisStats.length.toLocaleString('vi-VN');
+
+      kpiRecent30.textContent =
+        analysisStats
+          .filter(x => x.daysSinceLast <= 30)
+          .length
+          .toLocaleString('vi-VN');
+
+      kpiInactive60.textContent =
+        analysisStats
+          .filter(x => x.daysSinceLast >= 60)
+          .length
+          .toLocaleString('vi-VN');
+
+      kpiRisk.textContent =
+        analysisStats
+          .filter(x => x.isRisk)
+          .length
+          .toLocaleString('vi-VN');
+    }
+
+    function fillCustomerList(){
+      analysisCustomerListEl.innerHTML = '';
+
+      analysisStats
+        .slice()
+        .sort((a,b) =>
+          String(a.ten_kh || a.ma_kh)
+            .localeCompare(
+              String(b.ten_kh || b.ma_kh),
+              'vi'
+            )
+        )
+        .forEach(x => {
+          const option =
+            document.createElement('option');
+
+          option.value =
+            [x.ma_kh,x.ten_kh]
+              .filter(Boolean)
+              .join(' - ');
+
+          analysisCustomerListEl.appendChild(option);
+        });
+    }
+
+    function getCountPeriod(item,days){
+      if(days === 30) return item.count30;
+      if(days === 60) return item.count60;
+      if(days === 90) return item.count90;
+      if(days === 180) return item.count180;
+      if(days === 365) return item.count365;
+      return item.count;
+    }
+
+    function riskLevel(item){
+      if(!item.isRisk){
+        return {
+          text:'Bình thường',
+          cls:'risk-ok'
+        };
+      }
+
+      if(
+        item.daysSinceLast >= 90 ||
+        (
+          item.avgGap &&
+          item.daysSinceLast > item.avgGap * 4
+        )
+      ){
+        return {
+          text:'Cao',
+          cls:'risk-high'
+        };
+      }
+
+      return {
+        text:'Cần chú ý',
+        cls:'risk-mid'
+      };
+    }
+
+    function renderTable(headers,rows){
+      if(!rows.length){
+        analysisResultEl.innerHTML = `
+          <div class="empty">
+            Không có khách phù hợp.
+          </div>
+        `;
+        return;
+      }
+
+      analysisResultEl.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              ${headers
+                .map(h => `<th>${escapeHtml(h)}</th>`)
+                .join('')
+              }
+            </tr>
+          </thead>
+          <tbody>
+            ${rows
+              .map(row => `
+                <tr>
+                  ${row
+                    .map(c => `<td>${c}</td>`)
+                    .join('')
+                  }
+                </tr>
+              `)
+              .join('')
+            }
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderFrequent(){
+      const days =
+        Number(analysisDaysEl.value || 60);
+
+      const data = analysisStats
+        .map(x => ({
+          ...x,
+          period:getCountPeriod(x,days)
+        }))
+        .filter(x => x.period > 0)
+        .sort((a,b) =>
+          b.period - a.period ||
+          b.count - a.count
+        )
+        .slice(0,200);
+
+      renderTable(
+        [
+          '#',
+          'Khách',
+          'Mã KH',
+          `${days} ngày`,
+          'Tổng lần',
+          'Lần gần nhất',
+          'NV ghé nhiều'
+        ],
+        data.map((x,i) => [
+          i + 1,
+          escapeHtml(x.ten_kh || ''),
+          escapeHtml(x.ma_kh || ''),
+          x.period,
+          x.count,
+          formatDateVN(x.lastDate),
+          escapeHtml(x.topEmployee || '')
+        ])
+      );
+    }
+
+    function renderInactive(){
+      const days =
+        Number(analysisDaysEl.value || 60);
+
+      const data = analysisStats
+        .filter(x => x.daysSinceLast >= days)
+        .sort((a,b) =>
+          b.daysSinceLast - a.daysSinceLast
+        )
+        .slice(0,300);
+
+      renderTable(
+        [
+          '#',
+          'Khách',
+          'Mã KH',
+          'Lần gần nhất',
+          'Chưa ghé',
+          'Tổng lần',
+          'Địa chỉ'
+        ],
+        data.map((x,i) => [
+          i + 1,
+          escapeHtml(x.ten_kh || ''),
+          escapeHtml(x.ma_kh || ''),
+          formatDateVN(x.lastDate),
+          `<b>${x.daysSinceLast}</b> ngày`,
+          x.count,
+          `<span class="wraptext">${escapeHtml(x.dia_chi || '')}</span>`
+        ])
+      );
+    }
+
+    function renderRisk(){
+      const data = analysisStats
+        .filter(x => x.isRisk)
+        .sort((a,b) =>
+          b.daysSinceLast - a.daysSinceLast
+        );
+
+      renderTable(
+        [
+          '#',
+          'Khách',
+          'Mã KH',
+          'Chưa ghé',
+          'Nhịp TB',
+          'Tổng lần',
+          'Mức'
+        ],
+        data.map((x,i) => {
+          const risk = riskLevel(x);
+
+          return [
+            i + 1,
+            escapeHtml(x.ten_kh || ''),
+            escapeHtml(x.ma_kh || ''),
+            `${x.daysSinceLast} ngày`,
+            x.avgGap
+              ? Math.round(x.avgGap) + ' ngày'
+              : '—',
+            x.count,
+            `<span class="${risk.cls}">${risk.text}</span>`
+          ];
+        })
+      );
+    }
+
+    function findCustomer(){
+      const q =
+        normalizeText(analysisCustomerEl.value);
+
+      if(!q) return null;
+
+      let found = analysisStats.find(
+        x => normalizeText(x.ma_kh) === q
+      );
+
+      if(found) return found;
+
+      found = analysisStats.find(
+        x => normalizeText(x.ten_kh) === q
+      );
+
+      if(found) return found;
+
+      return analysisStats.find(
+        x =>
+          normalizeText(x.ma_kh).includes(q) ||
+          normalizeText(x.ten_kh).includes(q) ||
+          normalizeText(`${x.ma_kh} - ${x.ten_kh}`).includes(q)
+      ) || null;
+    }
+
+    function followupMessage(item){
+      const name =
+        item.ten_kh
+          ? ' ' + item.ten_kh
+          : '';
+
+      if(
+        item.isRisk ||
+        item.daysSinceLast >= 90
+      ){
+        return (
+          `Anh/chị${name} ơi, lâu rồi bên em chưa có dịp ghé thăm. ` +
+          `Dạo này công việc bên mình thế nào ạ? ` +
+          `Có gì cần bên em hỗ trợ anh/chị cứ nhắn em nhé.`
+        );
+      }
+
+      if(item.daysSinceLast >= 60){
+        return (
+          `Anh/chị${name} ơi, dạo này bên mình công việc ổn không ạ? ` +
+          `Cũng một thời gian rồi em chưa ghé nên em hỏi thăm anh/chị một chút.`
+        );
+      }
+
+      if(item.daysSinceLast >= 30){
+        return (
+          `Anh/chị${name} ơi, dạo này bên mình làm ăn thế nào ạ? ` +
+          `Em hỏi thăm xem gần đây có gì bên em hỗ trợ được cho anh/chị không.`
+        );
+      }
+
+      return (
+        `Anh/chị${name} ơi, dạo này công việc bên mình ổn chứ ạ? ` +
+        `Có gì cần bên em hỗ trợ anh/chị cứ nhắn em nhé.`
+      );
+    }
+
+    function renderCustomer(withFollowup = false){
+      const item = findCustomer();
+
+      if(!item){
+        analysisResultEl.innerHTML = `
+          <div class="empty">
+            Không tìm thấy khách.
+            Hãy nhập mã KH hoặc tên khách.
+          </div>
+        `;
+        return;
+      }
+
+      const risk = riskLevel(item);
+
+      let assessment =
+        'Tần suất chăm sóc đang ở mức bình thường.';
+
+      if(item.isRisk){
+        assessment =
+          'Khách có dấu hiệu giảm tần suất chăm sóc và có nguy cơ mất khách.';
+      }else if(item.daysSinceLast >= 60){
+        assessment =
+          'Đã khá lâu chưa được ghé, nên ưu tiên hỏi thăm.';
+      }else if(item.daysSinceLast <= 30){
+        assessment =
+          'Khách đang được chăm sóc khá gần đây.';
+      }
+
+      analysisResultEl.innerHTML = `
+        <div class="customer-card">
+          <h3>
+            ${escapeHtml(item.ten_kh || item.ma_kh)}
+          </h3>
+
+          <div class="customer-grid">
+            <div class="customer-item">
+              <span>Mã KH</span>
+              <strong>${escapeHtml(item.ma_kh || '—')}</strong>
+            </div>
+
+            <div class="customer-item">
+              <span>Tổng lượt check-in</span>
+              <strong>${item.count}</strong>
+            </div>
+
+            <div class="customer-item">
+              <span>Lần gần nhất</span>
+              <strong>${formatDateVN(item.lastDate)}</strong>
+            </div>
+
+            <div class="customer-item">
+              <span>Số ngày chưa ghé</span>
+              <strong>${item.daysSinceLast}</strong>
+            </div>
+
+            <div class="customer-item">
+              <span>Nhịp ghé trung bình</span>
+              <strong>
+                ${
+                  item.avgGap
+                    ? Math.round(item.avgGap) + ' ngày'
+                    : 'Chưa đủ dữ liệu'
+                }
+              </strong>
+            </div>
+
+            <div class="customer-item">
+              <span>Mức nguy cơ</span>
+              <strong class="${risk.cls}">
+                ${risk.text}
+              </strong>
+            </div>
+          </div>
+
+          <div class="followup">
+            ${escapeHtml(assessment)}
+            ${
+              withFollowup
+                ? `
+
+Gợi ý hỏi thăm:
+${escapeHtml(followupMessage(item))}
+                `
+                : ''
+            }
+          </div>
+        </div>
+      `;
+    }
+
+    async function ensureAnalysis(force = false){
+      const rows = await loadAllAnalysisRows(force);
+
+      analysisStats =
+        buildAnalysisStats(rows);
+
+      updateKPIs();
+      fillCustomerList();
+
+      analysisStatusEl.textContent =
+        `Đã phân tích ${
