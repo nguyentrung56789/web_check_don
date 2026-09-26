@@ -618,6 +618,65 @@
       pointer-events: none;
     }
 
+
+    /* ===================== FACEBOOK: NHẬP TRỰC TIẾP + TỰ LƯU + XEM LINK ===================== */
+    .facebook-cell-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .facebook-input {
+      width: 100%;
+      min-width: 220px;
+      height: 32px;
+      border: 1px solid #d1d5db;
+      border-radius: 7px;
+      background: #ffffff;
+      color: #111827;
+      font-size: 13px;
+      padding: 0 8px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .facebook-input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+    }
+
+    .facebook-input.saving {
+      opacity: .6;
+      background: #f3f4f6;
+      pointer-events: none;
+    }
+
+    .facebook-view-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px;
+      min-width: 72px;
+      padding: 0 9px;
+      border-radius: 7px;
+      background: #1877f2;
+      color: #ffffff !important;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .facebook-view-btn:hover {
+      background: #166fe5;
+    }
+
+    .facebook-view-btn.disabled {
+      opacity: .45;
+      pointer-events: none;
+    }
+
     .staff-chip-editor {
       min-height: 38px;
       width: 100%;
@@ -1535,6 +1594,7 @@
             <col data-col="cong_no" style="width: 130px;">
             <col data-col="so_luong_guong_ghe" style="width: 160px;">
             <col data-col="mo_ta" style="width: 280px;">
+            <col data-col="facebook" style="width: 360px;">
             <col data-col="ma_nv" style="width: 190px;">
             <col data-col="conversation_id" style="width: 150px;">
             <col data-col="ngay_chat_cuoi" style="width: 160px;">
@@ -1593,32 +1653,37 @@
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="ma_nv" data-sort="ma_nv" data-col-index="10">
+              <th class="resizable" data-col="facebook" data-col-index="10">
+                Facebook
+                <span class="col-resizer"></span>
+              </th>
+
+              <th class="sortable resizable" data-col="ma_nv" data-sort="ma_nv" data-col-index="11">
                 Nhân viên <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
               
-              <th class="sortable resizable" data-col="conversation_id" data-sort="conversation_id" data-col-index="11">
+              <th class="sortable resizable" data-col="conversation_id" data-sort="conversation_id" data-col-index="12">
                 conversation_id <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="ngay_chat_cuoi" data-sort="ngay_chat_cuoi" data-col-index="12">
+              <th class="sortable resizable" data-col="ngay_chat_cuoi" data-sort="ngay_chat_cuoi" data-col-index="13">
                 Ngày <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="reminderid" data-sort="reminderid" data-col-index="13">
+              <th class="sortable resizable" data-col="reminderid" data-sort="reminderid" data-col-index="14">
                 reminderid <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="gio_hen" data-sort="gio_hen" data-col-index="14">
+              <th class="sortable resizable" data-col="gio_hen" data-sort="gio_hen" data-col-index="15">
                 gio_hen <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="resizable" data-col="action" data-col-index="15">
+              <th class="resizable" data-col="action" data-col-index="16">
                 Thao tác
                 <span class="col-resizer"></span>
               </th>
@@ -1627,7 +1692,7 @@
 
           <tbody id="customerBody">
             <tr>
-              <td colspan="16">Đang tải dữ liệu...</td>
+              <td colspan="17">Đang tải dữ liệu...</td>
             </tr>
           </tbody>
         </table>
@@ -1744,6 +1809,7 @@
       { key: "cong_no", label: "Công nợ" },
       { key: "so_luong_guong_ghe", label: "Số lượng gương ghế" },
       { key: "mo_ta", label: "Mô tả" },
+      { key: "facebook", label: "Facebook" },
       { key: "ma_nv", label: "Nhân viên" },
       { key: "conversation_id", label: "conversation_id" },
       { key: "ngay_chat_cuoi", label: "Ngày" },
@@ -2596,7 +2662,7 @@ function normalizeBigintOrNull(value) {
 
         customerBody.innerHTML = `
           <tr>
-            <td colspan="16">
+            <td colspan="17">
               Lỗi khởi tạo: ${escapeHtml(error.message || String(error))}
             </td>
           </tr>
@@ -4160,6 +4226,115 @@ showNotice(valueToSave
     window.saveCustomerMoTa = saveCustomerMoTa;
 
 
+    // =========================================================
+    // FACEBOOK: NHẬP TRỰC TIẾP, RỜI Ô / ENTER THÌ TỰ LƯU
+    // Dùng uid_from làm KEY duy nhất để xác định đúng dòng cần UPDATE.
+    // =========================================================
+    function normalizeFacebookUrl(value) {
+      const text = String(value || "").trim();
+      if (!text) return "";
+
+      if (/^https?:\/\//i.test(text)) return text;
+      return "https://" + text.replace(/^\/+/, "");
+    }
+
+    async function saveCustomerFacebook(uidFrom, value, inputEl) {
+      const uidFromText = String(uidFrom || "").trim();
+      const facebook = String(value || "").trim();
+      const oldValue = String(inputEl?.dataset?.oldValue || "").trim();
+
+      if (!uidFromText) {
+        showNotice("Thiếu uid_from nên không thể cập nhật Facebook.", "error", 3000);
+        if (inputEl) inputEl.value = oldValue;
+        return;
+      }
+
+      if (!supabaseClient) {
+        showNotice("Supabase chưa sẵn sàng.", "error", 2500);
+        return;
+      }
+
+      if (oldValue === facebook) {
+        updateFacebookViewButton(inputEl, facebook);
+        return;
+      }
+
+      if (inputEl) {
+        inputEl.classList.add("saving");
+        inputEl.disabled = true;
+      }
+
+      try {
+        const { error } = await supabaseClient
+          .from(TABLE_KHACH_HANG_NHANVIEN)
+          .update({ facebook: facebook || null })
+          .eq("uid_from", uidFromText);
+
+        if (error) throw error;
+
+        customers.forEach(function (item) {
+          if (String(item.uid_from || "").trim() === uidFromText) {
+            item.facebook = facebook;
+          }
+        });
+
+        selectedCustomerRowsMap.forEach(function (item, key) {
+          if (String(item.uid_from || "").trim() === uidFromText) {
+            item.facebook = facebook;
+            selectedCustomerRowsMap.set(key, item);
+          }
+        });
+
+        if (inputEl) {
+          inputEl.dataset.oldValue = facebook;
+          inputEl.title = facebook;
+          updateFacebookViewButton(inputEl, facebook);
+        }
+
+        showNotice(
+          facebook ? "Đã cập nhật Facebook." : "Đã xóa Facebook.",
+          "ok",
+          1400
+        );
+
+      } catch (error) {
+        console.error("[FACEBOOK UPDATE ERROR]", error);
+
+        if (inputEl) {
+          inputEl.value = oldValue;
+          updateFacebookViewButton(inputEl, oldValue);
+        }
+
+        showNotice(
+          "Lỗi cập nhật Facebook: " +
+          (error.message || JSON.stringify(error)),
+          "error",
+          4500
+        );
+
+      } finally {
+        if (inputEl) {
+          inputEl.classList.remove("saving");
+          inputEl.disabled = false;
+        }
+      }
+    }
+
+    function updateFacebookViewButton(inputEl, value) {
+      const wrap = inputEl?.closest(".facebook-cell-wrap");
+      const link = wrap?.querySelector(".facebook-view-btn");
+      if (!link) return;
+
+      const url = normalizeFacebookUrl(value);
+      link.href = url || "#";
+      link.classList.toggle("disabled", !url);
+      link.setAttribute("aria-disabled", url ? "false" : "true");
+    }
+
+    window.saveCustomerFacebook = saveCustomerFacebook;
+    window.normalizeFacebookUrl = normalizeFacebookUrl;
+
+
     function updateFloatingSaveBar() {
       const count = Object.keys(pendingStaffChanges).length;
 
@@ -4273,7 +4448,7 @@ showNotice(valueToSave
         if (!silent) {
           customerBody.innerHTML = `
             <tr>
-              <td colspan="16">Supabase chưa sẵn sàng.</td>
+              <td colspan="17">Supabase chưa sẵn sàng.</td>
             </tr>
           `;
         }
@@ -4323,7 +4498,7 @@ showNotice(valueToSave
 
         customerBody.innerHTML = `
           <tr>
-            <td colspan="16">
+            <td colspan="17">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -4450,7 +4625,7 @@ showNotice(valueToSave
 
       const { data, error } = await supabaseClient
         .from(TABLE_KHACH_HANG_NHANVIEN)
-        .select("uid_from, mo_ta")
+        .select("uid_from, mo_ta, facebook")
         .in("uid_from", uidFromList);
 
       if (error) {
@@ -4458,25 +4633,28 @@ showNotice(valueToSave
         return;
       }
 
-      const moTaByUid = new Map();
+      const rowByUid = new Map();
 
       (data || []).forEach(function (row) {
         const uid = String(row?.uid_from || "").trim();
         if (!uid) return;
-        moTaByUid.set(uid, row.mo_ta);
+        rowByUid.set(uid, row);
       });
 
       customerRows.forEach(function (item) {
         const uid = String(item?.uid_from || "").trim();
-        if (!uid || !moTaByUid.has(uid)) return;
+        if (!uid || !rowByUid.has(uid)) return;
 
-        const value = moTaByUid.get(uid);
+        const row = rowByUid.get(uid) || {};
+        const moTaValue = row.mo_ta;
 
         // null nghĩa là chưa có mô tả chỉnh tay; giữ mô tả từ sql_phantich_salon.
-        // Chuỗi rỗng vẫn là giá trị hợp lệ nếu dữ liệu thực tế lưu chuỗi rỗng.
-        if (value !== undefined && value !== null) {
-          item.mo_ta = String(value);
+        if (moTaValue !== undefined && moTaValue !== null) {
+          item.mo_ta = String(moTaValue);
         }
+
+        // Facebook lấy từ bảng thật kv_khachhang_nhanvien.
+        item.facebook = row.facebook == null ? "" : String(row.facebook);
       });
     }
 
@@ -4567,7 +4745,7 @@ showNotice(valueToSave
       if (error) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="16">
+            <td colspan="17">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -5310,7 +5488,7 @@ logoutBtn.addEventListener("click", function () {
       if (filtered.length === 0) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="16">Không có dữ liệu.</td>
+            <td colspan="17">Không có dữ liệu.</td>
           </tr>
         `;
         syncSelectionUi();
@@ -5421,6 +5599,45 @@ logoutBtn.addEventListener("click", function () {
                 onclick="event.stopPropagation()"
               >
             </td>
+            <td data-col="facebook" onclick="event.stopPropagation()">
+              <div class="facebook-cell-wrap">
+                <input
+                  type="text"
+                  class="facebook-input"
+                  value="${escapeHtml(item.facebook || "")}"
+                  data-old-value="${escapeHtml(item.facebook || "")}"
+                  title="${escapeHtml(item.facebook || "")}"
+                  placeholder="facebook.com/... hoặc link Facebook"
+                  onfocus="this.dataset.oldValue = this.value"
+                  onblur="saveCustomerFacebook(
+                    '${escapeJs(String(item.uid_from || ""))}',
+                    this.value,
+                    this
+                  )"
+                  oninput="updateFacebookViewButton(this, this.value)"
+                  onkeydown="
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      this.blur();
+                    } else if (event.key === 'Escape') {
+                      event.preventDefault();
+                      this.value = this.dataset.oldValue || '';
+                      updateFacebookViewButton(this, this.value);
+                      this.blur();
+                    }
+                  "
+                  onclick="event.stopPropagation()"
+                >
+                <a
+                  class="facebook-view-btn ${String(item.facebook || '').trim() ? '' : 'disabled'}"
+                  href="${escapeHtml(String(item.facebook || '').trim() ? normalizeFacebookUrl(item.facebook) : '#')}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onclick="event.stopPropagation()"
+                  aria-disabled="${String(item.facebook || '').trim() ? 'false' : 'true'}"
+                >Xem Face</a>
+              </div>
+            </td>
             <td data-col="ma_nv" title="${escapeHtml(staffTitle)}">
               ${escapeHtml(staffTitle || "")}
             </td>
@@ -5456,7 +5673,7 @@ logoutBtn.addEventListener("click", function () {
             class="customer-product-row hidden"
             data-product-for="${escapeHtml(maKh)}"
           >
-            <td colspan="16">
+            <td colspan="17">
               <div class="customer-product-box">
                 <div class="customer-product-head">
                   <div>
