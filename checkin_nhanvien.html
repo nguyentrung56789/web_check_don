@@ -122,6 +122,11 @@
       background: linear-gradient(135deg, #f59e0b, #fde68a);
     }
 
+    /* Ẩn riêng nút Báo cáo */
+    .hide-report-btn {
+      display: none !important;
+    }
+
     .icon {
       flex: 0 0 50px;
       width: 50px;
@@ -261,9 +266,9 @@
           <span class="arrow">›</span>
         </button>
 
-        <!-- BÁO CÁO -->
+        <!-- BÁO CÁO - ĐÃ ẨN -->
         <button
-          class="menu-btn report-btn"
+          class="menu-btn report-btn hide-report-btn"
           type="button"
           data-url="./bao_cao_checkin.html"
         >
