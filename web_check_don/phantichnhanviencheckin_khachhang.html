@@ -58,7 +58,7 @@
     }
 
     .wrap {
-      width: min(100%, 1050px);
+      width: min(100%, 1250px);
       margin: 16px auto 40px;
       padding: 0 12px;
     }
@@ -261,7 +261,7 @@
     }
 
     .result {
-      max-height: 650px;
+      max-height: 700px;
       overflow: auto;
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -299,10 +299,44 @@
       font-weight: 600;
     }
 
-    td.wraptext {
-      min-width: 170px;
-      max-width: 300px;
+    th.sortable {
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s ease;
+    }
+
+    th.sortable:hover {
+      background: #eef2ff;
+    }
+
+    th.sortable::after {
+      content: " ↕";
+      opacity: 0.35;
+      font-size: 11px;
+    }
+
+    th.sortable.sort-asc::after {
+      content: " ↑";
+      opacity: 1;
+      color: var(--accent);
+    }
+
+    th.sortable.sort-desc::after {
+      content: " ↓";
+      opacity: 1;
+      color: var(--accent);
+    }
+
+    .address-cell {
+      display: inline-block;
+      min-width: 220px;
+      max-width: 380px;
       white-space: normal;
+      line-height: 1.4;
+    }
+
+    .phone-cell {
+      white-space: nowrap;
     }
 
     .risk-high {
@@ -445,10 +479,7 @@
                   type="checkbox"
                   checked
                 />
-
-                <span>
-                  Tất cả nhân viên
-                </span>
+                <span>Tất cả nhân viên</span>
               </label>
 
               <div id="maNvOptionList"></div>
@@ -457,9 +488,7 @@
         </div>
 
         <div class="field">
-          <label>
-            Form phân tích
-          </label>
+          <label>Form phân tích</label>
 
           <select id="analysisType">
             <option value="frequent">
@@ -485,9 +514,7 @@
         </div>
 
         <div class="field">
-          <label>
-            Mốc thời gian / khách hàng
-          </label>
+          <label>Mốc thời gian / khách hàng</label>
 
           <select id="analysisDays">
             <option value="30">
@@ -566,43 +593,23 @@
       <div class="kpi-grid">
 
         <div class="kpi">
-          <span>
-            Tổng khách có check-in
-          </span>
-
-          <strong id="kpiCustomers">
-            —
-          </strong>
+          <span>Tổng khách có check-in</span>
+          <strong id="kpiCustomers">—</strong>
         </div>
 
         <div class="kpi">
-          <span>
-            Có ghé trong 30 ngày
-          </span>
-
-          <strong id="kpiRecent30">
-            —
-          </strong>
+          <span>Có ghé trong 30 ngày</span>
+          <strong id="kpiRecent30">—</strong>
         </div>
 
         <div class="kpi">
-          <span>
-            ≥ 60 ngày chưa ghé
-          </span>
-
-          <strong id="kpiInactive60">
-            —
-          </strong>
+          <span>≥ 60 ngày chưa ghé</span>
+          <strong id="kpiInactive60">—</strong>
         </div>
 
         <div class="kpi">
-          <span>
-            Nguy cơ mất khách
-          </span>
-
-          <strong id="kpiRisk">
-            —
-          </strong>
+          <span>Nguy cơ mất khách</span>
+          <strong id="kpiRisk">—</strong>
         </div>
 
       </div>
@@ -634,25 +641,17 @@
   </div>
 
   <script>
-    const CFG_CACHE_KEY =
-      'nv_checkin_cfg_v5';
-
-    const ANALYSIS_FETCH_SIZE =
-      1000;
-
-    const ANALYSIS_MAX_ROWS =
-      50000;
+    const CFG_CACHE_KEY = 'nv_checkin_cfg_v5';
+    const ANALYSIS_FETCH_SIZE = 1000;
+    const ANALYSIS_MAX_ROWS = 50000;
 
     let supa = null;
 
     let nhanVienOptions = [];
-
     let selectedMaNvList = [];
 
     let analysisRows = null;
-
     let analysisStats = [];
-
     let analysisEmployeeKey = '';
 
     const $ = (selector) =>
@@ -716,12 +715,6 @@
       $('#kpiRisk');
 
 
-    /*
-      ==========================
-      HELPER
-      ==========================
-    */
-
     function escapeHtml(value) {
       return String(value ?? '')
         .replaceAll('&', '&amp;')
@@ -745,16 +738,9 @@
 
 
     /*
-      ==========================
-      LOGIN
-      ==========================
-
-      Chỉ kiểm tra ĐÃ ĐĂNG NHẬP.
-      Không kiểm tra role.
-      Không kiểm tra admin.
-      Không kiểm tra phân quyền trang.
+      Chỉ kiểm tra đã đăng nhập.
+      Không kiểm tra role / quyền riêng.
     */
-
     async function checkCurrentLogin() {
 
       if (
@@ -778,12 +764,6 @@
       return loginOk;
     }
 
-
-    /*
-      ==========================
-      SUPABASE CONFIG
-      ==========================
-    */
 
     async function getSbConfig() {
 
@@ -901,12 +881,6 @@
     }
 
 
-    /*
-      ==========================
-      DATE
-      ==========================
-    */
-
     function parseCheckinDate(raw) {
 
       const value =
@@ -995,12 +969,6 @@
     }
 
 
-    /*
-      ==========================
-      NHÂN VIÊN
-      ==========================
-    */
-
     async function loadNhanVien() {
 
       const sb =
@@ -1012,17 +980,9 @@
         error
       } =
         await sb
-          .from(
-            'kv_nhan_vien'
-          )
-          .select(
-            'ma_nv,ten_nv'
-          )
-          .not(
-            'ma_nv',
-            'is',
-            null
-          )
+          .from('kv_nhan_vien')
+          .select('ma_nv,ten_nv')
+          .not('ma_nv', 'is', null)
           .order(
             'ten_nv',
             {
@@ -1041,31 +1001,33 @@
 
 
       (data || [])
-        .forEach((row) => {
+        .forEach(
+          (row) => {
 
-          const ma =
-            String(
-              row.ma_nv || ''
-            ).trim();
+            const ma =
+              String(
+                row.ma_nv || ''
+              ).trim();
 
-          const ten =
-            String(
-              row.ten_nv || ''
-            ).trim();
+            const ten =
+              String(
+                row.ten_nv || ''
+              ).trim();
 
 
-          if (!ma) {
-            return;
+            if (!ma) {
+              return;
+            }
+
+
+            if (!map.has(ma)) {
+              map.set(
+                ma,
+                ten
+              );
+            }
           }
-
-
-          if (!map.has(ma)) {
-            map.set(
-              ma,
-              ten
-            );
-          }
-        });
+        );
 
 
       nhanVienOptions =
@@ -1195,12 +1157,6 @@
     }
 
 
-    /*
-      ==========================
-      LOAD NV_CHECKIN
-      ==========================
-    */
-
     async function loadAllAnalysisRows(
       force = false
     ) {
@@ -1312,12 +1268,6 @@
     }
 
 
-    /*
-      ==========================
-      BUILD STATS
-      ==========================
-    */
-
     function customerKey(row) {
 
       const ma =
@@ -1400,6 +1350,10 @@
                     row.dia_chi ||
                     '',
 
+                  dien_thoai:
+                    row.dien_thoai ||
+                    '',
+
                   visits: [],
 
                   employeeMap:
@@ -1411,6 +1365,37 @@
 
             const item =
               map.get(key);
+
+
+            /*
+              Nếu bản ghi đầu chưa có địa chỉ / điện thoại
+              nhưng bản ghi sau có thì lấy bổ sung.
+            */
+            if (
+              !item.dia_chi &&
+              row.dia_chi
+            ) {
+              item.dia_chi =
+                row.dia_chi;
+            }
+
+
+            if (
+              !item.dien_thoai &&
+              row.dien_thoai
+            ) {
+              item.dien_thoai =
+                row.dien_thoai;
+            }
+
+
+            if (
+              !item.ten_kh &&
+              row.ten_kh
+            ) {
+              item.ten_kh =
+                row.ten_kh;
+            }
 
 
             item.visits.push(
@@ -1624,12 +1609,6 @@
     }
 
 
-    /*
-      ==========================
-      KPI
-      ==========================
-    */
-
     function updateKPIs() {
 
       kpiCustomers.textContent =
@@ -1728,70 +1707,6 @@
     }
 
 
-    /*
-      ==========================
-      TABLE
-      ==========================
-    */
-
-    function renderTable(
-      headers,
-      rows
-    ) {
-
-      if (!rows.length) {
-
-        analysisResultEl.innerHTML = `
-          <div class="empty">
-            Không có khách phù hợp.
-          </div>
-        `;
-
-        return;
-      }
-
-
-      analysisResultEl.innerHTML = `
-        <table>
-
-          <thead>
-            <tr>
-              ${headers
-                .map(
-                  h =>
-                    `<th>${escapeHtml(h)}</th>`
-                )
-                .join('')
-              }
-            </tr>
-          </thead>
-
-          <tbody>
-
-            ${rows
-              .map(
-                row => `
-                  <tr>
-                    ${row
-                      .map(
-                        cell =>
-                          `<td>${cell}</td>`
-                      )
-                      .join('')
-                    }
-                  </tr>
-                `
-              )
-              .join('')
-            }
-
-          </tbody>
-
-        </table>
-      `;
-    }
-
-
     function getCountPeriod(
       item,
       days
@@ -1821,11 +1736,325 @@
     }
 
 
-    /*
-      ==========================
-      KHÁCH ĐI NHIỀU
-      ==========================
-    */
+    function renderTable(
+      headers,
+      rows
+    ) {
+
+      if (!rows.length) {
+
+        analysisResultEl.innerHTML = `
+          <div class="empty">
+            Không có khách phù hợp.
+          </div>
+        `;
+
+        return;
+      }
+
+
+      analysisResultEl.innerHTML = `
+        <table id="analysisTable">
+
+          <thead>
+            <tr>
+              ${headers
+                .map(
+                  (header, index) => `
+                    <th
+                      class="sortable"
+                      data-column="${index}"
+                      title="Bấm để sắp xếp"
+                    >
+                      ${escapeHtml(header)}
+                    </th>
+                  `
+                )
+                .join('')
+              }
+            </tr>
+          </thead>
+
+          <tbody>
+            ${rows
+              .map(
+                row => `
+                  <tr>
+                    ${row
+                      .map(
+                        cell =>
+                          `<td>${cell}</td>`
+                      )
+                      .join('')
+                    }
+                  </tr>
+                `
+              )
+              .join('')
+            }
+          </tbody>
+
+        </table>
+      `;
+
+
+      enableTableSorting();
+    }
+
+
+    function getCellSortValue(cell) {
+
+      if (!cell) {
+        return {
+          type: 'text',
+          value: ''
+        };
+      }
+
+
+      const text =
+        cell.innerText
+          .trim();
+
+
+      /*
+        Ngày dd/mm/yyyy
+      */
+      const dateMatch =
+        text.match(
+          /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+        );
+
+
+      if (dateMatch) {
+
+        const timestamp =
+          new Date(
+            Number(dateMatch[3]),
+            Number(dateMatch[2]) - 1,
+            Number(dateMatch[1])
+          ).getTime();
+
+
+        return {
+          type: 'number',
+          value: timestamp
+        };
+      }
+
+
+      /*
+        Dạng: 60 ngày, 5 lần...
+      */
+      const numberMatch =
+        text.match(
+          /^-?[\d.,]+/
+        );
+
+
+      if (numberMatch) {
+
+        let numericText =
+          numberMatch[0];
+
+
+        if (
+          numericText.includes(',') &&
+          numericText.includes('.')
+        ) {
+          numericText =
+            numericText
+              .replace(/\./g, '')
+              .replace(',', '.');
+
+        } else if (
+          numericText.includes(',')
+        ) {
+          numericText =
+            numericText.replace(
+              ',',
+              '.'
+            );
+        }
+
+
+        const number =
+          Number(
+            numericText
+          );
+
+
+        if (!isNaN(number)) {
+          return {
+            type: 'number',
+            value: number
+          };
+        }
+      }
+
+
+      return {
+        type: 'text',
+        value:
+          normalizeText(
+            text
+          )
+      };
+    }
+
+
+    function enableTableSorting() {
+
+      const table =
+        document.getElementById(
+          'analysisTable'
+        );
+
+
+      if (!table) {
+        return;
+      }
+
+
+      const tbody =
+        table.querySelector(
+          'tbody'
+        );
+
+
+      const headers =
+        table.querySelectorAll(
+          'th.sortable'
+        );
+
+
+      headers.forEach(
+        (header) => {
+
+          header.addEventListener(
+            'click',
+            () => {
+
+              const columnIndex =
+                Number(
+                  header.dataset.column
+                );
+
+
+              const previousAsc =
+                header.classList.contains(
+                  'sort-asc'
+                );
+
+
+              headers.forEach(
+                item => {
+                  item.classList.remove(
+                    'sort-asc',
+                    'sort-desc'
+                  );
+                }
+              );
+
+
+              const direction =
+                previousAsc
+                  ? 'desc'
+                  : 'asc';
+
+
+              header.classList.add(
+                direction === 'asc'
+                  ? 'sort-asc'
+                  : 'sort-desc'
+              );
+
+
+              const tableRows =
+                Array.from(
+                  tbody.querySelectorAll(
+                    'tr'
+                  )
+                );
+
+
+              tableRows.sort(
+                (rowA, rowB) => {
+
+                  const cellA =
+                    rowA.children[
+                      columnIndex
+                    ];
+
+
+                  const cellB =
+                    rowB.children[
+                      columnIndex
+                    ];
+
+
+                  const a =
+                    getCellSortValue(
+                      cellA
+                    );
+
+
+                  const b =
+                    getCellSortValue(
+                      cellB
+                    );
+
+
+                  let result =
+                    0;
+
+
+                  if (
+                    a.type ===
+                      'number' &&
+                    b.type ===
+                      'number'
+                  ) {
+
+                    result =
+                      a.value -
+                      b.value;
+
+                  } else {
+
+                    result =
+                      String(a.value)
+                        .localeCompare(
+                          String(b.value),
+                          'vi',
+                          {
+                            numeric: true,
+                            sensitivity: 'base'
+                          }
+                        );
+                  }
+
+
+                  return direction ===
+                    'asc'
+                    ? result
+                    : -result;
+                }
+              );
+
+
+              tableRows.forEach(
+                row =>
+                  tbody.appendChild(
+                    row
+                  )
+              );
+            }
+          );
+        }
+      );
+    }
+
 
     function renderFrequent() {
 
@@ -1862,7 +2091,7 @@
           )
           .slice(
             0,
-            200
+            500
           );
 
 
@@ -1871,6 +2100,8 @@
           '#',
           'Khách',
           'Mã KH',
+          'Điện thoại',
+          'Địa chỉ',
           `${days} ngày`,
           'Tổng lần',
           'Lần gần nhất',
@@ -1879,6 +2110,7 @@
 
         data.map(
           (item, index) => [
+
             index + 1,
 
             escapeHtml(
@@ -1890,6 +2122,20 @@
               item.ma_kh ||
               ''
             ),
+
+            `<span class="phone-cell">
+              ${escapeHtml(
+                item.dien_thoai ||
+                ''
+              )}
+            </span>`,
+
+            `<span class="address-cell">
+              ${escapeHtml(
+                item.dia_chi ||
+                ''
+              )}
+            </span>`,
 
             item.period,
 
@@ -1908,12 +2154,6 @@
       );
     }
 
-
-    /*
-      ==========================
-      KHÁCH LÂU CHƯA ĐI
-      ==========================
-    */
 
     function renderInactive() {
 
@@ -1938,7 +2178,7 @@
           )
           .slice(
             0,
-            300
+            500
           );
 
 
@@ -1947,14 +2187,16 @@
           '#',
           'Khách',
           'Mã KH',
+          'Điện thoại',
+          'Địa chỉ',
           'Lần gần nhất',
           'Chưa ghé',
-          'Tổng lần',
-          'Địa chỉ'
+          'Tổng lần'
         ],
 
         data.map(
           (item, index) => [
+
             index + 1,
 
             escapeHtml(
@@ -1967,29 +2209,32 @@
               ''
             ),
 
+            `<span class="phone-cell">
+              ${escapeHtml(
+                item.dien_thoai ||
+                ''
+              )}
+            </span>`,
+
+            `<span class="address-cell">
+              ${escapeHtml(
+                item.dia_chi ||
+                ''
+              )}
+            </span>`,
+
             formatDateVN(
               item.lastDate
             ),
 
-            `<b>${item.daysSinceLast}</b> ngày`,
+            `${item.daysSinceLast} ngày`,
 
-            item.count,
-
-            `<span class="wraptext">${escapeHtml(
-              item.dia_chi ||
-              ''
-            )}</span>`
+            item.count
           ]
         )
       );
     }
 
-
-    /*
-      ==========================
-      NGUY CƠ
-      ==========================
-    */
 
     function riskLevel(item) {
 
@@ -2055,6 +2300,8 @@
           '#',
           'Khách',
           'Mã KH',
+          'Điện thoại',
+          'Địa chỉ',
           'Chưa ghé',
           'Nhịp TB',
           'Tổng lần',
@@ -2071,6 +2318,7 @@
 
 
             return [
+
               index + 1,
 
               escapeHtml(
@@ -2082,6 +2330,20 @@
                 item.ma_kh ||
                 ''
               ),
+
+              `<span class="phone-cell">
+                ${escapeHtml(
+                  item.dien_thoai ||
+                  ''
+                )}
+              </span>`,
+
+              `<span class="address-cell">
+                ${escapeHtml(
+                  item.dia_chi ||
+                  ''
+                )}
+              </span>`,
 
               `${item.daysSinceLast} ngày`,
 
@@ -2105,12 +2367,6 @@
       );
     }
 
-
-    /*
-      ==========================
-      TÌM 1 KHÁCH
-      ==========================
-    */
 
     function findCustomer() {
 
@@ -2172,12 +2428,6 @@
       );
     }
 
-
-    /*
-      ==========================
-      GỢI Ý HỎI THĂM
-      ==========================
-    */
 
     function followupMessage(
       item
@@ -2308,10 +2558,7 @@
           <div class="customer-grid">
 
             <div class="customer-item">
-              <span>
-                Mã KH
-              </span>
-
+              <span>Mã KH</span>
               <strong>
                 ${escapeHtml(
                   item.ma_kh ||
@@ -2320,23 +2567,35 @@
               </strong>
             </div>
 
+            <div class="customer-item">
+              <span>Điện thoại</span>
+              <strong>
+                ${escapeHtml(
+                  item.dien_thoai ||
+                  '—'
+                )}
+              </strong>
+            </div>
 
             <div class="customer-item">
-              <span>
-                Tổng lượt check-in
-              </span>
+              <span>Địa chỉ</span>
+              <strong>
+                ${escapeHtml(
+                  item.dia_chi ||
+                  '—'
+                )}
+              </strong>
+            </div>
 
+            <div class="customer-item">
+              <span>Tổng lượt check-in</span>
               <strong>
                 ${item.count}
               </strong>
             </div>
 
-
             <div class="customer-item">
-              <span>
-                Lần gần nhất
-              </span>
-
+              <span>Lần gần nhất</span>
               <strong>
                 ${formatDateVN(
                   item.lastDate
@@ -2344,23 +2603,15 @@
               </strong>
             </div>
 
-
             <div class="customer-item">
-              <span>
-                Số ngày chưa ghé
-              </span>
-
+              <span>Số ngày chưa ghé</span>
               <strong>
                 ${item.daysSinceLast}
               </strong>
             </div>
 
-
             <div class="customer-item">
-              <span>
-                Nhịp ghé trung bình
-              </span>
-
+              <span>Nhịp ghé trung bình</span>
               <strong>
                 ${
                   item.avgGap
@@ -2375,12 +2626,8 @@
               </strong>
             </div>
 
-
             <div class="customer-item">
-              <span>
-                Mức nguy cơ
-              </span>
-
+              <span>Mức nguy cơ</span>
               <strong
                 class="${risk.cls}"
               >
@@ -2416,12 +2663,6 @@ ${escapeHtml(
     }
 
 
-    /*
-      ==========================
-      ENSURE ANALYSIS
-      ==========================
-    */
-
     async function ensureAnalysis(
       force = false
     ) {
@@ -2447,12 +2688,6 @@ ${escapeHtml(
         `Đã phân tích ${analysisStats.length.toLocaleString('vi-VN')} khách từ ${rows.length.toLocaleString('vi-VN')} lượt check-in.`;
     }
 
-
-    /*
-      ==========================
-      RUN
-      ==========================
-    */
 
     async function runAnalysis() {
 
@@ -2542,12 +2777,6 @@ ${escapeHtml(
     }
 
 
-    /*
-      ==========================
-      COPY RESULT
-      ==========================
-    */
-
     async function copyAnalysis() {
 
       const text =
@@ -2607,12 +2836,6 @@ ${escapeHtml(
     }
 
 
-    /*
-      ==========================
-      CONTROL
-      ==========================
-    */
-
     function updateControlState() {
 
       const type =
@@ -2636,12 +2859,6 @@ ${escapeHtml(
         needCustomer;
     }
 
-
-    /*
-      ==========================
-      EVENTS
-      ==========================
-    */
 
     function bindEvents() {
 
@@ -2869,12 +3086,6 @@ ${escapeHtml(
     }
 
 
-    /*
-      ==========================
-      INIT
-      ==========================
-    */
-
     async function init() {
 
       let authenticated =
@@ -2905,9 +3116,7 @@ ${escapeHtml(
 
         await ensureSupa();
 
-
         await loadNhanVien();
-
 
         bindEvents();
 
@@ -2924,12 +3133,6 @@ ${escapeHtml(
         );
 
 
-        /*
-          Nếu chưa đăng nhập:
-          chuyển về login.
-
-          Không hề kiểm tra role.
-        */
         if (!authenticated) {
 
           if (
@@ -2954,11 +3157,6 @@ ${escapeHtml(
         }
 
 
-        /*
-          Nếu đã đăng nhập nhưng
-          Supabase/config có lỗi,
-          vẫn hiện trang để nhìn lỗi.
-        */
         document.body
           .classList
           .add(
