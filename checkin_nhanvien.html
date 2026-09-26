@@ -122,10 +122,6 @@
       background: linear-gradient(135deg, #f59e0b, #fde68a);
     }
 
-    .analysis-btn {
-      background: linear-gradient(135deg, #a855f7, #d8b4fe);
-    }
-
     .icon {
       flex: 0 0 50px;
       width: 50px;
@@ -216,11 +212,14 @@
   <main class="page">
     <section class="card">
       <h1 class="title">Quản lý Salon</h1>
+
       <p class="subtitle">
         Chọn chức năng cần sử dụng
       </p>
 
       <div class="menu">
+
+        <!-- CHECK-IN -->
         <button
           class="menu-btn checkin-btn"
           type="button"
@@ -229,7 +228,10 @@
           <span class="icon">📍</span>
 
           <span class="content">
-            <span class="name">Check-in salon</span>
+            <span class="name">
+              Check-in salon
+            </span>
+
             <span class="description">
               Chụp ảnh và xác nhận vị trí
             </span>
@@ -238,6 +240,7 @@
           <span class="arrow">›</span>
         </button>
 
+        <!-- BẢN ĐỒ -->
         <button
           class="menu-btn map-btn"
           type="button"
@@ -246,7 +249,10 @@
           <span class="icon">🗺️</span>
 
           <span class="content">
-            <span class="name">Xem bản đồ</span>
+            <span class="name">
+              Xem bản đồ
+            </span>
+
             <span class="description">
               Xem vị trí check-in trên bản đồ
             </span>
@@ -255,6 +261,7 @@
           <span class="arrow">›</span>
         </button>
 
+        <!-- BÁO CÁO -->
         <button
           class="menu-btn report-btn"
           type="button"
@@ -263,7 +270,10 @@
           <span class="icon">📊</span>
 
           <span class="content">
-            <span class="name">Báo cáo</span>
+            <span class="name">
+              Báo cáo
+            </span>
+
             <span class="description">
               Xem lịch sử và thống kê check-in
             </span>
@@ -272,15 +282,19 @@
           <span class="arrow">›</span>
         </button>
 
+        <!-- PHÂN TÍCH NHÂN VIÊN CHECK-IN -->
         <button
-          class="menu-btn analysis-btn"
+          class="menu-btn report-btn"
           type="button"
           data-url="./phantichnhanviencheckin_khachhang.html"
         >
           <span class="icon">📈</span>
 
           <span class="content">
-            <span class="name">Phân tích nhân viên check-in</span>
+            <span class="name">
+              Phân tích nhân viên check-in
+            </span>
+
             <span class="description">
               Phân tích khách đi nhiều, lâu chưa đi và nguy cơ mất khách
             </span>
@@ -288,9 +302,14 @@
 
           <span class="arrow">›</span>
         </button>
+
       </div>
 
-      <button id="btnBack" class="back-btn" type="button">
+      <button
+        id="btnBack"
+        class="back-btn"
+        type="button"
+      >
         ← Quay lại
       </button>
     </section>
@@ -316,18 +335,20 @@
       location.assign(target.toString());
     }
 
-    document.querySelectorAll('[data-url]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const url = button.dataset.url;
+    document
+      .querySelectorAll('[data-url]')
+      .forEach((button) => {
+        button.addEventListener('click', () => {
+          const url = button.dataset.url;
 
-        if (!url) {
-          alert('Chưa đặt đường dẫn cho chức năng này.');
-          return;
-        }
+          if (!url) {
+            alert('Chưa đặt đường dẫn cho chức năng này.');
+            return;
+          }
 
-        openPage(url);
+          openPage(url);
+        });
       });
-    });
 
     document
       .getElementById('btnBack')
