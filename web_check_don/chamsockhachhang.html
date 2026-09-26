@@ -625,11 +625,14 @@
       align-items: center;
       gap: 6px;
       width: 100%;
+      min-width: 0;
+      overflow: visible;
     }
 
     .facebook-input {
-      width: 100%;
-      min-width: 220px;
+      flex: 1 1 auto;
+      width: 0;
+      min-width: 80px;
       height: 32px;
       border: 1px solid #d1d5db;
       border-radius: 7px;
@@ -653,12 +656,13 @@
     }
 
     .facebook-view-btn {
+      flex: 0 0 auto;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       height: 32px;
-      min-width: 72px;
-      padding: 0 9px;
+      min-width: 68px;
+      padding: 0 8px;
       border-radius: 7px;
       background: #1877f2;
       color: #ffffff !important;
@@ -666,6 +670,11 @@
       font-size: 12px;
       font-weight: 700;
       white-space: nowrap;
+    }
+
+    .customer-table td[data-col="facebook"] {
+      overflow: visible !important;
+      text-overflow: initial !important;
     }
 
     .facebook-view-btn:hover {
@@ -1594,7 +1603,7 @@
             <col data-col="cong_no" style="width: 130px;">
             <col data-col="so_luong_guong_ghe" style="width: 160px;">
             <col data-col="mo_ta" style="width: 280px;">
-            <col data-col="facebook" style="width: 360px;">
+            <col data-col="facebook" style="width: 400px;">
             <col data-col="ma_nv" style="width: 190px;">
             <col data-col="conversation_id" style="width: 150px;">
             <col data-col="ngay_chat_cuoi" style="width: 160px;">
