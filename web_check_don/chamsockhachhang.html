@@ -1603,6 +1603,8 @@
             <col data-col="cong_no" style="width: 130px;">
             <col data-col="so_luong_guong_ghe" style="width: 160px;">
             <col data-col="mo_ta" style="width: 280px;">
+            <col data-col="chan_dung_kh" style="width: 420px;">
+            <col data-col="hoi_cham_soc" style="width: 420px;">
             <col data-col="facebook" style="width: 1200px;">
             <col data-col="ma_nv" style="width: 190px;">
             <col data-col="conversation_id" style="width: 150px;">
@@ -1662,37 +1664,47 @@
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="resizable" data-col="facebook" data-col-index="10">
+              <th class="resizable" data-col="chan_dung_kh" data-col-index="10">
+                Chân dung KH
+                <span class="col-resizer"></span>
+              </th>
+
+              <th class="resizable" data-col="hoi_cham_soc" data-col-index="11">
+                Hỏi chăm sóc
+                <span class="col-resizer"></span>
+              </th>
+
+              <th class="resizable" data-col="facebook" data-col-index="12">
                 Facebook
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="ma_nv" data-sort="ma_nv" data-col-index="11">
+              <th class="sortable resizable" data-col="ma_nv" data-sort="ma_nv" data-col-index="13">
                 Nhân viên <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
               
-              <th class="sortable resizable" data-col="conversation_id" data-sort="conversation_id" data-col-index="12">
+              <th class="sortable resizable" data-col="conversation_id" data-sort="conversation_id" data-col-index="14">
                 conversation_id <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="ngay_chat_cuoi" data-sort="ngay_chat_cuoi" data-col-index="13">
+              <th class="sortable resizable" data-col="ngay_chat_cuoi" data-sort="ngay_chat_cuoi" data-col-index="15">
                 Ngày <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="reminderid" data-sort="reminderid" data-col-index="14">
+              <th class="sortable resizable" data-col="reminderid" data-sort="reminderid" data-col-index="16">
                 reminderid <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="sortable resizable" data-col="gio_hen" data-sort="gio_hen" data-col-index="15">
+              <th class="sortable resizable" data-col="gio_hen" data-sort="gio_hen" data-col-index="17">
                 gio_hen <span class="sort-icon"></span>
                 <span class="col-resizer"></span>
               </th>
 
-              <th class="resizable" data-col="action" data-col-index="16">
+              <th class="resizable" data-col="action" data-col-index="18">
                 Thao tác
                 <span class="col-resizer"></span>
               </th>
@@ -1701,7 +1713,7 @@
 
           <tbody id="customerBody">
             <tr>
-              <td colspan="17">Đang tải dữ liệu...</td>
+              <td colspan="19">Đang tải dữ liệu...</td>
             </tr>
           </tbody>
         </table>
@@ -1818,6 +1830,8 @@
       { key: "cong_no", label: "Công nợ" },
       { key: "so_luong_guong_ghe", label: "Số lượng gương ghế" },
       { key: "mo_ta", label: "Mô tả" },
+      { key: "chan_dung_kh", label: "Chân dung KH" },
+      { key: "hoi_cham_soc", label: "Hỏi chăm sóc" },
       { key: "facebook", label: "Facebook" },
       { key: "ma_nv", label: "Nhân viên" },
       { key: "conversation_id", label: "conversation_id" },
@@ -2671,7 +2685,7 @@ function normalizeBigintOrNull(value) {
 
         customerBody.innerHTML = `
           <tr>
-            <td colspan="17">
+            <td colspan="19">
               Lỗi khởi tạo: ${escapeHtml(error.message || String(error))}
             </td>
           </tr>
@@ -3047,6 +3061,8 @@ function normalizeBigintOrNull(value) {
         "zalo_name",
         "alias_name",
         "dien_thoai",
+        "chan_dung_kh",
+        "hoi_cham_soc",
         "ten_nv",
         "ma_nv"
       ].forEach(function (column) {
@@ -4397,7 +4413,7 @@ showNotice(valueToSave
         if (!customers || customers.length === 0) {
           customerBody.innerHTML = `
             <tr>
-              <td colspan="8">Đang tải danh sách khách hàng...</td>
+              <td colspan="19">Đang tải danh sách khách hàng...</td>
             </tr>
           `;
         }
@@ -4457,7 +4473,7 @@ showNotice(valueToSave
         if (!silent) {
           customerBody.innerHTML = `
             <tr>
-              <td colspan="17">Supabase chưa sẵn sàng.</td>
+              <td colspan="19">Supabase chưa sẵn sàng.</td>
             </tr>
           `;
         }
@@ -4482,7 +4498,7 @@ showNotice(valueToSave
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, zalo_name, alias_name, avatar, dien_thoai, xung_ho, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen", { count: "exact" })
+        .select("ma_kh, ten_kh, zalo_name, alias_name, avatar, dien_thoai, xung_ho, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen, chan_dung_kh, hoi_cham_soc", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false });
 
       query = applySearchAllColumns(query, keyword);
@@ -4507,7 +4523,7 @@ showNotice(valueToSave
 
         customerBody.innerHTML = `
           <tr>
-            <td colspan="17">
+            <td colspan="19">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -4539,7 +4555,9 @@ showNotice(valueToSave
           contact_id: item.contact_id || null,
           uid_from: item.uid_from || null,
           reminderid: normalizeBigintOrNull(item.reminderid),
-          gio_hen: normalizeTimestampOrNull(item.gio_hen)
+          gio_hen: normalizeTimestampOrNull(item.gio_hen),
+          chan_dung_kh: item.chan_dung_kh == null ? "" : String(item.chan_dung_kh),
+          hoi_cham_soc: item.hoi_cham_soc == null ? "" : String(item.hoi_cham_soc)
         };
       });
 
@@ -4743,7 +4761,7 @@ showNotice(valueToSave
 
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, zalo_name, alias_name, avatar, dien_thoai, xung_ho, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen", { count: "exact" })
+        .select("ma_kh, ten_kh, zalo_name, alias_name, avatar, dien_thoai, xung_ho, congno, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen, chan_dung_kh, hoi_cham_soc", { count: "exact" })
         .order(dbSortField, { ascending: ascending, nullsFirst: false })
         .range(from, to);
 
@@ -4754,7 +4772,7 @@ showNotice(valueToSave
       if (error) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="17">
+            <td colspan="19">
               Lỗi tải dữ liệu: ${escapeHtml(error.message || JSON.stringify(error))}
             </td>
           </tr>
@@ -4786,7 +4804,9 @@ showNotice(valueToSave
           contact_id: item.contact_id || null,
           uid_from: item.uid_from || null,
           reminderid: normalizeBigintOrNull(item.reminderid),
-          gio_hen: normalizeTimestampOrNull(item.gio_hen)
+          gio_hen: normalizeTimestampOrNull(item.gio_hen),
+          chan_dung_kh: item.chan_dung_kh == null ? "" : String(item.chan_dung_kh),
+          hoi_cham_soc: item.hoi_cham_soc == null ? "" : String(item.hoi_cham_soc)
         };
       });
 
@@ -4966,7 +4986,7 @@ showNotice(valueToSave
       let query = supabaseClient
         .from(TABLE_KHACH_HANG)
         .select(
-          "ma_kh, ten_kh, alias_name, avatar, dien_thoai, xung_ho, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen"
+          "ma_kh, ten_kh, alias_name, avatar, dien_thoai, xung_ho, congno, ma_nv, ngay_chat_cuoi, conversation_id, contact_id, uid_from, reminderid, gio_hen, chan_dung_kh, hoi_cham_soc"
         )
         .limit(1);
 
@@ -5002,7 +5022,9 @@ showNotice(valueToSave
         contact_id: item.contact_id || null,
         uid_from: item.uid_from || null,
         reminderid: normalizeBigintOrNull(item.reminderid),
-        gio_hen: normalizeTimestampOrNull(item.gio_hen)
+        gio_hen: normalizeTimestampOrNull(item.gio_hen),
+        chan_dung_kh: item.chan_dung_kh == null ? "" : String(item.chan_dung_kh),
+        hoi_cham_soc: item.hoi_cham_soc == null ? "" : String(item.hoi_cham_soc)
       };
     }
 
@@ -5497,7 +5519,7 @@ logoutBtn.addEventListener("click", function () {
       if (filtered.length === 0) {
         customerBody.innerHTML = `
           <tr>
-            <td colspan="17">Không có dữ liệu.</td>
+            <td colspan="19">Không có dữ liệu.</td>
           </tr>
         `;
         syncSelectionUi();
@@ -5608,6 +5630,12 @@ logoutBtn.addEventListener("click", function () {
                 onclick="event.stopPropagation()"
               >
             </td>
+            <td data-col="chan_dung_kh" title="${escapeHtml(item.chan_dung_kh || "")}">
+              ${escapeHtml(item.chan_dung_kh || "")}
+            </td>
+            <td data-col="hoi_cham_soc" title="${escapeHtml(item.hoi_cham_soc || "")}">
+              ${escapeHtml(item.hoi_cham_soc || "")}
+            </td>
             <td data-col="facebook" onclick="event.stopPropagation()">
               <div class="facebook-cell-wrap">
                 <input
@@ -5682,7 +5710,7 @@ logoutBtn.addEventListener("click", function () {
             class="customer-product-row hidden"
             data-product-for="${escapeHtml(maKh)}"
           >
-            <td colspan="17">
+            <td colspan="19">
               <div class="customer-product-box">
                 <div class="customer-product-head">
                   <div>
