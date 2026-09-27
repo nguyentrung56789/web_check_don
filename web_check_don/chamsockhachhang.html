@@ -619,6 +619,72 @@
     }
 
 
+    /* ===================== CHÂN DUNG KH: CLICK ĐỂ MỞ RỘNG ===================== */
+    .chan-dung-kh-cell {
+      cursor: pointer;
+      vertical-align: top !important;
+    }
+
+    .chan-dung-kh-content {
+      display: block;
+      width: 100%;
+      max-height: 36px;
+      line-height: 18px;
+      white-space: normal;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: break-word;
+      padding: 2px 4px;
+      border-radius: 6px;
+    }
+
+    .chan-dung-kh-cell:hover .chan-dung-kh-content {
+      background: #f9fafb;
+    }
+
+    .chan-dung-kh-cell.expanded {
+      overflow: visible !important;
+      white-space: normal !important;
+      text-overflow: initial !important;
+    }
+
+    .chan-dung-kh-cell.expanded .chan-dung-kh-content {
+      max-height: none;
+      overflow: visible;
+      white-space: pre-wrap;
+      background: #fffbea;
+      border: 1px solid #facc15;
+      padding: 8px;
+      min-width: 280px;
+    }
+
+    /* ===================== HỎI CHĂM SÓC: SỬA TRỰC TIẾP ===================== */
+    .hoi-cham-soc-input {
+      width: 100%;
+      min-width: 220px;
+      height: 32px;
+      border: 1px solid #d1d5db;
+      border-radius: 7px;
+      background: #ffffff;
+      color: #111827;
+      font-size: 13px;
+      padding: 0 8px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .hoi-cham-soc-input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+    }
+
+    .hoi-cham-soc-input.saving {
+      opacity: .6;
+      background: #f3f4f6;
+      pointer-events: none;
+    }
+
+
     /* ===================== FACEBOOK: NHẬP TRỰC TIẾP + TỰ LƯU + XEM LINK ===================== */
     .facebook-cell-wrap {
       display: flex;
@@ -4250,6 +4316,115 @@ showNotice(valueToSave
 
     window.saveCustomerMoTa = saveCustomerMoTa;
 
+    // =========================================================
+    // HỎI CHĂM SÓC: NHẬP TRỰC TIẾP, RỜI Ô / ENTER THÌ TỰ LƯU
+    // Dùng uid_from làm KEY duy nhất, giống cột Mô tả.
+    // =========================================================
+    async function saveCustomerHoiChamSoc(uidFrom, value, inputEl) {
+      const uidFromText = String(uidFrom || "").trim();
+      const hoiChamSoc = String(value || "").trim();
+      const oldValue = String(inputEl?.dataset?.oldValue || "").trim();
+
+      if (!uidFromText) {
+        showNotice("Thiếu uid_from nên không thể cập nhật hỏi chăm sóc.", "error", 3000);
+        if (inputEl) inputEl.value = oldValue;
+        return;
+      }
+
+      if (!supabaseClient) {
+        showNotice("Supabase chưa sẵn sàng.", "error", 2500);
+        return;
+      }
+
+      if (oldValue === hoiChamSoc) {
+        return;
+      }
+
+      if (inputEl) {
+        inputEl.classList.add("saving");
+        inputEl.disabled = true;
+      }
+
+      try {
+        const { error } = await supabaseClient
+          .from(TABLE_KHACH_HANG_NHANVIEN)
+          .update({ hoi_cham_soc: hoiChamSoc || null })
+          .eq("uid_from", uidFromText);
+
+        if (error) {
+          throw error;
+        }
+
+        customers.forEach(function (item) {
+          if (String(item.uid_from || "").trim() === uidFromText) {
+            item.hoi_cham_soc = hoiChamSoc;
+          }
+        });
+
+        selectedCustomerRowsMap.forEach(function (item, key) {
+          if (String(item.uid_from || "").trim() === uidFromText) {
+            item.hoi_cham_soc = hoiChamSoc;
+            selectedCustomerRowsMap.set(key, item);
+          }
+        });
+
+        if (inputEl) {
+          inputEl.dataset.oldValue = hoiChamSoc;
+          inputEl.title = hoiChamSoc;
+        }
+
+        showNotice(
+          hoiChamSoc ? "Đã cập nhật hỏi chăm sóc." : "Đã xóa hỏi chăm sóc.",
+          "ok",
+          1400
+        );
+
+      } catch (error) {
+        console.error("[HOI_CHAM_SOC UPDATE ERROR]", error);
+
+        if (inputEl) {
+          inputEl.value = oldValue;
+        }
+
+        showNotice(
+          "Lỗi cập nhật hỏi chăm sóc: " +
+          (error.message || JSON.stringify(error)),
+          "error",
+          4500
+        );
+
+      } finally {
+        if (inputEl) {
+          inputEl.classList.remove("saving");
+          inputEl.disabled = false;
+        }
+      }
+    }
+
+    window.saveCustomerHoiChamSoc = saveCustomerHoiChamSoc;
+
+    function toggleChanDungKhCell(cellEl, event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      if (!cellEl) return;
+
+      const wasExpanded = cellEl.classList.contains("expanded");
+
+      document.querySelectorAll(".chan-dung-kh-cell.expanded").forEach(function (cell) {
+        if (cell !== cellEl) {
+          cell.classList.remove("expanded");
+        }
+      });
+
+      cellEl.classList.toggle("expanded", !wasExpanded);
+    }
+
+    window.toggleChanDungKhCell = toggleChanDungKhCell;
+
+
 
     // =========================================================
     // FACEBOOK: NHẬP TRỰC TIẾP, RỜI Ô / ENTER THÌ TỰ LƯU
@@ -4652,7 +4827,7 @@ showNotice(valueToSave
 
       const { data, error } = await supabaseClient
         .from(TABLE_KHACH_HANG_NHANVIEN)
-        .select("uid_from, mo_ta, facebook")
+        .select("uid_from, mo_ta, facebook, hoi_cham_soc")
         .in("uid_from", uidFromList);
 
       if (error) {
@@ -5630,11 +5805,40 @@ logoutBtn.addEventListener("click", function () {
                 onclick="event.stopPropagation()"
               >
             </td>
-            <td data-col="chan_dung_kh" title="${escapeHtml(item.chan_dung_kh || "")}">
-              ${escapeHtml(item.chan_dung_kh || "")}
+            <td
+              data-col="chan_dung_kh"
+              class="chan-dung-kh-cell"
+              title="Bấm để mở rộng / thu gọn"
+              onclick="toggleChanDungKhCell(this, event)"
+            >
+              <div class="chan-dung-kh-content">${escapeHtml(item.chan_dung_kh || "")}</div>
             </td>
-            <td data-col="hoi_cham_soc" title="${escapeHtml(item.hoi_cham_soc || "")}">
-              ${escapeHtml(item.hoi_cham_soc || "")}
+            <td data-col="hoi_cham_soc" onclick="event.stopPropagation()">
+              <input
+                type="text"
+                class="hoi-cham-soc-input"
+                value="${escapeHtml(item.hoi_cham_soc || "")}"
+                data-old-value="${escapeHtml(item.hoi_cham_soc || "")}"
+                title="${escapeHtml(item.hoi_cham_soc || "")}"
+                placeholder="Nhập nội dung chăm sóc..."
+                onfocus="this.dataset.oldValue = this.value"
+                onblur="saveCustomerHoiChamSoc(
+                  '${escapeJs(String(item.uid_from || ""))}',
+                  this.value,
+                  this
+                )"
+                onkeydown="
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    this.blur();
+                  } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    this.value = this.dataset.oldValue || '';
+                    this.blur();
+                  }
+                "
+                onclick="event.stopPropagation()"
+              >
             </td>
             <td data-col="facebook" onclick="event.stopPropagation()">
               <div class="facebook-cell-wrap">
@@ -6714,6 +6918,11 @@ logoutBtn.addEventListener("click", function () {
         sdt: 150,
         xung_ho: 84,
         cong_no: 130,
+        so_luong_guong_ghe: 160,
+        mo_ta: 280,
+        chan_dung_kh: 420,
+        hoi_cham_soc: 420,
+        facebook: 1200,
         ma_nv: 190,
         conversation_id: 150,
         ngay_chat_cuoi: 160,
