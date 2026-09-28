@@ -957,7 +957,7 @@
           <tr>
             <th>STT</th>
             <th>Mã KH</th>
-            <th>Tên Zalo</th>
+            <th>Tên khách hàng</th>
             <th>Tên nhân viên</th>
             <th>alias_name</th>
             <th>Check</th>
@@ -1144,31 +1144,9 @@ async function createSupabaseClient() {
 function getCurrentUser() {
 
   /*
-    1. ƯU TIÊN ma_nv được truyền từ trang cha:
-       chamsockhachhang_guitin.html?ma_nv=NV001&duoc_xem=true
+    1. Thử lấy từ localStorage "nv"
   */
-  try {
-    const params =
-      new URLSearchParams(
-        window.location.search
-      );
 
-    const maNvUrl =
-      String(
-        params.get('ma_nv') || ''
-      ).trim();
-
-    if (maNvUrl) {
-      return {
-        ma_nv: maNvUrl
-      };
-    }
-  } catch (e) {}
-
-
-  /*
-    2. Thử lấy từ localStorage "nv"
-  */
   try {
 
     const nv =
@@ -1186,8 +1164,9 @@ function getCurrentUser() {
 
 
   /*
-    3. Thử kiểu đăng nhập Chatwoot cũ
+    2. Thử kiểu đăng nhập Chatwoot cũ
   */
+
   try {
 
     const nv =
@@ -1207,8 +1186,9 @@ function getCurrentUser() {
 
 
   /*
-    4. last_ma_nv
+    3. last_ma_nv
   */
+
   const lastMaNv =
     String(
       localStorage.getItem('last_ma_nv') ||
@@ -1225,9 +1205,33 @@ function getCurrentUser() {
 
 
   /*
+    4. URL ?ma_nv=...
+  */
+
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  const maNvUrl =
+    String(
+      params.get('ma_nv') || ''
+    ).trim();
+
+  if (maNvUrl) {
+
+    return {
+      ma_nv: maNvUrl
+    };
+
+  }
+
+
+  /*
     5. Nếu trang này được mở bằng popup
        thử lấy user từ trang cha.
   */
+
   try {
 
     if (
@@ -1252,231 +1256,14 @@ function getCurrentUser() {
    LẤY MA_NV ĐANG ĐĂNG NHẬP
 ========================================================= */
 
-let loggedInMaNvCache = null;
+function getLoggedInMaNv() {
 
+  const currentUser =
+    getCurrentUser();
 
-/*
-  LẤY ID_NV CỦA TÀI KHOẢN ĐANG ĐĂNG NHẬP
-
-  Ưu tiên:
-  1. ?id_nv=... trên URL nếu trang cha có truyền sang
-  2. localStorage "nv"
-  3. localStorage "chatwoot_crm_user"
-  4. sessionStorage "nv_ctx"
-  5. window.opener.currentUser.id_nv
-*/
-function getLoggedInIdNv() {
-
-  try {
-    const params =
-      new URLSearchParams(
-        window.location.search
-      );
-
-    const idNvUrl =
-      String(
-        params.get('id_nv') || ''
-      ).trim();
-
-    if (idNvUrl) {
-      return idNvUrl;
-    }
-  } catch (e) {}
-
-
-  const storageCandidates = [
-    ['local', 'nv'],
-    ['local', 'chatwoot_crm_user'],
-    ['session', 'nv_ctx']
-  ];
-
-  for (const [storageType, key] of storageCandidates) {
-    try {
-      const storage =
-        storageType === 'session'
-          ? sessionStorage
-          : localStorage;
-
-      const obj =
-        JSON.parse(
-          storage.getItem(key) || 'null'
-        );
-
-      const idNv =
-        String(
-          obj?.id_nv || ''
-        ).trim();
-
-      if (idNv) {
-        return idNv;
-      }
-    } catch (e) {}
-  }
-
-
-  try {
-    const idNvOpener =
-      String(
-        window.opener?.currentUser?.id_nv || ''
-      ).trim();
-
-    if (idNvOpener) {
-      return idNvOpener;
-    }
-  } catch (e) {}
-
-
-  return '';
-
-}
-
-
-/*
-  LẤY MA_NV ĐANG ĐĂNG NHẬP
-
-  Ưu tiên giống luồng cũ đang chạy ổn:
-  1. ma_nv từ URL / localStorage / opener qua getCurrentUser()
-  2. Nếu không có ma_nv thì mới dùng id_nv để tra kv_nhan_vien
-
-  Cách này giữ tương thích với n8n cũ, đồng thời vẫn hỗ trợ
-  trường hợp trang mới chỉ truyền id_nv.
-*/
-async function getLoggedInMaNv() {
-
-  if (loggedInMaNvCache) {
-    return loggedInMaNvCache;
-  }
-
-  // 1. ƯU TIÊN LUỒNG CŨ: lấy trực tiếp ma_nv đang đăng nhập
-  const currentUser = getCurrentUser();
-
-  const directMaNv =
-    String(
-      currentUser?.ma_nv || ''
-    ).trim();
-
-  if (directMaNv) {
-    loggedInMaNvCache = directMaNv;
-
-    console.log(
-      '[NHÂN VIÊN ĐĂNG NHẬP - MA_NV TRỰC TIẾP]',
-      {
-        ma_nv: directMaNv
-      }
-    );
-
-    return directMaNv;
-  }
-
-
-  // 2. FALLBACK: nếu không có ma_nv thì mới tra theo id_nv
-  if (!sb) {
-    throw new Error(
-      'Supabase chưa được khởi tạo.'
-    );
-  }
-
-  const idNv =
-    getLoggedInIdNv();
-
-  if (!idNv) {
-    throw new Error(
-      'Không lấy được ma_nv hoặc id_nv của nhân viên đang đăng nhập.'
-    );
-  }
-
-  const {
-    data,
-    error
-  } =
-    await sb
-      .from(TABLE_NHAN_VIEN)
-      .select(
-        'id_nv, ma_nv, ten_nv'
-      )
-      .eq(
-        'id_nv',
-        idNv
-      )
-      .limit(1);
-
-  if (error) {
-    throw error;
-  }
-
-  const nhanVien =
-    Array.isArray(data) && data.length
-      ? data[0]
-      : null;
-
-  const maNv =
-    String(
-      nhanVien?.ma_nv || ''
-    ).trim();
-
-  if (!maNv) {
-    throw new Error(
-      'Không tìm thấy ma_nv trong kv_nhan_vien theo id_nv = ' +
-      idNv
-    );
-  }
-
-  loggedInMaNvCache = maNv;
-
-  console.log(
-    '[NHÂN VIÊN ĐĂNG NHẬP - FALLBACK ID_NV]',
-    {
-      id_nv: idNv,
-      ma_nv: maNv,
-      ten_nv:
-        String(
-          nhanVien?.ten_nv || ''
-        ).trim()
-    }
-  );
-
-  return maNv;
-
-}
-
-
-/* =========================================================
-   QUYỀN LOAD TẤT CẢ NHÂN VIÊN
-   Trang cha truyền:
-   ?ma_nv=NV001&duoc_xem=true|false
-
-   true  = load tất cả nhân viên
-   false = chỉ load đúng ma_nv tra từ kv_nhan_vien theo id_nv đăng nhập
-========================================================= */
-
-function getDuocXemFromUrl() {
-
-  try {
-
-    const params =
-      new URLSearchParams(
-        window.location.search
-      );
-
-    const value =
-      String(
-        params.get('duoc_xem') || ''
-      )
-      .trim()
-      .toLowerCase();
-
-    return (
-      value === 'true' ||
-      value === '1' ||
-      value === 't' ||
-      value === 'yes'
-    );
-
-  } catch (e) {
-
-    return false;
-
-  }
+  return String(
+    currentUser?.ma_nv || ''
+  ).trim();
 
 }
 
@@ -1520,41 +1307,16 @@ async function loadData() {
       ma_nv cần giữ lại để xử lý bên trong.
     */
 
-    const duocXemTatCa =
-      getDuocXemFromUrl();
-
-    /*
-      Chỉ cần tìm ma_nv khi là NHÂN VIÊN RIÊNG.
-      Người duoc_xem=true không cần phụ thuộc id_nv / ma_nv để load danh sách.
-    */
-    let loggedInMaNv = '';
-    let loggedInIdNv = '';
-
-    if (!duocXemTatCa) {
-
-      loggedInIdNv =
-        String(
-          getLoggedInIdNv() || ''
-        ).trim();
-
-      loggedInMaNv =
-        await getLoggedInMaNv();
-
-      if (!loggedInMaNv) {
-        throw new Error(
-          'Không lấy được ma_nv theo id_nv của nhân viên đăng nhập.'
-        );
-      }
-    }
-
-    let dataQuery =
-      sb
+    const {
+      data,
+      error
+    } =
+      await sb
         .from(TABLE_NAME)
         .select(`
           ma_kh,
           ma_nv,
           ten_kh,
-          zalo_name,
           alias_name,
           ten_nv,
           uid_from,
@@ -1567,83 +1329,13 @@ async function loadData() {
           'conversation_id',
           'is',
           null
+        )
+        .order(
+          'conversation_id',
+          {
+            ascending: false
+          }
         );
-
-    /*
-      QUY TẮC:
-      ---------------------------------------------------
-      duoc_xem=true
-        => LOAD TẤT CẢ, không lọc ma_nv.
-
-      duoc_xem=false
-        => id_nv đăng nhập
-           -> kv_nhan_vien.id_nv
-           -> lấy kv_nhan_vien.ma_nv
-           -> chỉ load dòng của nhân viên đó.
-
-      Để tương thích dữ liệu cũ:
-      ma_nv trong bảng gửi tin có thể đang lưu:
-        - ma_nv chuẩn
-        - hoặc id_nv
-
-      Vì vậy lọc theo CẢ HAI giá trị.
-    */
-    if (!duocXemTatCa) {
-
-      const maNvFilterValues =
-        Array.from(
-          new Set(
-            [
-              String(loggedInMaNv || '').trim(),
-              String(loggedInIdNv || '').trim()
-            ].filter(Boolean)
-          )
-        );
-
-      if (!maNvFilterValues.length) {
-        throw new Error(
-          'Không xác định được nhân viên để lọc.'
-        );
-      }
-
-      dataQuery =
-        dataQuery.in(
-          'ma_nv',
-          maNvFilterValues
-        );
-
-      console.log(
-        '[GUI_TIN - NHÂN VIÊN RIÊNG]',
-        {
-          id_nv_dang_nhap: loggedInIdNv,
-          ma_nv_tra_tu_kv_nhan_vien: loggedInMaNv,
-          gia_tri_loc_ma_nv: maNvFilterValues
-        }
-      );
-    }
-
-    dataQuery =
-      dataQuery.order(
-        'conversation_id',
-        {
-          ascending: false
-        }
-      );
-
-    console.log('[GUI_TIN - LOAD]', {
-      id_nv: loggedInIdNv || '',
-      ma_nv: loggedInMaNv || '',
-      duoc_xem: duocXemTatCa,
-      che_do: duocXemTatCa
-        ? 'LOAD_TAT_CA'
-        : 'LOC_NHAN_VIEN_RIENG'
-    });
-
-    const {
-      data,
-      error
-    } =
-      await dataQuery;
 
 
     if (error) {
@@ -1885,7 +1577,7 @@ function renderTable() {
 
           <td>
             ${escapeHtml(
-              r.zalo_name ?? ''
+              r.ten_kh ?? ''
             )}
           </td>
 
@@ -2432,7 +2124,7 @@ function bindComposerEvents() {
 async function sendRunWebhook() {
 
   const maNv =
-    await getLoggedInMaNv();
+    getLoggedInMaNv();
 
 
   if (!maNv) {
@@ -2537,7 +2229,6 @@ async function sendRunWebhook() {
 
   formData.append('action', 'run');
   formData.append('nguon', 'auto_tinnhan');
-  // ma_nv dùng giá trị tương thích luồng cũ từ getLoggedInMaNv()
   formData.append('ma_nv', maNv);
 
   formData.append('run_id', currentRunId);
@@ -2806,7 +2497,7 @@ async function startRun() {
   */
 
   const maNv =
-    await getLoggedInMaNv();
+    getLoggedInMaNv();
 
 
   if (!maNv) {
@@ -3324,7 +3015,7 @@ window.addEventListener('beforeunload', function () {
 
 
     const maNv =
-      await getLoggedInMaNv();
+      getLoggedInMaNv();
 
 
     console.log(
