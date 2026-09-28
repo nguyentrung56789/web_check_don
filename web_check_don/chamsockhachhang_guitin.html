@@ -187,6 +187,31 @@
       color: #166534;
     }
 
+
+    /* ===================== CỘT CHECK TRUE / FALSE ===================== */
+    .row-check {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      cursor: pointer;
+      accent-color: #2563eb;
+    }
+
+    .check-cell {
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .check-value {
+      display: inline-block;
+      min-width: 36px;
+      margin-left: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #64748b;
+      vertical-align: 3px;
+    }
+
     .empty {
       text-align: center;
       padding: 30px;
@@ -503,6 +528,70 @@
     }
 
 
+
+    /* ===================== LOẠI GỬI ===================== */
+    .send-type-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #edf0f5;
+    }
+
+    .send-type-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    .send-type-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 14px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .send-type-option input {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .reminder-time-wrap {
+      display: none;
+      align-items: end;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      padding: 12px;
+      border: 1px solid #dbe3ef;
+      border-radius: 10px;
+      background: #f8fafc;
+    }
+
+    .reminder-time-wrap.show {
+      display: flex;
+    }
+
+    .reminder-time-field {
+      width: 260px;
+      max-width: 100%;
+    }
+
+    .reminder-time-note {
+      padding-bottom: 10px;
+      color: #64748b;
+      font-size: 13px;
+    }
+
     /* ===================== THU GỌN / MỞ RỘNG SOẠN NỘI DUNG ===================== */
     .composer-head {
       display: flex;
@@ -653,15 +742,73 @@
           placeholder="Ví dụ: Xin chào {{zalo name}}, em là {{ten}}..."
         ></textarea>
 
+        <div class="send-type-row">
+          <span class="send-type-title">Loại gửi:</span>
+
+          <label class="send-type-option">
+            <input
+              id="sendTypeNormal"
+              type="checkbox"
+              value="guithuong"
+              checked
+            />
+            Gửi thường
+          </label>
+
+          <label class="send-type-option">
+            <input
+              id="sendTypeReminder"
+              type="checkbox"
+              value="nhachen"
+            />
+            Nhắc hẹn
+          </label>
+
+          <label class="send-type-option">
+            <input
+              id="sendTypeDeleteReminder"
+              type="checkbox"
+              value="xoanhachen"
+            />
+            Xóa nhắc hẹn
+          </label>
+
+          <label class="send-type-option">
+            <input
+              id="sendTypeDebtNotice"
+              type="checkbox"
+              value="thongbaocongno"
+            />
+            Thông báo công nợ
+          </label>
+        </div>
+
+        <div id="reminderTimeWrap" class="reminder-time-wrap">
+          <div class="reminder-time-field">
+            <label class="field-label" for="reminderDateTime">Giờ hẹn</label>
+            <input
+              id="reminderDateTime"
+              class="input-control"
+              type="datetime-local"
+              step="60"
+            />
+          </div>
+
+          <div class="reminder-time-note">
+            Chỉ dùng khi chọn <b>Nhắc hẹn</b>.
+          </div>
+        </div>
+
         <div class="composer-toolbar">
           <div class="variable-row">
-            <button type="button" class="var-btn" data-var="{{zalo name}}">{{zalo name}}</button>
-            <button type="button" class="var-btn" data-var="{{ten}}">{{ten}}</button>
             <button type="button" class="var-btn" data-var="{{ten_kh}}">{{ten_kh}}</button>
             <button type="button" class="var-btn" data-var="{{ten_nv}}">{{ten_nv}}</button>
             <button type="button" class="var-btn" data-var="{{ma_kh}}">{{ma_kh}}</button>
             <button type="button" class="var-btn" data-var="{{dia_chi}}">{{dia_chi}}</button>
             <button type="button" class="var-btn" data-var="{{dien_thoai}}">{{dien_thoai}}</button>
+            <button type="button" class="var-btn" data-var="{{xung_ho}}">{{xung_ho}}</button>
+            <button type="button" class="var-btn" data-var="{{toi}}">{{toi}}</button>
+            <button type="button" class="var-btn" data-var="{{cong_no}}">{{cong_no}}</button>
           </div>
 
           <div class="toolbar-media">
@@ -810,16 +957,17 @@
           <tr>
             <th>STT</th>
             <th>Mã KH</th>
-            <th>Tên khách hàng</th>
+            <th>Tên Zalo</th>
             <th>Tên nhân viên</th>
-            <th>conversation_id</th>
+            <th>alias_name</th>
+            <th>Check</th>
             <th>Trạng thái</th>
           </tr>
         </thead>
 
         <tbody id="tbody">
           <tr>
-            <td colspan="6" class="empty">
+            <td colspan="7" class="empty">
               Đang tải dữ liệu...
             </td>
           </tr>
@@ -847,6 +995,15 @@ const TABLE_NHAN_VIEN =
 
 const WEBHOOK_URL =
   'https://n8n.clawbot.io.vn/webhook/guitin_autozalo';
+
+/*
+  VIDEO:
+  - Video KHÔNG gửi binary 11MB trực tiếp qua webhook nữa.
+  - HTML upload video lên Supabase Storage trước.
+  - Sau đó chỉ gửi link MP4 sang n8n qua body.video_url.
+  - Bucket "video" cần tồn tại và cho phép upload/read.
+*/
+const VIDEO_BUCKET = 'video';
 
 
 /*
@@ -881,6 +1038,11 @@ let rows = [];
 let isRunning = false;
 
 let currentRunId = null;
+
+// URL video sau khi upload lên Supabase Storage.
+let uploadedVideoUrl = '';
+let uploadedVideoPath = '';
+let uploadedVideoSourceSignature = '';
 
 
 /* =========================================================
@@ -996,9 +1158,31 @@ async function createSupabaseClient() {
 function getCurrentUser() {
 
   /*
-    1. Thử lấy từ localStorage "nv"
+    1. ƯU TIÊN ma_nv được truyền từ trang cha:
+       chamsockhachhang_guitin.html?ma_nv=NV001&duoc_xem=true
   */
+  try {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
 
+    const maNvUrl =
+      String(
+        params.get('ma_nv') || ''
+      ).trim();
+
+    if (maNvUrl) {
+      return {
+        ma_nv: maNvUrl
+      };
+    }
+  } catch (e) {}
+
+
+  /*
+    2. Thử lấy từ localStorage "nv"
+  */
   try {
 
     const nv =
@@ -1016,9 +1200,8 @@ function getCurrentUser() {
 
 
   /*
-    2. Thử kiểu đăng nhập Chatwoot cũ
+    3. Thử kiểu đăng nhập Chatwoot cũ
   */
-
   try {
 
     const nv =
@@ -1038,9 +1221,8 @@ function getCurrentUser() {
 
 
   /*
-    3. last_ma_nv
+    4. last_ma_nv
   */
-
   const lastMaNv =
     String(
       localStorage.getItem('last_ma_nv') ||
@@ -1057,33 +1239,9 @@ function getCurrentUser() {
 
 
   /*
-    4. URL ?ma_nv=...
-  */
-
-  const params =
-    new URLSearchParams(
-      window.location.search
-    );
-
-  const maNvUrl =
-    String(
-      params.get('ma_nv') || ''
-    ).trim();
-
-  if (maNvUrl) {
-
-    return {
-      ma_nv: maNvUrl
-    };
-
-  }
-
-
-  /*
     5. Nếu trang này được mở bằng popup
        thử lấy user từ trang cha.
   */
-
   try {
 
     if (
@@ -1108,14 +1266,231 @@ function getCurrentUser() {
    LẤY MA_NV ĐANG ĐĂNG NHẬP
 ========================================================= */
 
-function getLoggedInMaNv() {
+let loggedInMaNvCache = null;
 
-  const currentUser =
-    getCurrentUser();
 
-  return String(
-    currentUser?.ma_nv || ''
-  ).trim();
+/*
+  LẤY ID_NV CỦA TÀI KHOẢN ĐANG ĐĂNG NHẬP
+
+  Ưu tiên:
+  1. ?id_nv=... trên URL nếu trang cha có truyền sang
+  2. localStorage "nv"
+  3. localStorage "chatwoot_crm_user"
+  4. sessionStorage "nv_ctx"
+  5. window.opener.currentUser.id_nv
+*/
+function getLoggedInIdNv() {
+
+  try {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const idNvUrl =
+      String(
+        params.get('id_nv') || ''
+      ).trim();
+
+    if (idNvUrl) {
+      return idNvUrl;
+    }
+  } catch (e) {}
+
+
+  const storageCandidates = [
+    ['local', 'nv'],
+    ['local', 'chatwoot_crm_user'],
+    ['session', 'nv_ctx']
+  ];
+
+  for (const [storageType, key] of storageCandidates) {
+    try {
+      const storage =
+        storageType === 'session'
+          ? sessionStorage
+          : localStorage;
+
+      const obj =
+        JSON.parse(
+          storage.getItem(key) || 'null'
+        );
+
+      const idNv =
+        String(
+          obj?.id_nv || ''
+        ).trim();
+
+      if (idNv) {
+        return idNv;
+      }
+    } catch (e) {}
+  }
+
+
+  try {
+    const idNvOpener =
+      String(
+        window.opener?.currentUser?.id_nv || ''
+      ).trim();
+
+    if (idNvOpener) {
+      return idNvOpener;
+    }
+  } catch (e) {}
+
+
+  return '';
+
+}
+
+
+/*
+  LẤY MA_NV ĐANG ĐĂNG NHẬP
+
+  Ưu tiên giống luồng cũ đang chạy ổn:
+  1. ma_nv từ URL / localStorage / opener qua getCurrentUser()
+  2. Nếu không có ma_nv thì mới dùng id_nv để tra kv_nhan_vien
+
+  Cách này giữ tương thích với n8n cũ, đồng thời vẫn hỗ trợ
+  trường hợp trang mới chỉ truyền id_nv.
+*/
+async function getLoggedInMaNv() {
+
+  if (loggedInMaNvCache) {
+    return loggedInMaNvCache;
+  }
+
+  // 1. ƯU TIÊN LUỒNG CŨ: lấy trực tiếp ma_nv đang đăng nhập
+  const currentUser = getCurrentUser();
+
+  const directMaNv =
+    String(
+      currentUser?.ma_nv || ''
+    ).trim();
+
+  if (directMaNv) {
+    loggedInMaNvCache = directMaNv;
+
+    console.log(
+      '[NHÂN VIÊN ĐĂNG NHẬP - MA_NV TRỰC TIẾP]',
+      {
+        ma_nv: directMaNv
+      }
+    );
+
+    return directMaNv;
+  }
+
+
+  // 2. FALLBACK: nếu không có ma_nv thì mới tra theo id_nv
+  if (!sb) {
+    throw new Error(
+      'Supabase chưa được khởi tạo.'
+    );
+  }
+
+  const idNv =
+    getLoggedInIdNv();
+
+  if (!idNv) {
+    throw new Error(
+      'Không lấy được ma_nv hoặc id_nv của nhân viên đang đăng nhập.'
+    );
+  }
+
+  const {
+    data,
+    error
+  } =
+    await sb
+      .from(TABLE_NHAN_VIEN)
+      .select(
+        'id_nv, ma_nv, ten_nv'
+      )
+      .eq(
+        'id_nv',
+        idNv
+      )
+      .limit(1);
+
+  if (error) {
+    throw error;
+  }
+
+  const nhanVien =
+    Array.isArray(data) && data.length
+      ? data[0]
+      : null;
+
+  const maNv =
+    String(
+      nhanVien?.ma_nv || ''
+    ).trim();
+
+  if (!maNv) {
+    throw new Error(
+      'Không tìm thấy ma_nv trong kv_nhan_vien theo id_nv = ' +
+      idNv
+    );
+  }
+
+  loggedInMaNvCache = maNv;
+
+  console.log(
+    '[NHÂN VIÊN ĐĂNG NHẬP - FALLBACK ID_NV]',
+    {
+      id_nv: idNv,
+      ma_nv: maNv,
+      ten_nv:
+        String(
+          nhanVien?.ten_nv || ''
+        ).trim()
+    }
+  );
+
+  return maNv;
+
+}
+
+
+/* =========================================================
+   QUYỀN LOAD TẤT CẢ NHÂN VIÊN
+   Trang cha truyền:
+   ?ma_nv=NV001&duoc_xem=true|false
+
+   true  = load tất cả nhân viên
+   false = chỉ load đúng ma_nv tra từ kv_nhan_vien theo id_nv đăng nhập
+========================================================= */
+
+function getDuocXemFromUrl() {
+
+  try {
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const value =
+      String(
+        params.get('duoc_xem') || ''
+      )
+      .trim()
+      .toLowerCase();
+
+    return (
+      value === 'true' ||
+      value === '1' ||
+      value === 't' ||
+      value === 'yes'
+    );
+
+  } catch (e) {
+
+    return false;
+
+  }
 
 }
 
@@ -1139,7 +1514,7 @@ async function loadData() {
         `
         <tr>
           <td
-            colspan="6"
+            colspan="7"
             class="empty"
           >
             Đang tải dữ liệu...
@@ -1159,32 +1534,130 @@ async function loadData() {
       ma_nv cần giữ lại để xử lý bên trong.
     */
 
-    const {
-      data,
-      error
-    } =
-      await sb
+    const duocXemTatCa =
+      getDuocXemFromUrl();
+
+    /*
+      Chỉ cần tìm ma_nv khi là NHÂN VIÊN RIÊNG.
+      Người duoc_xem=true không cần phụ thuộc id_nv / ma_nv để load danh sách.
+    */
+    let loggedInMaNv = '';
+    let loggedInIdNv = '';
+
+    if (!duocXemTatCa) {
+
+      loggedInIdNv =
+        String(
+          getLoggedInIdNv() || ''
+        ).trim();
+
+      loggedInMaNv =
+        await getLoggedInMaNv();
+
+      if (!loggedInMaNv) {
+        throw new Error(
+          'Không lấy được ma_nv theo id_nv của nhân viên đăng nhập.'
+        );
+      }
+    }
+
+    let dataQuery =
+      sb
         .from(TABLE_NAME)
         .select(`
           ma_kh,
           ma_nv,
           ten_kh,
+          zalo_name,
+          alias_name,
           ten_nv,
           uid_from,
           conversation_id,
+          reminderid,
+          check,
           trang_thai
         `)
         .not(
           'conversation_id',
           'is',
           null
-        )
-        .order(
-          'conversation_id',
-          {
-            ascending: false
-          }
         );
+
+    /*
+      QUY TẮC:
+      ---------------------------------------------------
+      duoc_xem=true
+        => LOAD TẤT CẢ, không lọc ma_nv.
+
+      duoc_xem=false
+        => id_nv đăng nhập
+           -> kv_nhan_vien.id_nv
+           -> lấy kv_nhan_vien.ma_nv
+           -> chỉ load dòng của nhân viên đó.
+
+      Để tương thích dữ liệu cũ:
+      ma_nv trong bảng gửi tin có thể đang lưu:
+        - ma_nv chuẩn
+        - hoặc id_nv
+
+      Vì vậy lọc theo CẢ HAI giá trị.
+    */
+    if (!duocXemTatCa) {
+
+      const maNvFilterValues =
+        Array.from(
+          new Set(
+            [
+              String(loggedInMaNv || '').trim(),
+              String(loggedInIdNv || '').trim()
+            ].filter(Boolean)
+          )
+        );
+
+      if (!maNvFilterValues.length) {
+        throw new Error(
+          'Không xác định được nhân viên để lọc.'
+        );
+      }
+
+      dataQuery =
+        dataQuery.in(
+          'ma_nv',
+          maNvFilterValues
+        );
+
+      console.log(
+        '[GUI_TIN - NHÂN VIÊN RIÊNG]',
+        {
+          id_nv_dang_nhap: loggedInIdNv,
+          ma_nv_tra_tu_kv_nhan_vien: loggedInMaNv,
+          gia_tri_loc_ma_nv: maNvFilterValues
+        }
+      );
+    }
+
+    dataQuery =
+      dataQuery.order(
+        'conversation_id',
+        {
+          ascending: false
+        }
+      );
+
+    console.log('[GUI_TIN - LOAD]', {
+      id_nv: loggedInIdNv || '',
+      ma_nv: loggedInMaNv || '',
+      duoc_xem: duocXemTatCa,
+      che_do: duocXemTatCa
+        ? 'LOAD_TAT_CA'
+        : 'LOC_NHAN_VIEN_RIENG'
+    });
+
+    const {
+      data,
+      error
+    } =
+      await dataQuery;
 
 
     if (error) {
@@ -1290,7 +1763,7 @@ async function loadData() {
         `
         <tr>
           <td
-            colspan="6"
+            colspan="7"
             class="empty"
           >
             Không tải được dữ liệu
@@ -1316,6 +1789,73 @@ async function loadData() {
    HIỂN THỊ BẢNG
 ========================================================= */
 
+
+async function updateRowCheck(conversationId, checked, checkboxEl) {
+  const id = String(conversationId ?? '').trim();
+
+  if (!id || !sb) {
+    if (checkboxEl) {
+      checkboxEl.checked = !checked;
+    }
+    return;
+  }
+
+  const valueText = checkboxEl
+    ?.closest('.check-cell')
+    ?.querySelector('.check-value');
+
+  if (checkboxEl) {
+    checkboxEl.disabled = true;
+  }
+
+  try {
+    const { error } = await sb
+      .from(TABLE_NAME)
+      .update({
+        check: checked === true
+      })
+      .eq('conversation_id', id);
+
+    if (error) {
+      throw error;
+    }
+
+    const row = rows.find(r =>
+      String(r.conversation_id ?? '').trim() === id
+    );
+
+    if (row) {
+      row.check = checked === true;
+    }
+
+    if (valueText) {
+      valueText.textContent = checked ? 'true' : 'false';
+    }
+
+  } catch (err) {
+    console.error('[UPDATE CHECK ERROR]', err);
+
+    if (checkboxEl) {
+      checkboxEl.checked = !checked;
+    }
+
+    if (valueText) {
+      valueText.textContent = !checked ? 'true' : 'false';
+    }
+
+    alert(
+      'Không cập nhật được Check: ' +
+      (err?.message || err)
+    );
+
+  } finally {
+    if (checkboxEl) {
+      checkboxEl.disabled = false;
+    }
+  }
+}
+
+
 function renderTable() {
 
   const tbody =
@@ -1328,7 +1868,7 @@ function renderTable() {
       `
       <tr>
         <td
-          colspan="6"
+          colspan="7"
           class="empty"
         >
           Không có khách hợp lệ
@@ -1359,7 +1899,7 @@ function renderTable() {
 
           <td>
             ${escapeHtml(
-              r.ten_kh ?? ''
+              r.zalo_name ?? ''
             )}
           </td>
 
@@ -1371,8 +1911,24 @@ function renderTable() {
 
           <td>
             ${escapeHtml(
-              r.conversation_id ?? ''
+              r.alias_name ?? ''
             )}
+          </td>
+
+          <td class="check-cell">
+            <input
+              type="checkbox"
+              class="row-check"
+              ${r.check === true ? 'checked' : ''}
+              onchange="updateRowCheck(
+                '${escapeHtml(String(r.conversation_id ?? ''))}',
+                this.checked,
+                this
+              )"
+            />
+            <span class="check-value">
+              ${r.check === true ? 'true' : 'false'}
+            </span>
           </td>
 
           <td>
@@ -1508,6 +2064,150 @@ function getSendWindowFromForm() {
   };
 }
 
+
+function getGioHenFromForm() {
+  const loaiGui = getLoaiGuiFromForm();
+
+  if (loaiGui !== 'nhachen') {
+    return '';
+  }
+
+  const value = String(
+    document.getElementById('reminderDateTime')?.value || ''
+  ).trim();
+
+  if (!value) {
+    throw new Error('Bạn đã chọn Nhắc hẹn nhưng chưa chọn giờ hẹn.');
+  }
+
+  // Chỉ giờ Nhắc hẹn được gắn múi giờ Việt Nam UTC+7.
+  // datetime-local trả dạng: 2026-08-22T15:30
+  // Webhook nhận: 2026-08-22T15:30:00+07:00
+  return value + ':00+07:00';
+}
+
+function updateReminderTimeVisibility() {
+  const wrap = document.getElementById('reminderTimeWrap');
+  const reminder = document.getElementById('sendTypeReminder');
+
+  if (!wrap || !reminder) return;
+
+  // Chỉ hiện giờ hẹn khi chọn đúng "Nhắc hẹn".
+  wrap.classList.toggle('show', reminder.checked === true);
+}
+
+function getLoaiGuiFromForm() {
+  const normal = document.getElementById('sendTypeNormal');
+  const reminder = document.getElementById('sendTypeReminder');
+  const deleteReminder = document.getElementById('sendTypeDeleteReminder');
+  const debtNotice = document.getElementById('sendTypeDebtNotice');
+
+  if (normal?.checked) {
+    return 'guithuong';
+  }
+
+  if (reminder?.checked) {
+    return 'nhachen';
+  }
+
+  if (deleteReminder?.checked) {
+    return 'xoanhachen';
+  }
+
+  if (debtNotice?.checked) {
+    return 'thongbaocongno';
+  }
+
+  // Nếu tất cả đều bỏ chọn thì quay về Gửi thường.
+  if (normal) normal.checked = true;
+  return 'guithuong';
+}
+
+function getLoiNhacFromForm() {
+  const deleteReminder = document.getElementById('sendTypeDeleteReminder');
+
+  // Theo yêu cầu:
+  // khi chọn "Xóa nhắc hẹn" webhook nhận:
+  // loinhac = xoanhachen
+  return deleteReminder?.checked ? 'xoanhachen' : '';
+}
+
+function validateRunForm() {
+  const loaiGui = getLoaiGuiFromForm();
+
+  const noiDung = String(
+    document.getElementById('messageText')?.value || ''
+  ).trim();
+
+  // Gửi thường, Nhắc hẹn và Thông báo công nợ bắt buộc phải có nội dung.
+  // Riêng Xóa nhắc hẹn không cần nội dung.
+  if (
+    (
+      loaiGui === 'guithuong' ||
+      loaiGui === 'nhachen' ||
+      loaiGui === 'thongbaocongno'
+    ) &&
+    !noiDung
+  ) {
+    const message =
+      loaiGui === 'nhachen'
+        ? 'Bạn đã chọn Nhắc hẹn nhưng chưa nhập nội dung.'
+        : loaiGui === 'thongbaocongno'
+          ? 'Bạn đã chọn Thông báo công nợ nhưng chưa nhập nội dung.'
+          : 'Bạn đã chọn Gửi thường nhưng chưa nhập nội dung.';
+
+    alert(message);
+
+    const textarea = document.getElementById('messageText');
+    if (textarea) {
+      textarea.focus();
+    }
+
+    throw new Error(message);
+  }
+
+  // Nếu là Nhắc hẹn thì tiếp tục bắt buộc phải có giờ hẹn.
+  // getGioHenFromForm() sẽ tự báo lỗi nếu chưa chọn.
+  if (loaiGui === 'nhachen') {
+    getGioHenFromForm();
+  }
+
+  return true;
+}
+
+function bindSendTypeEvents() {
+  const normal = document.getElementById('sendTypeNormal');
+  const reminder = document.getElementById('sendTypeReminder');
+  const deleteReminder = document.getElementById('sendTypeDeleteReminder');
+  const debtNotice = document.getElementById('sendTypeDebtNotice');
+
+  if (!normal || !reminder || !deleteReminder || !debtNotice) return;
+
+  const sendTypes = [normal, reminder, deleteReminder, debtNotice];
+
+  // Mặc định Gửi thường.
+  if (!sendTypes.some(input => input.checked)) {
+    normal.checked = true;
+  }
+
+  sendTypes.forEach(input => {
+    input.addEventListener('change', function () {
+      if (this.checked) {
+        sendTypes.forEach(other => {
+          if (other !== this) other.checked = false;
+        });
+      } else if (!sendTypes.some(other => other.checked)) {
+        normal.checked = true;
+      }
+
+      updateReminderTimeVisibility();
+    });
+  });
+
+  updateReminderTimeVisibility();
+}
+
+
 function bindComposerToggle() {
   const messageCard = document.getElementById('messageCard');
   const toggleBtn = document.getElementById('toggleComposerBtn');
@@ -1590,6 +2290,169 @@ function insertAtSavedCaret(textToInsert) {
     )
   );
 }
+
+
+function sanitizeFileName(fileName) {
+  const raw = String(fileName || 'video.mp4').trim();
+
+  const lastDot = raw.lastIndexOf('.');
+  const base = lastDot > 0 ? raw.slice(0, lastDot) : raw;
+  const ext = lastDot > 0 ? raw.slice(lastDot + 1) : 'mp4';
+
+  const safeBase = base
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 80) || 'video';
+
+  const safeExt = String(ext || 'mp4')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '') || 'mp4';
+
+  return safeBase + '.' + safeExt;
+}
+
+
+function getVideoFileSignature(file) {
+  if (!file) return '';
+
+  return [
+    file.name || '',
+    file.size || 0,
+    file.lastModified || 0
+  ].join('|');
+}
+
+
+async function uploadVideoToStorage(videoFile) {
+  if (!videoFile) return '';
+
+  if (!sb) {
+    throw new Error('Supabase chưa được khởi tạo.');
+  }
+
+  const signature = getVideoFileSignature(videoFile);
+
+  // Cùng file đã upload rồi thì dùng lại URL, không upload lần 2.
+  if (
+    uploadedVideoUrl &&
+    uploadedVideoSourceSignature === signature
+  ) {
+    return uploadedVideoUrl;
+  }
+
+  const infoEl = document.getElementById('videoFileInfo');
+
+  if (infoEl) {
+    infoEl.textContent =
+      `Đang upload ${videoFile.name} (${(videoFile.size / 1024 / 1024).toFixed(2)} MB)...`;
+  }
+
+  const maNv =
+    String(
+      await getLoggedInMaNv() || 'unknown'
+    )
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, '_');
+
+  const safeName = sanitizeFileName(videoFile.name);
+
+  const objectPath =
+    'autozalo/' +
+    (maNv || 'unknown') +
+    '/' +
+    Date.now() +
+    '_' +
+    safeName;
+
+  const {
+    data,
+    error
+  } =
+    await sb.storage
+      .from(VIDEO_BUCKET)
+      .upload(
+        objectPath,
+        videoFile,
+        {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: videoFile.type || 'video/mp4'
+        }
+      );
+
+  if (error) {
+    uploadedVideoUrl = '';
+    uploadedVideoPath = '';
+    uploadedVideoSourceSignature = '';
+
+    if (infoEl) {
+      infoEl.textContent =
+        'Upload video lỗi: ' +
+        (error.message || error);
+    }
+
+    throw new Error(
+      'Không upload được video lên Supabase Storage bucket "' +
+      VIDEO_BUCKET +
+      '": ' +
+      (error.message || error)
+    );
+  }
+
+  const path =
+    String(
+      data?.path || objectPath
+    ).trim();
+
+  const publicResult =
+    sb.storage
+      .from(VIDEO_BUCKET)
+      .getPublicUrl(path);
+
+  const publicUrl =
+    String(
+      publicResult?.data?.publicUrl || ''
+    ).trim();
+
+  if (!publicUrl) {
+    throw new Error(
+      'Upload video thành công nhưng không lấy được Public URL. ' +
+      'Hãy kiểm tra bucket "' + VIDEO_BUCKET + '" có đang Public không.'
+    );
+  }
+
+  uploadedVideoUrl = publicUrl;
+  uploadedVideoPath = path;
+  uploadedVideoSourceSignature = signature;
+
+  if (infoEl) {
+    infoEl.innerHTML =
+      '<a href="' +
+      escapeHtml(publicUrl) +
+      '" target="_blank" rel="noopener noreferrer">' +
+      escapeHtml(safeName) +
+      '</a> (' +
+      (videoFile.size / 1024 / 1024).toFixed(2) +
+      ' MB) - Đã có link MP4';
+  }
+
+  console.log(
+    '[VIDEO STORAGE UPLOAD]',
+    {
+      bucket: VIDEO_BUCKET,
+      path: uploadedVideoPath,
+      url: uploadedVideoUrl,
+      name: videoFile.name,
+      type: videoFile.type,
+      size: videoFile.size
+    }
+  );
+
+  return uploadedVideoUrl;
+}
+
 
 function bindComposerEvents() {
   const messageTextarea = document.getElementById('messageText');
@@ -1711,14 +2574,51 @@ function bindComposerEvents() {
 
   imageFile?.addEventListener('change', function () {
     const file = this.files?.[0];
+
+    // Chọn ảnh thì bỏ video và xóa URL video đã upload khỏi phiên hiện tại.
+    if (file && videoFile) {
+      videoFile.value = '';
+      uploadedVideoUrl = '';
+      uploadedVideoPath = '';
+      uploadedVideoSourceSignature = '';
+      document.getElementById('videoFileInfo').textContent = 'Chưa chọn video';
+    }
+
     document.getElementById('imageFileInfo').textContent =
       file ? `${file.name} (${Math.round(file.size / 1024)} KB)` : 'Chưa chọn ảnh';
   });
 
-  videoFile?.addEventListener('change', function () {
+  videoFile?.addEventListener('change', async function () {
     const file = this.files?.[0];
+
+    uploadedVideoUrl = '';
+    uploadedVideoPath = '';
+    uploadedVideoSourceSignature = '';
+
+    // Chọn video thì bỏ ảnh.
+    if (file && imageFile) {
+      imageFile.value = '';
+      document.getElementById('imageFileInfo').textContent = 'Chưa chọn ảnh';
+    }
+
+    if (!file) {
+      document.getElementById('videoFileInfo').textContent = 'Chưa chọn video';
+      return;
+    }
+
     document.getElementById('videoFileInfo').textContent =
-      file ? `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)` : 'Chưa chọn video';
+      `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB) - đang tạo link MP4...`;
+
+    try {
+      await uploadVideoToStorage(file);
+    } catch (err) {
+      console.error('[UPLOAD VIDEO ERROR]', err);
+
+      alert(
+        'Không tạo được link MP4.\n\n' +
+        (err?.message || err)
+      );
+    }
   });
 }
 
@@ -1730,7 +2630,7 @@ function bindComposerEvents() {
 async function sendRunWebhook() {
 
   const maNv =
-    getLoggedInMaNv();
+    await getLoggedInMaNv();
 
 
   if (!maNv) {
@@ -1762,11 +2662,56 @@ async function sendRunWebhook() {
   const videoFile =
     document.getElementById('videoFile')?.files?.[0] || null;
 
+  // Nếu có video: bắt buộc upload Storage trước để lấy link MP4.
+  // Không đẩy binary video lớn trực tiếp qua webhook.
+  let videoUrl = '';
+
+  if (videoFile) {
+    videoUrl =
+      await uploadVideoToStorage(videoFile);
+  }
+
+  // Loại dữ liệu gửi ra webhook:
+  // text  = không có ảnh/video
+  // image = có ảnh
+  // video = có video
+  const loaiGuiWebhook =
+    videoFile ? 'video' :
+    imageFile ? 'image' :
+    'text';
+
   const delayConfig =
     getDelayConfigFromForm();
 
   const sendWindow =
     getSendWindowFromForm();
+
+  const loaiGui =
+    getLoaiGuiFromForm();
+
+  const loiNhac =
+    getLoiNhacFromForm();
+
+  const gioHen =
+    getGioHenFromForm();
+
+  // Phòng thủ thêm: các chế độ gửi nội dung không được để trống.
+  if (
+    (
+      loaiGui === 'guithuong' ||
+      loaiGui === 'nhachen' ||
+      loaiGui === 'thongbaocongno'
+    ) &&
+    !noiDung
+  ) {
+    throw new Error(
+      loaiGui === 'nhachen'
+        ? 'Bạn đã chọn Nhắc hẹn nhưng chưa nhập nội dung.'
+        : loaiGui === 'thongbaocongno'
+          ? 'Bạn đã chọn Thông báo công nợ nhưng chưa nhập nội dung.'
+          : 'Bạn đã chọn Gửi thường nhưng chưa nhập nội dung.'
+    );
+  }
 
   if (!currentRunId) {
     currentRunId =
@@ -1783,12 +2728,10 @@ async function sendRunWebhook() {
   */
   /*
     MULTIPART/FORM-DATA
-    - Không convert ảnh/video sang Base64.
+    - Ảnh: gửi binary trong $binary.data.
+    - Video: upload Supabase Storage trước, sau đó gửi body.video_url.
+    - Không convert video sang Base64.
     - Browser tự đặt Content-Type + boundary.
-    - n8n nhận file trong binary với field chung:
-        $binary.data
-      Nếu gửi đồng thời nhiều file cùng tên field "data",
-      n8n có thể đánh số field tiếp theo tùy cách Webhook parse multipart.
   */
   const formData = new FormData();
 
@@ -1798,13 +2741,71 @@ async function sendRunWebhook() {
   */
 
   formData.append('action', 'run');
+  formData.append('nguon', 'auto_tinnhan');
+  // ma_nv dùng giá trị tương thích luồng cũ từ getLoggedInMaNv()
   formData.append('ma_nv', maNv);
 
   formData.append('run_id', currentRunId);
   formData.append('so_khach_hop_le', String(rows.length));
 
+  // conversation_id gửi trực tiếp, KHÔNG có dấu []
+  // Nếu đang có 1 khách hợp lệ thì n8n sẽ nhận ví dụ: 13546
+  const conversationId =
+    rows.find(r =>
+      r.conversation_id !== null &&
+      r.conversation_id !== undefined &&
+      String(r.conversation_id).trim() !== ''
+    )?.conversation_id ?? '';
+
+  formData.append('conversation_id', String(conversationId));
+
+  // ID nhắc hẹn - dùng tên cột mới reminderid
+  const reminderid =
+    rows.find(r =>
+      String(r.conversation_id ?? '').trim() === String(conversationId ?? '').trim()
+    )?.reminderid ?? '';
+
+  formData.append('reminderid', String(reminderid));
+
+  // Loại tin nhắn Chatwoot
+  formData.append('message_type', 'outgoing');
+
+  // LOẠI GỬI WEBHOOK:
+  // - Gửi thường:
+  //     + có video  => video
+  //     + có ảnh    => image
+  //     + không media => text
+  // - Nhắc hẹn         => nhachen
+  // - Xóa nhắc hẹn     => xoanhachen
+  // - Thông báo công nợ => thongbaocongno
+  const loaiGuiGuiWebhook =
+    loaiGui === 'guithuong'
+      ? loaiGuiWebhook
+      : loaiGui;
+
+  formData.append('loaigui', loaiGuiGuiWebhook);
+
+  // Chế độ nghiệp vụ:
+  // guithuong | nhachen | xoanhachen | thongbaocongno
+  formData.append('che_do_gui', loaiGui);
+
+  // Khi chọn "Xóa nhắc hẹn":
+  // n8n nhận body.loinhac = "xoanhachen"
+  formData.append('loinhac', loiNhac);
+
+  // Giờ hẹn: chỉ có giá trị khi che_do_gui = nhachen
+  formData.append('gio_hen', gioHen);
+
   formData.append('noi_dung', noiDung);
   formData.append('icon', icon);
+
+  // VIDEO LINK:
+  // n8n đọc bằng $json.body.video_url
+  formData.append('video_url', videoUrl);
+  formData.append('has_video', videoUrl ? 'true' : 'false');
+  formData.append('video_name', videoFile ? videoFile.name : '');
+  formData.append('video_mime', videoFile ? (videoFile.type || 'video/mp4') : '');
+  formData.append('video_size', videoFile ? String(videoFile.size || 0) : '0');
 
   formData.append(
     'delay_mode',
@@ -1845,20 +2846,24 @@ async function sendRunWebhook() {
     sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den
   );
 
-  // Ảnh và video đều gửi với field multipart tên "data"
+  // Ảnh vẫn gửi binary field "data".
+  // Video KHÔNG gửi binary qua webhook nữa; chỉ gửi video_url.
   if (imageFile) {
     formData.append('data', imageFile, imageFile.name);
   }
 
-  if (videoFile) {
-    formData.append('data', videoFile, videoFile.name);
-  }
-
   const bodyDebug = {
     action: 'run',
+    nguon: 'auto_tinnhan',
     ma_nv: maNv,
     run_id: currentRunId,
     so_khach_hop_le: rows.length,
+    conversation_id: String(conversationId),
+    message_type: 'outgoing',
+    loaigui: loaiGuiGuiWebhook,
+    che_do_gui: loaiGui,
+    loinhac: loiNhac,
+    gio_hen: gioHen,
     noi_dung: noiDung,
     icon: icon,
     delay_mode: delayConfig.mode,
@@ -1868,6 +2873,11 @@ async function sendRunWebhook() {
     gio_gui_tu: sendWindow.gio_gui_tu,
     gio_gui_den: sendWindow.gio_gui_den,
     khung_gio_gui: sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den,
+    video_url: videoUrl,
+    has_video: !!videoUrl,
+    video_name: videoFile ? videoFile.name : '',
+    video_mime: videoFile ? (videoFile.type || 'video/mp4') : '',
+    video_size: videoFile ? videoFile.size : 0,
     data_anh: imageFile
       ? {
           field: 'data',
@@ -1879,9 +2889,10 @@ async function sendRunWebhook() {
 
     data_video: videoFile
       ? {
-          field: 'data',
+          mode: 'url',
+          url: videoUrl,
           name: videoFile.name,
-          type: videoFile.type,
+          type: videoFile.type || 'video/mp4',
           size: videoFile.size
         }
       : null
@@ -2011,7 +3022,7 @@ async function startRun() {
   */
 
   const maNv =
-    getLoggedInMaNv();
+    await getLoggedInMaNv();
 
 
   if (!maNv) {
@@ -2022,6 +3033,24 @@ async function startRun() {
 
     return;
 
+  }
+
+  // Kiểm tra form TRƯỚC khi bật trạng thái "Đang chạy".
+  // - Gửi thường: bắt buộc có nội dung
+  // - Nhắc hẹn: bắt buộc có nội dung + giờ hẹn
+  // - Xóa nhắc hẹn: không bắt buộc nội dung
+  try {
+    validateRunForm();
+  } catch (validationError) {
+    setRunButtonRunning(false);
+
+    const btnStop = document.getElementById('btnStop');
+    if (btnStop) {
+      btnStop.disabled = true;
+    }
+
+    setStatus(validationError.message || String(validationError));
+    return;
   }
 
 
@@ -2072,6 +3101,9 @@ async function startRun() {
 
     const delayConfig = getDelayConfigFromForm();
     const sendWindow = getSendWindowFromForm();
+    const loaiGui = getLoaiGuiFromForm();
+    const loiNhac = getLoiNhacFromForm();
+    const gioHen = getGioHenFromForm();
 
     setStatus(
       'Đã gửi lệnh chạy ' +
@@ -2079,6 +3111,10 @@ async function startRun() {
       ' khách. ' +
       'ma_nv: ' +
       maNv +
+      ' | Loại gửi: ' +
+      loaiGui +
+      (loaiGui === 'nhachen' ? ' | Giờ hẹn: ' + gioHen : '') +
+      (loiNhac === 'xoanhachen' ? ' | loinhac: xoanhachen' : '') +
       ' | Chờ ngẫu nhiên ' +
       delayConfig.min_seconds +
       ' - ' +
@@ -2307,209 +3343,4 @@ function enableDraggableForm() {
     const maxTop = Math.max(0, window.innerHeight - 60);
 
     const left = Math.min(Math.max(0, event.clientX - offsetX), maxLeft);
-    const top = Math.min(Math.max(0, event.clientY - offsetY), maxTop);
-
-    wrap.style.left = left + 'px';
-    wrap.style.top = top + 'px';
-  });
-
-  document.addEventListener('mouseup', function () {
-    dragging = false;
-  });
-}
-
-
-/* =========================================================
-   REALTIME TRẠNG THÁI TỪ SUPABASE
-   Bảng kv_khachhang_nhanvien_guitin đã bật Realtime.
-========================================================= */
-
-let statusChannel = null;
-
-function normalizeRealtimeKey(value) {
-  return String(value ?? '').trim();
-}
-
-function isDoneStatus(value) {
-  const s = String(value ?? '').trim().toLowerCase();
-
-  return (
-    s === 'đã gửi xong' ||
-    s === 'da gui xong' ||
-    s === 'da_gui_xong' ||
-    s === 'hoàn thành' ||
-    s === 'hoan thanh' ||
-    s === 'hoan_thanh' ||
-    s === 'completed'
-  );
-}
-
-function applyRealtimeStatus(payload) {
-  console.log('[REALTIME UPDATE]', payload);
-
-  const newRow = payload?.new;
-  if (!newRow) return;
-
-  const conversationId = normalizeRealtimeKey(newRow.conversation_id);
-  const maKh = normalizeRealtimeKey(newRow.ma_kh);
-
-  let changed = false;
-
-  rows.forEach(function (row) {
-    const sameConversation =
-      conversationId &&
-      normalizeRealtimeKey(row.conversation_id) === conversationId;
-
-    const sameMaKh =
-      maKh &&
-      normalizeRealtimeKey(row.ma_kh) === maKh;
-
-    if (!sameConversation && !sameMaKh) {
-      return;
-    }
-
-    const oldStatus = normalizeRealtimeKey(row.trang_thai);
-    const newStatus = normalizeRealtimeKey(newRow.trang_thai);
-
-    if (oldStatus !== newStatus) {
-      row.trang_thai = newRow.trang_thai ?? '';
-      changed = true;
-    }
-  });
-
-  if (changed) {
-    renderTable();
-  }
-
-  const doneCount = rows.filter(function (row) {
-    return isDoneStatus(row.trang_thai);
-  }).length;
-
-  if (doneCount > 0) {
-    setStatus(
-      'Đã gửi xong ' +
-      doneCount +
-      '/' +
-      rows.length +
-      ' khách.'
-    );
-  }
-
-  if (rows.length > 0 && doneCount === rows.length) {
-    isRunning = false;
-
-    const btnRun = document.getElementById('btnRun');
-    const btnStop = document.getElementById('btnStop');
-
-    setRunButtonRunning(false);
-    if (btnStop) btnStop.disabled = true;
-
-    setStatus('✅ Đã gửi xong ' + rows.length + '/' + rows.length + ' khách.');
-  }
-}
-
-function subscribeTrangThaiRealtime() {
-  if (!sb) return;
-
-  if (statusChannel) {
-    try {
-      sb.removeChannel(statusChannel);
-    } catch (e) {
-      console.warn('[REALTIME REMOVE CHANNEL]', e);
-    }
-    statusChannel = null;
-  }
-
-  statusChannel = sb
-    .channel('guitin_trang_thai_' + Date.now())
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: TABLE_NAME
-      },
-      applyRealtimeStatus
-    )
-    .subscribe(function (status, err) {
-      console.log('[REALTIME SUBSCRIBE]', status, err || '');
-
-      if (status === 'SUBSCRIBED') {
-        console.log('✅ Đã kết nối Realtime:', TABLE_NAME);
-      }
-
-      if (
-        status === 'CHANNEL_ERROR' ||
-        status === 'TIMED_OUT'
-      ) {
-        console.error('❌ Realtime lỗi:', status, err || '');
-        setStatus('Lỗi kết nối Realtime: ' + status);
-      }
-    });
-}
-
-window.addEventListener('beforeunload', function () {
-  if (statusChannel && sb) {
-    try {
-      sb.removeChannel(statusChannel);
-    } catch (e) {}
-  }
-});
-
-
-/* =========================================================
-   KHỞI TẠO
-========================================================= */
-
-(async () => {
-
-  try {
-
-    enableDraggableForm();
-    bindComposerEvents();
-    bindComposerToggle();
-
-    sb =
-      await createSupabaseClient();
-
-
-    const maNv =
-      getLoggedInMaNv();
-
-
-    console.log(
-      '[NHÂN VIÊN ĐĂNG NHẬP]',
-      maNv
-    );
-
-
-    await loadData();
-
-    subscribeTrangThaiRealtime();
-
-  }
-
-  catch (err) {
-
-    console.error(
-      '[INIT ERROR]',
-      err
-    );
-
-
-    setStatus(
-      'Lỗi khởi tạo: ' +
-      (
-        err.message ||
-        err
-      )
-    );
-
-  }
-
-})();
-
-</script>
-
-</body>
-</html>
+    const top = Math
