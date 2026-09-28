@@ -1332,14 +1332,14 @@ function getLoggedInIdNv() {
 
 
 /*
-  KHÔNG lấy ma_nv trực tiếp từ currentUser nữa.
+  LẤY MA_NV ĐANG ĐĂNG NHẬP
 
-  Luồng chuẩn:
-  id_nv đăng nhập
-      ↓
-  kv_nhan_vien.id_nv
-      ↓
-  lấy kv_nhan_vien.ma_nv
+  Ưu tiên giống luồng cũ đang chạy ổn:
+  1. ma_nv từ URL / localStorage / opener qua getCurrentUser()
+  2. Nếu không có ma_nv thì mới dùng id_nv để tra kv_nhan_vien
+
+  Cách này giữ tương thích với n8n cũ, đồng thời vẫn hỗ trợ
+  trường hợp trang mới chỉ truyền id_nv.
 */
 async function getLoggedInMaNv() {
 
@@ -1347,6 +1347,29 @@ async function getLoggedInMaNv() {
     return loggedInMaNvCache;
   }
 
+  // 1. ƯU TIÊN LUỒNG CŨ: lấy trực tiếp ma_nv đang đăng nhập
+  const currentUser = getCurrentUser();
+
+  const directMaNv =
+    String(
+      currentUser?.ma_nv || ''
+    ).trim();
+
+  if (directMaNv) {
+    loggedInMaNvCache = directMaNv;
+
+    console.log(
+      '[NHÂN VIÊN ĐĂNG NHẬP - MA_NV TRỰC TIẾP]',
+      {
+        ma_nv: directMaNv
+      }
+    );
+
+    return directMaNv;
+  }
+
+
+  // 2. FALLBACK: nếu không có ma_nv thì mới tra theo id_nv
   if (!sb) {
     throw new Error(
       'Supabase chưa được khởi tạo.'
@@ -1358,7 +1381,7 @@ async function getLoggedInMaNv() {
 
   if (!idNv) {
     throw new Error(
-      'Không lấy được id_nv của nhân viên đang đăng nhập.'
+      'Không lấy được ma_nv hoặc id_nv của nhân viên đang đăng nhập.'
     );
   }
 
@@ -1401,7 +1424,7 @@ async function getLoggedInMaNv() {
   loggedInMaNvCache = maNv;
 
   console.log(
-    '[NHÂN VIÊN ĐĂNG NHẬP - ĐỐI CHIẾU KV_NHAN_VIEN]',
+    '[NHÂN VIÊN ĐĂNG NHẬP - FALLBACK ID_NV]',
     {
       id_nv: idNv,
       ma_nv: maNv,
@@ -2514,6 +2537,7 @@ async function sendRunWebhook() {
 
   formData.append('action', 'run');
   formData.append('nguon', 'auto_tinnhan');
+  // ma_nv dùng giá trị tương thích luồng cũ từ getLoggedInMaNv()
   formData.append('ma_nv', maNv);
 
   formData.append('run_id', currentRunId);
