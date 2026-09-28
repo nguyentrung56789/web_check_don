@@ -503,70 +503,6 @@
     }
 
 
-
-    /* ===================== LOẠI GỬI ===================== */
-    .send-type-row {
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #edf0f5;
-    }
-
-    .send-type-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: #475569;
-    }
-
-    .send-type-option {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      cursor: pointer;
-      user-select: none;
-      font-size: 14px;
-      font-weight: 700;
-      color: #334155;
-    }
-
-    .send-type-option input {
-      width: 18px;
-      height: 18px;
-      margin: 0;
-      accent-color: #2563eb;
-      cursor: pointer;
-    }
-
-    .reminder-time-wrap {
-      display: none;
-      align-items: end;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-      padding: 12px;
-      border: 1px solid #dbe3ef;
-      border-radius: 10px;
-      background: #f8fafc;
-    }
-
-    .reminder-time-wrap.show {
-      display: flex;
-    }
-
-    .reminder-time-field {
-      width: 260px;
-      max-width: 100%;
-    }
-
-    .reminder-time-note {
-      padding-bottom: 10px;
-      color: #64748b;
-      font-size: 13px;
-    }
-
     /* ===================== THU GỌN / MỞ RỘNG SOẠN NỘI DUNG ===================== */
     .composer-head {
       display: flex;
@@ -716,54 +652,6 @@
           class="message-box"
           placeholder="Ví dụ: Xin chào {{zalo name}}, em là {{ten}}..."
         ></textarea>
-
-        <div class="send-type-row">
-          <span class="send-type-title">Loại gửi:</span>
-
-          <label class="send-type-option">
-            <input
-              id="sendTypeNormal"
-              type="checkbox"
-              value="guithuong"
-              checked
-            />
-            Gửi thường
-          </label>
-
-          <label class="send-type-option">
-            <input
-              id="sendTypeReminder"
-              type="checkbox"
-              value="nhachen"
-            />
-            Nhắc hẹn
-          </label>
-
-          <label class="send-type-option">
-            <input
-              id="sendTypeDeleteReminder"
-              type="checkbox"
-              value="xoanhachen"
-            />
-            Xóa nhắc hẹn
-          </label>
-        </div>
-
-        <div id="reminderTimeWrap" class="reminder-time-wrap">
-          <div class="reminder-time-field">
-            <label class="field-label" for="reminderDateTime">Giờ hẹn</label>
-            <input
-              id="reminderDateTime"
-              class="input-control"
-              type="datetime-local"
-              step="60"
-            />
-          </div>
-
-          <div class="reminder-time-note">
-            Chỉ dùng khi chọn <b>Nhắc hẹn</b>.
-          </div>
-        </div>
 
         <div class="composer-toolbar">
           <div class="variable-row">
@@ -924,7 +812,7 @@
             <th>Mã KH</th>
             <th>Tên khách hàng</th>
             <th>Tên nhân viên</th>
-            <th>alias_name</th>
+            <th>conversation_id</th>
             <th>Trạng thái</th>
           </tr>
         </thead>
@@ -1281,7 +1169,6 @@ async function loadData() {
           ma_kh,
           ma_nv,
           ten_kh,
-          alias_name,
           ten_nv,
           uid_from,
           conversation_id,
@@ -1484,7 +1371,7 @@ function renderTable() {
 
           <td>
             ${escapeHtml(
-              r.alias_name ?? ''
+              r.conversation_id ?? ''
             )}
           </td>
 
@@ -1619,114 +1506,6 @@ function getSendWindowFromForm() {
     gio_gui_tu: from,
     gio_gui_den: to
   };
-}
-
-
-function getGioHenFromForm() {
-  const loaiGui = getLoaiGuiFromForm();
-
-  if (loaiGui !== 'nhachen') {
-    return '';
-  }
-
-  const value = String(
-    document.getElementById('reminderDateTime')?.value || ''
-  ).trim();
-
-  if (!value) {
-    throw new Error('Bạn đã chọn Nhắc hẹn nhưng chưa chọn giờ hẹn.');
-  }
-
-  return value;
-}
-
-function updateReminderTimeVisibility() {
-  const wrap = document.getElementById('reminderTimeWrap');
-  const reminder = document.getElementById('sendTypeReminder');
-
-  if (!wrap || !reminder) return;
-
-  // Chỉ hiện giờ hẹn khi chọn đúng "Nhắc hẹn".
-  wrap.classList.toggle('show', reminder.checked === true);
-}
-
-function getLoaiGuiFromForm() {
-  const normal = document.getElementById('sendTypeNormal');
-  const reminder = document.getElementById('sendTypeReminder');
-  const deleteReminder = document.getElementById('sendTypeDeleteReminder');
-
-  if (normal?.checked) {
-    return 'guithuong';
-  }
-
-  if (reminder?.checked) {
-    return 'nhachen';
-  }
-
-  if (deleteReminder?.checked) {
-    return 'xoanhachen';
-  }
-
-  // Nếu cả 3 đều bỏ chọn thì quay về Gửi thường.
-  if (normal) normal.checked = true;
-  return 'guithuong';
-}
-
-function getLoiNhacFromForm() {
-  const deleteReminder = document.getElementById('sendTypeDeleteReminder');
-
-  // Theo yêu cầu:
-  // khi chọn "Xóa nhắc hẹn" webhook nhận:
-  // loinhac = xoanhachen
-  return deleteReminder?.checked ? 'xoanhachen' : '';
-}
-
-function bindSendTypeEvents() {
-  const normal = document.getElementById('sendTypeNormal');
-  const reminder = document.getElementById('sendTypeReminder');
-  const deleteReminder = document.getElementById('sendTypeDeleteReminder');
-
-  if (!normal || !reminder || !deleteReminder) return;
-
-  // Mặc định Gửi thường.
-  if (!normal.checked && !reminder.checked && !deleteReminder.checked) {
-    normal.checked = true;
-  }
-
-  normal.addEventListener('change', function () {
-    if (this.checked) {
-      reminder.checked = false;
-      deleteReminder.checked = false;
-    } else if (!reminder.checked && !deleteReminder.checked) {
-      this.checked = true;
-    }
-
-    updateReminderTimeVisibility();
-  });
-
-  reminder.addEventListener('change', function () {
-    if (this.checked) {
-      normal.checked = false;
-      deleteReminder.checked = false;
-    } else if (!normal.checked && !deleteReminder.checked) {
-      normal.checked = true;
-    }
-
-    updateReminderTimeVisibility();
-  });
-
-  deleteReminder.addEventListener('change', function () {
-    if (this.checked) {
-      normal.checked = false;
-      reminder.checked = false;
-    } else if (!normal.checked && !reminder.checked) {
-      normal.checked = true;
-    }
-
-    updateReminderTimeVisibility();
-  });
-
-  updateReminderTimeVisibility();
 }
 
 function bindComposerToggle() {
@@ -1989,15 +1768,6 @@ async function sendRunWebhook() {
   const sendWindow =
     getSendWindowFromForm();
 
-  const loaiGui =
-    getLoaiGuiFromForm();
-
-  const loiNhac =
-    getLoiNhacFromForm();
-
-  const gioHen =
-    getGioHenFromForm();
-
   if (!currentRunId) {
     currentRunId =
       (window.crypto && typeof window.crypto.randomUUID === 'function')
@@ -2028,35 +1798,10 @@ async function sendRunWebhook() {
   */
 
   formData.append('action', 'run');
-  formData.append('nguon', 'auto_tinnhan');
   formData.append('ma_nv', maNv);
 
   formData.append('run_id', currentRunId);
   formData.append('so_khach_hop_le', String(rows.length));
-
-  // conversation_id gửi trực tiếp, KHÔNG có dấu []
-  // Nếu đang có 1 khách hợp lệ thì n8n sẽ nhận ví dụ: 13546
-  const conversationId =
-    rows.find(r =>
-      r.conversation_id !== null &&
-      r.conversation_id !== undefined &&
-      String(r.conversation_id).trim() !== ''
-    )?.conversation_id ?? '';
-
-  formData.append('conversation_id', String(conversationId));
-
-  // Loại tin nhắn Chatwoot
-  formData.append('message_type', 'outgoing');
-
-  // Loại gửi: guithuong | nhachen | xoanhachen
-  formData.append('loaigui', loaiGui);
-
-  // Khi chọn "Xóa nhắc hẹn":
-  // n8n nhận body.loinhac = "xoanhachen"
-  formData.append('loinhac', loiNhac);
-
-  // Giờ hẹn: chỉ có giá trị khi loaigui = nhachen
-  formData.append('gio_hen', gioHen);
 
   formData.append('noi_dung', noiDung);
   formData.append('icon', icon);
@@ -2111,15 +1856,9 @@ async function sendRunWebhook() {
 
   const bodyDebug = {
     action: 'run',
-    nguon: 'auto_tinnhan',
     ma_nv: maNv,
     run_id: currentRunId,
     so_khach_hop_le: rows.length,
-    conversation_id: String(conversationId),
-    message_type: 'outgoing',
-    loaigui: loaiGui,
-    loinhac: loiNhac,
-    gio_hen: gioHen,
     noi_dung: noiDung,
     icon: icon,
     delay_mode: delayConfig.mode,
@@ -2333,9 +2072,6 @@ async function startRun() {
 
     const delayConfig = getDelayConfigFromForm();
     const sendWindow = getSendWindowFromForm();
-    const loaiGui = getLoaiGuiFromForm();
-    const loiNhac = getLoiNhacFromForm();
-    const gioHen = getGioHenFromForm();
 
     setStatus(
       'Đã gửi lệnh chạy ' +
@@ -2343,10 +2079,6 @@ async function startRun() {
       ' khách. ' +
       'ma_nv: ' +
       maNv +
-      ' | Loại gửi: ' +
-      loaiGui +
-      (loaiGui === 'nhachen' ? ' | Giờ hẹn: ' + gioHen : '') +
-      (loiNhac === 'xoanhachen' ? ' | loinhac: xoanhachen' : '') +
       ' | Chờ ngẫu nhiên ' +
       delayConfig.min_seconds +
       ' - ' +
@@ -2588,7 +2320,7 @@ function enableDraggableForm() {
 
 
 /* =========================================================
-   REALTIME TRẠNG THÁI + ALIAS_NAME TỪ SUPABASE
+   REALTIME TRẠNG THÁI TỪ SUPABASE
    Bảng kv_khachhang_nhanvien_guitin đã bật Realtime.
 ========================================================= */
 
@@ -2636,25 +2368,12 @@ function applyRealtimeStatus(payload) {
       return;
     }
 
-    // Cập nhật trạng thái theo Realtime
     const oldStatus = normalizeRealtimeKey(row.trang_thai);
     const newStatus = normalizeRealtimeKey(newRow.trang_thai);
 
     if (oldStatus !== newStatus) {
       row.trang_thai = newRow.trang_thai ?? '';
       changed = true;
-    }
-
-    // Cập nhật alias_name theo Realtime giống như trạng thái.
-    // Chỉ cập nhật khi payload UPDATE có trường alias_name.
-    if (Object.prototype.hasOwnProperty.call(newRow, 'alias_name')) {
-      const oldAlias = normalizeRealtimeKey(row.alias_name);
-      const newAlias = normalizeRealtimeKey(newRow.alias_name);
-
-      if (oldAlias !== newAlias) {
-        row.alias_name = newRow.alias_name ?? '';
-        changed = true;
-      }
     }
   });
 
@@ -2749,7 +2468,6 @@ window.addEventListener('beforeunload', function () {
     enableDraggableForm();
     bindComposerEvents();
     bindComposerToggle();
-    bindSendTypeEvents();
 
     sb =
       await createSupabaseClient();
