@@ -998,10 +998,9 @@ const WEBHOOK_URL =
 
 /*
   VIDEO:
-  - Video KHÔNG gửi binary 11MB trực tiếp qua webhook nữa.
-  - HTML upload video lên Supabase Storage trước.
-  - Sau đó chỉ gửi link MP4 sang n8n qua body.video_url.
-  - Bucket "video" cần tồn tại và cho phép upload/read.
+  - Video không gửi nguyên file lớn qua webhook.
+  - Upload lên Supabase Storage trước, sau đó webhook chỉ nhận video_url.
+  - Tạo bucket Public tên "video" trong Supabase Storage.
 */
 const VIDEO_BUCKET = 'video';
 
@@ -1039,10 +1038,11 @@ let isRunning = false;
 
 let currentRunId = null;
 
-// URL video sau khi upload lên Supabase Storage.
 let uploadedVideoUrl = '';
 let uploadedVideoPath = '';
-let uploadedVideoSourceSignature = '';
+let uploadedVideoSignature = '';
+let isUploadingVideo = false;
+
 
 
 /* =========================================================
@@ -2292,12 +2292,11 @@ function insertAtSavedCaret(textToInsert) {
 }
 
 
-function sanitizeFileName(fileName) {
+function sanitizeUploadFileName(fileName) {
   const raw = String(fileName || 'video.mp4').trim();
-
-  const lastDot = raw.lastIndexOf('.');
-  const base = lastDot > 0 ? raw.slice(0, lastDot) : raw;
-  const ext = lastDot > 0 ? raw.slice(lastDot + 1) : 'mp4';
+  const dot = raw.lastIndexOf('.');
+  const base = dot > 0 ? raw.slice(0, dot) : raw;
+  const ext = dot > 0 ? raw.slice(dot + 1) : 'mp4';
 
   const safeBase = base
     .normalize('NFD')
@@ -2314,7 +2313,7 @@ function sanitizeFileName(fileName) {
 }
 
 
-function getVideoFileSignature(file) {
+function getVideoSignature(file) {
   if (!file) return '';
 
   return [
@@ -2325,6 +2324,32 @@ function getVideoFileSignature(file) {
 }
 
 
+function getUploadOwnerKey() {
+  /*
+    Không bắt buộc phải query kv_nhan_vien khi upload video.
+    Ưu tiên ma_nv hiện có; nếu không có thì dùng id_nv.
+    Điều này tránh làm trang duoc_xem=true bị treo ở bước khởi tạo.
+  */
+  const currentUser = getCurrentUser();
+
+  const directMaNv =
+    String(currentUser?.ma_nv || '').trim();
+
+  if (directMaNv) {
+    return directMaNv.replace(/[^a-zA-Z0-9_-]+/g, '_');
+  }
+
+  const idNv =
+    String(getLoggedInIdNv() || '').trim();
+
+  if (idNv) {
+    return ('id_' + idNv).replace(/[^a-zA-Z0-9_-]+/g, '_');
+  }
+
+  return 'unknown';
+}
+
+
 async function uploadVideoToStorage(videoFile) {
   if (!videoFile) return '';
 
@@ -2332,125 +2357,129 @@ async function uploadVideoToStorage(videoFile) {
     throw new Error('Supabase chưa được khởi tạo.');
   }
 
-  const signature = getVideoFileSignature(videoFile);
+  const signature = getVideoSignature(videoFile);
 
-  // Cùng file đã upload rồi thì dùng lại URL, không upload lần 2.
   if (
     uploadedVideoUrl &&
-    uploadedVideoSourceSignature === signature
+    uploadedVideoSignature === signature
   ) {
     return uploadedVideoUrl;
   }
 
-  const infoEl = document.getElementById('videoFileInfo');
-
-  if (infoEl) {
-    infoEl.textContent =
-      `Đang upload ${videoFile.name} (${(videoFile.size / 1024 / 1024).toFixed(2)} MB)...`;
+  if (isUploadingVideo) {
+    throw new Error('Video đang được upload, vui lòng chờ.');
   }
 
-  const maNv =
-    String(
-      await getLoggedInMaNv() || 'unknown'
-    )
-    .trim()
-    .replace(/[^a-zA-Z0-9_-]+/g, '_');
+  isUploadingVideo = true;
 
-  const safeName = sanitizeFileName(videoFile.name);
+  const infoEl =
+    document.getElementById('videoFileInfo');
 
-  const objectPath =
-    'autozalo/' +
-    (maNv || 'unknown') +
-    '/' +
-    Date.now() +
-    '_' +
-    safeName;
+  try {
+    if (infoEl) {
+      infoEl.textContent =
+        `Đang upload ${videoFile.name} (${(videoFile.size / 1024 / 1024).toFixed(2)} MB)...`;
+    }
 
-  const {
-    data,
-    error
-  } =
-    await sb.storage
-      .from(VIDEO_BUCKET)
-      .upload(
-        objectPath,
-        videoFile,
-        {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: videoFile.type || 'video/mp4'
-        }
+    const ownerKey =
+      getUploadOwnerKey();
+
+    const safeName =
+      sanitizeUploadFileName(videoFile.name);
+
+    const objectPath =
+      'autozalo/' +
+      ownerKey +
+      '/' +
+      Date.now() +
+      '_' +
+      safeName;
+
+    const {
+      data,
+      error
+    } =
+      await sb.storage
+        .from(VIDEO_BUCKET)
+        .upload(
+          objectPath,
+          videoFile,
+          {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: videoFile.type || 'video/mp4'
+          }
+        );
+
+    if (error) {
+      throw error;
+    }
+
+    const path =
+      String(data?.path || objectPath).trim();
+
+    const publicData =
+      sb.storage
+        .from(VIDEO_BUCKET)
+        .getPublicUrl(path);
+
+    const publicUrl =
+      String(
+        publicData?.data?.publicUrl || ''
+      ).trim();
+
+    if (!publicUrl) {
+      throw new Error(
+        'Không lấy được Public URL. Kiểm tra bucket "' +
+        VIDEO_BUCKET +
+        '" đã đặt Public chưa.'
       );
+    }
 
-  if (error) {
+    uploadedVideoUrl = publicUrl;
+    uploadedVideoPath = path;
+    uploadedVideoSignature = signature;
+
+    if (infoEl) {
+      infoEl.innerHTML =
+        '<a href="' +
+        escapeHtml(publicUrl) +
+        '" target="_blank" rel="noopener noreferrer">' +
+        escapeHtml(safeName) +
+        '</a> (' +
+        (videoFile.size / 1024 / 1024).toFixed(2) +
+        ' MB) - ✅ Đã tạo link MP4';
+    }
+
+    console.log('[VIDEO UPLOAD OK]', {
+      bucket: VIDEO_BUCKET,
+      path: uploadedVideoPath,
+      video_url: uploadedVideoUrl
+    });
+
+    return uploadedVideoUrl;
+
+  } catch (err) {
     uploadedVideoUrl = '';
     uploadedVideoPath = '';
-    uploadedVideoSourceSignature = '';
+    uploadedVideoSignature = '';
 
     if (infoEl) {
       infoEl.textContent =
-        'Upload video lỗi: ' +
-        (error.message || error);
+        '❌ Upload video lỗi: ' +
+        (err?.message || err);
     }
 
     throw new Error(
-      'Không upload được video lên Supabase Storage bucket "' +
+      'Upload video lỗi. Kiểm tra Supabase Storage bucket "' +
       VIDEO_BUCKET +
-      '": ' +
-      (error.message || error)
+      '" (phải tồn tại, cho phép upload và Public). Chi tiết: ' +
+      (err?.message || err)
     );
+
+  } finally {
+    isUploadingVideo = false;
   }
-
-  const path =
-    String(
-      data?.path || objectPath
-    ).trim();
-
-  const publicResult =
-    sb.storage
-      .from(VIDEO_BUCKET)
-      .getPublicUrl(path);
-
-  const publicUrl =
-    String(
-      publicResult?.data?.publicUrl || ''
-    ).trim();
-
-  if (!publicUrl) {
-    throw new Error(
-      'Upload video thành công nhưng không lấy được Public URL. ' +
-      'Hãy kiểm tra bucket "' + VIDEO_BUCKET + '" có đang Public không.'
-    );
-  }
-
-  uploadedVideoUrl = publicUrl;
-  uploadedVideoPath = path;
-  uploadedVideoSourceSignature = signature;
-
-  if (infoEl) {
-    infoEl.innerHTML =
-      '<a href="' +
-      escapeHtml(publicUrl) +
-      '" target="_blank" rel="noopener noreferrer">' +
-      escapeHtml(safeName) +
-      '</a> (' +
-      (videoFile.size / 1024 / 1024).toFixed(2) +
-      ' MB) - Đã có link MP4';
-  }
-
-  console.log(
-    '[VIDEO STORAGE UPLOAD]',
-    {
-      bucket: VIDEO_BUCKET,
-      path: uploadedVideoPath,
-      url: uploadedVideoUrl,
-      name: videoFile.name,
-      type: videoFile.type,
-      size: videoFile.size
-    }
-  );
-
-  return uploadedVideoUrl;
 }
 
 
@@ -2575,12 +2604,11 @@ function bindComposerEvents() {
   imageFile?.addEventListener('change', function () {
     const file = this.files?.[0];
 
-    // Chọn ảnh thì bỏ video và xóa URL video đã upload khỏi phiên hiện tại.
     if (file && videoFile) {
       videoFile.value = '';
       uploadedVideoUrl = '';
       uploadedVideoPath = '';
-      uploadedVideoSourceSignature = '';
+      uploadedVideoSignature = '';
       document.getElementById('videoFileInfo').textContent = 'Chưa chọn video';
     }
 
@@ -2593,9 +2621,8 @@ function bindComposerEvents() {
 
     uploadedVideoUrl = '';
     uploadedVideoPath = '';
-    uploadedVideoSourceSignature = '';
+    uploadedVideoSignature = '';
 
-    // Chọn video thì bỏ ảnh.
     if (file && imageFile) {
       imageFile.value = '';
       document.getElementById('imageFileInfo').textContent = 'Chưa chọn ảnh';
@@ -2607,17 +2634,13 @@ function bindComposerEvents() {
     }
 
     document.getElementById('videoFileInfo').textContent =
-      `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB) - đang tạo link MP4...`;
+      `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB) - đang upload...`;
 
     try {
       await uploadVideoToStorage(file);
     } catch (err) {
       console.error('[UPLOAD VIDEO ERROR]', err);
-
-      alert(
-        'Không tạo được link MP4.\n\n' +
-        (err?.message || err)
-      );
+      alert(err?.message || err);
     }
   });
 }
@@ -2662,8 +2685,6 @@ async function sendRunWebhook() {
   const videoFile =
     document.getElementById('videoFile')?.files?.[0] || null;
 
-  // Nếu có video: bắt buộc upload Storage trước để lấy link MP4.
-  // Không đẩy binary video lớn trực tiếp qua webhook.
   let videoUrl = '';
 
   if (videoFile) {
@@ -2728,10 +2749,12 @@ async function sendRunWebhook() {
   */
   /*
     MULTIPART/FORM-DATA
-    - Ảnh: gửi binary trong $binary.data.
-    - Video: upload Supabase Storage trước, sau đó gửi body.video_url.
-    - Không convert video sang Base64.
+    - Không convert ảnh/video sang Base64.
     - Browser tự đặt Content-Type + boundary.
+    - n8n nhận file trong binary với field chung:
+        $binary.data
+      Nếu gửi đồng thời nhiều file cùng tên field "data",
+      n8n có thể đánh số field tiếp theo tùy cách Webhook parse multipart.
   */
   const formData = new FormData();
 
@@ -2799,8 +2822,6 @@ async function sendRunWebhook() {
   formData.append('noi_dung', noiDung);
   formData.append('icon', icon);
 
-  // VIDEO LINK:
-  // n8n đọc bằng $json.body.video_url
   formData.append('video_url', videoUrl);
   formData.append('has_video', videoUrl ? 'true' : 'false');
   formData.append('video_name', videoFile ? videoFile.name : '');
@@ -2846,8 +2867,8 @@ async function sendRunWebhook() {
     sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den
   );
 
-  // Ảnh vẫn gửi binary field "data".
-  // Video KHÔNG gửi binary qua webhook nữa; chỉ gửi video_url.
+  // Ảnh vẫn gửi binary như cũ.
+  // Video chỉ gửi video_url để tránh lỗi webhook khi file lớn.
   if (imageFile) {
     formData.append('data', imageFile, imageFile.name);
   }
@@ -2889,10 +2910,9 @@ async function sendRunWebhook() {
 
     data_video: videoFile
       ? {
-          mode: 'url',
-          url: videoUrl,
+          field: 'data',
           name: videoFile.name,
-          type: videoFile.type || 'video/mp4',
+          type: videoFile.type,
           size: videoFile.size
         }
       : null
@@ -3343,4 +3363,251 @@ function enableDraggableForm() {
     const maxTop = Math.max(0, window.innerHeight - 60);
 
     const left = Math.min(Math.max(0, event.clientX - offsetX), maxLeft);
-    const top = Math
+    const top = Math.min(Math.max(0, event.clientY - offsetY), maxTop);
+
+    wrap.style.left = left + 'px';
+    wrap.style.top = top + 'px';
+  });
+
+  document.addEventListener('mouseup', function () {
+    dragging = false;
+  });
+}
+
+
+/* =========================================================
+   REALTIME TRẠNG THÁI + ALIAS_NAME TỪ SUPABASE
+   Bảng kv_khachhang_nhanvien_guitin đã bật Realtime.
+========================================================= */
+
+let statusChannel = null;
+
+function normalizeRealtimeKey(value) {
+  return String(value ?? '').trim();
+}
+
+function isDoneStatus(value) {
+  const s = String(value ?? '').trim().toLowerCase();
+
+  return (
+    s === 'đã gửi xong' ||
+    s === 'da gui xong' ||
+    s === 'da_gui_xong' ||
+    s === 'hoàn thành' ||
+    s === 'hoan thanh' ||
+    s === 'hoan_thanh' ||
+    s === 'completed' ||
+    s === 'done' ||
+    s === 'success' ||
+    s === 'successful' ||
+    s === 'xong'
+  );
+}
+
+function applyRealtimeStatus(payload) {
+  console.log('[REALTIME UPDATE]', payload);
+
+  const newRow = payload?.new;
+  if (!newRow) return;
+
+  const conversationId = normalizeRealtimeKey(newRow.conversation_id);
+  const maKh = normalizeRealtimeKey(newRow.ma_kh);
+
+  let changed = false;
+
+  rows.forEach(function (row) {
+    const sameConversation =
+      conversationId &&
+      normalizeRealtimeKey(row.conversation_id) === conversationId;
+
+    const sameMaKh =
+      maKh &&
+      normalizeRealtimeKey(row.ma_kh) === maKh;
+
+    if (!sameConversation && !sameMaKh) {
+      return;
+    }
+
+    // Cập nhật trạng thái theo Realtime
+    const oldStatus = normalizeRealtimeKey(row.trang_thai);
+    const newStatus = normalizeRealtimeKey(newRow.trang_thai);
+
+    if (oldStatus !== newStatus) {
+      row.trang_thai = newRow.trang_thai ?? '';
+      changed = true;
+    }
+
+    // Cập nhật alias_name theo Realtime giống như trạng thái.
+    // Chỉ cập nhật khi payload UPDATE có trường alias_name.
+    if (Object.prototype.hasOwnProperty.call(newRow, 'alias_name')) {
+      const oldAlias = normalizeRealtimeKey(row.alias_name);
+      const newAlias = normalizeRealtimeKey(newRow.alias_name);
+
+      if (oldAlias !== newAlias) {
+        row.alias_name = newRow.alias_name ?? '';
+        changed = true;
+      }
+    }
+
+    // Cập nhật check theo Realtime.
+    // Khi n8n / Supabase đổi check true/false thì checkbox trên HTML đổi ngay.
+    if (Object.prototype.hasOwnProperty.call(newRow, 'check')) {
+      const oldCheck = row.check === true;
+      const newCheck = newRow.check === true;
+
+      if (oldCheck !== newCheck) {
+        row.check = newCheck;
+        changed = true;
+      }
+    }
+  });
+
+  if (changed) {
+    renderTable();
+  }
+
+  const doneCount = rows.filter(function (row) {
+    return isDoneStatus(row.trang_thai);
+  }).length;
+
+  if (doneCount > 0) {
+    setStatus(
+      'Đã gửi xong ' +
+      doneCount +
+      '/' +
+      rows.length +
+      ' khách.'
+    );
+  }
+
+  if (rows.length > 0 && doneCount === rows.length) {
+    isRunning = false;
+
+    const btnRun = document.getElementById('btnRun');
+    const btnStop = document.getElementById('btnStop');
+
+    setRunButtonRunning(false);
+    if (btnStop) btnStop.disabled = true;
+
+    setStatus('✅ Đã gửi xong ' + rows.length + '/' + rows.length + ' khách.');
+  }
+}
+
+function subscribeTrangThaiRealtime() {
+  if (!sb) return;
+
+  if (statusChannel) {
+    try {
+      sb.removeChannel(statusChannel);
+    } catch (e) {
+      console.warn('[REALTIME REMOVE CHANNEL]', e);
+    }
+    statusChannel = null;
+  }
+
+  statusChannel = sb
+    .channel('guitin_trang_thai_' + Date.now())
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: TABLE_NAME
+      },
+      applyRealtimeStatus
+    )
+    .subscribe(function (status, err) {
+      console.log('[REALTIME SUBSCRIBE]', status, err || '');
+
+      if (status === 'SUBSCRIBED') {
+        console.log('✅ Đã kết nối Realtime:', TABLE_NAME);
+      }
+
+      if (
+        status === 'CHANNEL_ERROR' ||
+        status === 'TIMED_OUT'
+      ) {
+        console.error('❌ Realtime lỗi:', status, err || '');
+        setStatus('Lỗi kết nối Realtime: ' + status);
+      }
+    });
+}
+
+window.addEventListener('beforeunload', function () {
+  if (statusChannel && sb) {
+    try {
+      sb.removeChannel(statusChannel);
+    } catch (e) {}
+  }
+});
+
+
+/* =========================================================
+   KHỞI TẠO
+========================================================= */
+
+(async () => {
+
+  try {
+
+    enableDraggableForm();
+    bindComposerEvents();
+    bindComposerToggle();
+    bindSendTypeEvents();
+
+    sb =
+      await createSupabaseClient();
+
+
+    /*
+      QUAN TRỌNG:
+      duoc_xem=true được phép load toàn bộ danh sách,
+      không bắt buộc phải tra ma_nv trước khi load.
+      Tránh trang bị kẹt ở "Đang khởi tạo...".
+    */
+    if (!getDuocXemFromUrl()) {
+      const maNv =
+        await getLoggedInMaNv();
+
+      console.log(
+        '[NHÂN VIÊN ĐĂNG NHẬP]',
+        maNv
+      );
+    } else {
+      console.log(
+        '[NHÂN VIÊN ĐĂNG NHẬP]',
+        'duoc_xem=true - bỏ qua bước bắt buộc tra ma_nv khi khởi tạo'
+      );
+    }
+
+
+    await loadData();
+
+    subscribeTrangThaiRealtime();
+
+  }
+
+  catch (err) {
+
+    console.error(
+      '[INIT ERROR]',
+      err
+    );
+
+
+    setStatus(
+      'Lỗi khởi tạo: ' +
+      (
+        err.message ||
+        err
+      )
+    );
+
+  }
+
+})();
+
+</script>
+
+</body>
+</html>
