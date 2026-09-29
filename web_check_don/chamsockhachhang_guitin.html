@@ -692,6 +692,7 @@
 
     <div class="actions">
       <button
+        type="button"
         id="btnReload"
         class="btn-reload"
       >
@@ -699,6 +700,7 @@
       </button>
 
       <button
+        type="button"
         id="btnRun"
         class="btn-run"
       >
@@ -706,6 +708,7 @@
       </button>
 
       <button
+        type="button"
         id="btnStop"
         class="btn-stop"
         disabled
@@ -997,11 +1000,11 @@ const WEBHOOK_URL =
   'https://n8n.clawbot.io.vn/webhook/guitin_autozalo';
 
 /*
-  Media gửi trực tiếp vào chính webhook này:
-  - video => binary.video
-  - ảnh   => binary.file_anh
-  - không dùng upload-drive riêng
-  - không Base64
+  VIDEO:
+  - Chọn video bằng input #videoFile như hiện tại.
+  - Khi bấm Chạy, gửi chính file video sang WEBHOOK_URL bằng multipart/form-data.
+  - Field video tên "video" => n8n nhận ở binary.video.
+  - Không Base64.
 */
 
 
@@ -2523,6 +2526,7 @@ async function sendRunWebhook() {
       : loaiGui;
 
   const payload = {
+
     run_id:
       currentRunId,
 
@@ -2604,14 +2608,17 @@ async function sendRunWebhook() {
   };
 
   /*
-    Gửi TẤT CẢ vào đúng webhook:
-    https://n8n.clawbot.io.vn/webhook/guitin_autozalo
+    QUAN TRỌNG:
+    Gửi webhook bằng multipart/form-data.
 
-    - video -> binary.video
-    - ảnh   -> binary.file_anh
-    - payload -> body.payload (chuỗi JSON)
-    - KHÔNG Base64
-    - KHÔNG tự set Content-Type
+    n8n nhận:
+      body.action
+      body.nguon
+      body.ma_nv
+      body.payload
+
+      binary.video     -> nếu có video
+      binary.file_anh  -> nếu có ảnh
   */
   const formData =
     new FormData();
@@ -2645,6 +2652,8 @@ async function sendRunWebhook() {
   }
 
   if (videoFile) {
+    // Đúng kiểu upload-drive đang nhận được:
+    // n8n sẽ thấy ở binary.video
     formData.append(
       'video',
       videoFile,
@@ -2659,18 +2668,18 @@ async function sendRunWebhook() {
       nguon: 'auto_tinnhan',
       ma_nv: maNv,
       payload,
-      image: imageFile
-        ? {
-            name: imageFile.name,
-            type: imageFile.type,
-            size: imageFile.size
-          }
-        : null,
       video: videoFile
         ? {
             name: videoFile.name,
             type: videoFile.type,
             size: videoFile.size
+          }
+        : null,
+      file_anh: imageFile
+        ? {
+            name: imageFile.name,
+            type: imageFile.type,
+            size: imageFile.size
           }
         : null
     }
@@ -2713,10 +2722,8 @@ async function sendRunWebhook() {
   }
 
   return {
-    ok:
-      true,
-    status:
-      response.status,
+    ok: true,
+    status: response.status,
     responseText
   };
 }
@@ -3308,25 +3315,4 @@ window.addEventListener('beforeunload', function () {
 
   catch (err) {
 
-    console.error(
-      '[INIT ERROR]',
-      err
-    );
-
-
-    setStatus(
-      'Lỗi khởi tạo: ' +
-      (
-        err.message ||
-        err
-      )
-    );
-
-  }
-
-})();
-
-</script>
-
-</body>
-</html>
+    console.err
