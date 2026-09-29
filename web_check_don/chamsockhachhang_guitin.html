@@ -999,14 +999,6 @@ const TABLE_NHAN_VIEN =
 const WEBHOOK_URL =
   'https://n8n.clawbot.io.vn/webhook/guitin_autozalo';
 
-/*
-  VIDEO:
-  - Chọn video bằng input #videoFile như hiện tại.
-  - Khi bấm Chạy, gửi chính file video sang WEBHOOK_URL bằng multipart/form-data.
-  - Field video tên "video" => n8n nhận ở binary.video.
-  - Không Base64.
-*/
-
 
 /*
   Thời gian chờ gửi tin.
@@ -2525,13 +2517,23 @@ async function sendRunWebhook() {
       ? loaiGuiWebhook
       : loaiGui;
 
+  /*
+    Payload nghiệp vụ vẫn giữ nguyên cấu trúc.
+    Riêng file ảnh/video KHÔNG nhét Base64 vào JSON nữa.
+
+    Webhook n8n sẽ nhận:
+      body.action
+      body.nguon
+      body.ma_nv
+      body.payload       -> chuỗi JSON, parse lại ở n8n
+      binary.file_anh    -> nếu có ảnh
+      binary.video       -> nếu có video
+  */
   const payload = {
 
-    run_id:
-      currentRunId,
+    run_id: currentRunId,
 
-    so_khach_hop_le:
-      rows.length,
+    so_khach_hop_le: rows.length,
 
     conversation_id:
       String(conversationId),
@@ -2560,6 +2562,7 @@ async function sendRunWebhook() {
     icon:
       icon,
 
+    // Chỉ gửi metadata file trong JSON, không gửi Base64.
     file_anh:
       imageFile
         ? {
@@ -2608,17 +2611,9 @@ async function sendRunWebhook() {
   };
 
   /*
-    QUAN TRỌNG:
-    Gửi webhook bằng multipart/form-data.
-
-    n8n nhận:
-      body.action
-      body.nguon
-      body.ma_nv
-      body.payload
-
-      binary.video     -> nếu có video
-      binary.file_anh  -> nếu có ảnh
+    Gửi multipart/form-data.
+    QUAN TRỌNG: KHÔNG tự đặt Content-Type.
+    Trình duyệt sẽ tự tạo multipart boundary.
   */
   const formData =
     new FormData();
@@ -2643,6 +2638,7 @@ async function sendRunWebhook() {
     JSON.stringify(payload)
   );
 
+  // File binary thật, không Base64.
   if (imageFile) {
     formData.append(
       'file_anh',
@@ -2652,8 +2648,8 @@ async function sendRunWebhook() {
   }
 
   if (videoFile) {
-    // Đúng kiểu upload-drive đang nhận được:
-    // n8n sẽ thấy ở binary.video
+    // Gửi file video thật đúng kiểu webhook upload-drive đang nhận tốt.
+    // n8n sẽ nhận tại: binary.video
     formData.append(
       'video',
       videoFile,
@@ -2668,18 +2664,18 @@ async function sendRunWebhook() {
       nguon: 'auto_tinnhan',
       ma_nv: maNv,
       payload,
-      video: videoFile
-        ? {
-            name: videoFile.name,
-            type: videoFile.type,
-            size: videoFile.size
-          }
-        : null,
       file_anh: imageFile
         ? {
             name: imageFile.name,
             type: imageFile.type,
             size: imageFile.size
+          }
+        : null,
+      video: videoFile
+        ? {
+            name: videoFile.name,
+            type: videoFile.type,
+            size: videoFile.size
           }
         : null
     }
@@ -2689,10 +2685,8 @@ async function sendRunWebhook() {
     await fetch(
       WEBHOOK_URL,
       {
-        method:
-          'POST',
-        body:
-          formData
+        method: 'POST',
+        body: formData
       }
     );
 
@@ -3315,4 +3309,25 @@ window.addEventListener('beforeunload', function () {
 
   catch (err) {
 
-    console.err
+    console.error(
+      '[INIT ERROR]',
+      err
+    );
+
+
+    setStatus(
+      'Lỗi khởi tạo: ' +
+      (
+        err.message ||
+        err
+      )
+    );
+
+  }
+
+})();
+
+</script>
+
+</body>
+</html>
