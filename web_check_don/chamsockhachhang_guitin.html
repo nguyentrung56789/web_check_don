@@ -672,118 +672,6 @@
       }
     }
 
-
-    /* ===================== UPLOAD VIDEO GOOGLE DRIVE ===================== */
-    .drive-upload-modal {
-      position: fixed;
-      inset: 0;
-      z-index: 20000;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: rgba(15, 23, 42, .55);
-    }
-
-    .drive-upload-modal.show {
-      display: flex;
-    }
-
-    .drive-upload-dialog {
-      width: 520px;
-      max-width: 100%;
-      background: #fff;
-      border-radius: 14px;
-      box-shadow: 0 20px 60px rgba(15, 23, 42, .28);
-      overflow: hidden;
-    }
-
-    .drive-upload-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 15px 17px;
-      border-bottom: 1px solid #e8edf3;
-    }
-
-    .drive-upload-head h3 {
-      margin: 0;
-      font-size: 17px;
-    }
-
-    .drive-close-btn {
-      width: 34px;
-      height: 34px;
-      padding: 0;
-      border-radius: 50%;
-      background: #f1f5f9;
-      color: #475569;
-      font-size: 20px;
-      line-height: 1;
-    }
-
-    .drive-upload-body {
-      padding: 17px;
-    }
-
-    .drive-file-picker {
-      display: block;
-      width: 100%;
-      padding: 14px;
-      border: 1px dashed #94a3b8;
-      border-radius: 10px;
-      background: #f8fafc;
-      cursor: pointer;
-      text-align: center;
-      font-weight: 700;
-    }
-
-    .drive-file-picker:hover {
-      background: #f1f5f9;
-    }
-
-    .drive-upload-progress {
-      width: 100%;
-      height: 16px;
-      margin-top: 15px;
-    }
-
-    .drive-upload-status {
-      margin-top: 10px;
-      min-height: 20px;
-      font-size: 13px;
-      color: #475569;
-      word-break: break-word;
-    }
-
-    .drive-upload-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-top: 15px;
-    }
-
-    .drive-btn-upload {
-      background: #2563eb;
-      color: #fff;
-    }
-
-    .drive-btn-cancel {
-      background: #e8edf5;
-      color: #172033;
-    }
-
-    .drive-uploaded-ok {
-      color: #15803d;
-      font-weight: 700;
-    }
-
-    .drive-uploaded-error {
-      color: #dc2626;
-      font-weight: 700;
-    }
-
   </style>
 </head>
 
@@ -996,14 +884,10 @@
               <input id="imageFile" type="file" accept="image/*" hidden />
             </label>
 
-            <button
-              type="button"
-              id="btnOpenDriveUpload"
-              class="toolbar-btn file-toolbar-btn"
-              title="Chọn video và upload lên Google Drive"
-            >
-              🎬 Video Drive
-            </button>
+            <label class="toolbar-btn file-toolbar-btn" title="Chọn video">
+              🎬 Video
+              <input id="videoFile" type="file" accept="video/*" hidden />
+            </label>
           </div>
         </div>
 
@@ -1055,47 +939,6 @@
 
         <div class="send-window-note">
           Chỉ gửi trong khung giờ này. Ngoài giờ n8n có thể Wait tới giờ bắt đầu.
-        </div>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- ===================== HỘP THOẠI UPLOAD VIDEO LÊN GOOGLE DRIVE ===================== -->
-  <div id="driveUploadModal" class="drive-upload-modal" aria-hidden="true">
-    <div class="drive-upload-dialog" role="dialog" aria-modal="true" aria-labelledby="driveUploadTitle">
-      <div class="drive-upload-head">
-        <h3 id="driveUploadTitle">Upload video lên Google Drive</h3>
-        <button type="button" id="btnCloseDriveUpload" class="drive-close-btn" title="Đóng">×</button>
-      </div>
-
-      <div class="drive-upload-body">
-        <label class="drive-file-picker">
-          Chọn video từ máy tính
-          <input id="videoFile" type="file" accept="video/*" hidden />
-        </label>
-
-        <div id="driveSelectedFile" class="file-info">Chưa chọn video</div>
-
-        <progress
-          id="driveUploadProgress"
-          class="drive-upload-progress"
-          value="0"
-          max="100"
-        ></progress>
-
-        <div id="driveUploadStatus" class="drive-upload-status">
-          Chọn video rồi bấm “Upload lên Drive”.
-        </div>
-
-        <div class="drive-upload-actions">
-          <button type="button" id="btnCancelDriveUpload" class="drive-btn-cancel">
-            Đóng
-          </button>
-
-          <button type="button" id="btnUploadDrive" class="drive-btn-upload">
-            Upload lên Drive
-          </button>
         </div>
       </div>
     </div>
@@ -1153,11 +996,16 @@ const TABLE_NHAN_VIEN =
 const WEBHOOK_URL =
   'https://n8n.clawbot.io.vn/webhook/guitin_autozalo';
 
-// Webhook riêng: chỉ nhận file video và upload lên Google Drive.
-// Workflow n8n của webhook này cần trả JSON có ít nhất id/file_id,
-// và nếu có thì trả thêm url/webViewLink/webContentLink.
-const DRIVE_UPLOAD_WEBHOOK_URL =
-  'https://n8n.clawbot.io.vn/webhook/upload-drive';
+/*
+  MEDIA:
+  - Không dùng webhook upload-drive riêng.
+  - Ảnh/video được gửi thẳng vào chính webhook guitin_autozalo bằng multipart/form-data.
+  - n8n nhận:
+      binary.file_anh
+      binary.file_video
+  - Với video, đặt Google Drive Upload ngay sau Webhook/nhánh video để upload ngay.
+  - Không dùng Base64.
+*/
 
 
 /*
@@ -1192,10 +1040,6 @@ let rows = [];
 let isRunning = false;
 
 let currentRunId = null;
-
-// Video sau khi upload Drive thành công.
-// Khi chọn video mới biến này sẽ được reset.
-let uploadedDriveVideo = null;
 
 
 /* =========================================================
@@ -2319,17 +2163,6 @@ function validateRunForm() {
     throw new Error(message);
   }
 
-  const selectedVideoFile =
-    document.getElementById('videoFile')?.files?.[0] || null;
-
-  if (selectedVideoFile && !uploadedDriveVideo) {
-    const message =
-      'Video đã chọn nhưng chưa upload lên Google Drive. Hãy bấm “🎬 Video Drive” và Upload lên Drive trước.';
-
-    alert(message);
-    throw new Error(message);
-  }
-
   // Nếu là Nhắc hẹn thì tiếp tục bắt buộc phải có giờ hẹn.
   // getGioHenFromForm() sẽ tự báo lỗi nếu chưa chọn.
   if (loaiGui === 'nhachen') {
@@ -2585,15 +2418,7 @@ function bindComposerEvents() {
     // Chọn ảnh thì bỏ video.
     if (file && videoFile) {
       videoFile.value = '';
-      uploadedDriveVideo = null;
       document.getElementById('videoFileInfo').textContent = 'Chưa chọn video';
-
-      const driveSelectedFile =
-        document.getElementById('driveSelectedFile');
-
-      if (driveSelectedFile) {
-        driveSelectedFile.textContent = 'Chưa chọn video';
-      }
     }
 
     document.getElementById('imageFileInfo').textContent =
@@ -2603,9 +2428,6 @@ function bindComposerEvents() {
   videoFile?.addEventListener('change', function () {
     const file = this.files?.[0];
 
-    // Chọn video mới => hủy thông tin video Drive cũ.
-    uploadedDriveVideo = null;
-
     // Chỉ cho chọn 1 loại media tại một thời điểm.
     // Chọn video thì bỏ ảnh.
     if (file && imageFile) {
@@ -2613,371 +2435,8 @@ function bindComposerEvents() {
       document.getElementById('imageFileInfo').textContent = 'Chưa chọn ảnh';
     }
 
-    const text = file
-      ? `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`
-      : 'Chưa chọn video';
-
-    document.getElementById('videoFileInfo').textContent = text;
-
-    const driveSelectedFile =
-      document.getElementById('driveSelectedFile');
-
-    if (driveSelectedFile) {
-      driveSelectedFile.textContent = text;
-    }
-
-    const progress =
-      document.getElementById('driveUploadProgress');
-
-    if (progress) {
-      progress.value = 0;
-    }
-
-    const status =
-      document.getElementById('driveUploadStatus');
-
-    if (status) {
-      status.className = 'drive-upload-status';
-      status.textContent = file
-        ? 'Đã chọn video. Bấm “Upload lên Drive”.'
-        : 'Chọn video rồi bấm “Upload lên Drive”.';
-    }
-  });
-
-  bindDriveUploadDialog();
-}
-
-
-/* =========================================================
-   HỘP THOẠI UPLOAD VIDEO LÊN GOOGLE DRIVE
-========================================================= */
-
-function getDriveUploadResult(raw) {
-  let data = raw;
-
-  // n8n đôi khi Respond to Webhook trả dạng mảng 1 phần tử.
-  if (Array.isArray(data)) {
-    data = data[0] || {};
-  }
-
-  // Cho phép response lồng trong data/result.
-  if (data && typeof data === 'object') {
-    if (data.data && typeof data.data === 'object') {
-      data = {
-        ...data,
-        ...data.data
-      };
-    }
-
-    if (data.result && typeof data.result === 'object') {
-      data = {
-        ...data,
-        ...data.result
-      };
-    }
-  }
-
-  const fileId =
-    String(
-      data?.file_id ||
-      data?.fileId ||
-      data?.id ||
-      ''
-    ).trim();
-
-  const url =
-    String(
-      data?.url ||
-      data?.webViewLink ||
-      data?.webContentLink ||
-      data?.download_url ||
-      ''
-    ).trim();
-
-  const name =
-    String(
-      data?.name ||
-      data?.file_name ||
-      data?.fileName ||
-      ''
-    ).trim();
-
-  return {
-    file_id: fileId,
-    url,
-    name,
-    raw: data
-  };
-}
-
-
-function uploadVideoToDrive(file) {
-  return new Promise((resolve, reject) => {
-
-    if (!file) {
-      reject(new Error('Chưa chọn video.'));
-      return;
-    }
-
-    const progress =
-      document.getElementById('driveUploadProgress');
-
-    const status =
-      document.getElementById('driveUploadStatus');
-
-    const btnUpload =
-      document.getElementById('btnUploadDrive');
-
-    const formData =
-      new FormData();
-
-    // Binary field n8n nhận là: video
-    formData.append(
-      'video',
-      file,
-      file.name
-    );
-
-    formData.append(
-      'file_name',
-      file.name
-    );
-
-    formData.append(
-      'mime_type',
-      file.type || 'video/mp4'
-    );
-
-    const xhr =
-      new XMLHttpRequest();
-
-    xhr.open(
-      'POST',
-      DRIVE_UPLOAD_WEBHOOK_URL,
-      true
-    );
-
-    if (btnUpload) {
-      btnUpload.disabled = true;
-      btnUpload.textContent = 'Đang upload...';
-    }
-
-    if (progress) {
-      progress.value = 0;
-    }
-
-    if (status) {
-      status.className = 'drive-upload-status';
-      status.textContent = 'Đang upload video lên Google Drive...';
-    }
-
-    xhr.upload.onprogress = function (event) {
-      if (!event.lengthComputable) return;
-
-      const percent =
-        Math.round(
-          (event.loaded / event.total) * 100
-        );
-
-      if (progress) {
-        progress.value = percent;
-      }
-
-      if (status) {
-        status.textContent =
-          `Đang upload lên Drive: ${percent}%`;
-      }
-    };
-
-    xhr.onload = function () {
-      if (btnUpload) {
-        btnUpload.disabled = false;
-        btnUpload.textContent = 'Upload lên Drive';
-      }
-
-      if (xhr.status < 200 || xhr.status >= 300) {
-        const message =
-          'Upload Drive lỗi HTTP ' +
-          xhr.status +
-          (xhr.responseText ? ': ' + xhr.responseText : '');
-
-        if (status) {
-          status.className =
-            'drive-upload-status drive-uploaded-error';
-          status.textContent = message;
-        }
-
-        reject(new Error(message));
-        return;
-      }
-
-      let raw = {};
-
-      try {
-        raw =
-          xhr.responseText
-            ? JSON.parse(xhr.responseText)
-            : {};
-      } catch (e) {
-        const message =
-          'Webhook upload-drive không trả JSON hợp lệ: ' +
-          xhr.responseText;
-
-        if (status) {
-          status.className =
-            'drive-upload-status drive-uploaded-error';
-          status.textContent = message;
-        }
-
-        reject(new Error(message));
-        return;
-      }
-
-      const result =
-        getDriveUploadResult(raw);
-
-      if (!result.file_id && !result.url) {
-        const message =
-          'Upload đã chạy nhưng webhook chưa trả file_id/id hoặc url của Google Drive.';
-
-        if (status) {
-          status.className =
-            'drive-upload-status drive-uploaded-error';
-          status.textContent = message;
-        }
-
-        reject(new Error(message));
-        return;
-      }
-
-      uploadedDriveVideo = {
-        name:
-          result.name || file.name,
-        type:
-          file.type || 'video/mp4',
-        size:
-          file.size,
-        file_id:
-          result.file_id,
-        url:
-          result.url
-      };
-
-      if (progress) {
-        progress.value = 100;
-      }
-
-      if (status) {
-        status.className =
-          'drive-upload-status drive-uploaded-ok';
-
-        status.textContent =
-          '✓ Upload Drive thành công' +
-          (uploadedDriveVideo.file_id
-            ? ' | ID: ' + uploadedDriveVideo.file_id
-            : '');
-      }
-
-      const info =
-        document.getElementById('videoFileInfo');
-
-      if (info) {
-        info.textContent =
-          '✓ Drive: ' +
-          uploadedDriveVideo.name +
-          ' (' +
-          (uploadedDriveVideo.size / 1024 / 1024).toFixed(2) +
-          ' MB)';
-      }
-
-      resolve(uploadedDriveVideo);
-    };
-
-    xhr.onerror = function () {
-      if (btnUpload) {
-        btnUpload.disabled = false;
-        btnUpload.textContent = 'Upload lên Drive';
-      }
-
-      const message =
-        'Không kết nối được webhook upload Drive.';
-
-      if (status) {
-        status.className =
-          'drive-upload-status drive-uploaded-error';
-        status.textContent = message;
-      }
-
-      reject(new Error(message));
-    };
-
-    xhr.send(formData);
-  });
-}
-
-
-function bindDriveUploadDialog() {
-  const modal =
-    document.getElementById('driveUploadModal');
-
-  const btnOpen =
-    document.getElementById('btnOpenDriveUpload');
-
-  const btnClose =
-    document.getElementById('btnCloseDriveUpload');
-
-  const btnCancel =
-    document.getElementById('btnCancelDriveUpload');
-
-  const btnUpload =
-    document.getElementById('btnUploadDrive');
-
-  const videoFile =
-    document.getElementById('videoFile');
-
-  if (!modal || !btnOpen) return;
-
-  function openModal() {
-    modal.classList.add('show');
-    modal.setAttribute('aria-hidden', 'false');
-  }
-
-  function closeModal() {
-    modal.classList.remove('show');
-    modal.setAttribute('aria-hidden', 'true');
-  }
-
-  btnOpen.addEventListener('click', function () {
-    openModal();
-  });
-
-  btnClose?.addEventListener('click', closeModal);
-  btnCancel?.addEventListener('click', closeModal);
-
-  modal.addEventListener('click', function (event) {
-    if (event.target === modal) {
-      closeModal();
-    }
-  });
-
-  btnUpload?.addEventListener('click', async function () {
-    const file =
-      videoFile?.files?.[0] || null;
-
-    if (!file) {
-      alert('Anh chưa chọn video.');
-      videoFile?.click();
-      return;
-    }
-
-    try {
-      await uploadVideoToDrive(file);
-    } catch (err) {
-      console.error(
-        '[UPLOAD DRIVE ERROR]',
-        err
-      );
-    }
+    document.getElementById('videoFileInfo').textContent =
+      file ? `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)` : 'Chưa chọn video';
   });
 }
 
@@ -3010,18 +2469,8 @@ async function sendRunWebhook() {
   const imageFile =
     document.getElementById('imageFile')?.files?.[0] || null;
 
-  const selectedVideoFile =
+  const videoFile =
     document.getElementById('videoFile')?.files?.[0] || null;
-
-  // Có chọn video nhưng chưa upload Drive => không cho Chạy.
-  if (
-    selectedVideoFile &&
-    !uploadedDriveVideo
-  ) {
-    throw new Error(
-      'Video đã chọn nhưng chưa upload lên Google Drive. Bấm “🎬 Video Drive” → “Upload lên Drive” trước.'
-    );
-  }
 
   const delayConfig =
     getDelayConfigFromForm();
@@ -3039,7 +2488,7 @@ async function sendRunWebhook() {
     getGioHenFromForm();
 
   const loaiGuiWebhook =
-    uploadedDriveVideo
+    videoFile
       ? 'video'
       : imageFile
         ? 'image'
@@ -3076,13 +2525,23 @@ async function sendRunWebhook() {
       ? loaiGuiWebhook
       : loaiGui;
 
+  /*
+    Payload nghiệp vụ vẫn giữ nguyên cấu trúc.
+    Riêng file ảnh/video KHÔNG nhét Base64 vào JSON nữa.
+
+    Webhook n8n sẽ nhận:
+      body.action
+      body.nguon
+      body.ma_nv
+      body.payload       -> chuỗi JSON, parse lại ở n8n
+      binary.file_anh    -> nếu có ảnh
+      binary.file_video  -> nếu có video
+  */
   const payload = {
 
-    run_id:
-      currentRunId,
+    run_id: currentRunId,
 
-    so_khach_hop_le:
-      rows.length,
+    so_khach_hop_le: rows.length,
 
     conversation_id:
       String(conversationId),
@@ -3111,36 +2570,22 @@ async function sendRunWebhook() {
     icon:
       icon,
 
-    // Ảnh vẫn gửi file thật nếu có.
+    // Chỉ gửi metadata file trong JSON, không gửi Base64.
     file_anh:
       imageFile
         ? {
-            name:
-              imageFile.name,
-            type:
-              imageFile.type || 'image/jpeg',
-            size:
-              imageFile.size
+            name: imageFile.name,
+            type: imageFile.type || 'image/jpeg',
+            size: imageFile.size
           }
         : null,
 
-    /*
-      Video KHÔNG gửi binary và KHÔNG Base64 vào webhook chính.
-      Chỉ gửi thông tin file đã nằm trên Google Drive.
-    */
     file_video:
-      uploadedDriveVideo
+      videoFile
         ? {
-            name:
-              uploadedDriveVideo.name,
-            type:
-              uploadedDriveVideo.type,
-            size:
-              uploadedDriveVideo.size,
-            file_id:
-              uploadedDriveVideo.file_id || '',
-            url:
-              uploadedDriveVideo.url || ''
+            name: videoFile.name,
+            type: videoFile.type || 'video/mp4',
+            size: videoFile.size
           }
         : null,
 
@@ -3148,7 +2593,7 @@ async function sendRunWebhook() {
       !!imageFile,
 
     has_video:
-      !!uploadedDriveVideo,
+      !!videoFile,
 
     thoi_gian_cho: {
       mode:
@@ -3174,91 +2619,81 @@ async function sendRunWebhook() {
   };
 
   /*
-    Nếu có ảnh: gửi multipart để giữ tương thích luồng ảnh hiện tại.
-    Nếu không có ảnh (text/video Drive): gửi JSON nhẹ.
+    Gửi multipart/form-data.
+    QUAN TRỌNG: KHÔNG tự đặt Content-Type.
+    Trình duyệt sẽ tự tạo multipart boundary.
   */
-  let fetchOptions;
+  const formData =
+    new FormData();
 
+  formData.append(
+    'action',
+    'run'
+  );
+
+  formData.append(
+    'nguon',
+    'auto_tinnhan'
+  );
+
+  formData.append(
+    'ma_nv',
+    maNv
+  );
+
+  formData.append(
+    'payload',
+    JSON.stringify(payload)
+  );
+
+  // File binary thật, không Base64.
   if (imageFile) {
-
-    const formData =
-      new FormData();
-
-    formData.append(
-      'action',
-      'run'
-    );
-
-    formData.append(
-      'nguon',
-      'auto_tinnhan'
-    );
-
-    formData.append(
-      'ma_nv',
-      maNv
-    );
-
-    formData.append(
-      'payload',
-      JSON.stringify(payload)
-    );
-
     formData.append(
       'file_anh',
       imageFile,
       imageFile.name
     );
+  }
 
-    fetchOptions = {
-      method: 'POST',
-      body: formData
-    };
-
-  } else {
-
-    const body = {
-      action:
-        'run',
-
-      nguon:
-        'auto_tinnhan',
-
-      ma_nv:
-        maNv,
-
-      payload
-    };
-
-    fetchOptions = {
-      method:
-        'POST',
-
-      headers: {
-        'Content-Type':
-          'application/json'
-      },
-
-      body:
-        JSON.stringify(body)
-    };
+  if (videoFile) {
+    formData.append(
+      'file_video',
+      videoFile,
+      videoFile.name
+    );
   }
 
   console.log(
-    '[GUITIN_AUTOZALO] SEND:',
+    '[GUITIN_AUTOZALO] MULTIPART:',
     {
+      action: 'run',
+      nguon: 'auto_tinnhan',
+      ma_nv: maNv,
       payload,
-      video_drive:
-        uploadedDriveVideo,
-      image_binary:
-        !!imageFile
+      file_anh: imageFile
+        ? {
+            name: imageFile.name,
+            type: imageFile.type,
+            size: imageFile.size
+          }
+        : null,
+      file_video: videoFile
+        ? {
+            name: videoFile.name,
+            type: videoFile.type,
+            size: videoFile.size
+          }
+        : null
     }
   );
 
   const response =
     await fetch(
       WEBHOOK_URL,
-      fetchOptions
+      {
+        method: 'POST',
+        body: formData
+      }
     );
 
   let responseText = '';
