@@ -2535,16 +2535,15 @@ async function sendRunWebhook() {
     Tất cả field được gửi thẳng vào body webhook.
   */
 
-  formData.append('action', 'run');
-  formData.append('nguon', 'auto_tinnhan');
-  // ma_nv dùng giá trị tương thích luồng cũ từ getLoggedInMaNv()
-  formData.append('ma_nv', maNv);
+  /*
+    TƯƠNG THÍCH VIDEO CŨ:
+    - Nếu Gửi thường + có video: gửi đúng bộ field của bản cũ từng chạy ổn.
+    - Các chế độ khác vẫn giữ đầy đủ field mới.
+  */
+  const isOldVideoMode =
+    loaiGui === 'guithuong' && !!videoFile;
 
-  formData.append('run_id', currentRunId);
-  formData.append('so_khach_hop_le', String(rows.length));
-
-  // conversation_id gửi trực tiếp, KHÔNG có dấu []
-  // Nếu đang có 1 khách hợp lệ thì n8n sẽ nhận ví dụ: 13546
+  // conversation_id vẫn tính sẵn để dùng cho chế độ mới / debug
   const conversationId =
     rows.find(r =>
       r.conversation_id !== null &&
@@ -2552,54 +2551,35 @@ async function sendRunWebhook() {
       String(r.conversation_id).trim() !== ''
     )?.conversation_id ?? '';
 
-  formData.append('conversation_id', String(conversationId));
-
-  // ID nhắc hẹn - dùng tên cột mới reminderid
   const reminderid =
     rows.find(r =>
       String(r.conversation_id ?? '').trim() === String(conversationId ?? '').trim()
     )?.reminderid ?? '';
 
-  formData.append('reminderid', String(reminderid));
-
-  // Loại tin nhắn Chatwoot
-  formData.append('message_type', 'outgoing');
-
-  // LOẠI GỬI WEBHOOK:
-  // - Gửi thường:
-  //     + có video  => video
-  //     + có ảnh    => image
-  //     + không media => text
-  // - Nhắc hẹn         => nhachen
-  // - Xóa nhắc hẹn     => xoanhachen
-  // - Thông báo công nợ => thongbaocongno
   const loaiGuiGuiWebhook =
     loaiGui === 'guithuong'
       ? loaiGuiWebhook
       : loaiGui;
 
-  formData.append('loaigui', loaiGuiGuiWebhook);
-
-  // Chế độ nghiệp vụ:
-  // guithuong | nhachen | xoanhachen | thongbaocongno
-  formData.append('che_do_gui', loaiGui);
-
-  // Khi chọn "Xóa nhắc hẹn":
-  // n8n nhận body.loinhac = "xoanhachen"
-  formData.append('loinhac', loiNhac);
-
-  // Giờ hẹn: chỉ có giá trị khi che_do_gui = nhachen
-  formData.append('gio_hen', gioHen);
-
+  // Các field chung đúng theo bản cũ
+  formData.append('action', 'run');
+  formData.append('ma_nv', maNv);
+  formData.append('run_id', currentRunId);
+  formData.append('so_khach_hop_le', String(rows.length));
   formData.append('noi_dung', noiDung);
   formData.append('icon', icon);
 
-  // Metadata media để n8n dễ kiểm tra.
-  formData.append('has_video', videoFile ? 'true' : 'false');
-  formData.append('has_image', imageFile ? 'true' : 'false');
-  formData.append('video_name', videoFile ? videoFile.name : '');
-  formData.append('video_mime', videoFile ? (videoFile.type || 'video/mp4') : '');
-  formData.append('video_size', videoFile ? String(videoFile.size || 0) : '0');
+  // Khi KHÔNG phải video gửi thường thì giữ toàn bộ field mới
+  if (!isOldVideoMode) {
+    formData.append('nguon', 'auto_tinnhan');
+    formData.append('conversation_id', String(conversationId));
+    formData.append('reminderid', String(reminderid));
+    formData.append('message_type', 'outgoing');
+    formData.append('loaigui', loaiGuiGuiWebhook);
+    formData.append('che_do_gui', loaiGui);
+    formData.append('loinhac', loiNhac);
+    formData.append('gio_hen', gioHen);
+  }
 
   formData.append(
     'delay_mode',
@@ -2640,8 +2620,8 @@ async function sendRunWebhook() {
     sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den
   );
 
-  // Ảnh và video đều gửi dạng multipart binary với field tên "data".
-  // n8n nhận tại $binary.data và Google Drive dùng Input Data Field Name = data.
+  // Ảnh và video đều gửi binary multipart field tên "data".
+  // Riêng video gửi thường đang dùng bộ body tương thích đúng bản cũ.
   if (imageFile) {
     formData.append('data', imageFile, imageFile.name);
   }
@@ -2651,6 +2631,7 @@ async function sendRunWebhook() {
   }
 
   const bodyDebug = {
+    che_do_tuong_thich_video_cu: isOldVideoMode,
     action: 'run',
     nguon: 'auto_tinnhan',
     ma_nv: maNv,
@@ -2671,11 +2652,6 @@ async function sendRunWebhook() {
     gio_gui_tu: sendWindow.gio_gui_tu,
     gio_gui_den: sendWindow.gio_gui_den,
     khung_gio_gui: sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den,
-    has_video: !!videoFile,
-    has_image: !!imageFile,
-    video_name: videoFile ? videoFile.name : '',
-    video_mime: videoFile ? (videoFile.type || 'video/mp4') : '',
-    video_size: videoFile ? videoFile.size : 0,
     data_anh: imageFile
       ? {
           field: 'data',
@@ -2704,6 +2680,13 @@ async function sendRunWebhook() {
   console.log(
     '[GUITIN_AUTOZALO] MULTIPART:',
     bodyDebug
+  );
+
+  console.log(
+    '[GUITIN_AUTOZALO] VIDEO MODE:',
+    isOldVideoMode
+      ? 'OLD_COMPATIBILITY_FIELDS'
+      : 'FULL_NEW_FIELDS'
   );
 
 
@@ -3336,28 +3319,14 @@ window.addEventListener('beforeunload', function () {
       await createSupabaseClient();
 
 
-    /*
-      duoc_xem=true được phép load toàn bộ danh sách,
-      không bắt buộc phải tra ma_nv trước khi load.
-    */
-    if (!getDuocXemFromUrl()) {
+    const maNv =
+      await getLoggedInMaNv();
 
-      const maNv =
-        await getLoggedInMaNv();
 
-      console.log(
-        '[NHÂN VIÊN ĐĂNG NHẬP]',
-        maNv
-      );
-
-    } else {
-
-      console.log(
-        '[NHÂN VIÊN ĐĂNG NHẬP]',
-        'duoc_xem=true - load tất cả'
-      );
-
-    }
+    console.log(
+      '[NHÂN VIÊN ĐĂNG NHẬP]',
+      maNv
+    );
 
 
     await loadData();
