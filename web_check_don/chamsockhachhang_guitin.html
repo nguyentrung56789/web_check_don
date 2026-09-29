@@ -997,11 +997,12 @@ const WEBHOOK_URL =
   'https://n8n.clawbot.io.vn/webhook/guitin_autozalo';
 
 /*
-  Cách gửi media cố tình làm GIỐNG webhook upload-drive đang hoạt động:
-  - video -> multipart field "video"  => n8n nhận ở binary.video
-  - image -> multipart field "image"  => n8n nhận ở binary.image
-  - KHÔNG Base64
-  - KHÔNG tự set Content-Type
+  VIDEO:
+  - Chọn bằng input #videoFile như cũ.
+  - Khi bấm Chạy, file video thật được gửi multipart/form-data.
+  - Tên field là "video" để GIỐNG webhook upload-drive đang chạy tốt.
+  - n8n nhận video tại: binary.video
+  - Không Base64.
 */
 
 
@@ -2532,7 +2533,7 @@ async function sendRunWebhook() {
       body.ma_nv
       body.payload       -> chuỗi JSON, parse lại ở n8n
       binary.file_anh    -> nếu có ảnh
-      binary.file_video  -> nếu có video
+      binary.video       -> nếu có video
   */
   const payload = {
 
@@ -2646,7 +2647,7 @@ async function sendRunWebhook() {
   // File binary thật, không Base64.
   if (imageFile) {
     formData.append(
-      'image',
+      'file_anh',
       imageFile,
       imageFile.name
     );
@@ -2654,8 +2655,8 @@ async function sendRunWebhook() {
 
   if (videoFile) {
     /*
-      Gửi GIỐNG webhook upload-drive đang nhận video thành công.
-      n8n Webhook sẽ nhận binary.video
+      Gửi video đúng kiểu webhook upload-drive đang nhận được:
+      n8n sẽ thấy file tại binary.video
     */
     formData.append(
       'video',
@@ -2671,7 +2672,7 @@ async function sendRunWebhook() {
       nguon: 'auto_tinnhan',
       ma_nv: maNv,
       payload,
-      image: imageFile
+      file_anh: imageFile
         ? {
             name: imageFile.name,
             type: imageFile.type,
@@ -3328,4 +3329,6 @@ window.addEventListener('beforeunload', function () {
         err.message ||
         err
       )
-    
+    );
+
+  }
