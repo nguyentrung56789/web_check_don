@@ -692,7 +692,6 @@
 
     <div class="actions">
       <button
-        type="button"
         id="btnReload"
         class="btn-reload"
       >
@@ -700,7 +699,6 @@
       </button>
 
       <button
-        type="button"
         id="btnRun"
         class="btn-run"
       >
@@ -708,7 +706,6 @@
       </button>
 
       <button
-        type="button"
         id="btnStop"
         class="btn-stop"
         disabled
@@ -2517,47 +2514,93 @@ async function sendRunWebhook() {
       ? loaiGuiWebhook
       : loaiGui;
 
+  /*
+    Payload nghiệp vụ vẫn giữ nguyên cấu trúc.
+    Riêng file ảnh/video KHÔNG nhét Base64 vào JSON nữa.
+
+    Webhook n8n sẽ nhận:
+      body.action
+      body.nguon
+      body.ma_nv
+      body.payload       -> chuỗi JSON, parse lại ở n8n
+      binary.file_anh    -> nếu có ảnh
+      binary.video       -> nếu có video
+  */
   const payload = {
+
     run_id: currentRunId,
+
     so_khach_hop_le: rows.length,
-    conversation_id: String(conversationId),
-    reminderid: String(reminderid),
-    message_type: 'outgoing',
-    loaigui: loaiGuiGuiWebhook,
-    che_do_gui: loaiGui,
-    loinhac: loiNhac,
-    gio_hen: gioHen,
-    noi_dung: noiDung,
-    icon: icon,
 
-    file_anh: imageFile
-      ? {
-          name: imageFile.name,
-          type: imageFile.type || 'image/jpeg',
-          size: imageFile.size
-        }
-      : null,
+    conversation_id:
+      String(conversationId),
 
-    file_video: videoFile
-      ? {
-          name: videoFile.name,
-          type: videoFile.type || 'video/mp4',
-          size: videoFile.size
-        }
-      : null,
+    reminderid:
+      String(reminderid),
 
-    has_image: !!imageFile,
-    has_video: !!videoFile,
+    message_type:
+      'outgoing',
+
+    loaigui:
+      loaiGuiGuiWebhook,
+
+    che_do_gui:
+      loaiGui,
+
+    loinhac:
+      loiNhac,
+
+    gio_hen:
+      gioHen,
+
+    noi_dung:
+      noiDung,
+
+    icon:
+      icon,
+
+    // Chỉ gửi metadata file trong JSON, không gửi Base64.
+    file_anh:
+      imageFile
+        ? {
+            name: imageFile.name,
+            type: imageFile.type || 'image/jpeg',
+            size: imageFile.size
+          }
+        : null,
+
+    file_video:
+      videoFile
+        ? {
+            name: videoFile.name,
+            type: videoFile.type || 'video/mp4',
+            size: videoFile.size
+          }
+        : null,
+
+    has_image:
+      !!imageFile,
+
+    has_video:
+      !!videoFile,
 
     thoi_gian_cho: {
-      mode: delayConfig.mode,
-      fixed_seconds: delayConfig.fixed_seconds,
-      min_seconds: delayConfig.min_seconds,
-      max_seconds: delayConfig.max_seconds
+      mode:
+        delayConfig.mode,
+      fixed_seconds:
+        delayConfig.fixed_seconds,
+      min_seconds:
+        delayConfig.min_seconds,
+      max_seconds:
+        delayConfig.max_seconds
     },
 
-    gio_gui_tu: sendWindow.gio_gui_tu,
-    gio_gui_den: sendWindow.gio_gui_den,
+    gio_gui_tu:
+      sendWindow.gio_gui_tu,
+
+    gio_gui_den:
+      sendWindow.gio_gui_den,
+
     khung_gio_gui:
       sendWindow.gio_gui_tu +
       ' - ' +
@@ -2565,21 +2608,34 @@ async function sendRunWebhook() {
   };
 
   /*
-    GỬI GIỐNG upload-drive:
-    - XMLHttpRequest
-    - FormData
-    - Không dùng fetch()
-    - Không tự set Content-Type
-    - video => binary.video
+    Gửi multipart/form-data.
+    QUAN TRỌNG: KHÔNG tự đặt Content-Type.
+    Trình duyệt sẽ tự tạo multipart boundary.
   */
   const formData =
     new FormData();
 
-  formData.append('action', 'run');
-  formData.append('nguon', 'auto_tinnhan');
-  formData.append('ma_nv', maNv);
-  formData.append('payload', JSON.stringify(payload));
+  formData.append(
+    'action',
+    'run'
+  );
 
+  formData.append(
+    'nguon',
+    'auto_tinnhan'
+  );
+
+  formData.append(
+    'ma_nv',
+    maNv
+  );
+
+  formData.append(
+    'payload',
+    JSON.stringify(payload)
+  );
+
+  // File binary thật, không Base64.
   if (imageFile) {
     formData.append(
       'file_anh',
@@ -2589,6 +2645,8 @@ async function sendRunWebhook() {
   }
 
   if (videoFile) {
+    // Video gửi theo đúng kiểu đã test thành công với upload-drive.
+    // n8n nhận tại binary.video
     formData.append(
       'video',
       videoFile,
@@ -2596,27 +2654,52 @@ async function sendRunWebhook() {
     );
   }
 
-  return await new Promise((resolve, reject) => {
+  console.log(
+    '[GUITIN_AUTOZALO] MULTIPART:',
+    {
+      action: 'run',
+      nguon: 'auto_tinnhan',
+      ma_nv: maNv,
+      payload,
+      file_anh: imageFile
+        ? {
+            name: imageFile.name,
+            type: imageFile.type,
+            size: imageFile.size
+          }
+        : null,
+      video: videoFile
+        ? {
+            name: videoFile.name,
+            type: videoFile.type,
+            size: videoFile.size
+          }
+        : null
+    }
+  );
 
-    const xhr =
-      new XMLHttpRequest();
+  /*
+    CHỈ RIÊNG VIDEO:
+    dùng XMLHttpRequest + FormData giống luồng upload-drive
+    đã test nhận binary.video thành công.
 
-    xhr.open(
-      'POST',
-      WEBHOOK_URL,
-      true
-    );
+    Các trường hợp không có video (text / ảnh):
+    giữ nguyên cách fetch cũ.
+  */
+  if (videoFile) {
+    return await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
 
-    xhr.timeout =
-      120000;
+      xhr.open(
+        'POST',
+        WEBHOOK_URL,
+        true
+      );
 
-    xhr.upload.onprogress =
-      function (event) {
+      xhr.timeout = 120000;
 
-        if (
-          event.lengthComputable &&
-          videoFile
-        ) {
+      xhr.upload.onprogress = function (event) {
+        if (event.lengthComputable) {
           const percent =
             Math.round(
               (event.loaded / event.total) * 100
@@ -2630,13 +2713,14 @@ async function sendRunWebhook() {
         }
       };
 
-    xhr.onload =
-      function () {
+      xhr.onload = function () {
+        const responseText =
+          xhr.responseText || '';
 
         console.log(
-          '[GUITIN_AUTOZALO XHR] RESPONSE:',
+          '[GUITIN_AUTOZALO VIDEO] RESPONSE:',
           xhr.status,
-          xhr.responseText
+          responseText
         );
 
         if (
@@ -2646,7 +2730,7 @@ async function sendRunWebhook() {
           resolve({
             ok: true,
             status: xhr.status,
-            responseText: xhr.responseText || ''
+            responseText
           });
           return;
         }
@@ -2656,36 +2740,74 @@ async function sendRunWebhook() {
             'Webhook lỗi HTTP ' +
             xhr.status +
             (
-              xhr.responseText
-                ? ': ' + xhr.responseText
+              responseText
+                ? ': ' + responseText
                 : ''
             )
           )
         );
       };
 
-    xhr.onerror =
-      function () {
-
+      xhr.onerror = function () {
         reject(
           new Error(
-            'Không kết nối được webhook guitin_autozalo.'
+            'Không kết nối được webhook guitin_autozalo khi gửi video.'
           )
         );
       };
 
-    xhr.ontimeout =
-      function () {
-
+      xhr.ontimeout = function () {
         reject(
           new Error(
-            'Webhook guitin_autozalo quá 120 giây chưa phản hồi.'
+            'Gửi video quá 120 giây chưa nhận được phản hồi.'
           )
         );
       };
 
-    xhr.send(formData);
-  });
+      xhr.send(formData);
+    });
+  }
+
+  // TEXT / ẢNH: GIỮ NGUYÊN LUỒNG CŨ.
+  const response =
+    await fetch(
+      WEBHOOK_URL,
+      {
+        method: 'POST',
+        body: formData
+      }
+    );
+
+  let responseText = '';
+
+  try {
+    responseText =
+      await response.text();
+  } catch (e) {}
+
+  console.log(
+    '[GUITIN_AUTOZALO] RESPONSE:',
+    response.status,
+    responseText
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      'Webhook lỗi HTTP ' +
+      response.status +
+      (
+        responseText
+          ? ': ' + responseText
+          : ''
+      )
+    );
+  }
+
+  return {
+    ok: true,
+    status: response.status,
+    responseText
+  };
 }
 
 
@@ -3182,118 +3304,4 @@ function applyRealtimeStatus(payload) {
     isRunning = false;
 
     const btnRun = document.getElementById('btnRun');
-    const btnStop = document.getElementById('btnStop');
-
-    setRunButtonRunning(false);
-    if (btnStop) btnStop.disabled = true;
-
-    setStatus('✅ Đã gửi xong ' + rows.length + '/' + rows.length + ' khách.');
-  }
-}
-
-function subscribeTrangThaiRealtime() {
-  if (!sb) return;
-
-  if (statusChannel) {
-    try {
-      sb.removeChannel(statusChannel);
-    } catch (e) {
-      console.warn('[REALTIME REMOVE CHANNEL]', e);
-    }
-    statusChannel = null;
-  }
-
-  statusChannel = sb
-    .channel('guitin_trang_thai_' + Date.now())
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: TABLE_NAME
-      },
-      applyRealtimeStatus
-    )
-    .subscribe(function (status, err) {
-      console.log('[REALTIME SUBSCRIBE]', status, err || '');
-
-      if (status === 'SUBSCRIBED') {
-        console.log('✅ Đã kết nối Realtime:', TABLE_NAME);
-      }
-
-      if (
-        status === 'CHANNEL_ERROR' ||
-        status === 'TIMED_OUT'
-      ) {
-        console.error('❌ Realtime lỗi:', status, err || '');
-        setStatus('Lỗi kết nối Realtime: ' + status);
-      }
-    });
-}
-
-window.addEventListener('beforeunload', function () {
-  if (statusChannel && sb) {
-    try {
-      sb.removeChannel(statusChannel);
-    } catch (e) {}
-  }
-});
-
-
-/* =========================================================
-   KHỞI TẠO
-========================================================= */
-
-(async () => {
-
-  try {
-
-    enableDraggableForm();
-    bindComposerEvents();
-    bindComposerToggle();
-    bindSendTypeEvents();
-
-    sb =
-      await createSupabaseClient();
-
-
-    const maNv =
-      await getLoggedInMaNv();
-
-
-    console.log(
-      '[NHÂN VIÊN ĐĂNG NHẬP]',
-      maNv
-    );
-
-
-    await loadData();
-
-    subscribeTrangThaiRealtime();
-
-  }
-
-  catch (err) {
-
-    console.error(
-      '[INIT ERROR]',
-      err
-    );
-
-
-    setStatus(
-      'Lỗi khởi tạo: ' +
-      (
-        err.message ||
-        err
-      )
-    );
-
-  }
-
-})();
-
-</script>
-
-</body>
-</html>
+    const btnStop = 
