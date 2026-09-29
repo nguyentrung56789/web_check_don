@@ -996,15 +996,6 @@ const TABLE_NHAN_VIEN =
 const WEBHOOK_URL =
   'https://n8n.clawbot.io.vn/webhook/guitin_autozalo';
 
-/*
-  VIDEO:
-  - Chọn bằng input #videoFile như cũ.
-  - Khi bấm Chạy, file video thật được gửi multipart/form-data.
-  - Tên field là "video" để GIỐNG webhook upload-drive đang chạy tốt.
-  - n8n nhận video tại: binary.video
-  - Không Base64.
-*/
-
 
 /*
   Thời gian chờ gửi tin.
@@ -2533,7 +2524,7 @@ async function sendRunWebhook() {
       body.ma_nv
       body.payload       -> chuỗi JSON, parse lại ở n8n
       binary.file_anh    -> nếu có ảnh
-      binary.video       -> nếu có video
+      binary.file_video  -> nếu có video
   */
   const payload = {
 
@@ -2654,12 +2645,8 @@ async function sendRunWebhook() {
   }
 
   if (videoFile) {
-    /*
-      Gửi video đúng kiểu webhook upload-drive đang nhận được:
-      n8n sẽ thấy file tại binary.video
-    */
     formData.append(
-      'video',
+      'file_video',
       videoFile,
       videoFile.name
     );
@@ -2679,7 +2666,7 @@ async function sendRunWebhook() {
             size: imageFile.size
           }
         : null,
-      video: videoFile
+      file_video: videoFile
         ? {
             name: videoFile.name,
             type: videoFile.type,
@@ -3332,3 +3319,10 @@ window.addEventListener('beforeunload', function () {
     );
 
   }
+
+})();
+
+</script>
+
+</body>
+</html>
