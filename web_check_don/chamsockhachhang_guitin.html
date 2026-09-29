@@ -2278,42 +2278,8 @@ function insertAtSavedCaret(textToInsert) {
 }
 
 
-function fileToBase64Payload(file) {
-  return new Promise((resolve, reject) => {
-    if (!file) {
-      resolve(null);
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      const result = String(reader.result || '');
-      const commaIndex = result.indexOf(',');
-      const base64 =
-        commaIndex >= 0
-          ? result.slice(commaIndex + 1)
-          : result;
-
-      resolve({
-        name: file.name,
-        type: file.type || '',
-        size: file.size,
-        base64: base64
-      });
-    };
-
-    reader.onerror = () => {
-      reject(
-        new Error(
-          'Không đọc được file: ' + file.name
-        )
-      );
-    };
-
-    reader.readAsDataURL(file);
-  });
-}
+/* File ảnh/video sẽ được gửi trực tiếp bằng multipart/form-data.
+   Không chuyển Base64 để tránh tăng dung lượng request. */
 
 
 function bindComposerEvents() {
@@ -2473,13 +2439,11 @@ async function sendRunWebhook() {
   const maNv =
     await getLoggedInMaNv();
 
-
   if (!maNv) {
     throw new Error(
       'Không lấy được ma_nv của nhân viên đang đăng nhập.'
     );
   }
-
 
   const noiDung =
     String(
@@ -2519,7 +2483,6 @@ async function sendRunWebhook() {
         ? 'image'
         : 'text';
 
-
   if (!currentRunId) {
     currentRunId =
       (window.crypto &&
@@ -2532,28 +2495,6 @@ async function sendRunWebhook() {
             Math.random().toString(36).slice(2, 9)
           );
   }
-
-
-  /*
-    QUAN TRỌNG:
-    Video/ảnh được chuyển thành Base64 và gửi trong JSON.
-    n8n đọc video tại:
-      $json.body.payload.file_video.base64
-
-    Sau đó dùng Code node trong n8n để tạo lại:
-      $binary.data
-
-    rồi Google Drive Upload dùng:
-      Input Data Field Name = data
-  */
-  const [
-    fileAnhPayload,
-    fileVideoPayload
-  ] = await Promise.all([
-    fileToBase64Payload(imageFile),
-    fileToBase64Payload(videoFile)
-  ]);
-
 
   const conversationId =
     rows.find(r =>
@@ -2573,137 +2514,176 @@ async function sendRunWebhook() {
       ? loaiGuiWebhook
       : loaiGui;
 
+  /*
+    Payload nghiệp vụ vẫn giữ nguyên cấu trúc.
+    Riêng file ảnh/video KHÔNG nhét Base64 vào JSON nữa.
 
-  const body = {
+    Webhook n8n sẽ nhận:
+      body.action
+      body.nguon
+      body.ma_nv
+      body.payload       -> chuỗi JSON, parse lại ở n8n
+      binary.file_anh    -> nếu có ảnh
+      binary.file_video  -> nếu có video
+  */
+  const payload = {
 
-    action: 'run',
+    run_id: currentRunId,
 
-    nguon: 'auto_tinnhan',
+    so_khach_hop_le: rows.length,
 
-    ma_nv: maNv,
+    conversation_id:
+      String(conversationId),
 
-    payload: {
+    reminderid:
+      String(reminderid),
 
-      run_id: currentRunId,
+    message_type:
+      'outgoing',
 
-      so_khach_hop_le: rows.length,
+    loaigui:
+      loaiGuiGuiWebhook,
 
-      conversation_id:
-        String(conversationId),
+    che_do_gui:
+      loaiGui,
 
-      reminderid:
-        String(reminderid),
+    loinhac:
+      loiNhac,
 
-      message_type:
-        'outgoing',
+    gio_hen:
+      gioHen,
 
-      loaigui:
-        loaiGuiGuiWebhook,
+    noi_dung:
+      noiDung,
 
-      che_do_gui:
-        loaiGui,
+    icon:
+      icon,
 
-      loinhac:
-        loiNhac,
+    // Chỉ gửi metadata file trong JSON, không gửi Base64.
+    file_anh:
+      imageFile
+        ? {
+            name: imageFile.name,
+            type: imageFile.type || 'image/jpeg',
+            size: imageFile.size
+          }
+        : null,
 
-      gio_hen:
-        gioHen,
+    file_video:
+      videoFile
+        ? {
+            name: videoFile.name,
+            type: videoFile.type || 'video/mp4',
+            size: videoFile.size
+          }
+        : null,
 
-      noi_dung:
-        noiDung,
+    has_image:
+      !!imageFile,
 
-      icon:
-        icon,
+    has_video:
+      !!videoFile,
 
-      file_anh:
-        fileAnhPayload,
+    thoi_gian_cho: {
+      mode:
+        delayConfig.mode,
+      fixed_seconds:
+        delayConfig.fixed_seconds,
+      min_seconds:
+        delayConfig.min_seconds,
+      max_seconds:
+        delayConfig.max_seconds
+    },
 
-      file_video:
-        fileVideoPayload,
+    gio_gui_tu:
+      sendWindow.gio_gui_tu,
 
-      has_image:
-        !!fileAnhPayload,
+    gio_gui_den:
+      sendWindow.gio_gui_den,
 
-      has_video:
-        !!fileVideoPayload,
-
-      thoi_gian_cho: {
-        mode:
-          delayConfig.mode,
-        fixed_seconds:
-          delayConfig.fixed_seconds,
-        min_seconds:
-          delayConfig.min_seconds,
-        max_seconds:
-          delayConfig.max_seconds
-      },
-
-      gio_gui_tu:
-        sendWindow.gio_gui_tu,
-
-      gio_gui_den:
-        sendWindow.gio_gui_den,
-
-      khung_gio_gui:
-        sendWindow.gio_gui_tu +
-        ' - ' +
-        sendWindow.gio_gui_den
-
-    }
-
+    khung_gio_gui:
+      sendWindow.gio_gui_tu +
+      ' - ' +
+      sendWindow.gio_gui_den
   };
 
+  /*
+    Gửi multipart/form-data.
+    QUAN TRỌNG: KHÔNG tự đặt Content-Type.
+    Trình duyệt sẽ tự tạo multipart boundary.
+  */
+  const formData =
+    new FormData();
 
-  console.log(
-    '[GUITIN_AUTOZALO] URL:',
-    WEBHOOK_URL
+  formData.append(
+    'action',
+    'run'
   );
 
+  formData.append(
+    'nguon',
+    'auto_tinnhan'
+  );
+
+  formData.append(
+    'ma_nv',
+    maNv
+  );
+
+  formData.append(
+    'payload',
+    JSON.stringify(payload)
+  );
+
+  // File binary thật, không Base64.
+  if (imageFile) {
+    formData.append(
+      'file_anh',
+      imageFile,
+      imageFile.name
+    );
+  }
+
+  if (videoFile) {
+    formData.append(
+      'file_video',
+      videoFile,
+      videoFile.name
+    );
+  }
+
   console.log(
-    '[GUITIN_AUTOZALO] JSON BASE64:',
+    '[GUITIN_AUTOZALO] MULTIPART:',
     {
-      ...body,
-      payload: {
-        ...body.payload,
-        file_anh:
-          fileAnhPayload
-            ? {
-                name: fileAnhPayload.name,
-                type: fileAnhPayload.type,
-                size: fileAnhPayload.size,
-                base64: '[BASE64_ẨN]'
-              }
-            : null,
-        file_video:
-          fileVideoPayload
-            ? {
-                name: fileVideoPayload.name,
-                type: fileVideoPayload.type,
-                size: fileVideoPayload.size,
-                base64: '[BASE64_ẨN]'
-              }
-            : null
-      }
+      action: 'run',
+      nguon: 'auto_tinnhan',
+      ma_nv: maNv,
+      payload,
+      file_anh: imageFile
+        ? {
+            name: imageFile.name,
+            type: imageFile.type,
+            size: imageFile.size
+          }
+        : null,
+      file_video: videoFile
+        ? {
+            name: videoFile.name,
+            type: videoFile.type,
+            size: videoFile.size
+          }
+        : null
     }
   );
-
 
   const response =
     await fetch(
       WEBHOOK_URL,
       {
         method: 'POST',
-
-        headers: {
-          'Content-Type':
-            'application/json'
-        },
-
-        body:
-          JSON.stringify(body)
+        body: formData
       }
     );
-
 
   let responseText = '';
 
@@ -2712,13 +2692,11 @@ async function sendRunWebhook() {
       await response.text();
   } catch (e) {}
 
-
   console.log(
     '[GUITIN_AUTOZALO] RESPONSE:',
     response.status,
     responseText
   );
-
 
   if (!response.ok) {
     throw new Error(
@@ -2732,13 +2710,11 @@ async function sendRunWebhook() {
     );
   }
 
-
   return {
     ok: true,
     status: response.status,
     responseText
   };
-
 }
 
 
