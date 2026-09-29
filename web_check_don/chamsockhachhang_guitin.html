@@ -692,7 +692,6 @@
 
     <div class="actions">
       <button
-        type="button"
         id="btnReload"
         class="btn-reload"
       >
@@ -700,7 +699,6 @@
       </button>
 
       <button
-        type="button"
         id="btnRun"
         class="btn-run"
       >
@@ -708,7 +706,6 @@
       </button>
 
       <button
-        type="button"
         id="btnStop"
         class="btn-stop"
         disabled
@@ -999,10 +996,13 @@ const TABLE_NHAN_VIEN =
 const WEBHOOK_URL =
   'https://n8n.clawbot.io.vn/webhook/guitin_autozalo';
 
-// Video dùng webhook riêng này, đúng kiểu webhook upload-drive đang nhận được.
-// HTML gửi file video dưới multipart field tên "video".
-const VIDEO_UPLOAD_WEBHOOK_URL =
-  'https://n8n.clawbot.io.vn/webhook/upload-drive';
+/*
+  Media gửi trực tiếp vào chính webhook này:
+  - video => binary.video
+  - ảnh   => binary.file_anh
+  - không dùng upload-drive riêng
+  - không Base64
+*/
 
 
 /*
@@ -2439,108 +2439,6 @@ function bindComposerEvents() {
 
 
 /* =========================================================
-   GỬI VIDEO QUA WEBHOOK upload-drive
-   - Gửi file thật dạng multipart/form-data
-   - field "video" => n8n nhận ở binary.video
-   - Không Base64
-========================================================= */
-
-async function sendVideoToUploadDrive(videoFile, maNv) {
-
-  if (!videoFile) {
-    return null;
-  }
-
-  const videoForm =
-    new FormData();
-
-  videoForm.append(
-    'video',
-    videoFile,
-    videoFile.name
-  );
-
-  // Gửi kèm metadata nhẹ để n8n dùng nếu cần.
-  videoForm.append(
-    'file_name',
-    videoFile.name
-  );
-
-  videoForm.append(
-    'mime_type',
-    videoFile.type || 'video/mp4'
-  );
-
-  videoForm.append(
-    'file_size',
-    String(videoFile.size || 0)
-  );
-
-  videoForm.append(
-    'ma_nv',
-    String(maNv || '')
-  );
-
-  console.log(
-    '[UPLOAD-DRIVE] SEND VIDEO:',
-    {
-      name: videoFile.name,
-      type: videoFile.type,
-      size: videoFile.size
-    }
-  );
-
-  const response =
-    await fetch(
-      VIDEO_UPLOAD_WEBHOOK_URL,
-      {
-        method: 'POST',
-        body: videoForm
-      }
-    );
-
-  const responseText =
-    await response.text();
-
-  console.log(
-    '[UPLOAD-DRIVE] RESPONSE:',
-    response.status,
-    responseText
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      'Webhook upload-drive lỗi HTTP ' +
-      response.status +
-      (responseText ? ': ' + responseText : '')
-    );
-  }
-
-  let responseJson = null;
-
-  if (responseText) {
-    try {
-      responseJson =
-        JSON.parse(responseText);
-    } catch (e) {
-      responseJson = {
-        raw:
-          responseText
-      };
-    }
-  }
-
-  return {
-    ok: true,
-    status:
-      response.status,
-    response:
-      responseJson
-  };
-}
-
-
-/* =========================================================
    GỬI WEBHOOK CHẠY
 ========================================================= */
 
@@ -2624,39 +2522,7 @@ async function sendRunWebhook() {
       ? loaiGuiWebhook
       : loaiGui;
 
-  /*
-    QUAN TRỌNG:
-    Nếu có VIDEO:
-      1. Gửi file video thật sang /webhook/upload-drive
-         bằng multipart field "video".
-      2. Sau khi webhook video nhận thành công,
-         mới gửi lệnh nghiệp vụ sang /webhook/guitin_autozalo.
-      3. guitin_autozalo KHÔNG nhận binary video nữa.
-
-    Ảnh vẫn giữ luồng hiện tại:
-      guitin_autozalo nhận binary.file_anh.
-  */
-
-  let videoUploadResult = null;
-
-  if (videoFile) {
-    setStatus(
-      'Đang chuyển video tới webhook upload-drive...'
-    );
-
-    videoUploadResult =
-      await sendVideoToUploadDrive(
-        videoFile,
-        maNv
-      );
-
-    setStatus(
-      'Video đã vào upload-drive. Đang gửi lệnh tới guitin_autozalo...'
-    );
-  }
-
   const payload = {
-
     run_id:
       currentRunId,
 
@@ -2693,36 +2559,18 @@ async function sendRunWebhook() {
     file_anh:
       imageFile
         ? {
-            name:
-              imageFile.name,
-            type:
-              imageFile.type || 'image/jpeg',
-            size:
-              imageFile.size
+            name: imageFile.name,
+            type: imageFile.type || 'image/jpeg',
+            size: imageFile.size
           }
         : null,
 
-    /*
-      Chỉ metadata video gửi sang guitin_autozalo.
-      File thật đã chuyển qua upload-drive.
-    */
     file_video:
       videoFile
         ? {
-            name:
-              videoFile.name,
-            type:
-              videoFile.type || 'video/mp4',
-            size:
-              videoFile.size,
-            upload_webhook:
-              'upload-drive',
-            upload_ok:
-              videoUploadResult?.ok === true,
-            upload_status:
-              videoUploadResult?.status || null,
-            upload_response:
-              videoUploadResult?.response || null
+            name: videoFile.name,
+            type: videoFile.type || 'video/mp4',
+            size: videoFile.size
           }
         : null,
 
@@ -2756,94 +2604,87 @@ async function sendRunWebhook() {
   };
 
   /*
-    Nếu có ảnh:
-      guitin_autozalo vẫn nhận multipart và binary.file_anh.
+    Gửi TẤT CẢ vào đúng webhook:
+    https://n8n.clawbot.io.vn/webhook/guitin_autozalo
 
-    Nếu chỉ text/video:
-      guitin_autozalo nhận JSON nhẹ.
+    - video -> binary.video
+    - ảnh   -> binary.file_anh
+    - payload -> body.payload (chuỗi JSON)
+    - KHÔNG Base64
+    - KHÔNG tự set Content-Type
   */
-  let fetchOptions;
+  const formData =
+    new FormData();
+
+  formData.append(
+    'action',
+    'run'
+  );
+
+  formData.append(
+    'nguon',
+    'auto_tinnhan'
+  );
+
+  formData.append(
+    'ma_nv',
+    maNv
+  );
+
+  formData.append(
+    'payload',
+    JSON.stringify(payload)
+  );
 
   if (imageFile) {
-
-    const formData =
-      new FormData();
-
-    formData.append(
-      'action',
-      'run'
-    );
-
-    formData.append(
-      'nguon',
-      'auto_tinnhan'
-    );
-
-    formData.append(
-      'ma_nv',
-      maNv
-    );
-
-    formData.append(
-      'payload',
-      JSON.stringify(payload)
-    );
-
     formData.append(
       'file_anh',
       imageFile,
       imageFile.name
     );
+  }
 
-    fetchOptions = {
-      method:
-        'POST',
-      body:
-        formData
-    };
-
-  } else {
-
-    fetchOptions = {
-      method:
-        'POST',
-
-      headers: {
-        'Content-Type':
-          'application/json'
-      },
-
-      body:
-        JSON.stringify({
-          action:
-            'run',
-
-          nguon:
-            'auto_tinnhan',
-
-          ma_nv:
-            maNv,
-
-          payload
-        })
-    };
+  if (videoFile) {
+    formData.append(
+      'video',
+      videoFile,
+      videoFile.name
+    );
   }
 
   console.log(
-    '[GUITIN_AUTOZALO] SEND:',
+    '[GUITIN_AUTOZALO] MULTIPART:',
     {
+      action: 'run',
+      nguon: 'auto_tinnhan',
+      ma_nv: maNv,
       payload,
-      image_binary:
-        !!imageFile,
-      video_da_gui_upload_drive:
-        !!videoFile
+      image: imageFile
+        ? {
+            name: imageFile.name,
+            type: imageFile.type,
+            size: imageFile.size
+          }
+        : null,
+      video: videoFile
+        ? {
+            name: videoFile.name,
+            type: videoFile.type,
+            size: videoFile.size
+          }
+        : null
     }
   );
 
   const response =
     await fetch(
       WEBHOOK_URL,
-      fetchOptions
+      {
+        method:
+          'POST',
+        body:
+          formData
+      }
     );
 
   let responseText = '';
@@ -2861,7 +2702,7 @@ async function sendRunWebhook() {
 
   if (!response.ok) {
     throw new Error(
-      'Webhook guitin_autozalo lỗi HTTP ' +
+      'Webhook lỗi HTTP ' +
       response.status +
       (
         responseText
@@ -2874,13 +2715,9 @@ async function sendRunWebhook() {
   return {
     ok:
       true,
-
     status:
       response.status,
-
-    responseText,
-
-    videoUploadResult
+    responseText
   };
 }
 
