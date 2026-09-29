@@ -2514,14 +2514,19 @@ async function sendRunWebhook() {
   }
 
   /*
+    PAYLOAD TEXT:
+    n8n nhận body.payload là chuỗi JSON.
+    Parse trong n8n bằng:
+      $json.body
+  */
+  /*
     MULTIPART/FORM-DATA
     - Không convert ảnh/video sang Base64.
-    - File video được gửi trực tiếp thành binary field tên "data".
     - Browser tự đặt Content-Type + boundary.
-    - n8n nhận video tại:
+    - n8n nhận file trong binary với field chung:
         $binary.data
-    - Node Google Drive Upload đặt:
-        Input Data Field Name = data
+      Nếu gửi đồng thời nhiều file cùng tên field "data",
+      n8n có thể đánh số field tiếp theo tùy cách Webhook parse multipart.
   */
   const formData = new FormData();
 
@@ -2635,7 +2640,8 @@ async function sendRunWebhook() {
     sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den
   );
 
-  // Ảnh và video đều gửi với field multipart tên "data"
+  // Ảnh và video đều gửi dạng multipart binary với field tên "data".
+  // n8n nhận tại $binary.data và Google Drive dùng Input Data Field Name = data.
   if (imageFile) {
     formData.append('data', imageFile, imageFile.name);
   }
@@ -3331,9 +3337,8 @@ window.addEventListener('beforeunload', function () {
 
 
     /*
-      Nếu duoc_xem=true thì load toàn bộ danh sách ngay,
+      duoc_xem=true được phép load toàn bộ danh sách,
       không bắt buộc phải tra ma_nv trước khi load.
-      Khi bấm Chạy, sendRunWebhook() vẫn lấy ma_nv như cũ.
     */
     if (!getDuocXemFromUrl()) {
 
