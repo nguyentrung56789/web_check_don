@@ -997,14 +997,11 @@ const WEBHOOK_URL =
   'https://n8n.clawbot.io.vn/webhook/guitin_autozalo';
 
 /*
-  MEDIA:
-  - Không dùng webhook upload-drive riêng.
-  - Ảnh/video được gửi thẳng vào chính webhook guitin_autozalo bằng multipart/form-data.
-  - n8n nhận:
-      binary.file_anh
-      binary.file_video
-  - Với video, đặt Google Drive Upload ngay sau Webhook/nhánh video để upload ngay.
-  - Không dùng Base64.
+  Cách gửi media cố tình làm GIỐNG webhook upload-drive đang hoạt động:
+  - video -> multipart field "video"  => n8n nhận ở binary.video
+  - image -> multipart field "image"  => n8n nhận ở binary.image
+  - KHÔNG Base64
+  - KHÔNG tự set Content-Type
 */
 
 
@@ -2649,15 +2646,19 @@ async function sendRunWebhook() {
   // File binary thật, không Base64.
   if (imageFile) {
     formData.append(
-      'file_anh',
+      'image',
       imageFile,
       imageFile.name
     );
   }
 
   if (videoFile) {
+    /*
+      Gửi GIỐNG webhook upload-drive đang nhận video thành công.
+      n8n Webhook sẽ nhận binary.video
+    */
     formData.append(
-      'file_video',
+      'video',
       videoFile,
       videoFile.name
     );
@@ -2670,14 +2671,14 @@ async function sendRunWebhook() {
       nguon: 'auto_tinnhan',
       ma_nv: maNv,
       payload,
-      file_anh: imageFile
+      image: imageFile
         ? {
             name: imageFile.name,
             type: imageFile.type,
             size: imageFile.size
           }
         : null,
-      file_video: videoFile
+      video: videoFile
         ? {
             name: videoFile.name,
             type: videoFile.type,
@@ -3327,13 +3328,4 @@ window.addEventListener('beforeunload', function () {
         err.message ||
         err
       )
-    );
-
-  }
-
-})();
-
-</script>
-
-</body>
-</html>
+    
