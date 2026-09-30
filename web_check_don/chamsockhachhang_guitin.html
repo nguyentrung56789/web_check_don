@@ -2434,6 +2434,11 @@ async function sendRunWebhook() {
   const maNv =
     await getLoggedInMaNv();
 
+  const idNv =
+    String(
+      getLoggedInIdNv() || ''
+    ).trim();
+
 
   if (!maNv) {
 
@@ -2539,6 +2544,7 @@ async function sendRunWebhook() {
   formData.append('nguon', 'auto_tinnhan');
   // ma_nv dùng giá trị tương thích luồng cũ từ getLoggedInMaNv()
   formData.append('ma_nv', maNv);
+  formData.append('id_nv', idNv);
 
   formData.append('run_id', currentRunId);
   formData.append('so_khach_hop_le', String(rows.length));
@@ -2634,14 +2640,31 @@ async function sendRunWebhook() {
   );
 
   // Ảnh giữ nguyên field multipart tên "data".
-  if (imageFile) {
+  if (imageFile && !videoFile) {
     formData.append('data', imageFile, imageFile.name);
   }
 
-  // Video gửi theo cách đã test thành công:
-  // field multipart tên "video" => n8n nhận tại binary.video
+  // VIDEO: gửi giống code chamsockhachhang.html đã chạy ổn:
+  // - tạo lại File từ byte thật
+  // - field multipart tên "data"
+  // - n8n nhận tại binary.data
   if (videoFile) {
-    formData.append('video', videoFile, videoFile.name);
+    const videoBytes = await videoFile.arrayBuffer();
+
+    const freshVideoFile = new File(
+      [videoBytes],
+      videoFile.name || 'video.mp4',
+      {
+        type: videoFile.type || 'video/mp4',
+        lastModified: Date.now()
+      }
+    );
+
+    formData.append('data', freshVideoFile, freshVideoFile.name);
+    formData.append('attachment_name', freshVideoFile.name);
+    formData.append('attachment_type', freshVideoFile.type || 'video/mp4');
+    formData.append('attachment_size', String(freshVideoFile.size || 0));
+    formData.append('attachment_kind', 'video');
   }
 
   const bodyDebug = {
@@ -2676,8 +2699,8 @@ async function sendRunWebhook() {
 
     data_video: videoFile
       ? {
-          field: 'video',
-          binary_key: 'video',
+          field: 'data',
+          binary_key: 'data',
           name: videoFile.name,
           type: videoFile.type,
           size: videoFile.size
@@ -2698,108 +2721,10 @@ async function sendRunWebhook() {
 
 
   /*
-    CHỈ RIÊNG VIDEO:
-    dùng XMLHttpRequest + FormData giống upload-drive
-    đã test nhận binary.video thành công.
-
-    Không có video:
-    giữ nguyên fetch cũ.
+    TEXT / IMAGE / VIDEO đều POST bằng fetch tới cùng webhook.
+    Video đã được đưa vào field multipart "data" ở trên,
+    nên n8n nhận video tại binary.data và body.loaigui = "video".
   */
-  if (videoFile) {
-    return await new Promise((resolve, reject) => {
-      const xhr =
-        new XMLHttpRequest();
-
-      xhr.open(
-        'POST',
-        WEBHOOK_URL,
-        true
-      );
-
-      xhr.timeout =
-        120000;
-
-      xhr.upload.onprogress =
-        function (event) {
-          if (event.lengthComputable) {
-            const percent =
-              Math.round(
-                (event.loaded / event.total) * 100
-              );
-
-            setStatus(
-              'Đang gửi video tới n8n: ' +
-              percent +
-              '%'
-            );
-          }
-        };
-
-      xhr.onload =
-        function () {
-          const responseText =
-            xhr.responseText || '';
-
-          console.log(
-            '[GUITIN_AUTOZALO VIDEO] RESPONSE:',
-            xhr.status,
-            responseText
-          );
-
-          if (
-            xhr.status >= 200 &&
-            xhr.status < 300
-          ) {
-            resolve({
-              ok: true,
-              status: xhr.status,
-              responseText
-            });
-            return;
-          }
-
-          reject(
-            new Error(
-              'Webhook lỗi HTTP ' +
-              xhr.status +
-              (
-                responseText
-                  ? ': ' + responseText
-                  : ''
-              )
-            )
-          );
-        };
-
-      xhr.onerror =
-        function () {
-          reject(
-            new Error(
-              'Không kết nối được webhook guitin_autozalo khi gửi video.'
-            )
-          );
-        };
-
-      xhr.ontimeout =
-        function () {
-          reject(
-            new Error(
-              'Gửi video quá 120 giây chưa nhận được phản hồi.'
-            )
-          );
-        };
-
-      /*
-        Không tự set Content-Type.
-        Browser tự tạo multipart/form-data + boundary.
-      */
-      xhr.send(
-        formData
-      );
-    });
-  }
-
-  // KHÔNG CÓ VIDEO: GIỮ NGUYÊN LUỒNG FETCH CŨ.
   const response =
     await fetch(
       WEBHOOK_URL,
