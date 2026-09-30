@@ -2434,7 +2434,6 @@ async function sendRunWebhook() {
   const maNv =
     await getLoggedInMaNv();
 
-  // Lấy id_nv của nhân viên đang đăng nhập.
   const idNv =
     String(
       getLoggedInIdNv() || ''
@@ -2545,8 +2544,6 @@ async function sendRunWebhook() {
   formData.append('nguon', 'auto_tinnhan');
   // ma_nv dùng giá trị tương thích luồng cũ từ getLoggedInMaNv()
   formData.append('ma_nv', maNv);
-
-  // Gửi luôn id_nv của nhân viên đang đăng nhập sang webhook n8n.
   formData.append('id_nv', idNv);
 
   formData.append('run_id', currentRunId);
@@ -2657,7 +2654,6 @@ async function sendRunWebhook() {
     action: 'run',
     nguon: 'auto_tinnhan',
     ma_nv: maNv,
-    id_nv: idNv,
     run_id: currentRunId,
     so_khach_hop_le: rows.length,
     conversation_id: String(conversationId),
