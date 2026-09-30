@@ -3698,34 +3698,34 @@ function normalizeBigintOrNull(value) {
 
         if (file) {
           // Gửi FILE THẬT trực tiếp tới Webhook n8n bằng multipart/form-data.
-          // Không upload Supabase, không tạo URL giả/blob URL.
-          // Dùng arrayBuffer để tạo lại File mới, bảo đảm fetch gửi byte thật.
+          // Tạo lại File từ byte thật để tránh blob URL / tham chiếu tạm.
           const bytes = await file.arrayBuffer();
           const freshFile = new File([bytes], file.name || "attachment", {
             type: file.type || "application/octet-stream",
             lastModified: Date.now()
           });
 
-          formData.append("data", freshFile, freshFile.name);
           formData.append("attachment_name", freshFile.name);
           formData.append("attachment_type", freshFile.type || "application/octet-stream");
           formData.append("attachment_size", String(freshFile.size || 0));
 
           if ((freshFile.type || "").startsWith("image/")) {
+            // ẢNH => n8n nhận tại $binary.data
+            formData.append("data", freshFile, freshFile.name);
             formData.append("attachment_kind", "image");
             formData.append("loaigui", "image");
           } else if ((freshFile.type || "").startsWith("video/")) {
+            // VIDEO => n8n nhận tại $binary.video
+            formData.append("video", freshFile, freshFile.name);
             formData.append("attachment_kind", "video");
             formData.append("loaigui", "video");
           } else {
-            // Zalo chat hiện chỉ dùng 3 loại: text, image, video.
-            // Nếu trình duyệt trả MIME không xác định thì xử lý an toàn như text.
             formData.append("attachment_kind", "text");
             formData.append("loaigui", "text");
           }
 
           console.log("[ZALO] FILE GỬI WEBHOOK:", {
-            field: "data",
+            field: (freshFile.type || "").startsWith("video/") ? "video" : "data",
             name: freshFile.name,
             type: freshFile.type,
             size: freshFile.size
@@ -3738,22 +3738,56 @@ function normalizeBigintOrNull(value) {
           formData.append("loaigui", "text");
         }
 
-        const resp = await fetch(AUTO_TINNHAN_WEBHOOK_URL, {
-          method: "POST",
-          body: formData
-        });
+        // VIDEO dùng XMLHttpRequest; TEXT / IMAGE dùng fetch.
+        let responseStatus = 0;
+        let responseText = "";
 
-        const text = await resp.text();
+        if (file && String(file.type || "").startsWith("video/")) {
+          const xhrResult = await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", AUTO_TINNHAN_WEBHOOK_URL, true);
+            xhr.timeout = 120000;
+
+            xhr.onload = () => {
+              const bodyText = xhr.responseText || "";
+              if (xhr.status >= 200 && xhr.status < 300) {
+                resolve({ status: xhr.status, text: bodyText });
+              } else {
+                reject(new Error("Webhook lỗi HTTP " + xhr.status + (bodyText ? ": " + bodyText : "")));
+              }
+            };
+
+            xhr.onerror = () =>
+              reject(new Error("Không kết nối được webhook guitin_autozalo khi gửi video."));
+
+            xhr.ontimeout = () =>
+              reject(new Error("Gửi video quá 120 giây chưa nhận được phản hồi."));
+
+            xhr.send(formData);
+          });
+
+          responseStatus = xhrResult.status;
+          responseText = xhrResult.text;
+        } else {
+          const resp = await fetch(AUTO_TINNHAN_WEBHOOK_URL, {
+            method: "POST",
+            body: formData
+          });
+
+          responseStatus = resp.status;
+          responseText = await resp.text();
+
+          if (!resp.ok) {
+            throw new Error(responseText || "Webhook lỗi HTTP " + resp.status);
+          }
+        }
+
         let result = {};
 
         try {
-          result = text ? JSON.parse(text) : {};
+          result = responseText ? JSON.parse(responseText) : {};
         } catch (error) {
-          result = { raw: text };
-        }
-
-        if (!resp.ok) {
-          throw new Error(result.message || text || "Webhook lỗi");
+          result = { raw: responseText };
         }
 
         console.log("ĐÃ GỬI WEBHOOK ZALO CHAT:", {
