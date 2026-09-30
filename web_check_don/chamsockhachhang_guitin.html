@@ -692,7 +692,6 @@
 
     <div class="actions">
       <button
-        type="button"
         id="btnReload"
         class="btn-reload"
       >
@@ -700,7 +699,6 @@
       </button>
 
       <button
-        type="button"
         id="btnRun"
         class="btn-run"
       >
@@ -708,7 +706,6 @@
       </button>
 
       <button
-        type="button"
         id="btnStop"
         class="btn-stop"
         disabled
@@ -1001,11 +998,11 @@ const WEBHOOK_URL =
 
 /*
   VIDEO:
-  - Chọn video bằng input #videoFile như hiện tại.
-  - Khi bấm Chạy, gửi chính file video sang WEBHOOK_URL bằng multipart/form-data.
-  - Field video tên "video" => n8n nhận ở binary.video.
-  - Không Base64.
+  - Video không gửi nguyên file lớn qua webhook.
+  - Upload lên Supabase Storage trước, sau đó webhook chỉ nhận video_url.
+  - Tạo bucket Public tên "video" trong Supabase Storage.
 */
+const VIDEO_BUCKET = 'video';
 
 
 /*
@@ -1040,6 +1037,12 @@ let rows = [];
 let isRunning = false;
 
 let currentRunId = null;
+
+let uploadedVideoUrl = '';
+let uploadedVideoPath = '';
+let uploadedVideoSignature = '';
+let isUploadingVideo = false;
+
 
 
 /* =========================================================
@@ -2289,8 +2292,195 @@ function insertAtSavedCaret(textToInsert) {
 }
 
 
-/* File ảnh/video sẽ được gửi trực tiếp bằng multipart/form-data.
-   Không chuyển Base64 để tránh tăng dung lượng request. */
+function sanitizeUploadFileName(fileName) {
+  const raw = String(fileName || 'video.mp4').trim();
+  const dot = raw.lastIndexOf('.');
+  const base = dot > 0 ? raw.slice(0, dot) : raw;
+  const ext = dot > 0 ? raw.slice(dot + 1) : 'mp4';
+
+  const safeBase = base
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 80) || 'video';
+
+  const safeExt = String(ext || 'mp4')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '') || 'mp4';
+
+  return safeBase + '.' + safeExt;
+}
+
+
+function getVideoSignature(file) {
+  if (!file) return '';
+
+  return [
+    file.name || '',
+    file.size || 0,
+    file.lastModified || 0
+  ].join('|');
+}
+
+
+function getUploadOwnerKey() {
+  /*
+    Không bắt buộc phải query kv_nhan_vien khi upload video.
+    Ưu tiên ma_nv hiện có; nếu không có thì dùng id_nv.
+    Điều này tránh làm trang duoc_xem=true bị treo ở bước khởi tạo.
+  */
+  const currentUser = getCurrentUser();
+
+  const directMaNv =
+    String(currentUser?.ma_nv || '').trim();
+
+  if (directMaNv) {
+    return directMaNv.replace(/[^a-zA-Z0-9_-]+/g, '_');
+  }
+
+  const idNv =
+    String(getLoggedInIdNv() || '').trim();
+
+  if (idNv) {
+    return ('id_' + idNv).replace(/[^a-zA-Z0-9_-]+/g, '_');
+  }
+
+  return 'unknown';
+}
+
+
+async function uploadVideoToStorage(videoFile) {
+  if (!videoFile) return '';
+
+  if (!sb) {
+    throw new Error('Supabase chưa được khởi tạo.');
+  }
+
+  const signature = getVideoSignature(videoFile);
+
+  if (
+    uploadedVideoUrl &&
+    uploadedVideoSignature === signature
+  ) {
+    return uploadedVideoUrl;
+  }
+
+  if (isUploadingVideo) {
+    throw new Error('Video đang được upload, vui lòng chờ.');
+  }
+
+  isUploadingVideo = true;
+
+  const infoEl =
+    document.getElementById('videoFileInfo');
+
+  try {
+    if (infoEl) {
+      infoEl.textContent =
+        `Đang upload ${videoFile.name} (${(videoFile.size / 1024 / 1024).toFixed(2)} MB)...`;
+    }
+
+    const ownerKey =
+      getUploadOwnerKey();
+
+    const safeName =
+      sanitizeUploadFileName(videoFile.name);
+
+    const objectPath =
+      'autozalo/' +
+      ownerKey +
+      '/' +
+      Date.now() +
+      '_' +
+      safeName;
+
+    const {
+      data,
+      error
+    } =
+      await sb.storage
+        .from(VIDEO_BUCKET)
+        .upload(
+          objectPath,
+          videoFile,
+          {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: videoFile.type || 'video/mp4'
+          }
+        );
+
+    if (error) {
+      throw error;
+    }
+
+    const path =
+      String(data?.path || objectPath).trim();
+
+    const publicData =
+      sb.storage
+        .from(VIDEO_BUCKET)
+        .getPublicUrl(path);
+
+    const publicUrl =
+      String(
+        publicData?.data?.publicUrl || ''
+      ).trim();
+
+    if (!publicUrl) {
+      throw new Error(
+        'Không lấy được Public URL. Kiểm tra bucket "' +
+        VIDEO_BUCKET +
+        '" đã đặt Public chưa.'
+      );
+    }
+
+    uploadedVideoUrl = publicUrl;
+    uploadedVideoPath = path;
+    uploadedVideoSignature = signature;
+
+    if (infoEl) {
+      infoEl.innerHTML =
+        '<a href="' +
+        escapeHtml(publicUrl) +
+        '" target="_blank" rel="noopener noreferrer">' +
+        escapeHtml(safeName) +
+        '</a> (' +
+        (videoFile.size / 1024 / 1024).toFixed(2) +
+        ' MB) - ✅ Đã tạo link MP4';
+    }
+
+    console.log('[VIDEO UPLOAD OK]', {
+      bucket: VIDEO_BUCKET,
+      path: uploadedVideoPath,
+      video_url: uploadedVideoUrl
+    });
+
+    return uploadedVideoUrl;
+
+  } catch (err) {
+    uploadedVideoUrl = '';
+    uploadedVideoPath = '';
+    uploadedVideoSignature = '';
+
+    if (infoEl) {
+      infoEl.textContent =
+        '❌ Upload video lỗi: ' +
+        (err?.message || err);
+    }
+
+    throw new Error(
+      'Upload video lỗi. Kiểm tra Supabase Storage bucket "' +
+      VIDEO_BUCKET +
+      '" (phải tồn tại, cho phép upload và Public). Chi tiết: ' +
+      (err?.message || err)
+    );
+
+  } finally {
+    isUploadingVideo = false;
+  }
+}
 
 
 function bindComposerEvents() {
@@ -2414,10 +2604,11 @@ function bindComposerEvents() {
   imageFile?.addEventListener('change', function () {
     const file = this.files?.[0];
 
-    // Chỉ cho chọn 1 loại media tại một thời điểm.
-    // Chọn ảnh thì bỏ video.
     if (file && videoFile) {
       videoFile.value = '';
+      uploadedVideoUrl = '';
+      uploadedVideoPath = '';
+      uploadedVideoSignature = '';
       document.getElementById('videoFileInfo').textContent = 'Chưa chọn video';
     }
 
@@ -2425,18 +2616,32 @@ function bindComposerEvents() {
       file ? `${file.name} (${Math.round(file.size / 1024)} KB)` : 'Chưa chọn ảnh';
   });
 
-  videoFile?.addEventListener('change', function () {
+  videoFile?.addEventListener('change', async function () {
     const file = this.files?.[0];
 
-    // Chỉ cho chọn 1 loại media tại một thời điểm.
-    // Chọn video thì bỏ ảnh.
+    uploadedVideoUrl = '';
+    uploadedVideoPath = '';
+    uploadedVideoSignature = '';
+
     if (file && imageFile) {
       imageFile.value = '';
       document.getElementById('imageFileInfo').textContent = 'Chưa chọn ảnh';
     }
 
+    if (!file) {
+      document.getElementById('videoFileInfo').textContent = 'Chưa chọn video';
+      return;
+    }
+
     document.getElementById('videoFileInfo').textContent =
-      file ? `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)` : 'Chưa chọn video';
+      `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB) - đang upload...`;
+
+    try {
+      await uploadVideoToStorage(file);
+    } catch (err) {
+      console.error('[UPLOAD VIDEO ERROR]', err);
+      alert(err?.message || err);
+    }
   });
 }
 
@@ -2450,11 +2655,19 @@ async function sendRunWebhook() {
   const maNv =
     await getLoggedInMaNv();
 
+
   if (!maNv) {
+
     throw new Error(
       'Không lấy được ma_nv của nhân viên đang đăng nhập.'
     );
+
   }
+
+
+  /*
+    LẤY NỘI DUNG + FILE + THỜI GIAN TỪ FORM
+  */
 
   const noiDung =
     String(
@@ -2472,6 +2685,22 @@ async function sendRunWebhook() {
   const videoFile =
     document.getElementById('videoFile')?.files?.[0] || null;
 
+  let videoUrl = '';
+
+  if (videoFile) {
+    videoUrl =
+      await uploadVideoToStorage(videoFile);
+  }
+
+  // Loại dữ liệu gửi ra webhook:
+  // text  = không có ảnh/video
+  // image = có ảnh
+  // video = có video
+  const loaiGuiWebhook =
+    videoFile ? 'video' :
+    imageFile ? 'image' :
+    'text';
+
   const delayConfig =
     getDelayConfigFromForm();
 
@@ -2487,26 +2716,63 @@ async function sendRunWebhook() {
   const gioHen =
     getGioHenFromForm();
 
-  const loaiGuiWebhook =
-    videoFile
-      ? 'video'
-      : imageFile
-        ? 'image'
-        : 'text';
+  // Phòng thủ thêm: các chế độ gửi nội dung không được để trống.
+  if (
+    (
+      loaiGui === 'guithuong' ||
+      loaiGui === 'nhachen' ||
+      loaiGui === 'thongbaocongno'
+    ) &&
+    !noiDung
+  ) {
+    throw new Error(
+      loaiGui === 'nhachen'
+        ? 'Bạn đã chọn Nhắc hẹn nhưng chưa nhập nội dung.'
+        : loaiGui === 'thongbaocongno'
+          ? 'Bạn đã chọn Thông báo công nợ nhưng chưa nhập nội dung.'
+          : 'Bạn đã chọn Gửi thường nhưng chưa nhập nội dung.'
+    );
+  }
 
   if (!currentRunId) {
     currentRunId =
-      (window.crypto &&
-       typeof window.crypto.randomUUID === 'function')
+      (window.crypto && typeof window.crypto.randomUUID === 'function')
         ? window.crypto.randomUUID()
-        : (
-            'run_' +
-            Date.now() +
-            '_' +
-            Math.random().toString(36).slice(2, 9)
-          );
+        : ('run_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9));
   }
 
+  /*
+    PAYLOAD TEXT:
+    n8n nhận body.payload là chuỗi JSON.
+    Parse trong n8n bằng:
+      $json.body
+  */
+  /*
+    MULTIPART/FORM-DATA
+    - Không convert ảnh/video sang Base64.
+    - Browser tự đặt Content-Type + boundary.
+    - n8n nhận file trong binary với field chung:
+        $binary.data
+      Nếu gửi đồng thời nhiều file cùng tên field "data",
+      n8n có thể đánh số field tiếp theo tùy cách Webhook parse multipart.
+  */
+  const formData = new FormData();
+
+  /*
+    KHÔNG CÒN payload.
+    Tất cả field được gửi thẳng vào body webhook.
+  */
+
+  formData.append('action', 'run');
+  formData.append('nguon', 'auto_tinnhan');
+  // ma_nv dùng giá trị tương thích luồng cũ từ getLoggedInMaNv()
+  formData.append('ma_nv', maNv);
+
+  formData.append('run_id', currentRunId);
+  formData.append('so_khach_hop_le', String(rows.length));
+
+  // conversation_id gửi trực tiếp, KHÔNG có dấu []
+  // Nếu đang có 1 khách hợp lệ thì n8n sẽ nhận ví dụ: 13546
   const conversationId =
     rows.find(r =>
       r.conversation_id !== null &&
@@ -2514,194 +2780,185 @@ async function sendRunWebhook() {
       String(r.conversation_id).trim() !== ''
     )?.conversation_id ?? '';
 
+  formData.append('conversation_id', String(conversationId));
+
+  // ID nhắc hẹn - dùng tên cột mới reminderid
   const reminderid =
     rows.find(r =>
-      String(r.conversation_id ?? '').trim() ===
-      String(conversationId ?? '').trim()
+      String(r.conversation_id ?? '').trim() === String(conversationId ?? '').trim()
     )?.reminderid ?? '';
 
+  formData.append('reminderid', String(reminderid));
+
+  // Loại tin nhắn Chatwoot
+  formData.append('message_type', 'outgoing');
+
+  // LOẠI GỬI WEBHOOK:
+  // - Gửi thường:
+  //     + có video  => video
+  //     + có ảnh    => image
+  //     + không media => text
+  // - Nhắc hẹn         => nhachen
+  // - Xóa nhắc hẹn     => xoanhachen
+  // - Thông báo công nợ => thongbaocongno
   const loaiGuiGuiWebhook =
     loaiGui === 'guithuong'
       ? loaiGuiWebhook
       : loaiGui;
 
-  const payload = {
+  formData.append('loaigui', loaiGuiGuiWebhook);
 
-    run_id:
-      currentRunId,
+  // Chế độ nghiệp vụ:
+  // guithuong | nhachen | xoanhachen | thongbaocongno
+  formData.append('che_do_gui', loaiGui);
 
-    so_khach_hop_le:
-      rows.length,
+  // Khi chọn "Xóa nhắc hẹn":
+  // n8n nhận body.loinhac = "xoanhachen"
+  formData.append('loinhac', loiNhac);
 
-    conversation_id:
-      String(conversationId),
+  // Giờ hẹn: chỉ có giá trị khi che_do_gui = nhachen
+  formData.append('gio_hen', gioHen);
 
-    reminderid:
-      String(reminderid),
+  formData.append('noi_dung', noiDung);
+  formData.append('icon', icon);
 
-    message_type:
-      'outgoing',
+  formData.append('video_url', videoUrl);
+  formData.append('has_video', videoUrl ? 'true' : 'false');
+  formData.append('video_name', videoFile ? videoFile.name : '');
+  formData.append('video_mime', videoFile ? (videoFile.type || 'video/mp4') : '');
+  formData.append('video_size', videoFile ? String(videoFile.size || 0) : '0');
 
-    loaigui:
-      loaiGuiGuiWebhook,
+  formData.append(
+    'delay_mode',
+    String(delayConfig.mode ?? 'random')
+  );
 
-    che_do_gui:
-      loaiGui,
+  formData.append(
+    'fixed_seconds',
+    delayConfig.fixed_seconds == null
+      ? ''
+      : String(delayConfig.fixed_seconds)
+  );
 
-    loinhac:
-      loiNhac,
+  formData.append(
+    'min_seconds',
+    String(delayConfig.min_seconds)
+  );
 
-    gio_hen:
-      gioHen,
+  formData.append(
+    'max_seconds',
+    String(delayConfig.max_seconds)
+  );
 
-    noi_dung:
-      noiDung,
+  // Khung giờ được phép gửi - n8n nhận trực tiếp trong body webhook
+  formData.append(
+    'gio_gui_tu',
+    sendWindow.gio_gui_tu
+  );
 
-    icon:
-      icon,
+  formData.append(
+    'gio_gui_den',
+    sendWindow.gio_gui_den
+  );
 
-    file_anh:
-      imageFile
-        ? {
-            name: imageFile.name,
-            type: imageFile.type || 'image/jpeg',
-            size: imageFile.size
-          }
-        : null,
+  // Chuỗi hiển thị tiện dùng/debug trong n8n
+  formData.append(
+    'khung_gio_gui',
+    sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den
+  );
 
-    file_video:
-      videoFile
-        ? {
-            name: videoFile.name,
-            type: videoFile.type || 'video/mp4',
-            size: videoFile.size
-          }
-        : null,
+  // Ảnh vẫn gửi binary như cũ.
+  // Video chỉ gửi video_url để tránh lỗi webhook khi file lớn.
+  if (imageFile) {
+    formData.append('data', imageFile, imageFile.name);
+  }
 
-    has_image:
-      !!imageFile,
+  const bodyDebug = {
+    action: 'run',
+    nguon: 'auto_tinnhan',
+    ma_nv: maNv,
+    run_id: currentRunId,
+    so_khach_hop_le: rows.length,
+    conversation_id: String(conversationId),
+    message_type: 'outgoing',
+    loaigui: loaiGuiGuiWebhook,
+    che_do_gui: loaiGui,
+    loinhac: loiNhac,
+    gio_hen: gioHen,
+    noi_dung: noiDung,
+    icon: icon,
+    delay_mode: delayConfig.mode,
+    fixed_seconds: delayConfig.fixed_seconds,
+    min_seconds: delayConfig.min_seconds,
+    max_seconds: delayConfig.max_seconds,
+    gio_gui_tu: sendWindow.gio_gui_tu,
+    gio_gui_den: sendWindow.gio_gui_den,
+    khung_gio_gui: sendWindow.gio_gui_tu + ' - ' + sendWindow.gio_gui_den,
+    video_url: videoUrl,
+    has_video: !!videoUrl,
+    video_name: videoFile ? videoFile.name : '',
+    video_mime: videoFile ? (videoFile.type || 'video/mp4') : '',
+    video_size: videoFile ? videoFile.size : 0,
+    data_anh: imageFile
+      ? {
+          field: 'data',
+          name: imageFile.name,
+          type: imageFile.type,
+          size: imageFile.size
+        }
+      : null,
 
-    has_video:
-      !!videoFile,
-
-    thoi_gian_cho: {
-      mode:
-        delayConfig.mode,
-      fixed_seconds:
-        delayConfig.fixed_seconds,
-      min_seconds:
-        delayConfig.min_seconds,
-      max_seconds:
-        delayConfig.max_seconds
-    },
-
-    gio_gui_tu:
-      sendWindow.gio_gui_tu,
-
-    gio_gui_den:
-      sendWindow.gio_gui_den,
-
-    khung_gio_gui:
-      sendWindow.gio_gui_tu +
-      ' - ' +
-      sendWindow.gio_gui_den
+    data_video: videoFile
+      ? {
+          field: 'data',
+          name: videoFile.name,
+          type: videoFile.type,
+          size: videoFile.size
+        }
+      : null
   };
 
-  /*
-    QUAN TRỌNG:
-    Gửi webhook bằng multipart/form-data.
-
-    n8n nhận:
-      body.action
-      body.nguon
-      body.ma_nv
-      body.payload
-
-      binary.video     -> nếu có video
-      binary.file_anh  -> nếu có ảnh
-  */
-  const formData =
-    new FormData();
-
-  formData.append(
-    'action',
-    'run'
+  console.log(
+    '[GUITIN_AUTOZALO] URL:',
+    WEBHOOK_URL
   );
 
-  formData.append(
-    'nguon',
-    'auto_tinnhan'
-  );
-
-  formData.append(
-    'ma_nv',
-    maNv
-  );
-
-  formData.append(
-    'payload',
-    JSON.stringify(payload)
-  );
-
-  if (imageFile) {
-    formData.append(
-      'file_anh',
-      imageFile,
-      imageFile.name
-    );
-  }
-
-  if (videoFile) {
-    // Đúng kiểu upload-drive đang nhận được:
-    // n8n sẽ thấy ở binary.video
-    formData.append(
-      'video',
-      videoFile,
-      videoFile.name
-    );
-  }
 
   console.log(
     '[GUITIN_AUTOZALO] MULTIPART:',
-    {
-      action: 'run',
-      nguon: 'auto_tinnhan',
-      ma_nv: maNv,
-      payload,
-      video: videoFile
-        ? {
-            name: videoFile.name,
-            type: videoFile.type,
-            size: videoFile.size
-          }
-        : null,
-      file_anh: imageFile
-        ? {
-            name: imageFile.name,
-            type: imageFile.type,
-            size: imageFile.size
-          }
-        : null
-    }
+    bodyDebug
   );
+
 
   const response =
     await fetch(
       WEBHOOK_URL,
       {
-        method:
-          'POST',
-        body:
-          formData
+        method: 'POST',
+
+        /*
+          KHÔNG tự set Content-Type ở đây.
+          Browser sẽ tự tạo:
+          multipart/form-data; boundary=...
+        */
+        body: formData
       }
     );
+
+
+  /*
+    Lấy response n8n để debug
+  */
 
   let responseText = '';
 
   try {
+
     responseText =
       await response.text();
+
   } catch (e) {}
+
 
   console.log(
     '[GUITIN_AUTOZALO] RESPONSE:',
@@ -2709,7 +2966,9 @@ async function sendRunWebhook() {
     responseText
   );
 
+
   if (!response.ok) {
+
     throw new Error(
       'Webhook lỗi HTTP ' +
       response.status +
@@ -2719,13 +2978,16 @@ async function sendRunWebhook() {
           : ''
       )
     );
+
   }
+
 
   return {
     ok: true,
     status: response.status,
     responseText
   };
+
 }
 
 
@@ -3297,14 +3559,26 @@ window.addEventListener('beforeunload', function () {
       await createSupabaseClient();
 
 
-    const maNv =
-      await getLoggedInMaNv();
+    /*
+      QUAN TRỌNG:
+      duoc_xem=true được phép load toàn bộ danh sách,
+      không bắt buộc phải tra ma_nv trước khi load.
+      Tránh trang bị kẹt ở "Đang khởi tạo...".
+    */
+    if (!getDuocXemFromUrl()) {
+      const maNv =
+        await getLoggedInMaNv();
 
-
-    console.log(
-      '[NHÂN VIÊN ĐĂNG NHẬP]',
-      maNv
-    );
+      console.log(
+        '[NHÂN VIÊN ĐĂNG NHẬP]',
+        maNv
+      );
+    } else {
+      console.log(
+        '[NHÂN VIÊN ĐĂNG NHẬP]',
+        'duoc_xem=true - bỏ qua bước bắt buộc tra ma_nv khi khởi tạo'
+      );
+    }
 
 
     await loadData();
@@ -3315,4 +3589,25 @@ window.addEventListener('beforeunload', function () {
 
   catch (err) {
 
-    console.err
+    console.error(
+      '[INIT ERROR]',
+      err
+    );
+
+
+    setStatus(
+      'Lỗi khởi tạo: ' +
+      (
+        err.message ||
+        err
+      )
+    );
+
+  }
+
+})();
+
+</script>
+
+</body>
+</html>
