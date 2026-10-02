@@ -2434,6 +2434,11 @@ async function sendRunWebhook() {
   const maNv =
     await getLoggedInMaNv();
 
+  const idNv =
+    String(
+      getLoggedInIdNv() || ''
+    ).trim();
+
 
   if (!maNv) {
 
