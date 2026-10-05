@@ -2439,7 +2439,7 @@ function normalizeBigintOrNull(value) {
 
         const uidText = String(item.uid_from ?? "").trim();
         item.uid_from =
-          !uidText || ["undefined", "null", "nan"].includes(uidText.toLowerCase())
+          !uidText || ["chưa có nhân viên", "null", "nan"].includes(uidText.toLowerCase())
             ? null
             : uidText;
 
