@@ -5699,17 +5699,41 @@ logoutBtn.addEventListener("click", function () {
       // Không lookup lại bằng ma_kh vì một ma_kh có thể có nhiều conversation_id,
       // nếu lookup bằng ma_kh sẽ luôn lấy dòng đầu và làm sai bộ lọc.
       const filtered = list.filter(function (item) {
+        // "Tất cả nhân viên":
+        // - nếu đang bấm "Đã chọn" thì list phía trên đã chỉ gồm các dòng đã check
+        // - không lọc thêm theo nhân viên.
         if (staffList.length === 0) {
           return true;
         }
 
+        // Có chọn nhân viên:
+        // chỉ giữ các dòng thuộc nhân viên đang lọc.
+        // Nếu đang ở chế độ "Đã chọn", kết quả = dòng đã check + đúng nhân viên.
         const itemStaff = getStaffByAnyCode(item.id_nv || item.ma_nv);
+
         const itemIdNv = normalizeKiotStaffId(
-          itemStaff ? itemStaff.id_nv : (item.id_nv || item.ma_nv)
+          itemStaff ? itemStaff.id_nv : item.id_nv
         ).toLowerCase();
 
+        const itemMaNv = String(
+          itemStaff ? itemStaff.ma_nv : item.ma_nv
+        ).trim().toLowerCase();
+
         return staffList.some(function (staffIdNv) {
-          return itemIdNv === normalizeKiotStaffId(staffIdNv).toLowerCase();
+          const selectedStaff = getStaffByIdNv(staffIdNv) || getStaffByAnyCode(staffIdNv);
+
+          const selectedIdNv = normalizeKiotStaffId(
+            selectedStaff ? selectedStaff.id_nv : staffIdNv
+          ).toLowerCase();
+
+          const selectedMaNv = String(
+            selectedStaff ? selectedStaff.ma_nv : staffIdNv
+          ).trim().toLowerCase();
+
+          return (
+            (itemIdNv && selectedIdNv && itemIdNv === selectedIdNv) ||
+            (itemMaNv && selectedMaNv && itemMaNv === selectedMaNv)
+          );
         });
       });
 
@@ -5729,13 +5753,20 @@ logoutBtn.addEventListener("click", function () {
 
       customerBody.innerHTML = filtered.map(function (item) {
         const rowStaff = getStaffByAnyCode(item.id_nv || item.ma_nv);
-        const staffTitle = String(
+        const rawStaffTitle = String(
           item.ten_nv ||
           (rowStaff ? rowStaff.ten_nv : "") ||
           item.ma_nv ||
           item.id_nv ||
           ""
         ).trim();
+
+        const staffTitle =
+          !rawStaffTitle ||
+          rawStaffTitle.toLowerCase() === "undefined" ||
+          rawStaffTitle.toLowerCase() === "null"
+            ? "Chưa có nhân viên"
+            : rawStaffTitle;
 
         const hasZaloUid = true;
         const maKh = String(item.ma_kh || "");
