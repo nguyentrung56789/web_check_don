@@ -2228,37 +2228,27 @@ function normalizeBigintOrNull(value) {
         throw new Error("Supabase chưa sẵn sàng.");
       }
 
-      const selectedMaKh = Array.from(new Set(
-        (selectedRows || [])
-          .map(function (row) { return String(row.ma_kh || "").trim(); })
-          .filter(Boolean)
-      ));
-
-      if (selectedMaKh.length === 0) {
-        throw new Error("Chưa chọn khách hàng nào.");
-      }
-
-      // Lấy ma_nv đang chọn ở dropdown để khi bấm Chạy
-      // chỉ đọc đúng dữ liệu của nhân viên đang được lọc.
+      // Lấy ma_nv đang chọn ở dropdown.
+      // - Nếu đang chọn một/nhiều nhân viên: chỉ lấy các dòng ĐÃ CHECK thuộc ma_nv đó.
+      // - Nếu đang chọn "Tất cả nhân viên": lấy toàn bộ các dòng ĐÃ CHECK, không lọc thêm ma_nv.
+      // Không query lại theo ma_kh để tránh kéo thêm dòng cùng ma_kh nhưng không được check.
       const selectedStaffDbCodes = getSelectedStaffDbCodes();
 
-      let customerQuery = supabaseClient
-        .from(TABLE_KHACH_HANG)
-        .select("ma_kh, ten_kh, zalo_name, ma_nv, dia_chi, khu_vuc, phuong_xa, dien_thoai, xung_ho, conversation_id, contact_id, ngay_chat_cuoi, uid_from, reminderid, gio_hen, check")
-        .in("ma_kh", selectedMaKh);
+      const selectedRowsToSync = (selectedRows || []).filter(function (row) {
+        if (selectedStaffDbCodes.length === 0) return true;
 
-      if (selectedStaffDbCodes.length > 0) {
-        customerQuery = customerQuery.in("ma_nv", selectedStaffDbCodes);
+        const rowMaNv = String(row.ma_nv || "").trim();
+        return selectedStaffDbCodes.includes(rowMaNv);
+      });
+
+      if (selectedRowsToSync.length === 0) {
+        throw new Error("Chưa chọn khách hàng nào phù hợp với nhân viên đang lọc.");
       }
 
-      const { data: customerIdRows, error: customerIdError } = await customerQuery;
+      // Dùng trực tiếp chính các dòng đã check. Không đọc lại theo ma_kh.
+      const customerIdRows = selectedRowsToSync;
 
-      if (customerIdError) {
-        throw customerIdError;
-      }
-
-      // Khóa theo ma_kh + ma_nv để các dòng cùng khách nhưng khác nhân viên
-      // không ghi đè lẫn nhau.
+      // Giữ nguyên map ma_kh + ma_nv cho phần mapping dữ liệu phía dưới.
       const customerIdMap = new Map();
       (customerIdRows || []).forEach(function (row) {
         const maKh = String(row.ma_kh || "").trim();
@@ -2269,7 +2259,7 @@ function normalizeBigintOrNull(value) {
       const selectedMaNv = Array.from(new Set(
         []
           .concat(customerIdRows || [])
-          .concat(selectedRows || [])
+          .concat(selectedRowsToSync || [])
           .map(function (row) { return String(row.ma_nv || "").trim(); })
           .filter(Boolean)
       ));
@@ -2297,7 +2287,7 @@ function normalizeBigintOrNull(value) {
       // Đọc reminderid + gio_hen hiện có từ bảng gửi tin để làm fallback.
       // View sql_khachhang_nhanvien hiện đã có 2 cột này và được ưu tiên khi INSERT.
       const existingConversationIds = Array.from(new Set(
-        (selectedRows || [])
+        (selectedRowsToSync || [])
           .map(function (row) {
             return normalizeBigintOrNull(row.conversation_id);
           })
@@ -2344,7 +2334,7 @@ function normalizeBigintOrNull(value) {
         throw deleteError;
       }
 
-      const mappedRows = (selectedRows || []).map(function (row) {
+      const mappedRows = (selectedRowsToSync || []).map(function (row) {
         const maKh = String(row.ma_kh || "").trim();
         const rowMaNv = String(row.ma_nv || "").trim();
         const idRow = customerIdMap.get(maKh + "|" + rowMaNv) || {};
