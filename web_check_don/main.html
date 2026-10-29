@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="vi">
 <head>
@@ -316,13 +317,22 @@
         );
     }
 
-
     .btn-kiemtradonhang {
       background:
         linear-gradient(
           135deg,
           #38bdf8,
           #67e8f9
+        );
+    }
+
+    /* NÚT TẠO HÓA ĐƠN */
+    .btn-taohoadon {
+      background:
+        linear-gradient(
+          135deg,
+          #a78bfa,
+          #c4b5fd
         );
     }
 
@@ -530,7 +540,6 @@
           </span>
         </button>
 
-
         <!-- KIỂM TRA ĐƠN HÀNG -->
         <button
           id="kiemtradonhang"
@@ -546,6 +555,24 @@
 
           <span class="permission-name">
             Kiểm tra đơn hàng
+          </span>
+        </button>
+
+        <!-- TẠO HÓA ĐƠN -->
+        <button
+          id="taohoadon"
+          class="permission-btn btn-taohoadon hidden"
+          type="button"
+          data-phan-quyen
+          data-id-chucnang="taohoadon"
+          data-url="./tao_hd_thue_bang_tay.html"
+        >
+          <span class="permission-icon">
+            🧾
+          </span>
+
+          <span class="permission-name">
+            Tạo hóa đơn
           </span>
         </button>
       </section>
