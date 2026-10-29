@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="vi">
 <head>
@@ -5,58 +6,50 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
+    content="width=device-width,initial-scale=1,viewport-fit=cover"
   />
 
-  <title>Trang quản trị</title>
+  <title>Trang chính</title>
 
-  <!-- =========================
-       CẤU HÌNH + SUPABASE + LOGIN
-  ========================== -->
+  <!-- Giữ các file xác thực và cấu hình hiện tại -->
   <script src="./js/internal_key.js"></script>
-  <script src="./js/cod_config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./js/check_login.js"></script>
+  <script src="./js/cod_config.js"></script>
+  <script src="./js/auth_token.js"></script>
 
   <style>
     :root {
-      --bg: #0b1220;
-      --card: #0f1830;
-      --text: #e6edff;
-      --muted: #9aa7c7;
-      --line: #233043;
-      --primary: #2dd4bf;
-      --primary-hover: #5eead4;
-      --primary-text: #042f2e;
-      --secondary: #60a5fa;
-      --secondary-hover: #93c5fd;
-      --danger: #f87171;
+      --bg:#0b1220;
+      --card:#0f1830;
+      --txt:#e6edff;
+      --muted:#9aa7c7;
+      --line:#233043;
+
+      --admin:#2dd4bf;
+      --kho:#60a5fa;
+      --checkdon:#fbbf24;
+      --map:#a78bfa;
+      --chamsoc:#fb7185;
+      --doanhso:#34d399;
+      --taohoadon:#22d3ee;
+
+      --danger:#f87171;
     }
 
     * {
-      box-sizing: border-box;
+      box-sizing:border-box;
     }
 
     html,
     body {
-      min-height: 100%;
+      min-height:100%;
     }
 
     body {
-      margin: 0;
-
-      /* Ẩn trang cho tới khi check login thành công */
-      visibility: hidden;
-
-      background:
-        linear-gradient(
-          135deg,
-          #0b1220,
-          #111a2f
-        );
-
-      color: var(--text);
-
+      visibility:hidden;
+      margin:0;
+      background:var(--bg);
+      color:var(--txt);
       font-family:
         system-ui,
         -apple-system,
@@ -68,534 +61,657 @@
     }
 
     body.ready {
-      visibility: visible;
+      visibility:visible;
     }
 
-    button,
-    a {
-      -webkit-tap-highlight-color: transparent;
+    button {
+      font:inherit;
+      -webkit-tap-highlight-color:transparent;
     }
 
-    .topbar {
-      position: fixed;
-      top: 0;
-      right: 0;
-      left: 0;
-      z-index: 10;
+    .top {
+      position:fixed;
+      z-index:20;
+      inset:0 0 auto 0;
 
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
 
-      gap: 14px;
+      min-height:64px;
+      padding:14px 18px;
 
-      min-height: 64px;
-
-      padding: 12px 18px;
-
-      background:
-        rgba(
-          15,
-          24,
-          48,
-          0.98
-        );
-
-      border-bottom:
-        1px solid var(--line);
-
-      box-shadow:
-        0 4px 14px
-        rgba(0, 0, 0, 0.25);
-
-      backdrop-filter:
-        blur(10px);
+      background:rgba(15,24,48,.98);
+      border-bottom:1px solid var(--line);
+      box-shadow:0 2px 12px rgba(0,0,0,.35);
+      backdrop-filter:blur(10px);
     }
 
-    .title {
-      font-size: 20px;
-      font-weight: 800;
+    .hello-wrap {
+      min-width:0;
     }
 
-    .back-btn {
-      border: 0;
-
-      padding: 8px 4px;
-
-      background: transparent;
-
-      color: var(--danger);
-
-      font-size: 15px;
-      font-weight: 750;
-
-      cursor: pointer;
+    .hello {
+      font-weight:700;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
 
-    .back-btn:hover {
-      text-decoration: underline;
+    .ma-nv {
+      margin-top:3px;
+      color:var(--muted);
+      font-size:12px;
     }
 
-    .wrap {
-      width: min(560px, 92vw);
-      margin: 110px auto 40px;
+    #btnLogout {
+      flex:0 0 auto;
+
+      padding:9px 12px;
+
+      background:transparent;
+      border:1px solid rgba(248,113,113,.35);
+      border-radius:10px;
+
+      color:var(--danger);
+      cursor:pointer;
+      font-weight:800;
+      font-size:14px;
     }
 
-    .card {
-      padding: 24px;
-
-      border:
-        1px solid var(--line);
-
-      border-radius: 18px;
-
-      background:
-        rgba(
-          15,
-          24,
-          48,
-          0.98
-        );
-
-      box-shadow:
-        0 14px 38px
-        rgba(0, 0, 0, 0.3);
-    }
-
-    h1 {
-      margin: 0 0 6px;
-      font-size: 24px;
-    }
-
-    .desc {
-      margin: 0 0 22px;
-
-      color: var(--muted);
-
-      font-size: 14px;
-      line-height: 1.5;
+    #btnLogout:hover {
+      background:rgba(248,113,113,.1);
     }
 
     .menu {
-      display: grid;
-      gap: 14px;
+      width:min(520px,92vw);
+      margin:100px auto 48px;
+
+      display:grid;
+      gap:18px;
+    }
+
+    .heading {
+      margin-bottom:2px;
+      text-align:center;
+    }
+
+    .heading h1 {
+      margin:0 0 6px;
+      font-size:26px;
+    }
+
+    .heading p {
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.5;
     }
 
     .menu-btn {
-      width: 100%;
-      min-height: 60px;
+      width:100%;
+      min-height:62px;
 
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
 
-      gap: 10px;
+      padding:16px 18px;
 
-      border: 0;
-      border-radius: 14px;
+      border:0;
+      border-radius:14px;
 
-      padding: 14px 18px;
+      cursor:pointer;
+      color:#041a18;
+      font-weight:850;
+      font-size:18px;
 
-      background:
-        var(--primary);
-
-      color:
-        var(--primary-text);
-
-      font-size: 18px;
-      font-weight: 850;
-
-      text-align: center;
-      text-decoration: none;
-
-      cursor: pointer;
+      box-shadow:0 8px 24px rgba(0,0,0,.2);
 
       transition:
-        transform 0.15s ease,
-        background 0.15s ease,
-        filter 0.15s ease;
+        transform .15s ease,
+        filter .15s ease,
+        box-shadow .15s ease;
     }
 
     .menu-btn:hover {
-      transform:
-        translateY(-1px);
-
-      background:
-        var(--primary-hover);
-
-      filter:
-        brightness(1.03);
+      transform:translateY(-2px);
+      filter:brightness(1.06);
+      box-shadow:0 12px 28px rgba(0,0,0,.27);
     }
 
     .menu-btn:active {
-      transform:
-        translateY(0);
+      transform:translateY(0);
     }
 
-    #linkDanhSachQuyen {
-      background:
-        var(--secondary);
-
-      color: #071a34;
+    #admin {
+      background:var(--admin);
     }
 
-    #linkDanhSachQuyen:hover {
-      background:
-        var(--secondary-hover);
+    #kho {
+      background:var(--kho);
+    }
+
+    #checkdon {
+      background:var(--checkdon);
+      color:#3a2a04;
+    }
+
+    #mapview {
+      background:var(--map);
+      color:#1f1235;
+    }
+
+    #chamsockhachhang {
+      background:var(--chamsoc);
+      color:#3b0713;
+    }
+
+    #tinhdoanhso {
+      background:var(--doanhso);
+      color:#052e20;
+    }
+
+    /* NÚT TẠO HÓA ĐƠN MỚI */
+    #taohoadon {
+      background:var(--taohoadon);
+      color:#083344;
+    }
+
+    .hidden {
+      display:none !important;
+    }
+
+    .notice {
+      display:none;
+
+      padding:15px;
+
+      border:1px solid var(--line);
+      border-radius:12px;
+
+      background:var(--card);
+      color:var(--muted);
+
+      font-size:14px;
+      line-height:1.6;
+      text-align:center;
+    }
+
+    .notice.show {
+      display:block;
     }
 
     footer {
-      padding:
-        0 16px 24px;
-
-      color:
-        var(--muted);
-
-      font-size: 12px;
-
-      text-align: center;
+      margin:8px 0 24px;
+      color:var(--muted);
+      font-size:12px;
+      text-align:center;
     }
 
-    @media (max-width: 520px) {
-      .topbar {
-        padding:
-          12px 14px;
+    @media (max-width:520px) {
+      .top {
+        padding:12px 14px;
       }
 
-      .wrap {
-        margin-top:
-          92px;
+      .menu {
+        margin-top:88px;
       }
 
-      .card {
-        padding:
-          20px;
+      .heading h1 {
+        font-size:23px;
       }
 
       .menu-btn {
-        min-height:
-          56px;
-
-        font-size:
-          17px;
+        min-height:58px;
+        font-size:17px;
       }
     }
   </style>
 </head>
 
 <body>
+  <header class="top">
+    <div class="hello-wrap">
+      <div class="hello">
+        Xin chào
+        <span id="ten_nv">...</span>
+        👋
+      </div>
 
-  <!-- =========================
-       THANH TRÊN
-  ========================== -->
-  <header class="topbar">
+      <div id="ma_nv" class="ma-nv"></div>
+    </div>
 
-    <div class="title">
-      ⚙️ Trang quản trị
+    <button id="btnLogout" type="button">
+      Đăng xuất
+    </button>
+  </header>
+
+  <main class="menu">
+    <div class="heading">
+      <h1>Chọn chức năng</h1>
+
+      <p>
+        Chỉ những chức năng đã được cấp quyền mới hiển thị.
+      </p>
     </div>
 
     <button
-      id="btnBack"
-      class="back-btn"
+      id="admin"
+      class="menu-btn hidden"
       type="button"
+      data-phan-quyen
     >
-      ← Quay lại
+      👤 Admin
     </button>
 
-  </header>
+    <button
+      id="kho"
+      class="menu-btn hidden"
+      type="button"
+      data-phan-quyen
+    >
+      📦 Kho
+    </button>
 
+    <button
+      id="checkdon"
+      class="menu-btn hidden"
+      type="button"
+      data-phan-quyen
+    >
+      🧾 Check đơn
+    </button>
 
-  <!-- =========================
-       NỘI DUNG
-  ========================== -->
-  <main class="wrap">
+    <button
+      id="mapview"
+      class="menu-btn hidden"
+      type="button"
+      data-phan-quyen
+    >
+      🗺️ Xem bản đồ
+    </button>
 
-    <section class="card">
+    <button
+      id="chamsockhachhang"
+      class="menu-btn hidden"
+      type="button"
+      data-phan-quyen
+    >
+      💬 Chăm sóc khách hàng
+    </button>
 
-      <h1>
-        Admin
-      </h1>
+    <button
+      id="tinhdoanhso"
+      class="menu-btn hidden"
+      type="button"
+      data-phan-quyen
+    >
+      🧮 Tính doanh số nhân viên
+    </button>
 
-      <p class="desc">
-        Chọn chức năng quản trị bên dưới.
-      </p>
+    <!-- NÚT TẠO HÓA ĐƠN MỚI -->
+    <button
+      id="taohoadon"
+      class="menu-btn hidden"
+      type="button"
+      data-phan-quyen
+    >
+      🧾 Tạo hóa đơn
+    </button>
 
-
-      <div class="menu">
-
-        <!-- QUẢN LÝ NHÂN VIÊN -->
-        <a
-          id="linkQuanLyNhanVien"
-          class="menu-btn"
-          href="./qly_nhanvien.html"
-        >
-          👥 Quản lý nhân viên
-        </a>
-
-
-        <!-- DANH SÁCH QUYỀN -->
-        <a
-          id="linkDanhSachQuyen"
-          class="menu-btn"
-          href="./danh_sach_quyen.html"
-        >
-          🛡️ Danh sách quyền
-        </a>
-
-      </div>
-
-    </section>
-
+    <div id="permissionNotice" class="notice">
+      Tài khoản chưa được cấp quyền chức năng nào.
+      Vui lòng liên hệ quản trị viên.
+    </div>
   </main>
 
-
-  <!-- =========================
-       FOOTER
-  ========================== -->
   <footer>
     © <span id="year"></span> COD Internal
   </footer>
 
-
-  <!-- =========================
-       SCRIPT
-  ========================== -->
   <script>
     (() => {
-
       'use strict';
 
+      const LOGIN_STORAGE_KEY = 'nv';
 
-      /* =========================
-         ELEMENT
-      ========================= */
+      const routes = {
+        admin:'./admin.html',
+        kho:'./kho.html',
+        checkdon:'./check_don.html',
+        mapview:'./map_tuyen.html',
+        chamsockhachhang:'./chamsockhachhang.html',
+        tinhdoanhso:'./tinhdoanhsonhanvien.html',
 
-      const yearElement =
-        document.getElementById(
-          'year'
-        );
+        // ĐƯỜNG DẪN TRANG TẠO HÓA ĐƠN
+        taohoadon:'./tao_hd_thue_bang_tay.html'
+      };
 
-      const linkQuanLyNhanVien =
-        document.getElementById(
-          'linkQuanLyNhanVien'
-        );
+      const $ = selector =>
+        document.querySelector(selector);
 
-      const linkDanhSachQuyen =
-        document.getElementById(
-          'linkDanhSachQuyen'
-        );
-
-      const btnBack =
-        document.getElementById(
-          'btnBack'
-        );
-
-
-      /* =========================
-         CHUYỂN TRANG
-         KHÔNG TOKEN
-      ========================= */
-
-      function goPage(url) {
-
-        window.location.assign(
-          url
-        );
-
+      function showPage() {
+        document.body.classList.add('ready');
+        document.body.style.visibility = 'visible';
       }
 
-
-      /* =========================
-         KHỞI TẠO TRANG
-      ========================= */
-
-      document.addEventListener(
-        'DOMContentLoaded',
-        async () => {
-
-          try {
-
-
-            /* =========================
-               1. KIỂM TRA LOGIN
-
-               check_login.js
-               sẽ kiểm tra:
-               - ma_nv
-               - mat_khau
-            ========================= */
-
-            if (
-              typeof window.checkLogin !==
-              'function'
-            ) {
-
-              throw new Error(
-                'Không tìm thấy check_login.js'
-              );
-
-            }
-
-
-            const loginOk =
-              await window.checkLogin();
-
-
-            /* =========================
-               2. LOGIN SAI
-            ========================= */
-
-            if (!loginOk) {
-
-              return;
-
-            }
-
-
-            console.log(
-              '[ADMIN] LOGIN OK:',
-              loginOk.ma_nv,
-              loginOk.ten_nv || ''
-            );
-
-
-            /* =========================
-               3. LOGIN ĐÚNG
-               MỚI HIỆN TRANG
-            ========================= */
-
-            document.body.classList.add(
-              'ready'
-            );
-
-
-            /* =========================
-               4. NĂM HIỆN TẠI
-            ========================= */
-
-            if (yearElement) {
-
-              yearElement.textContent =
-                new Date()
-                  .getFullYear();
-
-            }
-
-
-            /* =========================
-               5. QUẢN LÝ NHÂN VIÊN
-            ========================= */
-
-            if (linkQuanLyNhanVien) {
-
-              linkQuanLyNhanVien.href =
-                './qly_nhanvien.html';
-
-
-              linkQuanLyNhanVien
-                .addEventListener(
-                  'click',
-                  event => {
-
-                    event.preventDefault();
-
-
-                    goPage(
-                      './qly_nhanvien.html'
-                    );
-
-                  }
-                );
-
-            }
-
-
-            /* =========================
-               6. DANH SÁCH QUYỀN
-            ========================= */
-
-            if (linkDanhSachQuyen) {
-
-              linkDanhSachQuyen.href =
-                './danh_sach_quyen.html';
-
-
-              linkDanhSachQuyen
-                .addEventListener(
-                  'click',
-                  event => {
-
-                    event.preventDefault();
-
-
-                    goPage(
-                      './danh_sach_quyen.html'
-                    );
-
-                  }
-                );
-
-            }
-
-
-            /* =========================
-               7. QUAY LẠI MAIN
-            ========================= */
-
-            if (btnBack) {
-
-              btnBack.addEventListener(
-                'click',
-                () => {
-
-                  goPage(
-                    './main.html'
-                  );
-
-                }
-              );
-
-            }
-
-
-          } catch (error) {
-
-
-            console.error(
-              '[ADMIN] ERROR:',
-              error
-            );
-
-
-            /* =========================
-               LỖI LOGIN
-               VỀ TRANG ĐĂNG NHẬP
-            ========================= */
-
-            try {
-
-              localStorage.removeItem(
-                'nv'
-              );
-
-              sessionStorage.removeItem(
-                'nv_ctx'
-              );
-
-            } catch {}
-
-
-            location.replace(
-              './login.html'
-            );
-
-          }
-
+      function toBool(value) {
+        return (
+          value === true ||
+          value === 1 ||
+          value === '1' ||
+          String(value ?? '')
+            .trim()
+            .toLowerCase() === 'true'
+        );
+      }
+
+      function readUser() {
+        try {
+          return JSON.parse(
+            localStorage.getItem(LOGIN_STORAGE_KEY) ||
+            'null'
+          );
+        } catch {
+          return null;
         }
-      );
+      }
 
+      function showIf(selector, condition) {
+        const element = $(selector);
+
+        if (!element) return;
+
+        element.classList.toggle(
+          'hidden',
+          !condition
+        );
+
+        element.style.display =
+          condition ? '' : 'none';
+
+        element.dataset.duocXem =
+          String(condition);
+      }
+
+      function getToken() {
+        const params =
+          new URLSearchParams(location.search);
+
+        return (
+          params.get('token') ||
+          params.get('access_token') ||
+          params.get('auth_token') ||
+          params.get('t') ||
+          sessionStorage.getItem('APP_ACCESS') ||
+          sessionStorage.getItem('access_token') ||
+          sessionStorage.getItem('token') ||
+          localStorage.getItem('APP_ACCESS') ||
+          localStorage.getItem('access_token') ||
+          localStorage.getItem('token') ||
+          ''
+        );
+      }
+
+      function saveTokenFromUrl() {
+        const params =
+          new URLSearchParams(location.search);
+
+        const token =
+          params.get('token') ||
+          params.get('access_token') ||
+          params.get('auth_token') ||
+          params.get('t') ||
+          '';
+
+        if (token) {
+          sessionStorage.setItem(
+            'APP_ACCESS',
+            token
+          );
+        }
+
+        return token;
+      }
+
+      function go(path) {
+        const url =
+          new URL(path, location.href);
+
+        /*
+         * Giữ lại các tham số URL hiện tại.
+         */
+        new URLSearchParams(
+          location.search
+        ).forEach((value, key) => {
+          url.searchParams.set(
+            key,
+            value
+          );
+        });
+
+        const token = getToken();
+
+        if (token) {
+          url.searchParams.set(
+            'token',
+            token
+          );
+        }
+
+        location.assign(url.href);
+      }
+
+      function logout() {
+        try {
+          sessionStorage.removeItem('APP_ACCESS');
+          sessionStorage.removeItem('access_token');
+          sessionStorage.removeItem('token');
+        } catch {}
+
+        localStorage.removeItem('nv');
+        localStorage.removeItem('last_ma_nv');
+
+        location.replace('./login.html');
+      }
+
+      function bindRoutes() {
+        Object.entries(routes).forEach(
+          ([buttonId, path]) => {
+            document
+              .getElementById(buttonId)
+              ?.addEventListener(
+                'click',
+                () => go(path)
+              );
+          }
+        );
+      }
+
+      function init() {
+        /*
+         * Đồng bộ token nếu auth_token.js có hàm checkAccess.
+         */
+        if (
+          typeof window.checkAccess === 'function'
+        ) {
+          const allowed =
+            window.checkAccess();
+
+          if (!allowed) {
+            showPage();
+            return;
+          }
+        } else {
+          saveTokenFromUrl();
+        }
+
+        const nv = readUser();
+
+        if (!nv || !nv.ma_nv) {
+          alert(
+            'Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.'
+          );
+
+          location.replace('./login.html');
+          return;
+        }
+
+        /*
+         * Chỉ chặn nếu trường hoat_dong thực sự tồn tại
+         * và có giá trị false.
+         *
+         * Nếu dữ liệu cũ chưa có hoat_dong thì vẫn cho vào.
+         */
+        if (
+          nv.hoat_dong !== undefined &&
+          nv.hoat_dong !== null &&
+          !toBool(nv.hoat_dong)
+        ) {
+          alert(
+            'Tài khoản đã bị dừng hoạt động.'
+          );
+
+          localStorage.removeItem('nv');
+          location.replace('./login.html');
+          return;
+        }
+
+        const tenNv =
+          nv.ten_nv ||
+          nv.tenNhanVien ||
+          nv.name ||
+          nv.ma_nv ||
+          'Nhân viên';
+
+        $('#ten_nv').textContent = tenNv;
+        $('#ma_nv').textContent =
+          nv.ma_nv
+            ? `Mã nhân viên: ${nv.ma_nv}`
+            : '';
+
+        /*
+         * Phân quyền từ dữ liệu localStorage "nv".
+         *
+         * Kho hỗ trợ:
+         * - nv.kho
+         * - nv.dong_hang
+         *
+         * Điều này giúp dữ liệu quyền cũ vẫn hoạt động.
+         */
+        const permissions = {
+          admin:toBool(nv.admin),
+
+          kho:
+            toBool(nv.kho) ||
+            toBool(nv.dong_hang),
+
+          checkdon:
+            toBool(nv.checkdon) ||
+            toBool(nv.check_don),
+
+          mapview:
+            toBool(nv.mapview) ||
+            toBool(nv.map),
+
+          chamsockhachhang:
+            toBool(nv.chamsockhachhang) ||
+            toBool(nv.cham_soc_khach_hang),
+
+          tinhdoanhso:
+            toBool(nv.tinhdoanhso) ||
+            toBool(nv.tinh_doanh_so),
+
+          // PHÂN QUYỀN TẠO HÓA ĐƠN
+          taohoadon:
+            toBool(nv.taohoadon) ||
+            toBool(nv.tao_hoa_don) ||
+            toBool(nv.tao_hd_thue_bang_tay)
+        };
+
+        showIf(
+          '#admin',
+          permissions.admin
+        );
+
+        showIf(
+          '#kho',
+          permissions.kho
+        );
+
+        showIf(
+          '#checkdon',
+          permissions.checkdon
+        );
+
+        showIf(
+          '#mapview',
+          permissions.mapview
+        );
+
+        showIf(
+          '#chamsockhachhang',
+          permissions.chamsockhachhang
+        );
+
+        showIf(
+          '#tinhdoanhso',
+          permissions.tinhdoanhso
+        );
+
+        // HIỂN THỊ NÚT TẠO HÓA ĐƠN
+        showIf(
+          '#taohoadon',
+          permissions.taohoadon
+        );
+
+        const hasAnyPermission =
+          Object.values(permissions).some(Boolean);
+
+        $('#permissionNotice')
+          ?.classList.toggle(
+            'show',
+            !hasAnyPermission
+          );
+
+        console.log(
+          '[QUYỀN TRANG CHÍNH]',
+          {
+            nhan_vien:nv,
+            quyen:permissions
+          }
+        );
+
+        bindRoutes();
+
+        $('#btnLogout')
+          ?.addEventListener(
+            'click',
+            logout
+          );
+      }
+
+      $('#year').textContent =
+        new Date().getFullYear();
+
+      try {
+        init();
+      } catch (error) {
+        console.error(
+          'INDEX_INIT_ERROR:',
+          error
+        );
+
+        alert(
+          'Có lỗi khi khởi tạo trang. Xem Console để biết chi tiết.'
+        );
+      } finally {
+        showPage();
+      }
     })();
   </script>
-
 </body>
 </html>
