@@ -1,0 +1,859 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản lý số tiền</title>
+
+<!-- KẾT NỐI GIỐNG CODE CŨ -->
+<script src="./js/internal_key.js"></script>
+<script src="./js/cod_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./js/check_login.js"></script>
+
+<style>
+:root {
+  --bg: #0b1220;
+  --panel: #111d33;
+  --line: #293b57;
+  --text: #e6edff;
+  --muted: #98aac7;
+  --blue: #69b4ff;
+  --green: #2dd4bf;
+  --red: #ff7777;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, sans-serif;
+}
+
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 24px;
+}
+
+h1 { margin: 0 0 8px; }
+h2 { margin: 0 0 15px; font-size: 19px; }
+
+.subtitle {
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 25px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 22px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+}
+
+.form-group { flex: 1; }
+
+label {
+  display: block;
+  color: var(--muted);
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+input, select {
+  width: 100%;
+  padding: 13px;
+  border-radius: 9px;
+  background: #0b172b;
+  border: 1px solid var(--line);
+  color: white;
+  font-size: 16px;
+  outline: none;
+}
+
+input:focus {
+  border-color: var(--blue);
+}
+
+#soTien {
+  font-size: 23px;
+  font-weight: bold;
+  height: 53px;
+}
+
+button {
+  padding: 13px 22px;
+  border: none;
+  border-radius: 9px;
+  background: var(--blue);
+  color: #07142a;
+  font-weight: bold;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.btn-create {
+  height: 53px;
+  min-width: 135px;
+}
+
+.btn-small {
+  background: #243b5a;
+  color: white;
+  padding: 9px 14px;
+}
+
+.top-table {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 650px;
+}
+
+th {
+  background: #18345c;
+  color: #cfe7ff;
+  padding: 14px;
+  text-align: left;
+  font-size: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+td {
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+tr:hover td {
+  background: #172842;
+}
+
+.money-cell {
+  text-align: right;
+  color: var(--green);
+  font-weight: bold;
+}
+
+th.money-cell { color: #cfe7ff; }
+
+.msg {
+  margin-top: 13px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #18345c;
+  display: none;
+  font-size: 14px;
+}
+
+.msg.ok {
+  display: block;
+  background: #14382f;
+  color: #a1f2d2;
+}
+
+.msg.error {
+  display: block;
+  background: #43222b;
+  color: #ffb6bf;
+}
+
+.msg.info { display: block; }
+
+.status {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+  gap: 10px;
+}
+
+.pager-buttons { display: flex; gap: 8px; }
+
+details {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 15px;
+}
+
+summary {
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin: 18px 0;
+}
+
+.empty {
+  padding: 30px;
+  text-align: center;
+  color: var(--muted);
+}
+
+@media(max-width: 650px) {
+  .container { padding: 12px; }
+  .form-row { flex-direction: column; align-items: stretch; }
+  .btn-create { width: 100%; }
+  .config-grid { grid-template-columns: 1fr; }
+  .card { padding: 15px; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>Quản lý số tiền</h1>
+  <div class="subtitle">
+    Nhập số tiền và tự động ghi ngày giờ Việt Nam (UTC+7).
+    <span class="status" id="ketNoi">Đang kết nối...</span>
+  </div>
+
+  <!-- NHẬP SỐ TIỀN -->
+  <div class="card">
+    <h2>Tạo khoản tiền mới</h2>
+
+    <form id="formTao">
+      <div class="form-row">
+
+        <div class="form-group">
+          <label for="soTien">Số tiền (VNĐ)</label>
+          <input
+            type="text"
+            id="soTien"
+            inputmode="decimal"
+            placeholder="Ví dụ: 1.500.000"
+            required
+          >
+        </div>
+
+        <button class="btn-create" id="btnTao" type="submit" disabled>
+          + Tạo
+        </button>
+
+      </div>
+    </form>
+
+    <div id="thongBao" class="msg"></div>
+  </div>
+
+  <!-- BẢNG DỮ LIỆU -->
+  <div class="card">
+
+    <div class="top-table">
+      <div>
+        <h2>Danh sách số tiền</h2>
+        <div class="subtitle" id="tenBang" style="margin:0 0 15px">
+          Chưa chọn bảng
+        </div>
+      </div>
+
+      <button class="btn-small" id="btnTaiLai" disabled>
+        ↻ Làm mới
+      </button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Ngày tạo</th>
+            <th>Thời gian tạo</th>
+            <th class="money-cell">Số tiền (VNĐ)</th>
+          </tr>
+        </thead>
+
+        <tbody id="duLieu"></tbody>
+      </table>
+
+      <div class="empty" id="trong">
+        Đang tải dữ liệu...
+      </div>
+    </div>
+
+    <div class="pager">
+      <span class="status" id="trang">Trang 1</span>
+
+      <div class="pager-buttons">
+        <button class="btn-small" id="btnTruoc" disabled>Trước</button>
+        <button class="btn-small" id="btnSau" disabled>Sau</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CÀI ĐẶT BẢNG -->
+  <details id="caiDat">
+    <summary>⚙ Cài đặt bảng Supabase</summary>
+
+    <div class="config-grid">
+      <div>
+        <label for="nhapTenBang">Tên bảng Supabase</label>
+        <input id="nhapTenBang" placeholder="Nhập tên bảng">
+      </div>
+
+      <div>
+        <label for="kieuNgayGio">Kiểu cột ngày giờ</label>
+        <select id="kieuNgayGio">
+          <option value="timestamp">
+            Theo ảnh: timestamp cho cả hai cột
+          </option>
+          <option value="date_time">
+            ngay_tao_hd = date, thoi_gian_tao_hd = time
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <button id="btnLuuCaiDat">Lưu cài đặt</button>
+    <p class="status">
+      Chỉ cần nhập tên bảng một lần. Trình duyệt sẽ ghi nhớ.
+    </p>
+  </details>
+
+</div>
+
+<script>
+"use strict";
+
+// =========================================
+// CẤU HÌNH SUPABASE
+// =========================================
+
+const $ = id => document.getElementById(id);
+
+const TIMEZONE = "Asia/Ho_Chi_Minh";
+const PAGE_SIZE = 100;
+
+const STORAGE_TABLE = "tien_supabase_table";
+const STORAGE_TYPE = "tien_supabase_type";
+
+let supa = null;
+let TABLE = "";
+let KIEU_COT = "timestamp";
+
+let trangHienTai = 1;
+let tongBanGhi = 0;
+let dangTao = false;
+
+// API_BASE giống code cũ
+(function setApiBase() {
+  const q = new URLSearchParams(location.search);
+  const override = q.get("apiBase");
+
+  let base = override ||
+    (location.origin.startsWith("http")
+      ? location.origin
+      : "");
+
+  if (
+    !override &&
+    /localhost|127\.0\.0\.1/.test(location.hostname)
+  ) {
+    if (!base || (location.port && location.port !== "3000")) {
+      base = "http://localhost:3000";
+    }
+  }
+
+  window.API_BASE = base.replace(/\/+$/, "");
+})();
+
+// =========================================
+// THÔNG BÁO
+// =========================================
+
+function thongBao(noiDung, loai = "info") {
+  const el = $("thongBao");
+  el.textContent = noiDung;
+  el.className = "msg " + loai;
+  el.style.display = noiDung ? "block" : "none";
+}
+
+function capNhatNut() {
+  $("btnTao").disabled = !supa || !TABLE || dangTao;
+  $("btnTao").textContent = dangTao ? "Đang tạo..." : "+ Tạo";
+  $("btnTaiLai").disabled = !supa || !TABLE;
+}
+
+// =========================================
+// XỬ LÝ SỐ TIỀN
+// =========================================
+
+// Chấp nhận 1500000, 1.500.000 hoặc 1.500.000,50
+function chuanHoaSoTien(giaTri) {
+  const s = String(giaTri).replace(/\s/g, "");
+
+  if (!/^(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d{1,2})?$/.test(s)) {
+    return null;
+  }
+
+  const value = s.replace(/\./g, "").replace(",", ".");
+
+  if (!Number.isFinite(Number(value))) return null;
+
+  return value;
+}
+
+function dinhDangTien(value) {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+
+  const s = String(value);
+  const [nguyen, thapPhan] = s.split(".");
+
+  const formatted = nguyen.replace(
+    /\B(?=(\d{3})+(?!\d))/g,
+    "."
+  );
+
+  if (thapPhan && Number(thapPhan) !== 0) {
+    return formatted + "," + thapPhan.replace(/0+$/, "");
+  }
+
+  return formatted;
+}
+
+$("soTien").addEventListener("blur", function() {
+  const value = chuanHoaSoTien(this.value);
+
+  if (value !== null) {
+    this.value = dinhDangTien(value);
+  }
+});
+
+// =========================================
+// LẤY NGÀY GIỜ VIỆT NAM
+// =========================================
+
+function layNgayGioVN() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(new Date());
+
+  const p = {};
+
+  for (const item of parts) {
+    if (item.type !== "literal") {
+      p[item.type] = item.value;
+    }
+  }
+
+  return {
+    ngay: `${p.year}-${p.month}-${p.day}`,
+    gio: `${p.hour}:${p.minute}:${p.second}`
+  };
+}
+
+// =========================================
+// ĐỊNH DẠNG NGÀY VÀ GIỜ HIỂN THỊ
+// =========================================
+
+function hienThiNgay(value) {
+  if (!value) return "";
+
+  const s = String(value);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (!m) return s;
+
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+function hienThiGio(value) {
+  if (!value) return "";
+
+  const s = String(value);
+  const m = s.match(/(?:T|\s)(\d{2}:\d{2}:\d{2})/);
+
+  if (m) return m[1];
+
+  const timeOnly = s.match(/^(\d{2}:\d{2}:\d{2})/);
+
+  return timeOnly ? timeOnly[1] : s;
+}
+
+// =========================================
+// TẠO BẢN GHI MỚI
+// =========================================
+
+async function taoSoTien(event) {
+  event.preventDefault();
+
+  if (!supa || !TABLE || dangTao) return;
+
+  const soTien = chuanHoaSoTien($("soTien").value);
+
+  if (soTien === null) {
+    thongBao("Số tiền không hợp lệ!", "error");
+    return;
+  }
+
+  const vn = layNgayGioVN();
+
+  // Hai cột đang là timestamp theo ảnh:
+  const timestampVN = `${vn.ngay} ${vn.gio}`;
+
+  let payload;
+
+  if (KIEU_COT === "date_time") {
+    // Khi đã sửa kiểu cột trong Supabase thành date/time
+    payload = {
+      so_tien: soTien,
+      ngay_tao_hd: vn.ngay,
+      thoi_gian_tao_hd: vn.gio
+    };
+  } else {
+    // Theo cấu trúc timestamp hiện tại trong ảnh
+    payload = {
+      so_tien: soTien,
+      ngay_tao_hd: timestampVN,
+      thoi_gian_tao_hd: timestampVN
+    };
+  }
+
+  dangTao = true;
+  capNhatNut();
+  thongBao("Đang tạo bản ghi...", "info");
+
+  try {
+    const { error } = await supa
+      .from(TABLE)
+      .insert(payload);
+
+    if (error) throw error;
+
+    $("soTien").value = "";
+
+    thongBao(
+      "Đã tạo thành công " +
+      dinhDangTien(soTien) +
+      " VNĐ lúc " +
+      vn.gio +
+      " ngày " +
+      hienThiNgay(vn.ngay),
+      "ok"
+    );
+
+    trangHienTai = 1;
+
+    await taiDuLieu();
+
+  } catch (error) {
+    thongBao(
+      "Không tạo được: " + (error.message || error),
+      "error"
+    );
+    console.error("Lỗi INSERT Supabase:", error);
+  } finally {
+    dangTao = false;
+    capNhatNut();
+  }
+}
+
+// =========================================
+// HIỂN THỊ DỮ LIỆU
+// =========================================
+
+function hienThiBang(data) {
+  const tbody = $("duLieu");
+  tbody.replaceChildren();
+
+  $("trong").style.display = data.length ? "none" : "block";
+  $("trong").textContent = "Chưa có bản ghi.";
+
+  for (const row of data) {
+    const tr = document.createElement("tr");
+
+    const values = [
+      row.id ?? "",
+      hienThiNgay(row.ngay_tao_hd),
+      hienThiGio(row.thoi_gian_tao_hd),
+      dinhDangTien(row.so_tien)
+    ];
+
+    values.forEach((value, index) => {
+      const td = document.createElement("td");
+
+      td.textContent = String(value);
+
+      if (index === 3) {
+        td.className = "money-cell";
+      }
+
+      tr.appendChild(td);
+    });
+
+    tbody.appendChild(tr);
+  }
+}
+
+// =========================================
+// ĐỌC DỮ LIỆU TỪ SUPABASE
+// =========================================
+
+async function taiDuLieu() {
+  if (!supa || !TABLE) return;
+
+  $("trong").style.display = "block";
+  $("trong").textContent = "Đang tải dữ liệu...";
+
+  const tu = (trangHienTai - 1) * PAGE_SIZE;
+  const den = tu + PAGE_SIZE - 1;
+
+  try {
+    const { data, error, count } = await supa
+      .from(TABLE)
+      .select(
+        "id,ngay_tao_hd,thoi_gian_tao_hd,so_tien",
+        { count: "exact" }
+      )
+      .order("id", { ascending: false })
+      .range(tu, den);
+
+    if (error) throw error;
+
+    tongBanGhi = count ?? (data || []).length;
+
+    hienThiBang(data || []);
+    capNhatPhanTrang();
+
+  } catch (error) {
+    $("duLieu").replaceChildren();
+
+    $("trong").style.display = "block";
+    $("trong").textContent =
+      "Lỗi tải dữ liệu: " + (error.message || error);
+
+    console.error("Lỗi SELECT Supabase:", error);
+  }
+}
+
+// =========================================
+// PHÂN TRANG
+// =========================================
+
+function capNhatPhanTrang() {
+  const tongTrang = Math.max(
+    1,
+    Math.ceil(tongBanGhi / PAGE_SIZE)
+  );
+
+  $("trang").textContent =
+    "Trang " + trangHienTai + "/" + tongTrang +
+    " - Tổng " + tongBanGhi + " bản ghi";
+
+  $("btnTruoc").disabled = trangHienTai <= 1;
+
+  $("btnSau").disabled = trangHienTai >= tongTrang;
+}
+
+$("btnTruoc").addEventListener("click", () => {
+  if (trangHienTai > 1) {
+    trangHienTai--;
+    taiDuLieu();
+  }
+});
+
+$("btnSau").addEventListener("click", () => {
+  if (trangHienTai * PAGE_SIZE < tongBanGhi) {
+    trangHienTai++;
+    taiDuLieu();
+  }
+});
+
+$("btnTaiLai").addEventListener("click", taiDuLieu);
+
+// =========================================
+// LƯU CÀI ĐẶT TÊN BẢNG
+// =========================================
+
+function luuCaiDat() {
+  const name = $("nhapTenBang").value.trim();
+
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+    thongBao("Anh cần nhập đúng tên bảng Supabase.", "error");
+    $("caiDat").open = true;
+    return;
+  }
+
+  TABLE = name;
+  KIEU_COT = $("kieuNgayGio").value;
+
+  localStorage.setItem(STORAGE_TABLE, TABLE);
+  localStorage.setItem(STORAGE_TYPE, KIEU_COT);
+
+  $("tenBang").textContent = "Bảng: public." + TABLE;
+  $("caiDat").open = false;
+
+  trangHienTai = 1;
+
+  capNhatNut();
+  taiDuLieu();
+}
+
+$("btnLuuCaiDat").addEventListener("click", luuCaiDat);
+
+// =========================================
+// KHỞI TẠO SUPABASE THEO CODE CŨ
+// =========================================
+
+async function init() {
+  try {
+    // Đọc cài đặt đã lưu
+    TABLE = localStorage.getItem(STORAGE_TABLE) || "";
+
+    KIEU_COT = localStorage.getItem(STORAGE_TYPE)
+      || "timestamp";
+
+    $("nhapTenBang").value = TABLE;
+    $("kieuNgayGio").value = KIEU_COT;
+
+    if (TABLE) {
+      $("tenBang").textContent = "Bảng: public." + TABLE;
+    } else {
+      $("caiDat").open = true;
+    }
+
+    // Kiểm tra quyền truy cập giống code mẫu
+    if (typeof window.checkAccess === "function") {
+      try { window.checkAccess(); } catch (_) {}
+    }
+
+    if (typeof window.checkLogin !== "function") {
+      throw new Error("Không tìm thấy check_login.js");
+    }
+
+    const loginOk = await window.checkLogin();
+
+    if (!loginOk) {
+      $("ketNoi").textContent = "Chưa đăng nhập";
+      return;
+    }
+
+    if (!window.supabase?.createClient) {
+      throw new Error("Không tải được supabase-js");
+    }
+
+    // Lấy INTERNAL_KEY giống file mẫu
+    const INTERNAL_KEY =
+      typeof window.getInternalKey === "function"
+        ? window.getInternalKey()
+        : "";
+
+    const base = (window.API_BASE || "")
+      .replace(/\/+$/, "");
+
+    const cfgUrl = base
+      ? `${base}/api/getConfig`
+      : "/api/getConfig";
+
+    const response = await fetch(cfgUrl, {
+      headers: {
+        "x-internal-key": INTERNAL_KEY
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        "Không lấy được config: HTTP " + response.status
+      );
+    }
+
+    const APP_CONFIG = await response.json();
+
+    const { url, anon } = APP_CONFIG;
+
+    if (!url || !anon) {
+      throw new Error("Thiếu url hoặc anon trong config");
+    }
+
+    // Tạo kết nối Supabase
+    supa = window.supabase.createClient(url, anon);
+
+    window.supa = supa;
+
+    $("ketNoi").textContent = "● Đã kết nối Supabase";
+    $("ketNoi").style.color = "#2dd4bf";
+
+    capNhatNut();
+
+    if (TABLE) {
+      await taiDuLieu();
+    } else {
+      $("trong").textContent =
+        "Hãy nhập tên bảng trong phần Cài đặt.";
+    }
+
+  } catch (error) {
+    $("ketNoi").textContent = "● Lỗi kết nối";
+    $("ketNoi").style.color = "#ff7777";
+
+    thongBao(
+      "Lỗi khởi tạo: " + (error.message || error),
+      "error"
+    );
+
+    console.error("INIT ERROR:", error);
+  }
+}
+
+// =========================================
+// SỰ KIỆN
+// =========================================
+
+$("formTao").addEventListener("submit", taoSoTien);
+
+// Bắt đầu
+init();
+
+</script>
+
+</body>
+</html>
