@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="vi">
 <head>
@@ -289,7 +290,6 @@
       background: #b42318;
     }
 
-
     .action-btn {
       width: 38px;
       height: 38px;
@@ -401,11 +401,21 @@
       cursor: pointer;
     }
 
+    /* CHỈ BỔ SUNG BỐ CỤC GHI CHÚ DƯỚI NÚT LƯU */
     .modal-foot {
       display: flex;
       justify-content: flex-end;
+      flex-wrap: wrap;
       gap: 10px;
       padding: 0 22px 22px;
+    }
+
+    .save-note {
+      flex-basis: 100%;
+      text-align: right;
+      color: #6b7280;
+      font-size: 13px;
+      line-height: 1.5;
     }
 
     @media (max-width: 860px) {
@@ -537,7 +547,6 @@
       </div>
     </section>
   </main>
-
 
   <div
     id="functionModal"
@@ -678,6 +687,12 @@
           >
             Lưu
           </button>
+
+          <!-- GHI CHÚ MỚI DƯỚI NÚT LƯU -->
+          <div class="save-note">
+            Sau khi lưu xong bạn vào <strong>Vai trò</strong> - đến
+            <strong>Menu chính</strong> để cấp quyền.
+          </div>
         </div>
       </form>
     </section>
