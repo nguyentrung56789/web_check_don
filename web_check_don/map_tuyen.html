@@ -1,60 +1,279 @@
+
 <!doctype html>
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  />
+
   <title>Bản đồ khách hàng — CSV</title>
 
+  <!-- ========================================
+       KIỂM TRA QUYỀN TRUY CẬP
+  ========================================= -->
 
-<!-- Kiểm tra quyền truy cập bằng token -->
-<script src="./js/auth_token.js"></script>
-<script>checkAccess();</script>
+  <script src="./js/auth_token.js"></script>
 
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <script>
+    if (typeof checkAccess === "function") {
+      checkAccess();
+    }
+  </script>
 
-  <!-- App CSS -->
-  <link rel="stylesheet" href="./css/map_tuyen.css" />
+  <!-- ========================================
+       LEAFLET CSS
+  ========================================= -->
 
-  <!-- Libraries -->
-  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+  />
 
-  <!-- PHẢI load trước file js app để có window.getConfig -->
-  <script src="./js/internal_key.js" defer></script>
+  <!-- ========================================
+       CSS CỦA ỨNG DỤNG
+  ========================================= -->
 
-  <!-- App JS -->
-  <script src="./js/map_tuyen.js" defer></script>
+  <link
+    rel="stylesheet"
+    href="./css/map_tuyen.css"
+  />
+
+  <!-- ========================================
+       LEAFLET JS
+       TẢI TRƯỚC BỘ CHẶN CARTO
+  ========================================= -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
+  ></script>
+
+  <!-- ========================================
+       TỰ ĐỘNG THAY CARTO BẰNG OPENSTREETMAP
+
+       Không cần API Key.
+       Áp dụng trước khi JS bản đồ khởi tạo.
+       Không thay đổi marker và dữ liệu KH.
+  ========================================= -->
+
+  <script>
+    (function () {
+      "use strict";
+
+      if (!window.L || !L.tileLayer) {
+        console.error(
+          "Không tìm thấy thư viện Leaflet."
+        );
+        return;
+      }
+
+      const OSM_URL =
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+
+      const OSM_ATTRIBUTION =
+        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+
+      const originalTileLayer = L.tileLayer;
+
+      function safeTileLayer(url, options) {
+        const requestedURL = String(url || "");
+
+        const isCarto =
+          /cartocdn\.com|carto\.com\/basemaps\/apikey/i
+            .test(requestedURL);
+
+        if (isCarto) {
+          console.warn(
+            "Đã thay CARTO bằng OpenStreetMap:",
+            requestedURL
+          );
+
+          return originalTileLayer.call(
+            L,
+            OSM_URL,
+            {
+              ...(options || {}),
+
+              subdomains: "",
+
+              maxZoom: 19,
+
+              maxNativeZoom: 19,
+
+              detectRetina: false,
+
+              attribution: OSM_ATTRIBUTION
+            }
+          );
+        }
+
+        return originalTileLayer.call(
+          L,
+          url,
+          options
+        );
+      }
+
+      // Giữ các phương thức bổ sung của Leaflet.
+      Object.assign(
+        safeTileLayer,
+        originalTileLayer
+      );
+
+      L.tileLayer = safeTileLayer;
+
+      window.OSM_BASEMAP_URL = OSM_URL;
+
+      window.createOSMBaseMap = function () {
+        return originalTileLayer.call(
+          L,
+          OSM_URL,
+          {
+            maxZoom: 19,
+            maxNativeZoom: 19,
+            attribution: OSM_ATTRIBUTION
+          }
+        );
+      };
+
+      console.log(
+        "✅ Bộ thay thế CARTO đã được kích hoạt."
+      );
+    })();
+  </script>
+
+  <!-- ========================================
+       PAPAPARSE ĐỌC CSV
+  ========================================= -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"
+    defer
+  ></script>
+
+  <!-- ========================================
+       CẤU HÌNH INTERNAL KEY
+       PHẢI TẢI TRƯỚC JS ỨNG DỤNG
+  ========================================= -->
+
+  <script
+    src="./js/internal_key.js"
+    defer
+  ></script>
+
+  <!-- ========================================
+       JS BẢN ĐỒ
+       THÊM VERSION ĐỂ TRÁNH CACHE
+  ========================================= -->
+
+  <script
+    src="./js/map_tuyen.js?v=20261031_osm_04"
+    defer
+  ></script>
+
 </head>
+
 <body>
-  <!-- Thanh bar: bấm để đóng khi nhúng trong iframe -->
-  <div id="mapHeader" class="map-header" title="Bấm để đóng">
+
+  <!-- ========================================
+       THANH HEADER
+  ========================================= -->
+
+  <div
+    id="mapHeader"
+    class="map-header"
+    title="Bấm để đóng"
+  >
+
     <div class="grabber"></div>
-    <strong>🗺️ Bản đồ tuyến</strong>
-    <label><input id="vnOnly" type="checkbox" checked> Chỉ VN</label>
-    <span id="status" class="muted">Sẵn sàng</span>
+
+    <strong>
+      🗺️ Bản đồ tuyến
+    </strong>
+
+    <label>
+      <input
+        id="vnOnly"
+        type="checkbox"
+        checked
+      />
+      Chỉ VN
+    </label>
+
+    <span
+      id="status"
+      class="muted"
+    >
+      Sẵn sàng
+    </span>
+
   </div>
 
+  <!-- ========================================
+       THANH CÔNG CỤ
+  ========================================= -->
+
   <div id="toolbar">
-    <button id="reload">Tải lại</button>
+
+    <button
+      id="reload"
+      type="button"
+      title="Tải lại dữ liệu khách hàng"
+    >
+      Tải lại
+    </button>
+
     <div class="grow">
-      <input id="q" type="text" placeholder="Tìm: ma: KH0001 KH0002, ten: an lão, sdt: 098..., hoặc gõ từ khoá tự do..." />
+
+      <input
+        id="q"
+        type="text"
+        placeholder="Tìm: ma: KH0001 KH0002, ten: an lão, sdt: 098..., hoặc gõ từ khoá tự do..."
+        autocomplete="off"
+      />
+
     </div>
 
   </div>
 
- <div id="map"></div>
+  <!-- ========================================
+       VÙNG HIỂN THỊ BẢN ĐỒ
+  ========================================= -->
 
-<!-- Nút nổi cạnh nhau: 📍 định vị & 🚀 tới KH gần nhất -->
-<div id="mapToolbar" class="toolbar">
-  <!-- <button id="reload" title="Tải lại dữ liệu 🔄">🔄</button>--->
-  <button id="btnMyLocation" title="Định vị 📍">📍</button>
-  <button id="btnNearest" title="Tới KH gần nhất 🚀">🚀</button>
-  <!-- (đã bỏ) <button id="btnFollow" title="Theo dõi 👁️">👁️</button> -->
-</div>
+  <div id="map"></div>
 
+  <!-- ========================================
+       NÚT NỔI ĐỊNH VỊ / KHÁCH GẦN NHẤT
+  ========================================= -->
 
+  <div
+    id="mapToolbar"
+    class="toolbar"
+  >
 
+    <!-- Định vị GPS -->
+
+    <button
+      id="btnMyLocation"
+      type="button"
+      title="Định vị vị trí của tôi"
+    >
+      📍
+    </button>
+
+    <!-- Tới khách hàng gần nhất -->
+
+    <button
+      id="btnNearest"
+      type="button"
+      title="Tới khách hàng gần nhất"
+    >
+      🚀
+    </button>
+
+  </div>
 
 </body>
 </html>
