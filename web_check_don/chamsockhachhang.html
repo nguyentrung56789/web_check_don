@@ -3664,6 +3664,26 @@ function normalizeBigintOrNull(value) {
       zaloChatSendBtn.textContent = "Đang gửi...";
 
       try {
+        // Riêng ma_nv gửi webhook: lấy trực tiếp từ sql_khachhang_nhanvien.
+        let maNvQuery = supabaseClient
+          .from("sql_khachhang_nhanvien")
+          .select("ma_nv")
+          .eq("ma_kh", currentZaloChatRow.ma_kh);
+
+        if (currentZaloChatRow.row_conversation_id) {
+          maNvQuery = maNvQuery.eq(
+            "conversation_id",
+            currentZaloChatRow.row_conversation_id
+          );
+        }
+
+        const { data: nvRows, error: nvError } = await maNvQuery.limit(2);
+        if (nvError) throw nvError;
+        if (nvRows?.length !== 1 || !String(nvRows[0].ma_nv || "").trim()) {
+          throw new Error("Không xác định được ma_nv đúng dòng khách hàng trong sql_khachhang_nhanvien");
+        }
+        const maNvSql = String(nvRows[0].ma_nv).trim();
+
         const formData = new FormData();
 
         formData.append("source", "zalo_chat_button");
@@ -3681,7 +3701,7 @@ function normalizeBigintOrNull(value) {
 
         // Bản đơn nhân viên: chỉ gửi 1 nhân viên phụ trách.
         formData.append("id_nv", currentZaloChatRow.id_nv || currentZaloChatRow.selected_id_nv || "");
-        formData.append("ma_nv", currentZaloChatRow.ma_nv || currentZaloChatRow.selected_ma_nv || "");
+        formData.append("ma_nv", maNvSql);
         formData.append("ten_nv", currentZaloChatRow.ten_nv || currentZaloChatRow.selected_ten_nv || "");
         formData.append("selected_id_nv", currentZaloChatRow.selected_id_nv || "");
         formData.append("selected_ma_nv", currentZaloChatRow.selected_ma_nv || "");
