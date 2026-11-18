@@ -3431,7 +3431,16 @@ function normalizeBigintOrNull(value) {
       zaloSenderInfo.classList.remove("hidden");
     }
     function openZaloChat(maKh, buttonEl) {
-      const customer = getCustomerByMaKh(maKh);
+      // Lấy đúng dòng đang bấm Zalo khi một ma_kh có nhiều conversation_id.
+      const clickedConversationId = normalizeConversationId(
+        buttonEl?.closest(".customer-main-row")?.dataset.conversationId
+      );
+      const customer = clickedConversationId
+        ? customers.find(function (item) {
+            return String(item.ma_kh || "") === String(maKh || "") &&
+              normalizeConversationId(item.conversation_id) === clickedConversationId;
+          }) || null
+        : getCustomerByMaKh(maKh);
 
       if (!customer) {
         showNotice("Không tìm thấy khách hàng để mở Zalo chat.", "error", 2200);
@@ -3664,23 +3673,27 @@ function normalizeBigintOrNull(value) {
       zaloChatSendBtn.textContent = "Đang gửi...";
 
       try {
-        // Riêng ma_nv gửi webhook: lấy trực tiếp từ sql_khachhang_nhanvien.
-        let maNvQuery = supabaseClient
-          .from("sql_khachhang_nhanvien")
-          .select("ma_nv")
-          .eq("ma_kh", currentZaloChatRow.ma_kh);
-
-        if (currentZaloChatRow.row_conversation_id) {
-          maNvQuery = maNvQuery.eq(
-            "conversation_id",
-            currentZaloChatRow.row_conversation_id
-          );
+        // Riêng ma_nv gửi webhook: bắt buộc lấy theo conversation_id đúng dòng.
+        const conversationId = normalizeConversationId(
+          currentZaloChatRow.row_conversation_id
+        );
+        if (!conversationId) {
+          throw new Error("Thiếu conversation_id, không thể xác định nhân viên");
         }
 
-        const { data: nvRows, error: nvError } = await maNvQuery.limit(2);
+        const { data: nvRows, error: nvError } = await supabaseClient
+          .from("sql_khachhang_nhanvien")
+          .select("ma_nv")
+          .eq("conversation_id", conversationId)
+          .eq("ma_kh", currentZaloChatRow.ma_kh)
+          .limit(2);
+
         if (nvError) throw nvError;
-        if (nvRows?.length !== 1 || !String(nvRows[0].ma_nv || "").trim()) {
-          throw new Error("Không xác định được ma_nv đúng dòng khách hàng trong sql_khachhang_nhanvien");
+        if (
+          nvRows?.length !== 1 ||
+          !String(nvRows[0].ma_nv || "").trim()
+        ) {
+          throw new Error("Không tìm thấy duy nhất ma_nv theo conversation_id");
         }
         const maNvSql = String(nvRows[0].ma_nv).trim();
 
